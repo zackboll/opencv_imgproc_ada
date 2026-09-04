@@ -4,6 +4,7 @@ with AUnit.Reporter.Text;
 with AUnit.Run;
 with AUnit.Test_Suites;
 with Color_Conversion_Tests;
+with Resize_Tests;
 
 procedure Tests is
 
@@ -19,6 +20,7 @@ procedure Tests is
 
    Reporter : AUnit.Reporter.Text.Text_Reporter;
 begin
+   Suite.Add_Test (Resize_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

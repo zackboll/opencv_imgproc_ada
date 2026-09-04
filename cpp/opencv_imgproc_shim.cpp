@@ -66,6 +66,29 @@ bool to_opencv_color_conversion(
     }
 }
 
+int to_opencv_interpolation(int32_t interpolation) noexcept
+{
+    switch (interpolation) {
+    case OPENCV_IMGPROC_INTER_NEAREST:
+        return cv::INTER_NEAREST;
+
+    case OPENCV_IMGPROC_INTER_LINEAR:
+        return cv::INTER_LINEAR;
+
+    case OPENCV_IMGPROC_INTER_CUBIC:
+        return cv::INTER_CUBIC;
+
+    case OPENCV_IMGPROC_INTER_AREA:
+        return cv::INTER_AREA;
+
+    case OPENCV_IMGPROC_INTER_LANCZOS4:
+        return cv::INTER_LANCZOS4;
+
+    default:
+        return static_cast<int>(interpolation);
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -111,6 +134,51 @@ opencv_imgproc_cvt_color(
         }
 
         cv::cvtColor(*src, *dst, opencv_conversion);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_resize(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t width,
+    int32_t height,
+    int32_t interpolation)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status =
+            opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        const int opencv_interpolation =
+            to_opencv_interpolation(interpolation);
+
+        cv::resize(
+            *src,
+            *dst,
+            cv::Size(static_cast<int>(width), static_cast<int>(height)),
+            0,
+            0,
+            opencv_interpolation);
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {
