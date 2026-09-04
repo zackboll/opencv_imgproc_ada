@@ -59,6 +59,33 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Border;
 
+   function To_C_Canny_Aperture
+     (Aperture : Canny_Aperture) return Interfaces.Integer_32 is
+   begin
+      case Aperture is
+         when Sobel_3x3 =>
+            return Internal.C_API.Canny_Aperture_3;
+
+         when Sobel_5x5 =>
+            return Internal.C_API.Canny_Aperture_5;
+
+         when Sobel_7x7 =>
+            return Internal.C_API.Canny_Aperture_7;
+      end case;
+   end To_C_Canny_Aperture;
+
+   function To_C_Canny_Gradient_Norm
+     (Gradient_Norm : Canny_Gradient_Norm) return Interfaces.Integer_32 is
+   begin
+      case Gradient_Norm is
+         when L1_Norm =>
+            return Internal.C_API.Canny_Gradient_L1;
+
+         when L2_Norm =>
+            return Internal.C_API.Canny_Gradient_L2;
+      end case;
+   end To_C_Canny_Gradient_Norm;
+
    procedure Validate_BGR_To_Gray (Source : OpenCV.Core.Mat) is
       use type OpenCV.Core.Channel_Count;
    begin
@@ -222,6 +249,65 @@ package body OpenCV.Image_Processing is
       end case;
    end Validate_Gaussian_Blur;
 
+   procedure Validate_Canny
+     (Source          : OpenCV.Core.Mat;
+      Lower_Threshold : OpenCV.Core.Float64_Value;
+      Upper_Threshold : OpenCV.Core.Float64_Value)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Canny_Edges requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Canny_Edges requires a two-dimensional source Mat");
+      end if;
+
+      if Source.Depth /= OpenCV.Core.UInt8 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Canny_Edges requires a UInt8 source Mat");
+      end if;
+
+      if Source.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Canny_Edges requires a source Mat with exactly 1 channel");
+      end if;
+
+      if Lower_Threshold /= Lower_Threshold
+        or else Lower_Threshold > OpenCV.Core.Float64_Value'Last
+        or else Lower_Threshold < 0.0
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Canny_Edges requires a finite nonnegative lower threshold");
+      end if;
+
+      if Upper_Threshold /= Upper_Threshold
+        or else Upper_Threshold > OpenCV.Core.Float64_Value'Last
+        or else Upper_Threshold < 0.0
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Canny_Edges requires a finite nonnegative upper threshold");
+      end if;
+
+      if Lower_Threshold > Upper_Threshold then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Canny_Edges requires lower threshold not greater than upper"
+            & " threshold");
+      end if;
+   end Validate_Canny;
+
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String)
    is
@@ -348,5 +434,44 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Blur_Input'Access);
       Raise_On_Error (Status, "Gaussian blur");
    end Gaussian_Blur;
+
+   procedure Canny_Edges
+     (Source          : OpenCV.Core.Mat;
+      Destination     : in out OpenCV.Core.Mat;
+      Lower_Threshold : OpenCV.Core.Float64_Value;
+      Upper_Threshold : OpenCV.Core.Float64_Value;
+      Aperture        : Canny_Aperture := Sobel_3x3;
+      Gradient_Norm   : Canny_Gradient_Norm := L1_Norm)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Canny_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Canny_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Canny
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.C.double (Lower_Threshold),
+                 Interfaces.C.double (Upper_Threshold),
+                 To_C_Canny_Aperture (Aperture),
+                 To_C_Canny_Gradient_Norm (Gradient_Norm));
+         end Canny_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Canny_Output'Access);
+      end Canny_Input;
+   begin
+      Validate_Canny (Source, Lower_Threshold, Upper_Threshold);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Canny_Input'Access);
+      Raise_On_Error (Status, "Canny edge detection");
+   end Canny_Edges;
 
 end OpenCV.Image_Processing;

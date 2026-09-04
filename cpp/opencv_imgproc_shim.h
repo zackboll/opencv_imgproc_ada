@@ -30,6 +30,13 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_BORDER_REFLECT      ((int32_t)2)
 #define OPENCV_IMGPROC_BORDER_REFLECT_101  ((int32_t)3)
 
+#define OPENCV_IMGPROC_CANNY_APERTURE_3 ((int32_t)0)
+#define OPENCV_IMGPROC_CANNY_APERTURE_5 ((int32_t)1)
+#define OPENCV_IMGPROC_CANNY_APERTURE_7 ((int32_t)2)
+
+#define OPENCV_IMGPROC_CANNY_GRADIENT_L1 ((int32_t)0)
+#define OPENCV_IMGPROC_CANNY_GRADIENT_L2 ((int32_t)1)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -54,6 +61,15 @@ opencv_imgproc_gaussian_blur(
     int32_t kernel_height,
     double sigma,
     int32_t border);
+
+opencv_imgproc_status
+opencv_imgproc_canny(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double lower_threshold,
+    double upper_threshold,
+    int32_t aperture,
+    int32_t gradient_norm);
 
 #ifdef __cplusplus
 }

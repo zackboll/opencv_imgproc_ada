@@ -120,6 +120,44 @@ bool to_opencv_border(int32_t border, int &opencv_border) noexcept
     }
 }
 
+bool to_opencv_canny_aperture(int32_t selector, int &aperture) noexcept
+{
+    switch (selector) {
+    case OPENCV_IMGPROC_CANNY_APERTURE_3:
+        aperture = 3;
+        return true;
+
+    case OPENCV_IMGPROC_CANNY_APERTURE_5:
+        aperture = 5;
+        return true;
+
+    case OPENCV_IMGPROC_CANNY_APERTURE_7:
+        aperture = 7;
+        return true;
+
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_canny_gradient_norm(
+    int32_t selector,
+    bool &l2_gradient) noexcept
+{
+    switch (selector) {
+    case OPENCV_IMGPROC_CANNY_GRADIENT_L1:
+        l2_gradient = false;
+        return true;
+
+    case OPENCV_IMGPROC_CANNY_GRADIENT_L2:
+        l2_gradient = true;
+        return true;
+
+    default:
+        return false;
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -266,6 +304,62 @@ opencv_imgproc_gaussian_blur(
             sigma,
             sigma,
             opencv_border);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_canny(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double lower_threshold,
+    double upper_threshold,
+    int32_t aperture_selector,
+    int32_t gradient_norm_selector)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        int aperture = 0;
+
+        if (!to_opencv_canny_aperture(aperture_selector, aperture)) {
+            return invalid_argument("unsupported Canny aperture");
+        }
+
+        bool l2_gradient = false;
+
+        if (!to_opencv_canny_gradient_norm(
+                gradient_norm_selector,
+                l2_gradient)) {
+            return invalid_argument("unsupported Canny gradient norm");
+        }
+
+        cv::Canny(
+            *src,
+            *dst,
+            lower_threshold,
+            upper_threshold,
+            aperture,
+            l2_gradient);
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {

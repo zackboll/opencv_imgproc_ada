@@ -7,6 +7,10 @@ package OpenCV.Image_Processing is
    type Interpolation_Method is
      (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4);
 
+   type Canny_Aperture is (Sobel_3x3, Sobel_5x5, Sobel_7x7);
+
+   type Canny_Gradient_Norm is (L1_Norm, L2_Norm);
+
    --  BGR_To_Gray converts a non-empty, two-dimensional, three-channel BGR
    --  Source whose depth is UInt8, UInt16, or Float32. Destination is replaced
    --  with a Mat having Source's rows, columns, and depth, and exactly one
@@ -45,5 +49,18 @@ package OpenCV.Image_Processing is
       Kernel_Size : OpenCV.Core.Size;
       Sigma       : OpenCV.Core.Float64_Value;
       Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  Canny_Edges finds edges in a non-empty two-dimensional UInt8 C1 Source.
+   --  Lower_Threshold and Upper_Threshold must be finite, nonnegative, and
+   --  ordered lower to upper. Destination is replaced with a UInt8 C1 Mat of
+   --  Source's geometry. Source remains valid and is not modified. Contract
+   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   procedure Canny_Edges
+     (Source          : OpenCV.Core.Mat;
+      Destination     : in out OpenCV.Core.Mat;
+      Lower_Threshold : OpenCV.Core.Float64_Value;
+      Upper_Threshold : OpenCV.Core.Float64_Value;
+      Aperture        : Canny_Aperture := Sobel_3x3;
+      Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
 
 end OpenCV.Image_Processing;

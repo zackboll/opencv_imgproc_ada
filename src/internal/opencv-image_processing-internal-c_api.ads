@@ -25,6 +25,13 @@ package OpenCV.Image_Processing.Internal.C_API is
    Border_Reflect     : constant Interfaces.Integer_32 := 2;
    Border_Reflect_101 : constant Interfaces.Integer_32 := 3;
 
+   Canny_Aperture_3 : constant Interfaces.Integer_32 := 0;
+   Canny_Aperture_5 : constant Interfaces.Integer_32 := 1;
+   Canny_Aperture_7 : constant Interfaces.Integer_32 := 2;
+
+   Canny_Gradient_L1 : constant Interfaces.Integer_32 := 0;
+   Canny_Gradient_L2 : constant Interfaces.Integer_32 := 1;
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -56,6 +63,15 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_gaussian_blur";
+
+   function Canny
+     (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination     : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Lower_Threshold : Interfaces.C.double;
+      Upper_Threshold : Interfaces.C.double;
+      Aperture        : Interfaces.Integer_32;
+      Gradient_Norm   : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_canny";
 
    function Last_Error_Message return String;
 
