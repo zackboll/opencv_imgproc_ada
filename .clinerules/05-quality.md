@@ -28,7 +28,7 @@ Do not consider a task complete while knowingly leaving:
 
 ## Development Tool Environment
 
-The public `opencvcore_ada` crate must not acquire testing, proof, coverage,
+The public `opencv_imgproc` crate must not acquire testing, proof, coverage,
 or other development-only dependencies merely to make development tools
 available.
 
@@ -121,11 +121,11 @@ Typical checks include:
 4. run GNATprove for affected SPARK-compatible code when appropriate
 5. run GNATcov when the size or risk of the change justifies coverage analysis
 6. inspect the final diff for unrelated changes
-7. complete the validation-boundary review when `cpp/opencv_core_shim.cpp` changed
+7. complete the validation-boundary review when `cpp/opencv_imgproc_shim.cpp` changed
 
 ## Validation-Boundary Review
 
-Before finishing any feature that modifies `cpp/opencv_core_shim.cpp`, inspect every new or changed C++ guard involving:
+Before finishing any feature that modifies `cpp/opencv_imgproc_shim.cpp`, inspect every new or changed C++ guard involving:
 
 - empty
 - rows

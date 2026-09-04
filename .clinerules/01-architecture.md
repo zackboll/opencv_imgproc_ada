@@ -1,12 +1,12 @@
-# OpenCV Core Ada Binding Architecture
+# OpenCV Imgproc Ada Binding Architecture
 
 ## Scope
 
-This repository implements an idiomatic thick Ada binding for the OpenCV Core module.
+This repository implements an idiomatic thick Ada binding for the OpenCV imgproc module.
 
-Do not add bindings for other OpenCV modules to this crate.
+Do not add bindings for OpenCV modules other than imgproc to this crate.
 
-Other OpenCV modules such as imgproc, imgcodecs, highgui, videoio, features2d, calib3d, and dnn belong in separate Alire crates that may depend on `opencvcore_ada`.
+This `opencv_imgproc` crate depends on `opencv_core`. Other OpenCV modules such as imgcodecs, highgui, videoio, features2d, calib3d, and dnn belong in separate Alire crates that may depend on `opencv_core` and, where appropriate, `opencv_imgproc`.
 
 ## Layering
 
@@ -18,7 +18,7 @@ The binding must be implemented in three layers:
 
 Code dependencies flow downward only:
 
-Thick Ada API -> thin Ada interop -> C++ shim -> OpenCV
+OpenCV.Image_Processing public Ada API -> private/thin Imgproc Ada C interop -> opencv_imgproc C ABI shim -> OpenCV imgproc
 
 Lower layers must never depend on higher layers.
 
@@ -110,28 +110,15 @@ Do not mechanically translate the OpenCV C++ API one declaration at a time witho
 
 ## Object Ownership
 
-Public Ada wrappers for reference-counted OpenCV objects such as `cv::Mat` should normally use `Ada.Finalization.Controlled`.
+`opencv_core` owns `OpenCV`, `OpenCV.Core.Mat`, and all `Mat` lifetime and ownership semantics. This crate must reuse `OpenCV.Core.Mat`; it must never define a competing `Mat` type or root `OpenCV` package.
 
-Ada assignment of a `Mat` must preserve normal OpenCV shallow-copy semantics:
-
-- assignment creates a distinct `cv::Mat` header
-- underlying pixel storage remains shared through OpenCV reference counting
-- finalization destroys only that wrapper's C++ object/header
-- shared pixel storage is released according to OpenCV reference counting
-
-Provide an explicit `Clone` operation for deep copies.
-
-Do not make normal Ada assignment perform an implicit deep copy.
-
-Raw ownership of the underlying C++ object must never be exposed to users of the thick Ada API.
+Imgproc operations borrow Mat handles through `OpenCV.Core.Module_Interop` and `opencv_core_module_bridge.hpp`. They must neither assume ownership nor expose raw Mat ownership to users of the thick Ada API.
 
 ## Generic and Runtime-Typed APIs
 
-Do not make the public `Mat` type generic.
+`OpenCV.Core.Mat` is runtime-typed and is not generic. Imgproc APIs must use that dependency type and preserve its semantics.
 
-`cv::Mat` is runtime-typed in OpenCV, so the thick Ada binding should preserve that model.
-
-Typed access to `Mat` data should be provided through separate Ada generic packages or generic operations that validate the runtime matrix type before accessing storage.
+When imgproc needs typed Mat access, use the facilities provided by `OpenCV.Core` rather than defining competing typed Mat abstractions.
 
 Use Ada generics where they naturally model compile-time C++ templates, including types such as:
 
@@ -146,24 +133,23 @@ Choose between runtime typing, Ada generics, tagged types, and ordinary overload
 
 ## Public Package Hierarchy
 
-The `opencvcore_ada` crate owns the root `OpenCV` Ada package.
+The `opencv_core` dependency owns the root `OpenCV` Ada package and `OpenCV.Core`.
 
-Expose the Core API primarily under:
+Expose this crate's public API primarily under:
 
-- `OpenCV`
-- `OpenCV.Core`
-- child packages of `OpenCV.Core` where useful
+- `OpenCV.Image_Processing`
+- child packages of `OpenCV.Image_Processing` where useful
 
-Future OpenCV module crates should extend the same package hierarchy, for example:
+This crate extends the package hierarchy supplied by `opencv_core`; it must not define a competing root `OpenCV` package. Other module crates should likewise extend that hierarchy, for example:
 
-- `OpenCV.Imgproc`
+- `OpenCV.Image_Processing`
 - `OpenCV.Imgcodecs`
 - `OpenCV.Videoio`
 - `OpenCV.Calib3d`
 - `OpenCV.Features2d`
 - `OpenCV.Dnn`
 
-Those crates should depend on `opencvcore_ada` rather than defining competing root `OpenCV` packages.
+Those crates should depend on `opencv_core` rather than defining competing root `OpenCV` packages.
 
 Prefer hierarchical Ada package names over flattened names such as `OpenCV_Core`.
 
@@ -173,12 +159,12 @@ Keep raw interoperability details under an internal package hierarchy.
 
 Prefer private child packages such as:
 
-- `OpenCV.Core.Internal`
-- `OpenCV.Core.Internal.C_Types`
-- `OpenCV.Core.Internal.C_API`
-- `OpenCV.Core.Internal.Handles`
+- `OpenCV.Image_Processing.Internal`
+- `OpenCV.Image_Processing.Internal.C_Types`
+- `OpenCV.Image_Processing.Internal.C_API`
+- `OpenCV.Image_Processing.Internal.Handles`
 
-Nothing under `OpenCV.Core.Internal` is part of the supported public API.
+Nothing under `OpenCV.Image_Processing.Internal` is part of the supported public API. Use `OpenCV.Core.Module_Interop` only as the dependency-provided bridge for borrowing Mat handles.
 
 Public package specifications must not expose:
 

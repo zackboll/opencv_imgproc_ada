@@ -38,6 +38,7 @@ Represent C++ objects using opaque handles.
 For example:
 
 ```c
+/* Mat handles are defined by the opencv_core dependency. */
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
 ```
 
@@ -108,15 +109,7 @@ Do not expose raw `cv::Mat *` or other OpenCV class pointers directly as the pub
 
 Prefer dedicated opaque handle types for each object family.
 
-For `Mat`, normal Ada assignment should use a shim copy operation that invokes OpenCV's normal shallow-copy semantics.
-
-For example, the shim copy operation should create a distinct C++ `cv::Mat` object whose underlying matrix storage is shared according to OpenCV reference-counting semantics.
-
-A separate shim operation should implement deep copying through `cv::Mat::clone()`.
-
-The agent must never create two independently owned Ada handles referring to the exact same raw C++ wrapper object.
-
-Shared OpenCV-managed data is permitted when the corresponding OpenCV object semantics explicitly support reference-counted sharing.
+`Mat` ownership, copying, cloning, and lifetime are owned exclusively by `OpenCV.Core`. Imgproc shim operations receive Mat handles borrowed through `opencv_core_module_bridge.hpp`; they must not destroy, retain as owned state, or create independently owned wrappers for them.
 
 After destroying an owned object, the Ada side should clear its stored handle so repeated finalization cannot double-free the object.
 
@@ -124,26 +117,22 @@ After destroying an owned object, the Ada side should clear its stored handle so
 
 Use a consistent module-specific prefix for every exported C shim symbol.
 
-For the OpenCV Core crate, use:
+For the OpenCV imgproc crate, use:
 
-`opencv_core_`
+`opencv_imgproc_`
 
 Follow the prefix with the object or functional area and then the operation.
 
 Examples:
 
 ```c
-opencv_core_mat_create
-opencv_core_mat_destroy
-opencv_core_mat_copy
-opencv_core_mat_clone
-opencv_core_mat_rows
-opencv_core_mat_columns
+opencv_imgproc_cvt_color
+opencv_imgproc_last_error_message
 ```
 
-Future OpenCV module crates should use their own prefixes, for example:
+Other OpenCV module crates should use their own prefixes, for example:
 
-- `opencv_imgproc_`
+- `opencv_core_`
 - `opencv_imgcodecs_`
 - `opencv_videoio_`
 
@@ -170,7 +159,7 @@ For diagnostic and exception messages, prefer thread-local storage owned by the 
 The shim may expose a function conceptually similar to:
 
 ```c
-const char *opencv_core_last_error_message(void);
+const char *opencv_imgproc_last_error_message(void);
 ```
 
 The returned pointer is borrowed.
@@ -199,13 +188,13 @@ Prefer a fixed-width integer status type with named constants so the ABI represe
 For example:
 
 ```c
-typedef int32_t opencv_core_status;
+typedef int32_t opencv_imgproc_status;
 
-#define OPENCV_CORE_OK                     ((opencv_core_status)0)
-#define OPENCV_CORE_ERROR_OPENCV           ((opencv_core_status)1)
-#define OPENCV_CORE_ERROR_STD              ((opencv_core_status)2)
-#define OPENCV_CORE_ERROR_UNKNOWN          ((opencv_core_status)3)
-#define OPENCV_CORE_ERROR_INVALID_ARGUMENT ((opencv_core_status)4)
+#define OPENCV_IMGPROC_OK                     ((opencv_imgproc_status)0)
+#define OPENCV_IMGPROC_ERROR_OPENCV           ((opencv_imgproc_status)1)
+#define OPENCV_IMGPROC_ERROR_STD              ((opencv_imgproc_status)2)
+#define OPENCV_IMGPROC_ERROR_UNKNOWN          ((opencv_imgproc_status)3)
+#define OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT ((opencv_imgproc_status)4)
 ```
 
 Functions that can fail should return the status code and place successful results in output parameters.
@@ -213,14 +202,16 @@ Functions that can fail should return the status code and place successful resul
 For example:
 
 ```c
-opencv_core_status
-opencv_core_mat_create(
-    opencv_core_mat_handle **out_mat);
+opencv_imgproc_status
+opencv_imgproc_cvt_color(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t conversion);
 ```
 
 On success:
 
-- return `OPENCV_CORE_OK`
+- return `OPENCV_IMGPROC_OK`
 - initialize all required output parameters
 
 On failure:
@@ -250,13 +241,13 @@ try {
     /* OpenCV operation */
 }
 catch (const cv::Exception& e) {
-    /* preserve diagnostic and return OPENCV_CORE_ERROR_OPENCV */
+    /* preserve diagnostic and return OPENCV_IMGPROC_ERROR_OPENCV */
 }
 catch (const std::exception& e) {
-    /* preserve diagnostic and return OPENCV_CORE_ERROR_STD */
+    /* preserve diagnostic and return OPENCV_IMGPROC_ERROR_STD */
 }
 catch (...) {
-    /* preserve diagnostic and return OPENCV_CORE_ERROR_UNKNOWN */
+    /* preserve diagnostic and return OPENCV_IMGPROC_ERROR_UNKNOWN */
 }
 ```
 

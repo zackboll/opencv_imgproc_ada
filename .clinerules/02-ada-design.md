@@ -37,7 +37,7 @@ A user working only with the thick Ada layer should not need to understand the C
 
 Use Ada tagged types and primitive operations when the underlying OpenCV abstraction has genuine object identity, ownership, or object-oriented behavior.
 
-`Mat` should be a tagged type with primitive operations so that both ordinary and prefixed notation are available.
+`Mat` is the tagged type supplied by `OpenCV.Core`; imgproc APIs must reuse it rather than defining another Mat type.
 
 For example:
 
@@ -49,9 +49,7 @@ Copy := Clone (Image);
 Copy := Image.Clone;
 ```
 
-The public view of `Mat` should hide its implementation details.
-
-Its full private implementation may derive from `Ada.Finalization.Controlled` to provide deterministic lifetime management and OpenCV-compatible shallow-copy semantics.
+`OpenCV.Core` owns Mat's private implementation, deterministic lifetime management, and OpenCV-compatible shallow-copy semantics. Imgproc operations must borrow Mats through the module-interoperability bridge and must not alter those ownership rules.
 
 Do not manufacture tagged-type inheritance hierarchies merely to imitate C++ classes.
 
@@ -113,7 +111,7 @@ Copy          := Image.Clone;
 
 Do not expose OpenCV preprocessor macros such as `CV_8UC3` as the primary public type system.
 
-Represent matrix depth and channel information using strong Ada types and constructors or helper functions.
+Use the strong matrix depth, channel, and type abstractions supplied by `OpenCV.Core` rather than redefining them in this crate.
 
 Compatibility constants may be provided later if they are genuinely useful, but the thick Ada API should not depend on C macro naming conventions.
 
@@ -199,9 +197,9 @@ RGB_Type : constant Mat_Type :=
    Channels => 3);
 ```
 
-The internal interoperability layer is responsible for translating between the Ada representation and OpenCV's packed integer type encoding.
+`OpenCV.Core` is responsible for translating its Ada matrix representation and OpenCV's packed integer type encoding. This crate must use its public abstractions and Module_Interop bridge as appropriate.
 
-`Mat` remains runtime-typed. Do not encode matrix depth or channel count into a tagged-type inheritance hierarchy.
+`OpenCV.Core.Mat` remains runtime-typed. Do not encode matrix depth or channel count into a tagged-type inheritance hierarchy in this crate.
 
 Provide operations such as:
 

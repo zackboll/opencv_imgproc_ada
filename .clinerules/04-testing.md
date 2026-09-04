@@ -2,18 +2,18 @@
 
 ## Test Crate Ownership
 
-All automated tests for `opencvcore_ada` belong in the separate `tests`
+All automated tests for `opencv_imgproc` belong in the separate `tests`
 Alire crate.
 
 Do not add AUnit or development-only verification tools as dependencies of
-the top-level `opencvcore_ada` library crate.
+the top-level `opencv_imgproc` library crate.
 
 The `tests` crate owns test and verification dependencies, including:
 
 - `aunit`
 - `gnatprove`
 - `gnatcov`
-- the local `opencvcore_ada` crate pinned to `..`
+- the local `opencv_imgproc` crate pinned to `..`
 
 Test-only helpers and dependencies should remain under the `tests` crate
 unless they are genuinely part of the reusable public library.
@@ -52,11 +52,10 @@ Organize hand-written AUnit tests by public feature or type.
 
 Prefer focused test packages such as:
 
-- `Mat_Tests`
-- `Point_Tests`
-- `Size_Tests`
-- `Scalar_Tests`
-- `Type_Conversion_Tests`
+- `Color_Conversion_Tests`
+- `Filtering_Tests`
+- `Geometric_Transformation_Tests`
+- `Image_Processing_Type_Tests`
 
 Each test should have one clear behavioral purpose.
 
@@ -94,30 +93,13 @@ least one negative-path test.
 
 ## Ownership and Lifetime Tests
 
-Resource ownership must be tested explicitly for controlled wrappers such as
-`Mat`.
-
-For `Mat`, relevant tests include:
-
-- default construction and destruction
-- construction of a non-empty matrix
-- Ada assignment
-- shallow-copy behavior after assignment
-- shared OpenCV storage behavior
-- explicit `Clone` deep-copy behavior
-- reassignment over an existing value
-- finalization of one shallow copy while another remains valid
-- self-assignment where relevant
-- failure paths after native resources have been allocated
+`OpenCV.Core` owns Mat lifetime tests. Imgproc tests must verify, through the public imgproc API, that operations correctly accept and return `OpenCV.Core.Mat` values without taking ownership of borrowed Mat handles.
 
 Tests should be capable of exposing problems such as:
 
-- double destruction
-- use-after-free
-- leaked owned handles
-- incorrect shallow-copy behavior
-- accidental deep copies
-- invalid handles retained after failure
+- destruction or retention of a borrowed Mat handle
+- use-after-free after an imgproc operation
+- invalid result handles retained after failure
 
 Where ownership behavior can be observed through the public API, test it
 through the public API rather than inspecting internal handles.
@@ -137,7 +119,7 @@ architecture.
 Do not:
 
 - replace the existing hand-written AUnit organization with GNATtest output
-- add AUnit to the top-level `opencvcore_ada` crate for GNATtest
+- add AUnit to the top-level `opencv_imgproc` crate for GNATtest
 - blindly use a generic GNATtest `--tests-root` value that writes generated
   files into the existing test crate
 - overwrite or reorganize hand-written tests merely to match GNATtest
