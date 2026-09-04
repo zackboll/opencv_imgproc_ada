@@ -7,6 +7,7 @@ with Canny_Edge_Tests;
 with Color_Conversion_Tests;
 with Gaussian_Blur_Tests;
 with Resize_Tests;
+with Threshold_Tests;
 
 procedure Tests is
 
@@ -25,6 +26,7 @@ begin
    Suite.Add_Test (Resize_Tests.Suite);
    Suite.Add_Test (Gaussian_Blur_Tests.Suite);
    Suite.Add_Test (Canny_Edge_Tests.Suite);
+   Suite.Add_Test (Threshold_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

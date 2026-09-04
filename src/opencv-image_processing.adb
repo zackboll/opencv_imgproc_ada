@@ -86,6 +86,27 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Canny_Gradient_Norm;
 
+   function To_C_Threshold_Mode
+     (Mode : Threshold_Mode) return Interfaces.Integer_32 is
+   begin
+      case Mode is
+         when Binary          =>
+            return Internal.C_API.Threshold_Binary;
+
+         when Binary_Inverse  =>
+            return Internal.C_API.Threshold_Binary_Inverse;
+
+         when Truncate        =>
+            return Internal.C_API.Threshold_Truncate;
+
+         when To_Zero         =>
+            return Internal.C_API.Threshold_To_Zero;
+
+         when To_Zero_Inverse =>
+            return Internal.C_API.Threshold_To_Zero_Inverse;
+      end case;
+   end To_C_Threshold_Mode;
+
    procedure Validate_BGR_To_Gray (Source : OpenCV.Core.Mat) is
       use type OpenCV.Core.Channel_Count;
    begin
@@ -308,6 +329,51 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Canny;
 
+   procedure Validate_Threshold
+     (Source                         : OpenCV.Core.Mat;
+      Threshold_Value, Maximum_Value : OpenCV.Core.Float64_Value)
+   is
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Threshold requires a non-empty source Mat");
+      elsif Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Threshold requires a two-dimensional source Mat");
+      elsif Threshold_Value /= Threshold_Value
+        or else Threshold_Value > OpenCV.Core.Float64_Value'Last
+        or else Threshold_Value < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Threshold requires a finite threshold value");
+      elsif Maximum_Value /= Maximum_Value
+        or else Maximum_Value > OpenCV.Core.Float64_Value'Last
+        or else Maximum_Value < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Threshold requires a finite maximum value");
+      end if;
+      case Source.Depth is
+         when OpenCV.Core.UInt8
+            | OpenCV.Core.UInt16
+            | OpenCV.Core.Int16
+            | OpenCV.Core.Float32
+            | OpenCV.Core.Float64 =>
+            null;
+
+         when others              =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Apply_Threshold requires a UInt8, UInt16, Int16, Float32,"
+               & " or Float64 source Mat");
+      end case;
+   end Validate_Threshold;
+
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String)
    is
@@ -473,5 +539,38 @@ package body OpenCV.Image_Processing is
         (Source, Canny_Input'Access);
       Raise_On_Error (Status, "Canny edge detection");
    end Canny_Edges;
+
+   procedure Apply_Threshold
+     (Source          : OpenCV.Core.Mat;
+      Destination     : in out OpenCV.Core.Mat;
+      Threshold_Value : OpenCV.Core.Float64_Value;
+      Mode            : Threshold_Mode := Binary;
+      Maximum_Value   : OpenCV.Core.Float64_Value := 255.0)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Threshold
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.C.double (Threshold_Value),
+                 Interfaces.C.double (Maximum_Value),
+                 To_C_Threshold_Mode (Mode));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Threshold (Source, Threshold_Value, Maximum_Value);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "fixed threshold");
+   end Apply_Threshold;
 
 end OpenCV.Image_Processing;

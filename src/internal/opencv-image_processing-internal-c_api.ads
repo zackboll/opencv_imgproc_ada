@@ -32,6 +32,12 @@ package OpenCV.Image_Processing.Internal.C_API is
    Canny_Gradient_L1 : constant Interfaces.Integer_32 := 0;
    Canny_Gradient_L2 : constant Interfaces.Integer_32 := 1;
 
+   Threshold_Binary          : constant Interfaces.Integer_32 := 0;
+   Threshold_Binary_Inverse  : constant Interfaces.Integer_32 := 1;
+   Threshold_Truncate        : constant Interfaces.Integer_32 := 2;
+   Threshold_To_Zero         : constant Interfaces.Integer_32 := 3;
+   Threshold_To_Zero_Inverse : constant Interfaces.Integer_32 := 4;
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -72,6 +78,14 @@ package OpenCV.Image_Processing.Internal.C_API is
       Aperture        : Interfaces.Integer_32;
       Gradient_Norm   : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_canny";
+
+   function Threshold
+     (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination     : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Threshold_Value : Interfaces.C.double;
+      Maximum_Value   : Interfaces.C.double;
+      Mode            : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_threshold";
 
    function Last_Error_Message return String;
 

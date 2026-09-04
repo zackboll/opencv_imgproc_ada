@@ -11,6 +11,9 @@ package OpenCV.Image_Processing is
 
    type Canny_Gradient_Norm is (L1_Norm, L2_Norm);
 
+   type Threshold_Mode is
+     (Binary, Binary_Inverse, Truncate, To_Zero, To_Zero_Inverse);
+
    --  BGR_To_Gray converts a non-empty, two-dimensional, three-channel BGR
    --  Source whose depth is UInt8, UInt16, or Float32. Destination is replaced
    --  with a Mat having Source's rows, columns, and depth, and exactly one
@@ -62,5 +65,20 @@ package OpenCV.Image_Processing is
       Upper_Threshold : OpenCV.Core.Float64_Value;
       Aperture        : Canny_Aperture := Sobel_3x3;
       Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
+
+   --  Applies a fixed threshold independently to every channel of Source.
+   --  Source must be non-empty, two-dimensional, and UInt8, UInt16, Int16,
+   --  Float32, or Float64; any channel count is accepted. Threshold_Value and
+   --  Maximum_Value must be finite. Destination is replaced with Source's
+   --  rows,
+   --  columns, depth, and channel count. Source remains unchanged.
+   --  Maximum_Value affects only Binary and Binary_Inverse; it is ignored by
+   --  Truncate, To_Zero, and To_Zero_Inverse. Otsu and Triangle are deferred.
+   procedure Apply_Threshold
+     (Source          : OpenCV.Core.Mat;
+      Destination     : in out OpenCV.Core.Mat;
+      Threshold_Value : OpenCV.Core.Float64_Value;
+      Mode            : Threshold_Mode := Binary;
+      Maximum_Value   : OpenCV.Core.Float64_Value := 255.0);
 
 end OpenCV.Image_Processing;

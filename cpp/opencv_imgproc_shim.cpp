@@ -158,6 +158,29 @@ bool to_opencv_canny_gradient_norm(
     }
 }
 
+bool to_opencv_threshold_mode(int32_t selector, int &opencv_mode) noexcept
+{
+    switch (selector) {
+    case OPENCV_IMGPROC_THRESHOLD_BINARY:
+        opencv_mode = cv::THRESH_BINARY;
+        return true;
+    case OPENCV_IMGPROC_THRESHOLD_BINARY_INVERSE:
+        opencv_mode = cv::THRESH_BINARY_INV;
+        return true;
+    case OPENCV_IMGPROC_THRESHOLD_TRUNCATE:
+        opencv_mode = cv::THRESH_TRUNC;
+        return true;
+    case OPENCV_IMGPROC_THRESHOLD_TO_ZERO:
+        opencv_mode = cv::THRESH_TOZERO;
+        return true;
+    case OPENCV_IMGPROC_THRESHOLD_TO_ZERO_INVERSE:
+        opencv_mode = cv::THRESH_TOZERO_INV;
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -361,6 +384,45 @@ opencv_imgproc_canny(
             aperture,
             l2_gradient);
 
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_threshold(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double threshold_value,
+    double maximum_value,
+    int32_t mode)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        int opencv_mode = 0;
+
+        if (!to_opencv_threshold_mode(mode, opencv_mode)) {
+            return invalid_argument("unsupported threshold mode");
+        }
+
+        cv::threshold(*src, *dst, threshold_value, maximum_value, opencv_mode);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

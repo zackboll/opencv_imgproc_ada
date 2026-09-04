@@ -37,6 +37,12 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_CANNY_GRADIENT_L1 ((int32_t)0)
 #define OPENCV_IMGPROC_CANNY_GRADIENT_L2 ((int32_t)1)
 
+#define OPENCV_IMGPROC_THRESHOLD_BINARY          ((int32_t)0)
+#define OPENCV_IMGPROC_THRESHOLD_BINARY_INVERSE  ((int32_t)1)
+#define OPENCV_IMGPROC_THRESHOLD_TRUNCATE        ((int32_t)2)
+#define OPENCV_IMGPROC_THRESHOLD_TO_ZERO         ((int32_t)3)
+#define OPENCV_IMGPROC_THRESHOLD_TO_ZERO_INVERSE ((int32_t)4)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -70,6 +76,14 @@ opencv_imgproc_canny(
     double upper_threshold,
     int32_t aperture,
     int32_t gradient_norm);
+
+opencv_imgproc_status
+opencv_imgproc_threshold(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double threshold_value,
+    double maximum_value,
+    int32_t mode);
 
 #ifdef __cplusplus
 }
