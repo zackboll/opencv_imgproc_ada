@@ -1,0 +1,19 @@
+name = "tests"
+description = "Unit tests for opencv_imgproc crate"
+version = "0.1.0"
+
+authors = ["Zack Boll"]
+maintainers = ["Zack Boll <zackboll@gmail.com>"]
+maintainers-logins = ["zackboll"]
+licenses = "Apache-2.0"
+website = ""
+tags = []
+
+[[depends-on]]
+aunit = "^26.0.0"
+
+[[depends-on]]
+opencv_imgproc = "*"
+
+[[pins]]
+opencv_imgproc = { path='..' }

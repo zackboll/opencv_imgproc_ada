@@ -1,0 +1,23 @@
+with "config/tests_config.gpr";
+with "aunit";
+with "opencv_imgproc";
+
+project Tests is
+
+   for Languages use ("Ada");
+   for Source_Dirs use ("src/", "config/");
+   for Object_Dir use "obj/" & Tests_Config.Build_Profile;
+   for Create_Missing_Dirs use "True";
+   for Exec_Dir use "bin";
+   for Main use ("tests.adb");
+
+   package Compiler is
+      for Default_Switches ("Ada") use
+        Tests_Config.Ada_Compiler_Switches & ("-Werror");
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es");
+   end Binder;
+
+end Tests;
