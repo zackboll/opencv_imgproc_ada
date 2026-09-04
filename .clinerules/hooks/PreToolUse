@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -u
+
+INPUT=$(cat)
+
+TOOL=$(printf '%s' "$INPUT" | jq -r '.preToolUse.tool // ""')
+TASK_ID=$(printf '%s' "$INPUT" | jq -r '.taskId // "unknown"')
+
+STATE_DIR="${TMPDIR:-/tmp}/cline-command-loop-guard"
+mkdir -p "$STATE_DIR"
+
+SAFE_TASK_ID=$(printf '%s' "$TASK_ID" | tr -c 'A-Za-z0-9_.-' '_')
+STATE_FILE="${STATE_DIR}/${SAFE_TASK_ID}.state"
+
+PREVIOUS_TOOL=""
+PREVIOUS_HASH=""
+
+if [[ -f "$STATE_FILE" ]]; then
+    PREVIOUS_TOOL=$(sed -n '1p' "$STATE_FILE")
+    PREVIOUS_HASH=$(sed -n '2p' "$STATE_FILE")
+fi
+
+if [[ "$TOOL" == "execute_command" ]]; then
+    COMMAND=$(printf '%s' "$INPUT" | jq -r '.preToolUse.parameters.command // ""')
+    COMMAND_HASH=$(printf '%s' "$COMMAND" | sha256sum | awk '{print $1}')
+
+    if [[ "$PREVIOUS_TOOL" == "execute_command" &&
+          "$COMMAND_HASH" == "$PREVIOUS_HASH" ]]; then
+
+        MESSAGE="Duplicate command blocked. The previous command result is authoritative. Do not retry it. Continue from that result by editing code, inspecting a different artifact, running a different diagnostic, or advancing to the next task step."
+
+        jq -cn \
+            --arg message "$MESSAGE" \
+            '{
+                cancel: true,
+                errorMessage: $message,
+                contextModification: $message
+            }'
+
+        exit 0
+    fi
+
+    printf '%s\n%s\n' \
+        "execute_command" \
+        "$COMMAND_HASH" > "$STATE_FILE"
+
+else
+    # Any different Cline tool call breaks the consecutive-command sequence.
+    printf '%s\n\n' "$TOOL" > "$STATE_FILE"
+fi
+
+printf '%s\n' '{"cancel":false}'

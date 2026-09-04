@@ -1,0 +1,38 @@
+with "opencv_core.gpr";
+with "config/opencv_imgproc_config.gpr";
+with "config/opencv_imgproc_install.gpr";
+
+project OpenCV_Imgproc_Shim is
+
+   for Library_Name use "opencv_imgproc_shim";
+
+   for Languages use ("C++");
+   for Source_Dirs use ("cpp/");
+   for Object_Dir use
+     "obj/shim/" & OpenCV_Imgproc_Config.Build_Profile;
+   for Create_Missing_Dirs use "True";
+   for Library_Dir use "lib";
+   for Library_Kind use "static-pic";
+
+   Common_Cxx_Switches :=
+     ("-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-Werror",
+      OpenCV_Imgproc_Install.Include_Switch,
+      "-I" & OpenCV_Core'Project_Dir & "cpp");
+
+   package Compiler is
+      for Default_Switches ("C++") use Common_Cxx_Switches;
+      for Driver ("C++") use OpenCV_Imgproc_Install.Cxx_Driver;
+   end Compiler;
+
+   package Linker is
+      for Linker_Options use
+        (OpenCV_Imgproc_Install.Library_Search_Switch,
+         OpenCV_Imgproc_Install.OpenCV_Imgproc_Link_Option,
+         OpenCV_Imgproc_Install.Cxx_Runtime_Switch);
+   end Linker;
+
+end OpenCV_Imgproc_Shim;

@@ -1,0 +1,20 @@
+name = "opencv_imgproc"
+description = "Thick Ada binding to OpenCV ImgProc"
+version = "0.1.0-dev"
+
+authors = ["Zack Boll"]
+maintainers = ["Zack Boll <zackboll@gmail.com>"]
+maintainers-logins = ["zackboll"]
+licenses = "Apache-2.0"
+website = "https://github.com/zackboll/opencv_imgproc_ada"
+tags = ["opencv", "computer-vision", "binding", "ada"]
+
+[[depends-on]]
+opencv_core = "~0.1.0"
+
+[[pins]]
+opencv_core = { path='../core' }
+
+[[actions]]
+type = "pre-build"
+command = ["sh", "scripts/configure_opencv.sh"]
