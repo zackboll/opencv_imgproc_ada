@@ -38,6 +38,9 @@ package OpenCV.Image_Processing.Internal.C_API is
    Threshold_To_Zero         : constant Interfaces.Integer_32 := 3;
    Threshold_To_Zero_Inverse : constant Interfaces.Integer_32 := 4;
 
+   Automatic_Threshold_Otsu     : constant Interfaces.Integer_32 := 0;
+   Automatic_Threshold_Triangle : constant Interfaces.Integer_32 := 1;
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -86,6 +89,18 @@ package OpenCV.Image_Processing.Internal.C_API is
       Maximum_Value   : Interfaces.C.double;
       Mode            : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_threshold";
+
+   function Automatic_Threshold
+     (Source             : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination        : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Maximum_Value      : Interfaces.C.double;
+      Method             : Interfaces.Integer_32;
+      Mode               : Interfaces.Integer_32;
+      Computed_Threshold : access Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_automatic_threshold";
 
    function Last_Error_Message return String;
 

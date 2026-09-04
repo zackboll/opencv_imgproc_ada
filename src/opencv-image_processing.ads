@@ -14,6 +14,8 @@ package OpenCV.Image_Processing is
    type Threshold_Mode is
      (Binary, Binary_Inverse, Truncate, To_Zero, To_Zero_Inverse);
 
+   type Automatic_Threshold_Method is (Otsu, Triangle);
+
    --  BGR_To_Gray converts a non-empty, two-dimensional, three-channel BGR
    --  Source whose depth is UInt8, UInt16, or Float32. Destination is replaced
    --  with a Mat having Source's rows, columns, and depth, and exactly one
@@ -73,12 +75,28 @@ package OpenCV.Image_Processing is
    --  rows,
    --  columns, depth, and channel count. Source remains unchanged.
    --  Maximum_Value affects only Binary and Binary_Inverse; it is ignored by
-   --  Truncate, To_Zero, and To_Zero_Inverse. Otsu and Triangle are deferred.
+   --  Truncate, To_Zero, and To_Zero_Inverse.
    procedure Apply_Threshold
      (Source          : OpenCV.Core.Mat;
       Destination     : in out OpenCV.Core.Mat;
       Threshold_Value : OpenCV.Core.Float64_Value;
       Mode            : Threshold_Mode := Binary;
       Maximum_Value   : OpenCV.Core.Float64_Value := 255.0);
+
+   --  Applies Otsu or Triangle automatic thresholding to a non-empty,
+   --  two-dimensional, single-channel Source. Maximum_Value must be finite.
+   --  Otsu accepts UInt8 and UInt16 Sources; Triangle accepts UInt8 only.
+   --  Destination is replaced with a single-channel Mat having Source's rows,
+   --  columns, and depth. Computed_Threshold receives OpenCV's selected value
+   --  on success. Source remains unchanged. Maximum_Value affects only Binary
+   --  and Binary_Inverse; it is ignored by the other threshold modes. Contract
+   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   procedure Apply_Automatic_Threshold
+     (Source             : OpenCV.Core.Mat;
+      Destination        : in out OpenCV.Core.Mat;
+      Computed_Threshold : out OpenCV.Core.Float64_Value;
+      Method             : Automatic_Threshold_Method := Otsu;
+      Mode               : Threshold_Mode := Binary;
+      Maximum_Value      : OpenCV.Core.Float64_Value := 255.0);
 
 end OpenCV.Image_Processing;

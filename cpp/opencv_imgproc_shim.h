@@ -43,6 +43,9 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_THRESHOLD_TO_ZERO         ((int32_t)3)
 #define OPENCV_IMGPROC_THRESHOLD_TO_ZERO_INVERSE ((int32_t)4)
 
+#define OPENCV_IMGPROC_AUTO_THRESHOLD_OTSU     ((int32_t)0)
+#define OPENCV_IMGPROC_AUTO_THRESHOLD_TRIANGLE ((int32_t)1)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -84,6 +87,15 @@ opencv_imgproc_threshold(
     double threshold_value,
     double maximum_value,
     int32_t mode);
+
+opencv_imgproc_status
+opencv_imgproc_automatic_threshold(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double maximum_value,
+    int32_t method,
+    int32_t mode,
+    double *computed_threshold);
 
 #ifdef __cplusplus
 }

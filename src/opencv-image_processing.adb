@@ -107,6 +107,18 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Threshold_Mode;
 
+   function To_C_Automatic_Threshold_Method
+     (Method : Automatic_Threshold_Method) return Interfaces.Integer_32 is
+   begin
+      case Method is
+         when Otsu     =>
+            return Internal.C_API.Automatic_Threshold_Otsu;
+
+         when Triangle =>
+            return Internal.C_API.Automatic_Threshold_Triangle;
+      end case;
+   end To_C_Automatic_Threshold_Method;
+
    procedure Validate_BGR_To_Gray (Source : OpenCV.Core.Mat) is
       use type OpenCV.Core.Channel_Count;
    begin
@@ -374,6 +386,60 @@ package body OpenCV.Image_Processing is
       end case;
    end Validate_Threshold;
 
+   procedure Validate_Automatic_Threshold
+     (Source        : OpenCV.Core.Mat;
+      Method        : Automatic_Threshold_Method;
+      Maximum_Value : OpenCV.Core.Float64_Value)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Automatic_Threshold requires a non-empty source Mat");
+      elsif Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Automatic_Threshold requires a two-dimensional source Mat");
+      elsif Source.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Automatic_Threshold requires a source Mat with exactly 1"
+            & " channel");
+      elsif Maximum_Value /= Maximum_Value
+        or else Maximum_Value > OpenCV.Core.Float64_Value'Last
+        or else Maximum_Value < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Automatic_Threshold requires a finite maximum value");
+      end if;
+
+      case Method is
+         when Otsu     =>
+            case Source.Depth is
+               when OpenCV.Core.UInt8 | OpenCV.Core.UInt16 =>
+                  null;
+
+               when others                                 =>
+                  Ada.Exceptions.Raise_Exception
+                    (OpenCV.OpenCV_Error'Identity,
+                     "Otsu automatic thresholding requires a UInt8 or UInt16"
+                     & " source Mat");
+            end case;
+
+         when Triangle =>
+            if Source.Depth /= OpenCV.Core.UInt8 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Triangle automatic thresholding requires a UInt8 source"
+                  & " Mat");
+            end if;
+      end case;
+   end Validate_Automatic_Threshold;
+
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String)
    is
@@ -572,5 +638,43 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
       Raise_On_Error (Status, "fixed threshold");
    end Apply_Threshold;
+
+   procedure Apply_Automatic_Threshold
+     (Source             : OpenCV.Core.Mat;
+      Destination        : in out OpenCV.Core.Mat;
+      Computed_Threshold : out OpenCV.Core.Float64_Value;
+      Method             : Automatic_Threshold_Method := Otsu;
+      Mode               : Threshold_Mode := Binary;
+      Maximum_Value      : OpenCV.Core.Float64_Value := 255.0)
+   is
+      Status   : Internal.C_API.Status := Internal.C_API.Success;
+      Computed : aliased Interfaces.C.double;
+
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Automatic_Threshold
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.C.double (Maximum_Value),
+                 To_C_Automatic_Threshold_Method (Method),
+                 To_C_Threshold_Mode (Mode),
+                 Computed'Access);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Automatic_Threshold (Source, Method, Maximum_Value);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "automatic threshold");
+      Computed_Threshold := OpenCV.Core.Float64_Value (Computed);
+   end Apply_Automatic_Threshold;
 
 end OpenCV.Image_Processing;

@@ -181,6 +181,22 @@ bool to_opencv_threshold_mode(int32_t selector, int &opencv_mode) noexcept
     }
 }
 
+bool to_opencv_automatic_threshold_method(
+    int32_t selector,
+    int &opencv_flag) noexcept
+{
+    switch (selector) {
+    case OPENCV_IMGPROC_AUTO_THRESHOLD_OTSU:
+        opencv_flag = cv::THRESH_OTSU;
+        return true;
+    case OPENCV_IMGPROC_AUTO_THRESHOLD_TRIANGLE:
+        opencv_flag = cv::THRESH_TRIANGLE;
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -423,6 +439,58 @@ opencv_imgproc_threshold(
         }
 
         cv::threshold(*src, *dst, threshold_value, maximum_value, opencv_mode);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_automatic_threshold(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double maximum_value,
+    int32_t method,
+    int32_t mode,
+    double *computed_threshold)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        if (computed_threshold == nullptr) {
+            return invalid_argument("null computed threshold output");
+        }
+
+        int opencv_method = 0;
+
+        if (!to_opencv_automatic_threshold_method(method, opencv_method)) {
+            return invalid_argument("unsupported automatic threshold method");
+        }
+
+        int opencv_mode = 0;
+
+        if (!to_opencv_threshold_mode(mode, opencv_mode)) {
+            return invalid_argument("unsupported threshold mode");
+        }
+
+        const double computed = cv::threshold(
+            *src, *dst, 0.0, maximum_value, opencv_mode | opencv_method);
+        *computed_threshold = computed;
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();
