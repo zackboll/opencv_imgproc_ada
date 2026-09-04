@@ -20,6 +20,11 @@ package OpenCV.Image_Processing.Internal.C_API is
    Interpolation_Area             : constant Interfaces.Integer_32 := 3;
    Interpolation_Lanczos_4        : constant Interfaces.Integer_32 := 4;
 
+   Border_Constant    : constant Interfaces.Integer_32 := 0;
+   Border_Replicate   : constant Interfaces.Integer_32 := 1;
+   Border_Reflect     : constant Interfaces.Integer_32 := 2;
+   Border_Reflect_101 : constant Interfaces.Integer_32 := 3;
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -39,6 +44,18 @@ package OpenCV.Image_Processing.Internal.C_API is
       Height        : Interfaces.Integer_32;
       Interpolation : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_resize";
+
+   function Gaussian_Blur
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel_Width  : Interfaces.Integer_32;
+      Kernel_Height : Interfaces.Integer_32;
+      Sigma         : Interfaces.C.double;
+      Border        : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_gaussian_blur";
 
    function Last_Error_Message return String;
 

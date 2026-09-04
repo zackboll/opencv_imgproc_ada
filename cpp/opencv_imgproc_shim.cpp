@@ -96,6 +96,30 @@ bool to_opencv_interpolation(
     }
 }
 
+bool to_opencv_border(int32_t border, int &opencv_border) noexcept
+{
+    switch (border) {
+    case OPENCV_IMGPROC_BORDER_CONSTANT:
+        opencv_border = cv::BORDER_CONSTANT;
+        return true;
+
+    case OPENCV_IMGPROC_BORDER_REPLICATE:
+        opencv_border = cv::BORDER_REPLICATE;
+        return true;
+
+    case OPENCV_IMGPROC_BORDER_REFLECT:
+        opencv_border = cv::BORDER_REFLECT;
+        return true;
+
+    case OPENCV_IMGPROC_BORDER_REFLECT_101:
+        opencv_border = cv::BORDER_REFLECT_101;
+        return true;
+
+    default:
+        return false;
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -191,6 +215,57 @@ opencv_imgproc_resize(
             0,
             0,
             opencv_interpolation);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_gaussian_blur(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t kernel_width,
+    int32_t kernel_height,
+    double sigma,
+    int32_t border)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status =
+            opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        int opencv_border = 0;
+
+        if (!to_opencv_border(border, opencv_border)) {
+            return invalid_argument("unsupported Gaussian blur border");
+        }
+
+        cv::GaussianBlur(
+            *src,
+            *dst,
+            cv::Size(
+                static_cast<int>(kernel_width),
+                static_cast<int>(kernel_height)),
+            sigma,
+            sigma,
+            opencv_border);
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {

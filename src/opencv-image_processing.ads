@@ -31,4 +31,19 @@ package OpenCV.Image_Processing is
       Output_Size   : OpenCV.Core.Size;
       Interpolation : Interpolation_Method := Linear);
 
+   --  Gaussian_Blur convolves Source with an isotropic Gaussian kernel.
+   --  Source must be a non-empty two-dimensional Mat with depth UInt8, UInt16,
+   --  Int16, Float32, or Float64. Kernel_Size dimensions must be positive and
+   --  odd, and Sigma must be positive and finite. Constant_Border, Replicate,
+   --  Reflect, and Reflect_101 are supported; Wrap is rejected. Destination is
+   --  replaced with a Mat having Source's rows, columns, depth, and channel
+   --  count. Source remains valid and is not modified. Contract violations and
+   --  failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   procedure Gaussian_Blur
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Sigma       : OpenCV.Core.Float64_Value;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
 end OpenCV.Image_Processing;

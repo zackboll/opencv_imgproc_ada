@@ -25,6 +25,11 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_INTER_AREA     ((int32_t)3)
 #define OPENCV_IMGPROC_INTER_LANCZOS4 ((int32_t)4)
 
+#define OPENCV_IMGPROC_BORDER_CONSTANT     ((int32_t)0)
+#define OPENCV_IMGPROC_BORDER_REPLICATE    ((int32_t)1)
+#define OPENCV_IMGPROC_BORDER_REFLECT      ((int32_t)2)
+#define OPENCV_IMGPROC_BORDER_REFLECT_101  ((int32_t)3)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -40,6 +45,15 @@ opencv_imgproc_resize(
     int32_t width,
     int32_t height,
     int32_t interpolation);
+
+opencv_imgproc_status
+opencv_imgproc_gaussian_blur(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t kernel_width,
+    int32_t kernel_height,
+    double sigma,
+    int32_t border);
 
 #ifdef __cplusplus
 }
