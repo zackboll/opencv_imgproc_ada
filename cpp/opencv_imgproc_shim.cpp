@@ -66,26 +66,33 @@ bool to_opencv_color_conversion(
     }
 }
 
-int to_opencv_interpolation(int32_t interpolation) noexcept
+bool to_opencv_interpolation(
+    int32_t interpolation,
+    int &opencv_interpolation) noexcept
 {
     switch (interpolation) {
     case OPENCV_IMGPROC_INTER_NEAREST:
-        return cv::INTER_NEAREST;
+        opencv_interpolation = cv::INTER_NEAREST;
+        return true;
 
     case OPENCV_IMGPROC_INTER_LINEAR:
-        return cv::INTER_LINEAR;
+        opencv_interpolation = cv::INTER_LINEAR;
+        return true;
 
     case OPENCV_IMGPROC_INTER_CUBIC:
-        return cv::INTER_CUBIC;
+        opencv_interpolation = cv::INTER_CUBIC;
+        return true;
 
     case OPENCV_IMGPROC_INTER_AREA:
-        return cv::INTER_AREA;
+        opencv_interpolation = cv::INTER_AREA;
+        return true;
 
     case OPENCV_IMGPROC_INTER_LANCZOS4:
-        return cv::INTER_LANCZOS4;
+        opencv_interpolation = cv::INTER_LANCZOS4;
+        return true;
 
     default:
-        return static_cast<int>(interpolation);
+        return false;
     }
 }
 
@@ -169,8 +176,13 @@ opencv_imgproc_resize(
             return invalid_argument("invalid destination Mat");
         }
 
-        const int opencv_interpolation =
-            to_opencv_interpolation(interpolation);
+        int opencv_interpolation = 0;
+
+        if (!to_opencv_interpolation(
+                interpolation,
+                opencv_interpolation)) {
+            return invalid_argument("unsupported interpolation method");
+        }
 
         cv::resize(
             *src,

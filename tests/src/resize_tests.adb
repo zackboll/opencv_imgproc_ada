@@ -85,10 +85,7 @@ package body Resize_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
    begin
       OpenCV.Image_Processing.Resize
-        (Source,
-         Destination,
-         (Width => 5, Height => 4),
-         OpenCV.Image_Processing.Linear);
+        (Source, Destination, (Width => 5, Height => 4));
 
       AUnit.Assertions.Assert
         (Destination.Rows = 4
@@ -103,6 +100,78 @@ package body Resize_Tests is
          and then Source.Channels = 3,
          "linear resize must leave the source Mat valid and unchanged");
    end Linear_Resizes_And_Preserves_Element_Type;
+
+   procedure Cubic_Resizes_Int16_And_Preserves_Element_Type
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Int16, 2));
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Image_Processing.Resize
+        (Source,
+         Destination,
+         (Width => 5, Height => 4),
+         OpenCV.Image_Processing.Cubic);
+
+      AUnit.Assertions.Assert
+        (Destination.Rows = 4
+         and then Destination.Columns = 5
+         and then Destination.Depth = OpenCV.Core.Int16
+         and then Destination.Channels = 2,
+         "cubic resize must preserve Int16 depth and channel count");
+   end Cubic_Resizes_Int16_And_Preserves_Element_Type;
+
+   procedure Area_Downsizes_Float32_And_Preserves_Element_Type
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 6, (OpenCV.Core.Float32, 4));
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Image_Processing.Resize
+        (Source,
+         Destination,
+         (Width => 3, Height => 2),
+         OpenCV.Image_Processing.Area);
+
+      AUnit.Assertions.Assert
+        (Destination.Rows = 2
+         and then Destination.Columns = 3
+         and then Destination.Depth = OpenCV.Core.Float32
+         and then Destination.Channels = 4,
+         "area downsize must preserve Float32 depth and channel count");
+   end Area_Downsizes_Float32_And_Preserves_Element_Type;
+
+   procedure Lanczos_4_Resizes_Float64_And_Preserves_Element_Type
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float64, 2));
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Image_Processing.Resize
+        (Source,
+         Destination,
+         (Width => 5, Height => 4),
+         OpenCV.Image_Processing.Lanczos_4);
+
+      AUnit.Assertions.Assert
+        (Destination.Rows = 4
+         and then Destination.Columns = 5
+         and then Destination.Depth = OpenCV.Core.Float64
+         and then Destination.Channels = 2,
+         "Lanczos_4 resize must preserve Float64 depth and channel count");
+   end Lanczos_4_Resizes_Float64_And_Preserves_Element_Type;
 
    procedure Resize_Rejects_Empty_Source (Test : in out Fixture) is
       pragma Unreferenced (Test);
@@ -205,6 +274,18 @@ package body Resize_Tests is
         (Caller.Create
            ("Linear resize preserves source element type",
             Linear_Resizes_And_Preserves_Element_Type'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cubic resize preserves Int16 element type",
+            Cubic_Resizes_Int16_And_Preserves_Element_Type'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Area downsize preserves Float32 element type",
+            Area_Downsizes_Float32_And_Preserves_Element_Type'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Lanczos_4 resize preserves Float64 element type",
+            Lanczos_4_Resizes_Float64_And_Preserves_Element_Type'Access));
       Result.Add_Test
         (Caller.Create
            ("Resize rejects empty source",
