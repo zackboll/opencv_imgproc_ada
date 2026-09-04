@@ -8,13 +8,53 @@ package body OpenCV.Image_Processing is
    function To_C_Conversion
      (Conversion : Color_Conversion) return Interfaces.Integer_32
    is
-      use Internal.C_API;
    begin
       case Conversion is
          when BGR_To_Gray =>
             return Internal.C_API.BGR_To_Gray;
       end case;
    end To_C_Conversion;
+
+   procedure Validate_BGR_To_Gray (Source : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Channel_Count;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "BGR_To_Gray requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "BGR_To_Gray requires a two-dimensional source Mat");
+      end if;
+
+      if Source.Channels /= 3 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "BGR_To_Gray requires a source Mat with exactly 3 channels");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8 | OpenCV.Core.UInt16 | OpenCV.Core.Float32 =>
+            null;
+         when others =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "BGR_To_Gray requires a UInt8, UInt16, or Float32 source Mat");
+      end case;
+   end Validate_BGR_To_Gray;
+
+   procedure Validate_Conversion
+     (Source : OpenCV.Core.Mat; Conversion : Color_Conversion)
+   is
+   begin
+      case Conversion is
+         when BGR_To_Gray =>
+            Validate_BGR_To_Gray (Source);
+      end case;
+   end Validate_Conversion;
 
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String)
@@ -64,6 +104,7 @@ package body OpenCV.Image_Processing is
            (Destination, Convert_Output'Access);
       end Convert_Input;
    begin
+      Validate_Conversion (Source, Conversion);
       OpenCV.Core.Module_Interop.With_Input_Handle
         (Source, Convert_Input'Access);
       Raise_On_Error (Status, "color conversion");

@@ -1,5 +1,3 @@
-with Interfaces.C.Strings;
-
 package body OpenCV.Image_Processing.Internal.C_API is
 
    use type Interfaces.C.Strings.chars_ptr;

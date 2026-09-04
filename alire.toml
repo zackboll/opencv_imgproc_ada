@@ -18,3 +18,8 @@ opencv_core = { path='../core' }
 [[actions]]
 type = "pre-build"
 command = ["sh", "scripts/configure_opencv.sh"]
+
+[[actions]]
+type = "test"
+directory = "tests"
+command = ["alr", "run"]

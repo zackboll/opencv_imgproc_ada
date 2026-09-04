@@ -17,3 +17,9 @@ opencv_imgproc = "*"
 
 [[pins]]
 opencv_imgproc = { path='..' }
+
+[[depends-on]]
+gnatprove = "^16.1.0"
+
+[[depends-on]]
+gnatcov = "^26.2.1"
