@@ -125,6 +125,29 @@ package body Color_Conversion_Tests is
         (Convert'Access, "BGR_To_Gray must reject empty source Mats");
    end BGR_To_Gray_Rejects_Empty_Source;
 
+   procedure BGR_To_Gray_Rejects_Three_Dimensional_Source
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (OpenCV.Core.Dimension_Array'(1 => 2, 2 => 2, 3 => 2),
+           (OpenCV.Core.UInt8, 3));
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+
+      procedure Convert is
+      begin
+         OpenCV.Image_Processing.Convert_Color
+           (Source, Destination, OpenCV.Image_Processing.BGR_To_Gray);
+      end Convert;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Convert'Access,
+         "BGR_To_Gray must reject three-dimensional source Mats");
+   end BGR_To_Gray_Rejects_Three_Dimensional_Source;
+
    procedure BGR_To_Gray_Accepts_UInt16_Source (Test : in out Fixture) is
       pragma Unreferenced (Test);
 
@@ -181,6 +204,10 @@ package body Color_Conversion_Tests is
         (Caller.Create
            ("BGR-to-gray rejects empty source",
             BGR_To_Gray_Rejects_Empty_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("BGR-to-gray rejects three-dimensional source",
+            BGR_To_Gray_Rejects_Three_Dimensional_Source'Access));
       Result.Add_Test
         (Caller.Create
            ("BGR-to-gray accepts UInt16 source",

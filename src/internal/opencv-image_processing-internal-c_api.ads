@@ -7,6 +7,10 @@ package OpenCV.Image_Processing.Internal.C_API is
    type Status is new Interfaces.Integer_32;
 
    Success : constant Status := 0;
+   Error_OpenCV           : constant Status := 1;
+   Error_Standard_CPP     : constant Status := 2;
+   Error_Unknown          : constant Status := 3;
+   Error_Invalid_Argument : constant Status := 4;
 
    BGR_To_Gray : constant Interfaces.Integer_32 := 0;
 
