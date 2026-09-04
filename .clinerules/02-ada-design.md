@@ -63,11 +63,13 @@ solely to represent runtime OpenCV matrix type metadata.
 
 Use tagged types where they improve the Ada abstraction, not simply because the corresponding OpenCV type is a C++ class.
 
-Value-like OpenCV abstractions such as points, sizes, rectangles, vectors, and scalars should generally remain value types or generic records unless there is a strong Ada-specific reason to make them tagged.
+Common OpenCV value types and matrix metadata abstractions must be reused from `OpenCV.Core` where they already exist. This includes `Mat`, `Point`, `Size`, `Rect`, `Scalar`, `Depth_Type`, `Mat_Type`, channel information, and their associated operations.
+
+`OpenCV.Image_Processing` may define a public type only when it is specifically required by the imgproc module and is not already supplied by `OpenCV.Core`.
 
 ## Public Naming Conventions
 
-Preserve recognizable OpenCV domain type names where they are already concise and widely understood.
+Reuse recognizable OpenCV domain types from `OpenCV.Core` rather than redeclaring them in `OpenCV.Image_Processing`.
 
 Examples include:
 
@@ -77,17 +79,7 @@ Examples include:
 - `Scalar`
 - `Range`
 
-Use Ada-style operation names for the public API.
-
-Prefer descriptive names such as:
-
-- `Rows`
-- `Columns`
-- `Channels`
-- `Depth`
-- `Element_Size`
-- `Is_Empty`
-- `Clone`
+Reuse `OpenCV.Core` matrix operations such as `Rows`, `Columns`, `Channels`, `Depth`, `Element_Type`, and `Clone` rather than redeclaring them in this crate. Use Ada-style names for imgproc-specific public operations.
 
 Prefer descriptive Ada names over terse C++ spellings such as:
 
@@ -95,7 +87,7 @@ Prefer descriptive Ada names over terse C++ spellings such as:
 - `elemSize`
 - `ptr`
 
-When an operation is naturally associated with a tagged type, define it as a primitive operation so prefixed notation is available.
+When an imgproc-specific operation is naturally associated with a tagged type defined by this crate, define it as a primitive operation so prefixed notation is available. Do not redeclare `OpenCV.Core` primitives merely to provide prefixed notation.
 
 For example:
 
@@ -109,9 +101,7 @@ Empty         := Image.Is_Empty;
 Copy          := Image.Clone;
 ```
 
-Do not expose OpenCV preprocessor macros such as `CV_8UC3` as the primary public type system.
-
-Use the strong matrix depth, channel, and type abstractions supplied by `OpenCV.Core` rather than redefining them in this crate.
+Do not expose OpenCV preprocessor macros such as `CV_8UC3` as the primary public type system. Reuse the strong matrix depth, channel, and type abstractions supplied by `OpenCV.Core` rather than redefining them in this crate.
 
 Compatibility constants may be provided later if they are genuinely useful, but the thick Ada API should not depend on C macro naming conventions.
 
@@ -157,7 +147,7 @@ Do not leak `Interfaces.C` types into the public API merely because OpenCV is im
 
 Perform explicit conversions at the boundary between the thick Ada layer and the thin C-compatible layer.
 
-For public value types such as points, sizes, rectangles, vectors, and scalars, prefer Ada numeric types or clearly defined Ada numeric subtypes whose ranges and precision match the intended OpenCV semantics.
+For imgproc-specific public value types not already supplied by `OpenCV.Core`, prefer Ada numeric types or clearly defined Ada numeric subtypes whose ranges and precision match the intended OpenCV semantics.
 
 When exact ABI width matters, document and enforce it in the internal layer rather than making the public API C-centric.
 
@@ -167,51 +157,11 @@ Use range checks, preconditions, or explicit conversion helpers where conversion
 
 ## Matrix Depth and Channel Types
 
-Represent OpenCV matrix depth and channel information with strong Ada types in the thick public API.
+`OpenCV.Core` owns `Depth_Type`, `Mat_Type`, channel information, and the runtime matrix metadata API. Imgproc APIs must reuse `Image.Rows`, `Image.Columns`, `Image.Channels`, `Image.Depth`, `Image.Element_Type`, and related `OpenCV.Core` operations.
 
-Do not expose OpenCV packed integer type encodings such as `CV_8U`, `CV_32F`, or `CV_8UC3` as the primary public type system.
-
-Use an Ada enumeration for matrix depth, conceptually including values such as:
-
-- `UInt8`
-- `Int8`
-- `UInt16`
-- `Int16`
-- `Int32`
-- `Float32`
-- `Float64`
-- `Float16`
-
-Represent the number of channels with a constrained Ada subtype.
-
-Represent the runtime matrix element format as a small Ada value type containing:
-
-- element depth
-- channel count
-
-For example, the public API should conceptually allow:
-
-```ada
-RGB_Type : constant Mat_Type :=
-  (Depth    => UInt8,
-   Channels => 3);
-```
-
-`OpenCV.Core` is responsible for translating its Ada matrix representation and OpenCV's packed integer type encoding. This crate must use its public abstractions and Module_Interop bridge as appropriate.
+Do not expose OpenCV packed integer type encodings such as `CV_8U`, `CV_32F`, or `CV_8UC3` as the primary public type system, and do not create imgproc-specific replacements for Core matrix metadata abstractions.
 
 `OpenCV.Core.Mat` remains runtime-typed. Do not encode matrix depth or channel count into a tagged-type inheritance hierarchy in this crate.
-
-Provide operations such as:
-
-```ada
-Pixel_Depth   := Image.Depth;
-Channel_Count := Image.Channels;
-Pixel_Type    := Image.Element_Type;
-```
-
-where appropriate.
-
-Compatibility constants corresponding to familiar OpenCV names may be added later if useful, but they must be layered on top of the strong Ada type system rather than defining it.
 
 ## Ada vs C++ Responsibility
 
@@ -232,13 +182,13 @@ Prefer implementing purely Ada-specific behavior in Ada.
 
 Typical Ada responsibilities include:
 
-- strong type construction
-- depth and channel validation
+- imgproc-specific type construction
+- imgproc-specific semantic validation using `OpenCV.Core` metadata
 - Ada range checks
 - convenience overloads
-- generic typed-access wrappers
+- imgproc-specific convenience wrappers
 - Ada exception translation
-- simple value-type helpers
+- simple imgproc-specific value-type helpers
 - representation conversions that do not require OpenCV itself
 
 Do not turn the shim into a second high-level wrapper library.

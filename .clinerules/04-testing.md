@@ -2,21 +2,23 @@
 
 ## Test Crate Ownership
 
-All automated tests for `opencv_imgproc` belong in the separate `tests`
-Alire crate.
+This repository uses a separate hand-written `tests` Alire crate for all
+automated tests for `opencv_imgproc`. Create that crate when the first feature
+requiring automated tests is implemented.
 
 Do not add AUnit or development-only verification tools as dependencies of
 the top-level `opencv_imgproc` library crate.
 
-The `tests` crate owns test and verification dependencies, including:
+Once created, the `tests` crate owns test and verification dependencies,
+including:
 
 - `aunit`
 - `gnatprove`
 - `gnatcov`
 - the local `opencv_imgproc` crate pinned to `..`
 
-Test-only helpers and dependencies should remain under the `tests` crate
-unless they are genuinely part of the reusable public library.
+Test-only helpers and dependencies should remain under the `tests` crate once
+it exists, unless they are genuinely part of the reusable public library.
 
 This repository-specific test-crate structure takes precedence over generic
 tool guidance that assumes tests are part of the main crate.
@@ -110,24 +112,25 @@ cannot be adequately detected through AUnit assertions alone.
 
 ## GNATtest Policy
 
-The existing hand-written `tests` Alire crate is the authoritative testing
-structure for this repository.
+The separate hand-written `tests` Alire crate is the authoritative testing
+structure for this repository. Create it when the first feature requiring
+automated tests is implemented.
 
 GNATtest is optional tooling. It does not define the repository's test
 architecture.
 
 Do not:
 
-- replace the existing hand-written AUnit organization with GNATtest output
+- replace the hand-written AUnit organization with GNATtest output
 - add AUnit to the top-level `opencv_imgproc` crate for GNATtest
 - blindly use a generic GNATtest `--tests-root` value that writes generated
-  files into the existing test crate
+  files into the hand-written test crate
 - overwrite or reorganize hand-written tests merely to match GNATtest
   defaults
 
 Before using GNATtest:
 
-1. inspect the existing `tests` crate layout
+1. inspect the `tests` crate layout when it exists
 2. determine exactly which files GNATtest will generate
 3. choose locations that cannot overwrite or disrupt hand-written tests
 4. preserve the existing test-crate ownership model
