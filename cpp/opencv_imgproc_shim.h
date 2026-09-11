@@ -8,6 +8,12 @@ extern "C" {
 #endif
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
+typedef struct opencv_imgproc_contours_handle opencv_imgproc_contours_handle;
+
+typedef struct {
+    int32_t x;
+    int32_t y;
+} opencv_imgproc_point_i32;
 
 typedef int32_t opencv_imgproc_status;
 
@@ -58,6 +64,16 @@ typedef int32_t opencv_imgproc_status;
 
 #define OPENCV_IMGPROC_ADAPTIVE_THRESHOLD_MEAN     ((int32_t)0)
 #define OPENCV_IMGPROC_ADAPTIVE_THRESHOLD_GAUSSIAN ((int32_t)1)
+
+#define OPENCV_IMGPROC_CONTOUR_RETR_EXTERNAL ((int32_t)0)
+#define OPENCV_IMGPROC_CONTOUR_RETR_LIST     ((int32_t)1)
+#define OPENCV_IMGPROC_CONTOUR_RETR_CCOMP    ((int32_t)2)
+#define OPENCV_IMGPROC_CONTOUR_RETR_TREE     ((int32_t)3)
+
+#define OPENCV_IMGPROC_CONTOUR_APPROX_NONE      ((int32_t)0)
+#define OPENCV_IMGPROC_CONTOUR_APPROX_SIMPLE    ((int32_t)1)
+#define OPENCV_IMGPROC_CONTOUR_APPROX_TC89_L1   ((int32_t)2)
+#define OPENCV_IMGPROC_CONTOUR_APPROX_TC89_KCOS ((int32_t)3)
 
 #define OPENCV_IMGPROC_DERIVATIVE_SAME_DEPTH ((int32_t)0)
 #define OPENCV_IMGPROC_DERIVATIVE_INT16      ((int32_t)1)
@@ -163,6 +179,45 @@ opencv_imgproc_adaptive_threshold(
     int32_t threshold_mode,
     int32_t block_size,
     double bias);
+
+opencv_imgproc_status
+opencv_imgproc_find_contours(
+    const opencv_core_mat_handle *source,
+    int32_t retrieval_mode,
+    int32_t approximation_mode,
+    int32_t offset_x,
+    int32_t offset_y,
+    opencv_imgproc_contours_handle **out_result);
+
+void
+opencv_imgproc_contours_destroy(opencv_imgproc_contours_handle *result);
+
+opencv_imgproc_status
+opencv_imgproc_contour_count(
+    const opencv_imgproc_contours_handle *result,
+    int32_t *out_count);
+
+opencv_imgproc_status
+opencv_imgproc_contour_point_count(
+    const opencv_imgproc_contours_handle *result,
+    int32_t contour_index,
+    int32_t *out_count);
+
+opencv_imgproc_status
+opencv_imgproc_contour_copy_points(
+    const opencv_imgproc_contours_handle *result,
+    int32_t contour_index,
+    opencv_imgproc_point_i32 *points,
+    int32_t capacity);
+
+opencv_imgproc_status
+opencv_imgproc_contour_hierarchy(
+    const opencv_imgproc_contours_handle *result,
+    int32_t contour_index,
+    int32_t *next,
+    int32_t *previous,
+    int32_t *first_child,
+    int32_t *parent);
 
 opencv_imgproc_status
 opencv_imgproc_sobel(

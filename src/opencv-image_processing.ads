@@ -1,4 +1,6 @@
 with OpenCV.Core;
+private with Ada.Containers.Indefinite_Vectors;
+private with Ada.Containers.Vectors;
 
 package OpenCV.Image_Processing is
 
@@ -32,6 +34,35 @@ package OpenCV.Image_Processing is
    type Adaptive_Threshold_Mode is (Binary, Binary_Inverse);
 
    subtype Adaptive_Block_Size is Positive range 3 .. 2_147_483_647;
+
+   subtype Contour is OpenCV.Core.Point_Array;
+
+   type Contour_Retrieval_Mode is
+     (External_Only, Flat_List, Two_Level, Full_Tree);
+
+   type Contour_Approximation_Mode is
+     (Every_Point, Simple, Teh_Chin_L1, Teh_Chin_KCOS);
+
+   type Contour_Index is new Natural;
+
+   type Optional_Contour_Index (Present : Boolean := False) is record
+      case Present is
+         when False =>
+            null;
+
+         when True =>
+            Index : Contour_Index;
+      end case;
+   end record;
+
+   type Contour_Hierarchy_Entry is record
+      Next        : Optional_Contour_Index;
+      Previous    : Optional_Contour_Index;
+      First_Child : Optional_Contour_Index;
+      Parent      : Optional_Contour_Index;
+   end record;
+
+   type Contour_Set is private;
 
    type Morphology_Shape is (Rectangle, Cross, Ellipse);
 
@@ -261,4 +292,41 @@ package OpenCV.Image_Processing is
       Bias          : OpenCV.Core.Float64_Value := 0.0;
       Maximum_Value : OpenCV.Core.UInt8_Value := 255);
 
+   --  Extracts contours from a non-empty, two-dimensional UInt8 single-channel
+   --  Source. Zero pixels are background and nonzero pixels are foreground.
+   --  Source remains unchanged. Contours and hierarchy are copied into the
+   --  returned Ada-owned Contour_Set. Indices are zero-based. An all-zero
+   --  Source returns an empty set. Invalid Source metadata, invalid contour
+   --  indices, and OpenCV failures raise OpenCV.OpenCV_Error.
+   function Find_Contours
+     (Source        : OpenCV.Core.Mat;
+      Retrieval     : Contour_Retrieval_Mode := External_Only;
+      Approximation : Contour_Approximation_Mode := Simple;
+      Offset        : OpenCV.Core.Point := (X => 0, Y => 0))
+      return Contour_Set;
+
+   function Contour_Count (Self : Contour_Set) return Natural;
+
+   function Get_Contour
+     (Self : Contour_Set; Index : Contour_Index) return Contour;
+
+   function Get_Hierarchy
+     (Self : Contour_Set; Index : Contour_Index)
+      return Contour_Hierarchy_Entry;
+
+private
+   package Contour_Vectors is new
+     Ada.Containers.Indefinite_Vectors
+       (Index_Type   => Natural,
+        Element_Type => Contour,
+        "="          => OpenCV.Core."=");
+   package Hierarchy_Vectors is new
+     Ada.Containers.Vectors
+       (Index_Type   => Natural,
+        Element_Type => Contour_Hierarchy_Entry);
+
+   type Contour_Set is record
+      Contours  : Contour_Vectors.Vector;
+      Hierarchy : Hierarchy_Vectors.Vector;
+   end record;
 end OpenCV.Image_Processing;

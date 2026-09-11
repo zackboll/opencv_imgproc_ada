@@ -6,6 +6,12 @@
 #include <cstdio>
 #include <cmath>
 #include <exception>
+#include <limits>
+
+struct opencv_imgproc_contours_handle {
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<cv::Vec4i> hierarchy;
+};
 
 namespace {
 
@@ -442,6 +448,63 @@ bool to_opencv_adaptive_threshold_mode(
     default:
         return false;
     }
+}
+
+bool to_opencv_contour_retrieval_mode(
+    int32_t mode,
+    int &opencv_mode) noexcept
+{
+    switch (mode) {
+    case OPENCV_IMGPROC_CONTOUR_RETR_EXTERNAL:
+        opencv_mode = cv::RETR_EXTERNAL;
+        return true;
+    case OPENCV_IMGPROC_CONTOUR_RETR_LIST:
+        opencv_mode = cv::RETR_LIST;
+        return true;
+    case OPENCV_IMGPROC_CONTOUR_RETR_CCOMP:
+        opencv_mode = cv::RETR_CCOMP;
+        return true;
+    case OPENCV_IMGPROC_CONTOUR_RETR_TREE:
+        opencv_mode = cv::RETR_TREE;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_contour_approximation_mode(
+    int32_t mode,
+    int &opencv_mode) noexcept
+{
+    switch (mode) {
+    case OPENCV_IMGPROC_CONTOUR_APPROX_NONE:
+        opencv_mode = cv::CHAIN_APPROX_NONE;
+        return true;
+    case OPENCV_IMGPROC_CONTOUR_APPROX_SIMPLE:
+        opencv_mode = cv::CHAIN_APPROX_SIMPLE;
+        return true;
+    case OPENCV_IMGPROC_CONTOUR_APPROX_TC89_L1:
+        opencv_mode = cv::CHAIN_APPROX_TC89_L1;
+        return true;
+    case OPENCV_IMGPROC_CONTOUR_APPROX_TC89_KCOS:
+        opencv_mode = cv::CHAIN_APPROX_TC89_KCOS;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool valid_contour_index(
+    const opencv_imgproc_contours_handle *result,
+    int32_t contour_index) noexcept
+{
+    return contour_index >= 0
+        && static_cast<std::size_t>(contour_index) < result->contours.size();
+}
+
+bool fits_int32(std::size_t value) noexcept
+{
+    return value <= static_cast<std::size_t>(std::numeric_limits<int32_t>::max());
 }
 
 } // namespace
@@ -927,6 +990,162 @@ opencv_imgproc_adaptive_threshold(
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_imgproc_status
+opencv_imgproc_find_contours(
+    const opencv_core_mat_handle *source,
+    int32_t retrieval_mode,
+    int32_t approximation_mode,
+    int32_t offset_x,
+    int32_t offset_y,
+    opencv_imgproc_contours_handle **out_result)
+{
+    clear_error();
+
+    if (out_result == nullptr) {
+        return invalid_argument("null contours output pointer");
+    }
+    *out_result = nullptr;
+
+    try {
+        const cv::Mat *src = nullptr;
+        const opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        int opencv_retrieval = 0;
+        if (!to_opencv_contour_retrieval_mode(retrieval_mode, opencv_retrieval)) {
+            return invalid_argument("unsupported contour retrieval mode");
+        }
+
+        int opencv_approximation = 0;
+        if (!to_opencv_contour_approximation_mode(
+                approximation_mode, opencv_approximation)) {
+            return invalid_argument("unsupported contour approximation mode");
+        }
+
+        auto *result = new opencv_imgproc_contours_handle;
+        try {
+            cv::findContours(*src, result->contours, result->hierarchy,
+                             opencv_retrieval, opencv_approximation,
+                             cv::Point(offset_x, offset_y));
+            if (!fits_int32(result->contours.size())) {
+                delete result;
+                return invalid_argument("contour count exceeds C ABI range");
+            }
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        } catch (...) {
+            delete result;
+            throw;
+        }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+void
+opencv_imgproc_contours_destroy(opencv_imgproc_contours_handle *result)
+{
+    delete result;
+}
+
+opencv_imgproc_status
+opencv_imgproc_contour_count(
+    const opencv_imgproc_contours_handle *result,
+    int32_t *out_count)
+{
+    clear_error();
+    if (result == nullptr || out_count == nullptr) {
+        return invalid_argument("invalid contour count arguments");
+    }
+    if (!fits_int32(result->contours.size())) {
+        return invalid_argument("contour count exceeds C ABI range");
+    }
+    *out_count = static_cast<int32_t>(result->contours.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_contour_point_count(
+    const opencv_imgproc_contours_handle *result,
+    int32_t contour_index,
+    int32_t *out_count)
+{
+    clear_error();
+    if (result == nullptr || out_count == nullptr) {
+        return invalid_argument("invalid contour point count arguments");
+    }
+    if (!valid_contour_index(result, contour_index)) {
+        return invalid_argument("contour index is out of range");
+    }
+    const auto &contour = result->contours[static_cast<std::size_t>(contour_index)];
+    if (!fits_int32(contour.size())) {
+        return invalid_argument("contour point count exceeds C ABI range");
+    }
+    *out_count = static_cast<int32_t>(contour.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_contour_copy_points(
+    const opencv_imgproc_contours_handle *result,
+    int32_t contour_index,
+    opencv_imgproc_point_i32 *points,
+    int32_t capacity)
+{
+    clear_error();
+    if (result == nullptr) {
+        return invalid_argument("invalid contour result");
+    }
+    if (!valid_contour_index(result, contour_index)) {
+        return invalid_argument("contour index is out of range");
+    }
+    const auto &contour = result->contours[static_cast<std::size_t>(contour_index)];
+    if (!fits_int32(contour.size())) {
+        return invalid_argument("contour point count exceeds C ABI range");
+    }
+    const int32_t point_count = static_cast<int32_t>(contour.size());
+    if (capacity != point_count || (point_count > 0 && points == nullptr)) {
+        return invalid_argument("invalid contour point buffer or capacity");
+    }
+    for (int32_t index = 0; index < point_count; ++index) {
+        const cv::Point &point = contour[static_cast<std::size_t>(index)];
+        points[index].x = point.x;
+        points[index].y = point.y;
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_contour_hierarchy(
+    const opencv_imgproc_contours_handle *result,
+    int32_t contour_index,
+    int32_t *next,
+    int32_t *previous,
+    int32_t *first_child,
+    int32_t *parent)
+{
+    clear_error();
+    if (result == nullptr || next == nullptr || previous == nullptr
+        || first_child == nullptr || parent == nullptr) {
+        return invalid_argument("invalid contour hierarchy arguments");
+    }
+    if (!valid_contour_index(result, contour_index)) {
+        return invalid_argument("contour index is out of range");
+    }
+    if (result->hierarchy.size() != result->contours.size()) {
+        return invalid_argument("contour hierarchy is unavailable");
+    }
+    const cv::Vec4i &entry = result->hierarchy[static_cast<std::size_t>(contour_index)];
+    *next = entry[0];
+    *previous = entry[1];
+    *first_child = entry[2];
+    *parent = entry[3];
+    return OPENCV_IMGPROC_OK;
 }
 
 opencv_imgproc_status

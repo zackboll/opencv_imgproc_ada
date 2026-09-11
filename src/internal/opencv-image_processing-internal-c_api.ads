@@ -1,6 +1,7 @@
 with Interfaces;
 with Interfaces.C.Strings;
 with OpenCV.Core.Module_Interop;
+with System;
 
 package OpenCV.Image_Processing.Internal.C_API is
 
@@ -53,6 +54,29 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    Adaptive_Threshold_Mean     : constant Interfaces.Integer_32 := 0;
    Adaptive_Threshold_Gaussian : constant Interfaces.Integer_32 := 1;
+
+   Contour_Retrieval_External : constant Interfaces.Integer_32 := 0;
+   Contour_Retrieval_List     : constant Interfaces.Integer_32 := 1;
+   Contour_Retrieval_CComp    : constant Interfaces.Integer_32 := 2;
+   Contour_Retrieval_Tree     : constant Interfaces.Integer_32 := 3;
+
+   Contour_Approximation_None      : constant Interfaces.Integer_32 := 0;
+   Contour_Approximation_Simple    : constant Interfaces.Integer_32 := 1;
+   Contour_Approximation_TC89_L1   : constant Interfaces.Integer_32 := 2;
+   Contour_Approximation_TC89_KCOS : constant Interfaces.Integer_32 := 3;
+
+   type Contours_Handle is new System.Address;
+   Null_Contours_Handle : constant Contours_Handle :=
+     Contours_Handle (System.Null_Address);
+
+   type Point_I32 is record
+      X : Interfaces.Integer_32;
+      Y : Interfaces.Integer_32;
+   end record
+   with Convention => C;
+
+   type Point_I32_Array is array (Natural range <>) of aliased Point_I32
+   with Convention => C;
 
    Derivative_Same_Depth : constant Interfaces.Integer_32 := 0;
    Derivative_Int16      : constant Interfaces.Integer_32 := 1;
@@ -174,6 +198,63 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_adaptive_threshold";
+
+   function Find_Contours
+     (Source             : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Retrieval_Mode     : Interfaces.Integer_32;
+      Approximation_Mode : Interfaces.Integer_32;
+      Offset_X           : Interfaces.Integer_32;
+      Offset_Y           : Interfaces.Integer_32;
+      Result             : access Contours_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_find_contours";
+
+   procedure Contours_Destroy (Result : Contours_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_contours_destroy";
+
+   function Contour_Count
+     (Result : Contours_Handle; Count : access Interfaces.Integer_32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_contour_count";
+
+   function Contour_Point_Count
+     (Result        : Contours_Handle;
+      Contour_Index : Interfaces.Integer_32;
+      Count         : access Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_contour_point_count";
+
+   function Contour_Copy_Points
+     (Result        : Contours_Handle;
+      Contour_Index : Interfaces.Integer_32;
+      Points        : access Point_I32;
+      Capacity      : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_contour_copy_points";
+
+   function Contour_Hierarchy
+     (Result        : Contours_Handle;
+      Contour_Index : Interfaces.Integer_32;
+      Next          : access Interfaces.Integer_32;
+      Previous      : access Interfaces.Integer_32;
+      First_Child   : access Interfaces.Integer_32;
+      Parent        : access Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_contour_hierarchy";
 
    function Sobel
      (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;

@@ -6,6 +6,43 @@ with OpenCV.Image_Processing.Internal.C_API;
 
 package body OpenCV.Image_Processing is
 
+   function To_C_Contour_Retrieval
+     (Retrieval : Contour_Retrieval_Mode) return Interfaces.Integer_32 is
+   begin
+      case Retrieval is
+         when External_Only =>
+            return Internal.C_API.Contour_Retrieval_External;
+
+         when Flat_List     =>
+            return Internal.C_API.Contour_Retrieval_List;
+
+         when Two_Level     =>
+            return Internal.C_API.Contour_Retrieval_CComp;
+
+         when Full_Tree     =>
+            return Internal.C_API.Contour_Retrieval_Tree;
+      end case;
+   end To_C_Contour_Retrieval;
+
+   function To_C_Contour_Approximation
+     (Approximation : Contour_Approximation_Mode) return Interfaces.Integer_32
+   is
+   begin
+      case Approximation is
+         when Every_Point   =>
+            return Internal.C_API.Contour_Approximation_None;
+
+         when Simple        =>
+            return Internal.C_API.Contour_Approximation_Simple;
+
+         when Teh_Chin_L1   =>
+            return Internal.C_API.Contour_Approximation_TC89_L1;
+
+         when Teh_Chin_KCOS =>
+            return Internal.C_API.Contour_Approximation_TC89_KCOS;
+      end case;
+   end To_C_Contour_Approximation;
+
    function To_C_Conversion
      (Conversion : Color_Conversion) return Interfaces.Integer_32 is
    begin
@@ -769,6 +806,52 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Adaptive_Threshold;
 
+   procedure Validate_Contour_Source (Source : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Find_Contours requires a non-empty source Mat");
+      elsif Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Find_Contours requires a two-dimensional source Mat");
+      elsif Source.Depth /= OpenCV.Core.UInt8 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Find_Contours requires a UInt8 source Mat");
+      elsif Source.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Find_Contours requires a single-channel source Mat");
+      end if;
+   end Validate_Contour_Source;
+
+   function To_Optional_Contour_Index
+     (Value : Interfaces.Integer_32) return Optional_Contour_Index
+   is
+      use type Interfaces.Integer_32;
+   begin
+      if Value < 0 then
+         return (Present => False);
+      end if;
+      return (Present => True, Index => Contour_Index (Value));
+   end To_Optional_Contour_Index;
+
+   procedure Validate_Contour_Index
+     (Self : Contour_Set; Index : Contour_Index; Operation : String)
+   is
+      use type Ada.Containers.Count_Type;
+   begin
+      if Ada.Containers.Count_Type (Index) >= Self.Contours.Length then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " contour index is out of range");
+      end if;
+   end Validate_Contour_Index;
+
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String)
    is
@@ -1320,5 +1403,132 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
       Raise_On_Error (Status, "adaptive threshold");
    end Apply_Adaptive_Threshold;
+
+   function Find_Contours
+     (Source        : OpenCV.Core.Mat;
+      Retrieval     : Contour_Retrieval_Mode := External_Only;
+      Approximation : Contour_Approximation_Mode := Simple;
+      Offset        : OpenCV.Core.Point := (X => 0, Y => 0)) return Contour_Set
+   is
+      Result : aliased Internal.C_API.Contours_Handle :=
+        Internal.C_API.Null_Contours_Handle;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      Output : Contour_Set;
+      use type Interfaces.Integer_32;
+
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Find_Contours
+             (Source_Handle,
+              To_C_Contour_Retrieval (Retrieval),
+              To_C_Contour_Approximation (Approximation),
+              Interfaces.Integer_32 (Offset.X),
+              Interfaces.Integer_32 (Offset.Y),
+              Result'Access);
+      end Input;
+
+      Count : aliased Interfaces.Integer_32 := 0;
+   begin
+      Validate_Contour_Source (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "find contours");
+
+      begin
+         Status := Internal.C_API.Contour_Count (Result, Count'Access);
+         Raise_On_Error (Status, "get contour count");
+         if Count > 0 then
+            for Index in 0 .. Natural (Count) - 1 loop
+               declare
+                  Point_Count : aliased Interfaces.Integer_32 := 0;
+                  Next        : aliased Interfaces.Integer_32 := -1;
+                  Previous    : aliased Interfaces.Integer_32 := -1;
+                  First_Child : aliased Interfaces.Integer_32 := -1;
+                  Parent      : aliased Interfaces.Integer_32 := -1;
+               begin
+                  Status :=
+                    Internal.C_API.Contour_Point_Count
+                      (Result,
+                       Interfaces.Integer_32 (Index),
+                       Point_Count'Access);
+                  Raise_On_Error (Status, "get contour point count");
+                  if Point_Count = 0 then
+                     declare
+                        Empty_Points : Contour (1 .. 0);
+                     begin
+                        Output.Contours.Append (Empty_Points);
+                     end;
+                  else
+                     declare
+                        Raw_Points :
+                          Internal.C_API.Point_I32_Array
+                            (0 .. Natural (Point_Count) - 1);
+                        Points     : Contour (Raw_Points'Range);
+                     begin
+                        Status :=
+                          Internal.C_API.Contour_Copy_Points
+                            (Result,
+                             Interfaces.Integer_32 (Index),
+                             Raw_Points (Raw_Points'First)'Access,
+                             Point_Count);
+                        Raise_On_Error (Status, "copy contour points");
+                        for Point_Index in Points'Range loop
+                           Points (Point_Index) :=
+                             (X =>
+                                OpenCV.Core.Point_Coordinate
+                                  (Raw_Points (Point_Index).X),
+                              Y =>
+                                OpenCV.Core.Point_Coordinate
+                                  (Raw_Points (Point_Index).Y));
+                        end loop;
+                        Output.Contours.Append (Points);
+                     end;
+                  end if;
+                  Status :=
+                    Internal.C_API.Contour_Hierarchy
+                      (Result,
+                       Interfaces.Integer_32 (Index),
+                       Next'Access,
+                       Previous'Access,
+                       First_Child'Access,
+                       Parent'Access);
+                  Raise_On_Error (Status, "get contour hierarchy");
+                  Output.Hierarchy.Append
+                    ((Next        => To_Optional_Contour_Index (Next),
+                      Previous    => To_Optional_Contour_Index (Previous),
+                      First_Child => To_Optional_Contour_Index (First_Child),
+                      Parent      => To_Optional_Contour_Index (Parent)));
+               end;
+            end loop;
+         end if;
+         Internal.C_API.Contours_Destroy (Result);
+         return Output;
+      exception
+         when others =>
+            Internal.C_API.Contours_Destroy (Result);
+            raise;
+      end;
+   end Find_Contours;
+
+   function Contour_Count (Self : Contour_Set) return Natural is
+   begin
+      return Natural (Self.Contours.Length);
+   end Contour_Count;
+
+   function Get_Contour
+     (Self : Contour_Set; Index : Contour_Index) return Contour is
+   begin
+      Validate_Contour_Index (Self, Index, "Get_Contour");
+      return Self.Contours.Element (Natural (Index));
+   end Get_Contour;
+
+   function Get_Hierarchy
+     (Self : Contour_Set; Index : Contour_Index) return Contour_Hierarchy_Entry
+   is
+   begin
+      Validate_Contour_Index (Self, Index, "Get_Hierarchy");
+      return Self.Hierarchy.Element (Natural (Index));
+   end Get_Hierarchy;
 
 end OpenCV.Image_Processing;
