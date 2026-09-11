@@ -256,6 +256,23 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_contour_hierarchy";
 
+   function Contour_Area
+     (Points      : access Point_I32;
+      Point_Count : Interfaces.Integer_32;
+      Oriented    : Interfaces.Integer_32;
+      Area        : access Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_contour_area";
+
+   function Arc_Length
+     (Points      : access Point_I32;
+      Point_Count : Interfaces.Integer_32;
+      Closed      : Interfaces.Integer_32;
+      Length      : access Interfaces.C.double) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_arc_length";
+
    function Sobel
      (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination       : OpenCV.Core.Module_Interop.Output_Mat_Handle;

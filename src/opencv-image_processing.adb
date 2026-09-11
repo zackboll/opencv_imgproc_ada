@@ -43,6 +43,46 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Contour_Approximation;
 
+   function To_C_Boolean (Value : Boolean) return Interfaces.Integer_32 is
+   begin
+      if Value then
+         return 1;
+      else
+         return 0;
+      end if;
+   end To_C_Boolean;
+
+   function Pack_Contour
+     (Points : Contour) return Internal.C_API.Point_I32_Array is
+   begin
+      if Points'Length > Natural (Interfaces.Integer_32'Last) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "contour point count exceeds C ABI range");
+      end if;
+
+      if Points'Length = 0 then
+         declare
+            Empty : Internal.C_API.Point_I32_Array (1 .. 0);
+         begin
+            return Empty;
+         end;
+      else
+         declare
+            Result : Internal.C_API.Point_I32_Array (0 .. Points'Length - 1);
+            Index  : Natural := Result'First;
+         begin
+            for Point of Points loop
+               Result (Index) :=
+                 (X => Interfaces.Integer_32 (Point.X),
+                  Y => Interfaces.Integer_32 (Point.Y));
+               Index := Index + 1;
+            end loop;
+            return Result;
+         end;
+      end if;
+   end Pack_Contour;
+
    function To_C_Conversion
      (Conversion : Color_Conversion) return Interfaces.Integer_32 is
    begin
@@ -1530,5 +1570,52 @@ package body OpenCV.Image_Processing is
       Validate_Contour_Index (Self, Index, "Get_Hierarchy");
       return Self.Hierarchy.Element (Natural (Index));
    end Get_Hierarchy;
+
+   function Contour_Area
+     (Points : Contour; Oriented : Boolean := False)
+      return OpenCV.Core.Float64_Value
+   is
+      Packed : Internal.C_API.Point_I32_Array := Pack_Contour (Points);
+      Area   : aliased Interfaces.C.double := 0.0;
+      Status : Internal.C_API.Status;
+   begin
+      if Packed'Length = 0 then
+         Status :=
+           Internal.C_API.Contour_Area
+             (null, 0, To_C_Boolean (Oriented), Area'Access);
+      else
+         Status :=
+           Internal.C_API.Contour_Area
+             (Packed (Packed'First)'Access,
+              Interfaces.Integer_32 (Packed'Length),
+              To_C_Boolean (Oriented),
+              Area'Access);
+      end if;
+      Raise_On_Error (Status, "contour area");
+      return OpenCV.Core.Float64_Value (Area);
+   end Contour_Area;
+
+   function Arc_Length
+     (Points : Contour; Closed : Boolean) return OpenCV.Core.Float64_Value
+   is
+      Packed : Internal.C_API.Point_I32_Array := Pack_Contour (Points);
+      Length : aliased Interfaces.C.double := 0.0;
+      Status : Internal.C_API.Status;
+   begin
+      if Packed'Length = 0 then
+         Status :=
+           Internal.C_API.Arc_Length
+             (null, 0, To_C_Boolean (Closed), Length'Access);
+      else
+         Status :=
+           Internal.C_API.Arc_Length
+             (Packed (Packed'First)'Access,
+              Interfaces.Integer_32 (Packed'Length),
+              To_C_Boolean (Closed),
+              Length'Access);
+      end if;
+      Raise_On_Error (Status, "arc length");
+      return OpenCV.Core.Float64_Value (Length);
+   end Arc_Length;
 
 end OpenCV.Image_Processing;

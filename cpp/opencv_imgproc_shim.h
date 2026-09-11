@@ -220,6 +220,20 @@ opencv_imgproc_contour_hierarchy(
     int32_t *parent);
 
 opencv_imgproc_status
+opencv_imgproc_contour_area(
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    int32_t oriented,
+    double *out_area);
+
+opencv_imgproc_status
+opencv_imgproc_arc_length(
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    int32_t closed,
+    double *out_length);
+
+opencv_imgproc_status
 opencv_imgproc_sobel(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,

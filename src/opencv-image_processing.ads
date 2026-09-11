@@ -314,6 +314,19 @@ package OpenCV.Image_Processing is
      (Self : Contour_Set; Index : Contour_Index)
       return Contour_Hierarchy_Entry;
 
+   --  Calculates the OpenCV polygon area of Points. When Oriented is False,
+   --  the result is nonnegative; otherwise it retains OpenCV's orientation
+   --  sign. Empty and degenerate contours return zero. Points is unchanged.
+   function Contour_Area
+     (Points : Contour; Oriented : Boolean := False)
+      return OpenCV.Core.Float64_Value;
+
+   --  Calculates the OpenCV curve length of Points. Closed includes the
+   --  segment from the final point to the first. Empty and one-point contours
+   --  return zero. Points is unchanged.
+   function Arc_Length
+     (Points : Contour; Closed : Boolean) return OpenCV.Core.Float64_Value;
+
 private
    package Contour_Vectors is new
      Ada.Containers.Indefinite_Vectors

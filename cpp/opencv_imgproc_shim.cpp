@@ -1149,6 +1149,82 @@ opencv_imgproc_contour_hierarchy(
 }
 
 opencv_imgproc_status
+opencv_imgproc_contour_area(
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    int32_t oriented,
+    double *out_area)
+{
+    clear_error();
+    if (out_area == nullptr) {
+        return invalid_argument("null contour area output pointer");
+    }
+    *out_area = 0.0;
+    if (point_count < 0) {
+        return invalid_argument("contour point count must not be negative");
+    }
+    if (point_count > 0 && points == nullptr) {
+        return invalid_argument("null contour points with positive count");
+    }
+    if (oriented != 0 && oriented != 1) {
+        return invalid_argument("contour oriented selector must be zero or one");
+    }
+    if (point_count == 0) {
+        return OPENCV_IMGPROC_OK;
+    }
+
+    try {
+        std::vector<cv::Point> contour;
+        contour.reserve(static_cast<std::size_t>(point_count));
+        for (int32_t index = 0; index < point_count; ++index) {
+            contour.emplace_back(points[index].x, points[index].y);
+        }
+        *out_area = cv::contourArea(contour, oriented != 0);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_arc_length(
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    int32_t closed,
+    double *out_length)
+{
+    clear_error();
+    if (out_length == nullptr) {
+        return invalid_argument("null arc length output pointer");
+    }
+    *out_length = 0.0;
+    if (point_count < 0) {
+        return invalid_argument("arc length point count must not be negative");
+    }
+    if (point_count > 0 && points == nullptr) {
+        return invalid_argument("null contour points with positive count");
+    }
+    if (closed != 0 && closed != 1) {
+        return invalid_argument("arc length closed selector must be zero or one");
+    }
+    if (point_count == 0) {
+        return OPENCV_IMGPROC_OK;
+    }
+
+    try {
+        std::vector<cv::Point> contour;
+        contour.reserve(static_cast<std::size_t>(point_count));
+        for (int32_t index = 0; index < point_count; ++index) {
+            contour.emplace_back(points[index].x, points[index].y);
+        }
+        *out_length = cv::arcLength(contour, closed != 0);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_sobel(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,
