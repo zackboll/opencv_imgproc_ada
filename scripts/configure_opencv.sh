@@ -109,6 +109,7 @@ abstract project OpenCV_Imgproc_Install is
    Include_Switch := "-I${include_dir}";
    Library_Search_Switch := "-L${library_dir}";
    OpenCV_Imgproc_Link_Option := "-lopencv_imgproc";
+   OpenCV_Core_Link_Option := "-lopencv_core";
    Cxx_Runtime_Switch := "${cxx_runtime_switch}";
    Cxx_Driver := "${cxx_driver}";
    Cxx_Sysroot := "${cxx_sysroot}";

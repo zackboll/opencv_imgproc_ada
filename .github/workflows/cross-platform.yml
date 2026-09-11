@@ -165,6 +165,7 @@ jobs:
           echo "Found: ${shim_dylib}"
           otool -L "${shim_dylib}"
           otool -L "${shim_dylib}" | grep -E 'libopencv_imgproc\.'
+          otool -L "${shim_dylib}" | grep -E 'libopencv_core\.'
           otool -L "${shim_dylib}" | grep -E 'libopencv_core_shim'
           otool -L "${shim_dylib}" | grep -E 'libc\+\+'
           if otool -L "${shim_dylib}" | grep -E 'libstdc\+\+'; then

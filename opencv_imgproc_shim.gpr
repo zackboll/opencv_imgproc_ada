@@ -54,14 +54,13 @@ project OpenCV_Imgproc_Shim is
    case OpenCV_Imgproc_Install.Shim_Build is
       when "Relocatable" =>
          --  The Imgproc dylib owns its OpenCV/libc++ boundary and resolves
-         --  module-bridge calls directly through the Core shim dylib.
+         --  module-bridge calls through the GPR Core dependency closure.
          for Library_Options use
            ("-isysroot",
             OpenCV_Imgproc_Install.Cxx_Sysroot,
             OpenCV_Imgproc_Install.Library_Search_Switch,
             OpenCV_Imgproc_Install.OpenCV_Imgproc_Link_Option,
-            "-L" & OpenCV_Core'Project_Dir & "lib",
-            "-lopencv_core_shim");
+            OpenCV_Imgproc_Install.OpenCV_Core_Link_Option);
       when "Static_PIC" =>
          null;
    end case;
