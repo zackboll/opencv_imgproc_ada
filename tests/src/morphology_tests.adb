@@ -3,7 +3,6 @@ with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
 with Ada.Strings.Fixed;
 with Interfaces;
-with Interfaces.C.Strings;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
@@ -12,53 +11,25 @@ with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
 with OpenCV.Image_Processing;
+with OpenCV.Image_Processing.Internal.C_API;
 
 package body Morphology_Tests is
 
    use type Interfaces.Unsigned_8;
    use type Interfaces.Integer_32;
-   use type Interfaces.C.Strings.chars_ptr;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
+   package C_API renames OpenCV.Image_Processing.Internal.C_API;
+
+   use type C_API.Status;
+
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
 
    package Caller is new AUnit.Test_Caller (Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
-
-   type C_Status is new Interfaces.Integer_32;
-
-   C_Error_Invalid_Argument : constant C_Status := 4;
-   C_Morphology_Rectangle   : constant Interfaces.Integer_32 := 0;
-   C_Border_Constant        : constant Interfaces.Integer_32 := 0;
-
-   function C_Erode
-     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
-      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
-      Kernel_Width  : Interfaces.Integer_32;
-      Kernel_Height : Interfaces.Integer_32;
-      Shape         : Interfaces.Integer_32;
-      Iterations    : Interfaces.Integer_32;
-      Border        : Interfaces.Integer_32) return C_Status
-   with Import, Convention => C, External_Name => "opencv_imgproc_erode";
-
-   function C_Dilate
-     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
-      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
-      Kernel_Width  : Interfaces.Integer_32;
-      Kernel_Height : Interfaces.Integer_32;
-      Shape         : Interfaces.Integer_32;
-      Iterations    : Interfaces.Integer_32;
-      Border        : Interfaces.Integer_32) return C_Status
-   with Import, Convention => C, External_Name => "opencv_imgproc_dilate";
-
-   function C_Last_Error_Message return Interfaces.C.Strings.chars_ptr
-   with
-     Import,
-     Convention    => C,
-     External_Name => "opencv_imgproc_last_error_message";
 
    procedure Assert_Raises_OpenCV_Error
      (Attempt : not null access procedure; Message : String)
@@ -350,7 +321,7 @@ package body Morphology_Tests is
          Iterations    : Interfaces.Integer_32;
          Diagnostic    : String)
       is
-         Status : C_Status := 0;
+         Status : C_API.Status := C_API.Success;
 
          procedure Input
            (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
@@ -362,25 +333,25 @@ package body Morphology_Tests is
                case Operation is
                   when Erosion  =>
                      Status :=
-                       C_Erode
+                       C_API.Erode
                          (Source_Handle,
                           Destination_Handle,
                           Kernel_Width,
                           Kernel_Height,
-                          C_Morphology_Rectangle,
+                          C_API.Morphology_Rectangle,
                           Iterations,
-                          C_Border_Constant);
+                          C_API.Border_Constant);
 
                   when Dilation =>
                      Status :=
-                       C_Dilate
+                       C_API.Dilate
                          (Source_Handle,
                           Destination_Handle,
                           Kernel_Width,
                           Kernel_Height,
-                          C_Morphology_Rectangle,
+                          C_API.Morphology_Rectangle,
                           Iterations,
-                          C_Border_Constant);
+                          C_API.Border_Constant);
                end case;
             end Output;
          begin
@@ -391,18 +362,14 @@ package body Morphology_Tests is
          OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
 
          AUnit.Assertions.Assert
-           (Status = C_Error_Invalid_Argument,
+           (Status = C_API.Error_Invalid_Argument,
             "malformed morphology C input must return invalid argument");
 
          declare
-            Message : constant Interfaces.C.Strings.chars_ptr :=
-              C_Last_Error_Message;
+            Message : constant String := C_API.Last_Error_Message;
          begin
             AUnit.Assertions.Assert
-              (Message /= Interfaces.C.Strings.Null_Ptr
-               and then Ada.Strings.Fixed.Index
-                          (Interfaces.C.Strings.Value (Message), Diagnostic)
-                        /= 0,
+              (Ada.Strings.Fixed.Index (Message, Diagnostic) /= 0,
                "malformed morphology C input must identify " & Diagnostic);
          end;
       end Check;
