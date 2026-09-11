@@ -412,6 +412,38 @@ bool to_opencv_automatic_threshold_method(
     }
 }
 
+bool to_opencv_adaptive_threshold_method(
+    int32_t method,
+    int &opencv_method) noexcept
+{
+    switch (method) {
+    case OPENCV_IMGPROC_ADAPTIVE_THRESHOLD_MEAN:
+        opencv_method = cv::ADAPTIVE_THRESH_MEAN_C;
+        return true;
+    case OPENCV_IMGPROC_ADAPTIVE_THRESHOLD_GAUSSIAN:
+        opencv_method = cv::ADAPTIVE_THRESH_GAUSSIAN_C;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_adaptive_threshold_mode(
+    int32_t mode,
+    int &opencv_mode) noexcept
+{
+    switch (mode) {
+    case OPENCV_IMGPROC_THRESHOLD_BINARY:
+        opencv_mode = cv::THRESH_BINARY;
+        return true;
+    case OPENCV_IMGPROC_THRESHOLD_BINARY_INVERSE:
+        opencv_mode = cv::THRESH_BINARY_INV;
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -832,6 +864,65 @@ opencv_imgproc_automatic_threshold(
         const double computed = cv::threshold(
             *src, *dst, 0.0, maximum_value, opencv_mode | opencv_method);
         *computed_threshold = computed;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_adaptive_threshold(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t maximum_value,
+    int32_t adaptive_method,
+    int32_t threshold_mode,
+    int32_t block_size,
+    double bias)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        int opencv_method = 0;
+        if (!to_opencv_adaptive_threshold_method(
+                adaptive_method, opencv_method)) {
+            return invalid_argument("unsupported adaptive threshold method");
+        }
+
+        int opencv_mode = 0;
+        if (!to_opencv_adaptive_threshold_mode(threshold_mode, opencv_mode)) {
+            return invalid_argument("unsupported adaptive threshold mode");
+        }
+
+        if (maximum_value < 0 || maximum_value > 255) {
+            return invalid_argument("adaptive threshold maximum value must be 0 through 255");
+        }
+
+        if (block_size <= 1 || (block_size % 2) == 0) {
+            return invalid_argument("adaptive threshold block size must be odd and greater than 1");
+        }
+
+        if (!std::isfinite(bias)) {
+            return invalid_argument("adaptive threshold bias must be finite");
+        }
+
+        cv::adaptiveThreshold(*src, *dst, static_cast<double>(maximum_value),
+                              opencv_method, opencv_mode, block_size, bias);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

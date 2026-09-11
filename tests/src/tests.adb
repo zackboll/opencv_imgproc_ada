@@ -3,6 +3,7 @@ with AUnit;
 with AUnit.Reporter.Text;
 with AUnit.Run;
 with AUnit.Test_Suites;
+with Adaptive_Threshold_Tests;
 with Automatic_Threshold_Tests;
 with Canny_Edge_Tests;
 with Color_Conversion_Tests;
@@ -35,6 +36,7 @@ begin
    Suite.Add_Test (Spatial_Derivative_Tests.Suite);
    Suite.Add_Test (Threshold_Tests.Suite);
    Suite.Add_Test (Automatic_Threshold_Tests.Suite);
+   Suite.Add_Test (Adaptive_Threshold_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

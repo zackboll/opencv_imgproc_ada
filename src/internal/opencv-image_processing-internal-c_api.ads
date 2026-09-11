@@ -51,6 +51,9 @@ package OpenCV.Image_Processing.Internal.C_API is
    Automatic_Threshold_Otsu     : constant Interfaces.Integer_32 := 0;
    Automatic_Threshold_Triangle : constant Interfaces.Integer_32 := 1;
 
+   Adaptive_Threshold_Mean     : constant Interfaces.Integer_32 := 0;
+   Adaptive_Threshold_Gaussian : constant Interfaces.Integer_32 := 1;
+
    Derivative_Same_Depth : constant Interfaces.Integer_32 := 0;
    Derivative_Int16      : constant Interfaces.Integer_32 := 1;
    Derivative_Float32    : constant Interfaces.Integer_32 := 2;
@@ -158,6 +161,19 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_automatic_threshold";
+
+   function Adaptive_Threshold
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Maximum_Value : Interfaces.Integer_32;
+      Method        : Interfaces.Integer_32;
+      Mode          : Interfaces.Integer_32;
+      Block_Size    : Interfaces.Integer_32;
+      Bias          : Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_adaptive_threshold";
 
    function Sobel
      (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;

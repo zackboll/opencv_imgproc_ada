@@ -27,6 +27,12 @@ package OpenCV.Image_Processing is
 
    type Automatic_Threshold_Method is (Otsu, Triangle);
 
+   type Adaptive_Threshold_Method is (Mean, Gaussian);
+
+   type Adaptive_Threshold_Mode is (Binary, Binary_Inverse);
+
+   subtype Adaptive_Block_Size is Positive range 3 .. 2_147_483_647;
+
    type Morphology_Shape is (Rectangle, Cross, Ellipse);
 
    type Morphology_Operation is
@@ -234,5 +240,25 @@ package OpenCV.Image_Processing is
       Method             : Automatic_Threshold_Method := Otsu;
       Mode               : Threshold_Mode := Binary;
       Maximum_Value      : OpenCV.Core.Float64_Value := 255.0);
+
+   --  Applies an adaptive binary threshold to a non-empty, two-dimensional,
+   --  UInt8, single-channel Source. Block_Size must be odd. OpenCV calculates
+   --  the local threshold as the arithmetic neighborhood mean or a
+   --  Gaussian-weighted neighborhood mean, according to Method, minus Bias.
+   --  Bias may be positive, zero, or negative and is passed directly to
+   --  OpenCV. Maximum_Value is a UInt8 value, including zero. Destination is
+   --  replaced with a UInt8 single-channel Mat having Source's rows and
+   --  columns. Source remains unchanged when distinct from Destination; direct
+   --  in-place operation is supported. OpenCV controls neighborhood border
+   --  handling internally. Contract violations and OpenCV failures raise
+   --  OpenCV.OpenCV_Error.
+   procedure Apply_Adaptive_Threshold
+     (Source        : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Block_Size    : Adaptive_Block_Size;
+      Method        : Adaptive_Threshold_Method := Mean;
+      Mode          : Adaptive_Threshold_Mode := Binary;
+      Bias          : OpenCV.Core.Float64_Value := 0.0;
+      Maximum_Value : OpenCV.Core.UInt8_Value := 255);
 
 end OpenCV.Image_Processing;

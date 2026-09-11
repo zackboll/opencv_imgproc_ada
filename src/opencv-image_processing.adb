@@ -167,6 +167,30 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Automatic_Threshold_Method;
 
+   function To_C_Adaptive_Threshold_Method
+     (Method : Adaptive_Threshold_Method) return Interfaces.Integer_32 is
+   begin
+      case Method is
+         when Mean     =>
+            return Internal.C_API.Adaptive_Threshold_Mean;
+
+         when Gaussian =>
+            return Internal.C_API.Adaptive_Threshold_Gaussian;
+      end case;
+   end To_C_Adaptive_Threshold_Method;
+
+   function To_C_Adaptive_Threshold_Mode
+     (Mode : Adaptive_Threshold_Mode) return Interfaces.Integer_32 is
+   begin
+      case Mode is
+         when Binary         =>
+            return Internal.C_API.Threshold_Binary;
+
+         when Binary_Inverse =>
+            return Internal.C_API.Threshold_Binary_Inverse;
+      end case;
+   end To_C_Adaptive_Threshold_Mode;
+
    function To_C_Morphology_Shape
      (Shape : Morphology_Shape) return Interfaces.Integer_32 is
    begin
@@ -705,6 +729,46 @@ package body OpenCV.Image_Processing is
       end case;
    end Validate_Automatic_Threshold;
 
+   procedure Validate_Adaptive_Threshold
+     (Source     : OpenCV.Core.Mat;
+      Block_Size : Adaptive_Block_Size;
+      Bias       : OpenCV.Core.Float64_Value)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Adaptive_Threshold requires a non-empty source Mat");
+      elsif Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Adaptive_Threshold requires a two-dimensional source Mat");
+      elsif Source.Depth /= OpenCV.Core.UInt8 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Adaptive_Threshold requires a UInt8 source Mat");
+      elsif Source.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Adaptive_Threshold requires a source Mat with exactly 1"
+            & " channel");
+      elsif Block_Size mod 2 = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Adaptive_Threshold requires an odd block size");
+      elsif Bias /= Bias
+        or else Bias > OpenCV.Core.Float64_Value'Last
+        or else Bias < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Apply_Adaptive_Threshold requires a finite bias");
+      end if;
+   end Validate_Adaptive_Threshold;
+
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String)
    is
@@ -1219,5 +1283,42 @@ package body OpenCV.Image_Processing is
       Raise_On_Error (Status, "automatic threshold");
       Computed_Threshold := OpenCV.Core.Float64_Value (Computed);
    end Apply_Automatic_Threshold;
+
+   procedure Apply_Adaptive_Threshold
+     (Source        : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Block_Size    : Adaptive_Block_Size;
+      Method        : Adaptive_Threshold_Method := Mean;
+      Mode          : Adaptive_Threshold_Mode := Binary;
+      Bias          : OpenCV.Core.Float64_Value := 0.0;
+      Maximum_Value : OpenCV.Core.UInt8_Value := 255)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Adaptive_Threshold
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.Integer_32 (Maximum_Value),
+                 To_C_Adaptive_Threshold_Method (Method),
+                 To_C_Adaptive_Threshold_Mode (Mode),
+                 Interfaces.Integer_32 (Block_Size),
+                 Interfaces.C.double (Bias));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Adaptive_Threshold (Source, Block_Size, Bias);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "adaptive threshold");
+   end Apply_Adaptive_Threshold;
 
 end OpenCV.Image_Processing;

@@ -56,6 +56,9 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_AUTO_THRESHOLD_OTSU     ((int32_t)0)
 #define OPENCV_IMGPROC_AUTO_THRESHOLD_TRIANGLE ((int32_t)1)
 
+#define OPENCV_IMGPROC_ADAPTIVE_THRESHOLD_MEAN     ((int32_t)0)
+#define OPENCV_IMGPROC_ADAPTIVE_THRESHOLD_GAUSSIAN ((int32_t)1)
+
 #define OPENCV_IMGPROC_DERIVATIVE_SAME_DEPTH ((int32_t)0)
 #define OPENCV_IMGPROC_DERIVATIVE_INT16      ((int32_t)1)
 #define OPENCV_IMGPROC_DERIVATIVE_FLOAT32    ((int32_t)2)
@@ -150,6 +153,16 @@ opencv_imgproc_automatic_threshold(
     int32_t method,
     int32_t mode,
     double *computed_threshold);
+
+opencv_imgproc_status
+opencv_imgproc_adaptive_threshold(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t maximum_value,
+    int32_t adaptive_method,
+    int32_t threshold_mode,
+    int32_t block_size,
+    double bias);
 
 opencv_imgproc_status
 opencv_imgproc_sobel(
