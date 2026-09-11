@@ -168,8 +168,8 @@ package OpenCV.Image_Processing is
    --  every Source channel. Its source, destination-depth, Scale, Delta, and
    --  Border requirements are the same as Sobel's. OpenCV supports direct
    --  in-place use when Destination_Depth is Same_Depth; Source remains
-   --  unchanged otherwise. Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  unchanged otherwise. Contract violations and failures reported by
+   --  OpenCV raise OpenCV.OpenCV_Error.
    procedure Scharr
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
