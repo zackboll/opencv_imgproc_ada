@@ -147,6 +147,31 @@ jobs:
       - name: Build Imgproc with Core bridge
         run: alr -n build
 
+      - name: Verify Imgproc shim isolation
+        run: |
+          set -eu
+          shim_dylib=""
+          for candidate in lib/libopencv_imgproc_shim.dylib lib/libopencv_imgproc_shim.*.dylib; do
+            if [ -e "${candidate}" ]; then
+              shim_dylib="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${shim_dylib}" ]; then
+            echo "error: libopencv_imgproc_shim*.dylib is missing" >&2
+            ls -l lib
+            exit 1
+          fi
+          echo "Found: ${shim_dylib}"
+          otool -L "${shim_dylib}"
+          otool -L "${shim_dylib}" | grep -E 'libopencv_imgproc\.'
+          otool -L "${shim_dylib}" | grep -E 'libopencv_core_shim'
+          otool -L "${shim_dylib}" | grep -E 'libc\+\+'
+          if otool -L "${shim_dylib}" | grep -E 'libstdc\+\+'; then
+            echo "error: Imgproc shim dylib depends on libstdc++" >&2
+            exit 1
+          fi
+
       - name: Run Imgproc tests
         run: alr -n -C tests run
 
