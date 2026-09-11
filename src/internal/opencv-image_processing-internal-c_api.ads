@@ -25,6 +25,10 @@ package OpenCV.Image_Processing.Internal.C_API is
    Border_Reflect     : constant Interfaces.Integer_32 := 2;
    Border_Reflect_101 : constant Interfaces.Integer_32 := 3;
 
+   Morphology_Rectangle : constant Interfaces.Integer_32 := 0;
+   Morphology_Cross     : constant Interfaces.Integer_32 := 1;
+   Morphology_Ellipse   : constant Interfaces.Integer_32 := 2;
+
    Canny_Aperture_3 : constant Interfaces.Integer_32 := 0;
    Canny_Aperture_5 : constant Interfaces.Integer_32 := 1;
    Canny_Aperture_7 : constant Interfaces.Integer_32 := 2;
@@ -72,6 +76,26 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_gaussian_blur";
+
+   function Erode
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel_Width  : Interfaces.Integer_32;
+      Kernel_Height : Interfaces.Integer_32;
+      Shape         : Interfaces.Integer_32;
+      Iterations    : Interfaces.Integer_32;
+      Border        : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_erode";
+
+   function Dilate
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel_Width  : Interfaces.Integer_32;
+      Kernel_Height : Interfaces.Integer_32;
+      Shape         : Interfaces.Integer_32;
+      Iterations    : Interfaces.Integer_32;
+      Border        : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_dilate";
 
    function Canny
      (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;

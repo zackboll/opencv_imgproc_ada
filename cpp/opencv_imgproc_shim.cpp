@@ -120,6 +120,101 @@ bool to_opencv_border(int32_t border, int &opencv_border) noexcept
     }
 }
 
+bool to_opencv_morphology_shape(int32_t shape, int &opencv_shape) noexcept
+{
+    switch (shape) {
+    case OPENCV_IMGPROC_MORPH_RECTANGLE:
+        opencv_shape = cv::MORPH_RECT;
+        return true;
+
+    case OPENCV_IMGPROC_MORPH_CROSS:
+        opencv_shape = cv::MORPH_CROSS;
+        return true;
+
+    case OPENCV_IMGPROC_MORPH_ELLIPSE:
+        opencv_shape = cv::MORPH_ELLIPSE;
+        return true;
+
+    default:
+        return false;
+    }
+}
+
+enum class morphology_operation {
+    erosion,
+    dilation
+};
+
+opencv_imgproc_status apply_morphology(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t kernel_width,
+    int32_t kernel_height,
+    int32_t shape,
+    int32_t iterations,
+    int32_t border,
+    morphology_operation operation)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        int opencv_shape = 0;
+
+        if (!to_opencv_morphology_shape(shape, opencv_shape)) {
+            return invalid_argument("unsupported morphology shape");
+        }
+
+        int opencv_border = 0;
+
+        if (!to_opencv_border(border, opencv_border)) {
+            return invalid_argument("unsupported morphology border");
+        }
+
+        const cv::Mat kernel = cv::getStructuringElement(
+            opencv_shape,
+            cv::Size(
+                static_cast<int>(kernel_width),
+                static_cast<int>(kernel_height)));
+
+        if (operation == morphology_operation::erosion) {
+            cv::erode(
+                *src,
+                *dst,
+                kernel,
+                cv::Point(-1, -1),
+                static_cast<int>(iterations),
+                opencv_border);
+        } else {
+            cv::dilate(
+                *src,
+                *dst,
+                kernel,
+                cv::Point(-1, -1),
+                static_cast<int>(iterations),
+                opencv_border);
+        }
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 bool to_opencv_canny_aperture(int32_t selector, int &aperture) noexcept
 {
     switch (selector) {
@@ -348,6 +443,48 @@ opencv_imgproc_gaussian_blur(
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_imgproc_status
+opencv_imgproc_erode(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t kernel_width,
+    int32_t kernel_height,
+    int32_t shape,
+    int32_t iterations,
+    int32_t border)
+{
+    return apply_morphology(
+        source,
+        destination,
+        kernel_width,
+        kernel_height,
+        shape,
+        iterations,
+        border,
+        morphology_operation::erosion);
+}
+
+opencv_imgproc_status
+opencv_imgproc_dilate(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t kernel_width,
+    int32_t kernel_height,
+    int32_t shape,
+    int32_t iterations,
+    int32_t border)
+{
+    return apply_morphology(
+        source,
+        destination,
+        kernel_width,
+        kernel_height,
+        shape,
+        iterations,
+        border,
+        morphology_operation::dilation);
 }
 
 opencv_imgproc_status

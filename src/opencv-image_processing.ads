@@ -16,6 +16,10 @@ package OpenCV.Image_Processing is
 
    type Automatic_Threshold_Method is (Otsu, Triangle);
 
+   type Morphology_Shape is (Rectangle, Cross, Ellipse);
+
+   subtype Morphology_Iterations is Positive range 1 .. 2_147_483_647;
+
    --  BGR_To_Gray converts a non-empty, two-dimensional, three-channel BGR
    --  Source whose depth is UInt8, UInt16, or Float32. Destination is replaced
    --  with a Mat having Source's rows, columns, and depth, and exactly one
@@ -54,6 +58,39 @@ package OpenCV.Image_Processing is
       Kernel_Size : OpenCV.Core.Size;
       Sigma       : OpenCV.Core.Float64_Value;
       Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  Erode replaces Destination with the neighborhood minimum selected by a
+   --  temporary structuring element of Kernel_Size and Shape. Source must be a
+   --  non-empty two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or
+   --  Float64; channels are processed independently. Kernel dimensions must be
+   --  positive, but need not be odd, and Iterations is at least one.
+   --  Constant_Border, Replicate, Reflect, and Reflect_101 are supported; Wrap
+   --  is rejected. Constant_Border uses OpenCV's morphology default border
+   --  value. Destination receives Source's geometry and element type. Source
+   --  remains unchanged unless it is also Destination, which is supported for
+   --  in-place erosion. Contract violations and OpenCV failures raise
+   --  OpenCV.OpenCV_Error.
+   procedure Erode
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Shape       : Morphology_Shape := Rectangle;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
+
+   --  Dilate replaces Destination with the neighborhood maximum selected by a
+   --  temporary structuring element of Kernel_Size and Shape. It has the same
+   --  source depth, channel, kernel-size, iteration, border, destination, and
+   --  in-place semantics as Erode. Constant_Border uses OpenCV's morphology
+   --  default border value. Contract violations and OpenCV failures raise
+   --  OpenCV.OpenCV_Error.
+   procedure Dilate
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Shape       : Morphology_Shape := Rectangle;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
 
    --  Canny_Edges finds edges in a non-empty two-dimensional UInt8 C1 Source.
    --  Lower_Threshold and Upper_Threshold must be finite, nonnegative, and

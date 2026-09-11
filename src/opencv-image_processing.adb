@@ -119,6 +119,21 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Automatic_Threshold_Method;
 
+   function To_C_Morphology_Shape
+     (Shape : Morphology_Shape) return Interfaces.Integer_32 is
+   begin
+      case Shape is
+         when Rectangle =>
+            return Internal.C_API.Morphology_Rectangle;
+
+         when Cross     =>
+            return Internal.C_API.Morphology_Cross;
+
+         when Ellipse   =>
+            return Internal.C_API.Morphology_Ellipse;
+      end case;
+   end To_C_Morphology_Shape;
+
    procedure Validate_BGR_To_Gray (Source : OpenCV.Core.Mat) is
       use type OpenCV.Core.Channel_Count;
    begin
@@ -281,6 +296,62 @@ package body OpenCV.Image_Processing is
                & " Float64 source Mat");
       end case;
    end Validate_Gaussian_Blur;
+
+   procedure Validate_Morphology
+     (Source      : OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Border      : OpenCV.Core.Border_Kind;
+      Operation   : String)
+   is
+      use type OpenCV.Core.Border_Kind;
+      use type OpenCV.Core.Size_Coordinate;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a two-dimensional source Mat");
+      end if;
+
+      if Kernel_Size.Width = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a positive kernel width");
+      end if;
+
+      if Kernel_Size.Height = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a positive kernel height");
+      end if;
+
+      if Border = OpenCV.Core.Wrap then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " does not support Wrap border");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8
+            | OpenCV.Core.UInt16
+            | OpenCV.Core.Int16
+            | OpenCV.Core.Float32
+            | OpenCV.Core.Float64 =>
+            null;
+
+         when others              =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               Operation
+               & " requires a UInt8, UInt16, Int16, Float32, or"
+               & " Float64 source Mat");
+      end case;
+   end Validate_Morphology;
 
    procedure Validate_Canny
      (Source          : OpenCV.Core.Mat;
@@ -566,6 +637,106 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Blur_Input'Access);
       Raise_On_Error (Status, "Gaussian blur");
    end Gaussian_Blur;
+
+   type Morphology_Operation is (Erosion, Dilation);
+
+   procedure Apply_Morphology
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Shape       : Morphology_Shape;
+      Iterations  : Morphology_Iterations;
+      Border      : OpenCV.Core.Border_Kind;
+      Operation   : Morphology_Operation)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure Morphology_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Morphology_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            Kernel_Width  : constant Interfaces.Integer_32 :=
+              Interfaces.Integer_32 (Kernel_Size.Width);
+            Kernel_Height : constant Interfaces.Integer_32 :=
+              Interfaces.Integer_32 (Kernel_Size.Height);
+            C_Shape       : constant Interfaces.Integer_32 :=
+              To_C_Morphology_Shape (Shape);
+            C_Iterations  : constant Interfaces.Integer_32 :=
+              Interfaces.Integer_32 (Iterations);
+            C_Border      : constant Interfaces.Integer_32 :=
+              To_C_Border (Border);
+         begin
+            case Operation is
+               when Erosion  =>
+                  Status :=
+                    Internal.C_API.Erode
+                      (Source_Handle,
+                       Destination_Handle,
+                       Kernel_Width,
+                       Kernel_Height,
+                       C_Shape,
+                       C_Iterations,
+                       C_Border);
+
+               when Dilation =>
+                  Status :=
+                    Internal.C_API.Dilate
+                      (Source_Handle,
+                       Destination_Handle,
+                       Kernel_Width,
+                       Kernel_Height,
+                       C_Shape,
+                       C_Iterations,
+                       C_Border);
+            end case;
+         end Morphology_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Morphology_Output'Access);
+      end Morphology_Input;
+
+      Name : constant String :=
+        (case Operation is
+           when Erosion  => "Erode",
+           when Dilation => "Dilate");
+   begin
+      Validate_Morphology (Source, Kernel_Size, Border, Name);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Morphology_Input'Access);
+      Raise_On_Error (Status, Name);
+   end Apply_Morphology;
+
+   procedure Erode
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Shape       : Morphology_Shape := Rectangle;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border) is
+   begin
+      Apply_Morphology
+        (Source, Destination, Kernel_Size, Shape, Iterations, Border, Erosion);
+   end Erode;
+
+   procedure Dilate
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Shape       : Morphology_Shape := Rectangle;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border) is
+   begin
+      Apply_Morphology
+        (Source,
+         Destination,
+         Kernel_Size,
+         Shape,
+         Iterations,
+         Border,
+         Dilation);
+   end Dilate;
 
    procedure Canny_Edges
      (Source          : OpenCV.Core.Mat;
