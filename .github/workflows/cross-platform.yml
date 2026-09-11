@@ -1,0 +1,460 @@
+name: Cross-Platform Bridge CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux-x86_64:
+    name: Linux x86_64
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: imgproc
+
+    steps:
+      - name: Checkout Imgproc
+        uses: actions/checkout@v4
+        with:
+          path: imgproc
+
+      - name: Checkout Core
+        uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: main
+          path: core
+
+      - name: Verify two-checkout layout and bridge
+        run: |
+          set -eu
+          test -f ../core/cpp/opencv_core_module_bridge.hpp
+          echo "Imgproc: $(git rev-parse HEAD)"
+          echo "Core:    $(git -C ../core rev-parse HEAD)"
+
+      - name: Install OpenCV and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libopencv-dev \
+            pkg-config
+
+      - name: Set up Alire
+        uses: alire-project/setup-alire@latest
+        with:
+          version: "2.1.1"
+          toolchain: "gnat_native gprbuild"
+
+      - name: Select Ada toolchain
+        run: |
+          set -eu
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+          alr toolchain
+
+      - name: Report OpenCV
+        run: |
+          pkg-config --modversion opencv5 2>/dev/null || \
+          pkg-config --modversion opencv4 2>/dev/null || \
+          pkg-config --modversion opencv
+
+      - name: Build Imgproc with Core bridge
+        run: alr -n build
+
+      - name: Run Imgproc tests
+        run: alr -n -C tests run
+
+  macos-arm64:
+    name: macOS ARM64
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: imgproc
+
+    steps:
+      - name: Checkout Imgproc
+        uses: actions/checkout@v4
+        with:
+          path: imgproc
+
+      - name: Checkout Core
+        uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: main
+          path: core
+
+      - name: Verify two-checkout layout and bridge
+        run: |
+          set -eu
+          test -f ../core/cpp/opencv_core_module_bridge.hpp
+          echo "Imgproc: $(git rev-parse HEAD)"
+          echo "Core:    $(git -C ../core rev-parse HEAD)"
+          uname -a
+          sw_vers
+
+      - name: Set up Alire
+        uses: alire-project/setup-alire@latest
+        with:
+          version: "2.1.1"
+          toolchain: "gnat_native gprbuild"
+
+      - name: Select Ada toolchain
+        run: |
+          set -eu
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+          alr toolchain
+
+      - name: Install Homebrew OpenCV
+        run: brew install opencv
+
+      - name: Configure Homebrew pkg-config path
+        run: |
+          set -eu
+          opencv_prefix="$(brew --prefix opencv)"
+          brew_pkgconfig="$(brew --prefix)/lib/pkgconfig"
+          opencv_pkgconfig="${opencv_prefix}/lib/pkgconfig"
+          pkg_path=""
+
+          if [ -d "${brew_pkgconfig}" ]; then
+            pkg_path="${brew_pkgconfig}"
+          fi
+
+          if [ -d "${opencv_pkgconfig}" ]; then
+            pkg_path="${pkg_path:+${pkg_path}:}${opencv_pkgconfig}"
+          fi
+
+          if [ -n "${PKG_CONFIG_PATH:-}" ]; then
+            pkg_path="${pkg_path:+${pkg_path}:}${PKG_CONFIG_PATH}"
+          fi
+
+          echo "PKG_CONFIG_PATH=${pkg_path}" >> "$GITHUB_ENV"
+
+      - name: Report OpenCV and C++ compilers
+        run: |
+          set -eu
+
+          pkg-config --modversion opencv5 2>/dev/null || \
+          pkg-config --modversion opencv4 2>/dev/null || \
+          pkg-config --modversion opencv
+
+          echo "=== Alire g++ ==="
+          alr exec -- which g++ || true
+          alr exec -- g++ --version || true
+
+          echo "=== Apple clang++ ==="
+          xcrun --find clang++
+          xcrun clang++ --version
+
+      - name: Build Imgproc with Core bridge
+        run: alr -n build
+
+      - name: Verify Imgproc shim isolation
+        run: |
+          set -eu
+
+          shim_dylib=""
+
+          for candidate in \
+            lib/libopencv_imgproc_shim.dylib \
+            lib/libopencv_imgproc_shim.*.dylib
+          do
+            if [ -e "${candidate}" ]; then
+              shim_dylib="${candidate}"
+              break
+            fi
+          done
+
+          if [ -z "${shim_dylib}" ]; then
+            echo "error: libopencv_imgproc_shim*.dylib is missing" >&2
+            ls -l lib
+            exit 1
+          fi
+
+          echo "Found: ${shim_dylib}"
+
+          otool -L "${shim_dylib}"
+
+          otool -L "${shim_dylib}" |
+            grep -E 'libopencv_imgproc\.'
+
+          otool -L "${shim_dylib}" |
+            grep -E 'libopencv_core\.'
+
+          otool -L "${shim_dylib}" |
+            grep -E 'libopencv_core_shim'
+
+          otool -L "${shim_dylib}" |
+            grep -E 'libc\+\+'
+
+          if otool -L "${shim_dylib}" |
+            grep -E 'libstdc\+\+'
+          then
+            echo "error: Imgproc shim dylib depends on libstdc++" >&2
+            exit 1
+          fi
+
+      - name: Run Imgproc tests
+        run: alr -n -C tests run
+
+  windows-x86_64-msys2:
+    name: Windows x86_64 (MSYS2)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: imgproc
+
+    steps:
+      - name: Checkout Imgproc
+        uses: actions/checkout@v4
+        with:
+          path: imgproc
+
+      - name: Checkout Core
+        uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: main
+          path: core
+
+      - name: Verify two-checkout layout and bridge
+        run: |
+          set -eu
+          test -f ../core/cpp/opencv_core_module_bridge.hpp
+          echo "Imgproc: $(git rev-parse HEAD)"
+          echo "Core:    $(git -C ../core rev-parse HEAD)"
+          uname -a
+
+      - name: Set up Alire
+        uses: alire-project/setup-alire@latest
+        with:
+          version: "2.1.1"
+          toolchain: "gnat_native gprbuild"
+          msys2: true
+
+      - name: Select Ada toolchain
+        run: |
+          set -eu
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+          alr toolchain
+
+      - name: Install MSYS2 OpenCV and C++ toolchain
+        run: |
+          set -eu
+
+          alr exec -- pacman -Sy --noconfirm --needed \
+            mingw-w64-x86_64-opencv \
+            mingw-w64-x86_64-pkg-config \
+            mingw-w64-x86_64-gcc
+
+      - name: Report OpenCV and compiler resolution
+        run: |
+          set -eu
+
+          echo "=== Target pkg-config ==="
+          alr exec -- x86_64-w64-mingw32-pkg-config --modversion opencv5
+
+          echo "=== Generic pkg-config ==="
+          command -v pkg-config || true
+          where.exe pkg-config || true
+
+          echo "=== Alire g++ ==="
+          alr exec -- which g++ || true
+          alr exec -- g++ --version || true
+
+          echo "=== MSYS2 g++ ==="
+          alr exec -- sh -c \
+            'ls -l /mingw64/bin/g++.exe && /mingw64/bin/g++.exe --version'
+
+      - name: Build Imgproc with Core bridge
+        run: |
+          set -eu
+
+          log="${RUNNER_TEMP:-$PWD}/opencv-imgproc-windows-root-build.log"
+
+          if ! alr -n build -- -v >"${log}" 2>&1; then
+            cat "${log}"
+            exit 1
+          fi
+
+          cat "${log}"
+
+          grep -F \
+            'Building External_Relocatable OpenCV Imgproc shim' \
+            "${log}"
+
+      - name: Verify Imgproc Windows shim isolation
+        run: |
+          set -eu
+
+          echo "=== Verify generated Imgproc shim artifacts ==="
+
+          test -f lib/libopencv_imgproc_shim.dll
+          test -f lib/libopencv_imgproc_shim.dll.a
+          test -f obj/shim/external/opencv_imgproc_shim.o
+          test ! -f lib/libopencv_imgproc_shim.a
+
+          echo "=== Generated Imgproc configuration ==="
+
+          cat config/opencv_imgproc_install.gpr
+
+          grep -F \
+            'Shim_Build : Shim_Build_Kind := "External_Relocatable";' \
+            config/opencv_imgproc_install.gpr
+
+          echo "=== Verify MSYS2 C++ compiler ==="
+
+          cxx_driver=$(
+            sed -n \
+              's/.*Cxx_Driver := "\(.*\)";/\1/p' \
+              config/opencv_imgproc_install.gpr
+          )
+
+          echo "Configured C++ driver: ${cxx_driver}"
+
+          case "${cxx_driver}" in
+            *gnat_native*)
+              echo \
+                "error: generated configuration selected GNAT g++: ${cxx_driver}" \
+                >&2
+              exit 1
+              ;;
+
+            *mingw64*g++*)
+              ;;
+
+            *)
+              echo \
+                "error: expected MSYS2 MinGW64 g++, got: ${cxx_driver}" \
+                >&2
+              exit 1
+              ;;
+          esac
+
+          echo "=== Verify configured import libraries ==="
+
+          for setting in \
+            OpenCV_Imgproc_Link_Option \
+            OpenCV_Core_Link_Option \
+            Core_Shim_Link_Option
+          do
+            import_library=$(
+              sed -n \
+                "s/.*${setting} := \"\\(.*\\)\";/\\1/p" \
+                config/opencv_imgproc_install.gpr
+            )
+
+            echo "${setting}: ${import_library}"
+
+            if [ ! -f "${import_library}" ]; then
+              echo \
+                "error: ${setting} does not name an existing import library: ${import_library}" \
+                >&2
+              exit 1
+            fi
+          done
+
+          echo "=== Locate matching MSYS2 objdump ==="
+
+          dump="$(dirname "${cxx_driver}")/objdump.exe"
+
+          if [ ! -f "${dump}" ]; then
+            echo \
+              "error: MSYS2 objdump not found next to g++: ${dump}" \
+              >&2
+            exit 1
+          fi
+
+          echo "Using objdump: ${dump}"
+
+          echo "=== Imgproc shim PE dependencies ==="
+
+          deps=$(
+            "${dump}" -p lib/libopencv_imgproc_shim.dll |
+              grep -i 'DLL Name' ||
+              true
+          )
+
+          echo "${deps}"
+
+          echo "=== Required direct Imgproc shim dependencies ==="
+
+          if ! printf '%s\n' "${deps}" |
+            grep -qi 'libopencv_imgproc'
+          then
+            echo \
+              "error: Imgproc shim does not import OpenCV Imgproc" \
+              >&2
+            exit 1
+          fi
+
+          if ! printf '%s\n' "${deps}" |
+            grep -qi 'libopencv_core_shim.dll'
+          then
+            echo \
+              "error: Imgproc shim does not import libopencv_core_shim.dll" \
+              >&2
+            exit 1
+          fi
+
+          echo "Direct OpenCV Imgproc dependency: OK"
+          echo "Direct Core shim dependency: OK"
+
+          echo "=== Verify OpenCV Imgproc reaches OpenCV Core ==="
+
+          mingw_bin="$(dirname "${cxx_driver}")"
+          opencv_imgproc_dll=""
+
+          for candidate in \
+            "${mingw_bin}"/libopencv_imgproc-*.dll
+          do
+            if [ -f "${candidate}" ]; then
+              opencv_imgproc_dll="${candidate}"
+              break
+            fi
+          done
+
+          if [ -z "${opencv_imgproc_dll}" ]; then
+            echo \
+              "error: OpenCV Imgproc runtime DLL not found in ${mingw_bin}" \
+              >&2
+
+            ls -l "${mingw_bin}"/libopencv* 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "OpenCV Imgproc DLL: ${opencv_imgproc_dll}"
+
+          opencv_imgproc_deps=$(
+            "${dump}" -p "${opencv_imgproc_dll}" |
+              grep -i 'DLL Name' ||
+              true
+          )
+
+          echo "${opencv_imgproc_deps}"
+
+          if ! printf '%s\n' "${opencv_imgproc_deps}" |
+            grep -qi 'libopencv_core-'
+          then
+            echo \
+              "error: OpenCV Imgproc DLL does not import OpenCV Core" \
+              >&2
+            exit 1
+          fi
+
+          echo "OpenCV Imgproc -> OpenCV Core dependency: OK"
+
+          echo "=== Windows shim isolation verified ==="
+
+      - name: Run Imgproc tests
+        run: |
+          PATH="$PWD/lib:$PWD/../core/lib:/mingw64/bin:$PATH" \
+            alr -n -C tests run

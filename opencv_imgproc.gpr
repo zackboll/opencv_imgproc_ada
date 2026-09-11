@@ -1,4 +1,5 @@
 with "config/opencv_imgproc_config.gpr";
+with "config/opencv_imgproc_install.gpr";
 with "opencv_imgproc_shim.gpr";
 
 project Opencv_Imgproc is
@@ -18,6 +19,23 @@ project Opencv_Imgproc is
         external ("LIBRARY_TYPE", "static-pic"));
    for Library_Kind use Library_Type;
 
+   --  When the Windows C++ shim is built externally as a DLL, consumers
+   --  of the Ada library must explicitly link its import library.
+   case Library_Type is
+      when "relocatable" =>
+         case Opencv_Imgproc_Install.Shim_Build is
+            when "External_Relocatable" =>
+               for Library_Options use
+                 ("-L" & Project'Project_Dir & "lib",
+                  "-lopencv_imgproc_shim");
+            when "Static_PIC" | "Relocatable" =>
+               null;
+         end case;
+
+      when "static" | "static-pic" =>
+         null;
+   end case;
+
    package Compiler is
       for Default_Switches ("Ada") use
         Opencv_Imgproc_Config.Ada_Compiler_Switches & ("-Werror");
@@ -26,6 +44,21 @@ project Opencv_Imgproc is
    package Binder is
       for Switches ("Ada") use ("-Es"); --  Symbolic traceback
    end Binder;
+
+   package Linker is
+      --  External_Relocatable is the Windows/MSYS2 configuration.
+      --  The C++ shim is an independently built DLL, so Ada consumers
+      --  must link against its import library.
+      case Opencv_Imgproc_Install.Shim_Build is
+         when "External_Relocatable" =>
+            for Linker_Options use
+              ("-L" & Project'Project_Dir & "lib",
+               "-lopencv_imgproc_shim");
+
+         when "Static_PIC" | "Relocatable" =>
+            null;
+      end case;
+   end Linker;
 
    package Install is
       for Artifacts (".") use ("share");
