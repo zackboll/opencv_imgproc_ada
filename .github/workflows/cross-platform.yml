@@ -2,8 +2,6 @@ name: Cross-Platform Bridge CI
 
 on:
   push:
-    branches:
-      - main
   pull_request:
   workflow_dispatch:
 
