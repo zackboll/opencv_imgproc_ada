@@ -143,7 +143,7 @@ bool to_opencv_derivative_depth(
     }
 }
 
-bool to_opencv_sobel_kernel(int32_t kernel, int &opencv_kernel) noexcept
+bool to_opencv_derivative_kernel(int32_t kernel, int &opencv_kernel) noexcept
 {
     switch (kernel) {
     case OPENCV_IMGPROC_SOBEL_KERNEL_1:
@@ -874,7 +874,7 @@ opencv_imgproc_sobel(
         }
 
         int opencv_kernel = 0;
-        if (!to_opencv_sobel_kernel(kernel_size, opencv_kernel)) {
+        if (!to_opencv_derivative_kernel(kernel_size, opencv_kernel)) {
             return invalid_argument("unsupported Sobel kernel size");
         }
 
@@ -950,6 +950,65 @@ opencv_imgproc_scharr(
         }
 
         cv::Scharr(*src, *dst, opencv_depth, dx, dy, scale, delta, opencv_border);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_laplacian(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t destination_depth,
+    int32_t kernel_size,
+    double scale,
+    double offset,
+    int32_t border)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        int opencv_depth = 0;
+        if (!to_opencv_derivative_depth(destination_depth, opencv_depth)) {
+            return invalid_argument("unsupported derivative destination depth");
+        }
+
+        int opencv_kernel = 0;
+        if (!to_opencv_derivative_kernel(kernel_size, opencv_kernel)) {
+            return invalid_argument("unsupported Laplacian kernel size");
+        }
+
+        if (!std::isfinite(scale)) {
+            return invalid_argument("Laplacian scale must be finite");
+        }
+
+        if (!std::isfinite(offset)) {
+            return invalid_argument("Laplacian offset must be finite");
+        }
+
+        int opencv_border = 0;
+        if (!to_opencv_border(border, opencv_border)) {
+            return invalid_argument("unsupported Laplacian border");
+        }
+
+        cv::Laplacian(*src, *dst, opencv_depth, opencv_kernel, scale, offset,
+                      opencv_border);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

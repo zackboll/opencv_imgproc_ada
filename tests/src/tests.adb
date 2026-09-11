@@ -7,6 +7,7 @@ with Automatic_Threshold_Tests;
 with Canny_Edge_Tests;
 with Color_Conversion_Tests;
 with Gaussian_Blur_Tests;
+with Laplacian_Tests;
 with Morphology_Tests;
 with Resize_Tests;
 with Spatial_Derivative_Tests;
@@ -28,6 +29,7 @@ procedure Tests is
 begin
    Suite.Add_Test (Resize_Tests.Suite);
    Suite.Add_Test (Gaussian_Blur_Tests.Suite);
+   Suite.Add_Test (Laplacian_Tests.Suite);
    Suite.Add_Test (Morphology_Tests.Suite);
    Suite.Add_Test (Canny_Edge_Tests.Suite);
    Suite.Add_Test (Spatial_Derivative_Tests.Suite);

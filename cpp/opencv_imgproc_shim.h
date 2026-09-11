@@ -173,6 +173,16 @@ opencv_imgproc_scharr(
     double delta,
     int32_t border);
 
+opencv_imgproc_status
+opencv_imgproc_laplacian(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t destination_depth,
+    int32_t kernel_size,
+    double scale,
+    double offset,
+    int32_t border);
+
 #ifdef __cplusplus
 }
 #endif

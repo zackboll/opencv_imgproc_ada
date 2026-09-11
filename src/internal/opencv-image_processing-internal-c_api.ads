@@ -181,6 +181,16 @@ package OpenCV.Image_Processing.Internal.C_API is
       Border            : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_scharr";
 
+   function Laplacian
+     (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Destination_Depth : Interfaces.Integer_32;
+      Kernel_Size       : Interfaces.Integer_32;
+      Scale             : Interfaces.C.double;
+      Offset            : Interfaces.C.double;
+      Border            : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_laplacian";
+
    function Last_Error_Message return String;
 
 end OpenCV.Image_Processing.Internal.C_API;
