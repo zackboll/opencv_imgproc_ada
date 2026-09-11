@@ -1,10 +1,13 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
+with Ada.Strings.Fixed;
 with Interfaces;
+with Interfaces.C.Strings;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Module_Interop;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
@@ -13,6 +16,8 @@ with OpenCV.Image_Processing;
 package body Morphology_Tests is
 
    use type Interfaces.Unsigned_8;
+   use type Interfaces.Integer_32;
+   use type Interfaces.C.Strings.chars_ptr;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Float32_Value;
@@ -22,6 +27,38 @@ package body Morphology_Tests is
 
    package Caller is new AUnit.Test_Caller (Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
+
+   type C_Status is new Interfaces.Integer_32;
+
+   C_Error_Invalid_Argument : constant C_Status := 4;
+   C_Morphology_Rectangle   : constant Interfaces.Integer_32 := 0;
+   C_Border_Constant        : constant Interfaces.Integer_32 := 0;
+
+   function C_Erode
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel_Width  : Interfaces.Integer_32;
+      Kernel_Height : Interfaces.Integer_32;
+      Shape         : Interfaces.Integer_32;
+      Iterations    : Interfaces.Integer_32;
+      Border        : Interfaces.Integer_32) return C_Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_erode";
+
+   function C_Dilate
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel_Width  : Interfaces.Integer_32;
+      Kernel_Height : Interfaces.Integer_32;
+      Shape         : Interfaces.Integer_32;
+      Iterations    : Interfaces.Integer_32;
+      Border        : Interfaces.Integer_32) return C_Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_dilate";
+
+   function C_Last_Error_Message return Interfaces.C.Strings.chars_ptr
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_last_error_message";
 
    procedure Assert_Raises_OpenCV_Error
      (Attempt : not null access procedure; Message : String)
@@ -297,25 +334,84 @@ package body Morphology_Tests is
         (Attempt'Access, "morphology must reject Wrap border");
    end Morphology_Rejects_Wrap_Border;
 
-   procedure OpenCV_Failure_Is_Translated (Test : in out Fixture) is
+   procedure C_ABI_Rejects_Nonpositive_Primitives (Test : in out Fixture) is
       pragma Unreferenced (Test);
 
       Source      : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
       Destination : OpenCV.Core.Mat;
-      procedure Attempt is
+
+      type C_Operation is (Erosion, Dilation);
+
+      procedure Check
+        (Operation     : C_Operation;
+         Kernel_Width  : Interfaces.Integer_32;
+         Kernel_Height : Interfaces.Integer_32;
+         Iterations    : Interfaces.Integer_32;
+         Diagnostic    : String)
+      is
+         Status : C_Status := 0;
+
+         procedure Input
+           (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Output
+              (Destination_Handle :
+                 OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               case Operation is
+                  when Erosion  =>
+                     Status :=
+                       C_Erode
+                         (Source_Handle,
+                          Destination_Handle,
+                          Kernel_Width,
+                          Kernel_Height,
+                          C_Morphology_Rectangle,
+                          Iterations,
+                          C_Border_Constant);
+
+                  when Dilation =>
+                     Status :=
+                       C_Dilate
+                         (Source_Handle,
+                          Destination_Handle,
+                          Kernel_Width,
+                          Kernel_Height,
+                          C_Morphology_Rectangle,
+                          Iterations,
+                          C_Border_Constant);
+               end case;
+            end Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Destination, Output'Access);
+         end Input;
       begin
-         OpenCV.Image_Processing.Erode
-           (Source,
-            Destination,
-            (Width  => OpenCV.Core.Size_Coordinate'Last,
-             Height => OpenCV.Core.Size_Coordinate'Last));
-      end Attempt;
+         OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+
+         AUnit.Assertions.Assert
+           (Status = C_Error_Invalid_Argument,
+            "malformed morphology C input must return invalid argument");
+
+         declare
+            Message : constant Interfaces.C.Strings.chars_ptr :=
+              C_Last_Error_Message;
+         begin
+            AUnit.Assertions.Assert
+              (Message /= Interfaces.C.Strings.Null_Ptr
+               and then Ada.Strings.Fixed.Index
+                          (Interfaces.C.Strings.Value (Message), Diagnostic)
+                        /= 0,
+               "malformed morphology C input must identify " & Diagnostic);
+         end;
+      end Check;
    begin
-      Assert_Raises_OpenCV_Error
-        (Attempt'Access,
-         "an OpenCV kernel-allocation failure must translate to OpenCV_Error");
-   end OpenCV_Failure_Is_Translated;
+      Check (Erosion, 0, 1, 1, "width");
+      Check (Dilation, 1, 0, 1, "height");
+      Check (Erosion, 1, 1, 0, "iterations");
+      Check (Dilation, -1, 1, 1, "width");
+   end C_ABI_Rejects_Nonpositive_Primitives;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
@@ -357,8 +453,8 @@ package body Morphology_Tests is
             Morphology_Rejects_Wrap_Border'Access));
       Result.Add_Test
         (Caller.Create
-           ("OpenCV morphology failure is translated",
-            OpenCV_Failure_Is_Translated'Access));
+           ("morphology C ABI rejects nonpositive primitive inputs",
+            C_ABI_Rejects_Nonpositive_Primitives'Access));
       return Result'Access;
    end Suite;
 

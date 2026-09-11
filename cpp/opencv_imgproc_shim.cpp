@@ -173,6 +173,22 @@ opencv_imgproc_status apply_morphology(
             return invalid_argument("invalid destination Mat");
         }
 
+        // ABI safety: reject malformed signed C dimensions before they reach
+        // cv::Size and OpenCV's kernel-allocation arithmetic.
+        if (kernel_width <= 0) {
+            return invalid_argument("morphology kernel width must be positive");
+        }
+
+        if (kernel_height <= 0) {
+            return invalid_argument("morphology kernel height must be positive");
+        }
+
+        // ABI safety: reject malformed signed C iteration counts before they
+        // reach OpenCV's repeated-operation control flow.
+        if (iterations <= 0) {
+            return invalid_argument("morphology iterations must be positive");
+        }
+
         int opencv_shape = 0;
 
         if (!to_opencv_morphology_shape(shape, opencv_shape)) {
