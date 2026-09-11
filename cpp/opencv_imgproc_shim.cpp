@@ -143,7 +143,7 @@ bool to_opencv_derivative_depth(
     }
 }
 
-bool to_opencv_derivative_kernel(int32_t kernel, int &opencv_kernel) noexcept
+bool to_opencv_sobel_kernel(int32_t kernel, int &opencv_kernel) noexcept
 {
     switch (kernel) {
     case OPENCV_IMGPROC_SOBEL_KERNEL_1:
@@ -874,7 +874,7 @@ opencv_imgproc_sobel(
         }
 
         int opencv_kernel = 0;
-        if (!to_opencv_derivative_kernel(kernel_size, opencv_kernel)) {
+        if (!to_opencv_sobel_kernel(kernel_size, opencv_kernel)) {
             return invalid_argument("unsupported Sobel kernel size");
         }
 
@@ -989,9 +989,9 @@ opencv_imgproc_laplacian(
             return invalid_argument("unsupported derivative destination depth");
         }
 
-        int opencv_kernel = 0;
-        if (!to_opencv_derivative_kernel(kernel_size, opencv_kernel)) {
-            return invalid_argument("unsupported Laplacian kernel size");
+        if (kernel_size <= 0 || kernel_size > 31 || (kernel_size % 2) == 0) {
+            return invalid_argument(
+                "Laplacian kernel size must be odd and between 1 and 31");
         }
 
         if (!std::isfinite(scale)) {
@@ -1007,7 +1007,7 @@ opencv_imgproc_laplacian(
             return invalid_argument("unsupported Laplacian border");
         }
 
-        cv::Laplacian(*src, *dst, opencv_depth, opencv_kernel, scale, offset,
+        cv::Laplacian(*src, *dst, opencv_depth, kernel_size, scale, offset,
                       opencv_border);
         return OPENCV_IMGPROC_OK;
     } catch (...) {

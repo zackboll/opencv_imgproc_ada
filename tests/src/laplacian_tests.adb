@@ -62,7 +62,7 @@ package body Laplacian_Tests is
         (Source,
          Destination,
          OpenCV.Image_Processing.Int16_Depth,
-         OpenCV.Image_Processing.Kernel_1,
+         1,
          Border => OpenCV.Core.Constant_Border);
 
       AUnit.Assertions.Assert
@@ -92,7 +92,7 @@ package body Laplacian_Tests is
         (Source,
          Destination,
          OpenCV.Image_Processing.Int16_Depth,
-         OpenCV.Image_Processing.Kernel_3,
+         3,
          Border => OpenCV.Core.Constant_Border);
 
       AUnit.Assertions.Assert
@@ -100,6 +100,52 @@ package body Laplacian_Tests is
          and then OpenCV.Core.Int16_Access.Get (Destination, 0, 0) = 20,
          "Laplacian Kernel_3 must select OpenCV's 3 by 3 aperture");
    end Kernel_3_Uses_Requested_Aperture;
+
+   procedure Kernel_9_Uses_Requested_Aperture (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (9, 9, (OpenCV.Core.UInt8, 1));
+      Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Source, (others => 0.0));
+      OpenCV.Core.UInt8_Access.Set (Source, 4, 4, 10);
+      OpenCV.Image_Processing.Laplacian
+        (Source,
+         Destination,
+         OpenCV.Image_Processing.Int16_Depth,
+         Kernel_Size => 9,
+         Border      => OpenCV.Core.Constant_Border);
+
+      AUnit.Assertions.Assert
+        (Destination.Rows = 9
+         and then Destination.Columns = 9
+         and then Destination.Depth = OpenCV.Core.Int16
+         and then OpenCV.Core.Int16_Access.Get (Destination, 4, 4) = -14_000,
+         "Laplacian Kernel_Size 9 must preserve its exact center response");
+   end Kernel_9_Uses_Requested_Aperture;
+
+   procedure Supports_In_Place_Same_Depth (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Set_To (Image, (others => 0.0));
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 10.0);
+      OpenCV.Image_Processing.Laplacian
+        (Image,
+         Image,
+         Destination_Depth => OpenCV.Image_Processing.Same_Depth,
+         Kernel_Size       => 1,
+         Border            => OpenCV.Core.Constant_Border);
+
+      AUnit.Assertions.Assert
+        (Image.Rows = 3
+         and then Image.Columns = 3
+         and then Image.Depth = OpenCV.Core.Float32
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = -40.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = 10.0,
+         "Laplacian must support direct Same_Depth in-place operation");
+   end Supports_In_Place_Same_Depth;
 
    procedure Scale_And_Offset_Are_Forwarded (Test : in out Fixture) is
       pragma Unreferenced (Test);
@@ -254,8 +300,10 @@ package body Laplacian_Tests is
             "malformed Laplacian selector must identify " & Diagnostic);
       end Check;
    begin
-      Check (C_API.Derivative_Int16, 99, "kernel");
-      Check (99, C_API.Sobel_Kernel_3, "depth");
+      Check (C_API.Derivative_Int16, 0, "kernel");
+      Check (C_API.Derivative_Int16, 2, "kernel");
+      Check (C_API.Derivative_Int16, 33, "kernel");
+      Check (99, 3, "depth");
    end C_ABI_Rejects_Malformed_Selectors;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
@@ -268,6 +316,14 @@ package body Laplacian_Tests is
         (Caller.Create
            ("Laplacian Kernel_3 uses requested aperture",
             Kernel_3_Uses_Requested_Aperture'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Laplacian Kernel_Size 9 uses requested aperture",
+            Kernel_9_Uses_Requested_Aperture'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Laplacian supports Same_Depth in-place operation",
+            Supports_In_Place_Same_Depth'Access));
       Result.Add_Test
         (Caller.Create
            ("Laplacian forwards Scale and Offset",

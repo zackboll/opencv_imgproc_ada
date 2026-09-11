@@ -13,7 +13,7 @@ package OpenCV.Image_Processing is
 
    type Sobel_Kernel_Size is (Kernel_1, Kernel_3, Kernel_5, Kernel_7);
 
-   subtype Laplacian_Kernel_Size is Sobel_Kernel_Size;
+   type Laplacian_Kernel_Size is range 1 .. 31;
 
    subtype Derivative_Order is Natural range 0 .. 7;
 
@@ -184,20 +184,22 @@ package OpenCV.Image_Processing is
    --  Laplacian computes the sum of the second X and Y derivatives for every
    --  Source channel. Source must be non-empty and two-dimensional with depth
    --  UInt8, UInt16, Int16, Float32, or Float64. Destination_Depth follows the
-   --  same source/destination combinations as Sobel. Kernel_Size is 1, 3, 5,
-   --  or 7; Kernel_1 uses OpenCV's dedicated 3 by 3 Laplacian aperture. Scale
-   --  multiplies computed values and Offset is added before storage; both must
-   --  be finite. Constant_Border, Replicate, Reflect, and Reflect_101 are
-   --  supported; Wrap is rejected. Destination is replaced with a Mat having
-   --  Source's rows, columns, and channels, and the requested depth. Source
-   --  remains unchanged. Direct in-place operation is not supported.
+   --  same source/destination combinations as Sobel. Kernel_Size must be odd
+   --  and between 1 and 31. Kernel size 1 uses OpenCV's dedicated 3 by 3
+   --  Laplacian aperture. Scale multiplies computed values and Offset is added
+   --  before storage; both must be finite. Constant_Border, Replicate,
+   --  Reflect, and Reflect_101 are supported; Wrap is rejected. Channels are
+   --  processed independently. Destination is replaced with a Mat having
+   --  Source's rows, columns, channels, and requested depth. Source remains
+   --  unchanged when distinct from Destination. Direct in-place operation is
+   --  supported when Destination_Depth is Same_Depth.
    --  Contract violations and failures reported by OpenCV raise
    --  OpenCV.OpenCV_Error.
    procedure Laplacian
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
       Destination_Depth : Derivative_Depth := Float32_Depth;
-      Kernel_Size       : Laplacian_Kernel_Size := Kernel_1;
+      Kernel_Size       : Laplacian_Kernel_Size := 1;
       Scale             : OpenCV.Core.Float64_Value := 1.0;
       Offset            : OpenCV.Core.Float64_Value := 0.0;
       Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);

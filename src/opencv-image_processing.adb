@@ -104,7 +104,7 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Derivative_Depth;
 
-   function To_C_Derivative_Kernel
+   function To_C_Sobel_Kernel
      (Kernel : Sobel_Kernel_Size) return Interfaces.Integer_32 is
    begin
       case Kernel is
@@ -120,7 +120,7 @@ package body OpenCV.Image_Processing is
          when Kernel_7 =>
             return Internal.C_API.Sobel_Kernel_7;
       end case;
-   end To_C_Derivative_Kernel;
+   end To_C_Sobel_Kernel;
 
    function To_C_Derivative_Axis
      (Axis : Derivative_Axis) return Interfaces.Integer_32 is
@@ -1045,7 +1045,7 @@ package body OpenCV.Image_Processing is
                  To_C_Derivative_Depth (Destination_Depth),
                  Interfaces.Integer_32 (X_Order),
                  Interfaces.Integer_32 (Y_Order),
-                 To_C_Derivative_Kernel (Kernel_Size),
+                 To_C_Sobel_Kernel (Kernel_Size),
                  Interfaces.C.double (Scale),
                  Interfaces.C.double (Offset),
                  To_C_Border (Border));
@@ -1110,7 +1110,7 @@ package body OpenCV.Image_Processing is
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
       Destination_Depth : Derivative_Depth := Float32_Depth;
-      Kernel_Size       : Laplacian_Kernel_Size := Kernel_1;
+      Kernel_Size       : Laplacian_Kernel_Size := 1;
       Scale             : OpenCV.Core.Float64_Value := 1.0;
       Offset            : OpenCV.Core.Float64_Value := 0.0;
       Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
@@ -1128,7 +1128,7 @@ package body OpenCV.Image_Processing is
                 (Source_Handle,
                  Destination_Handle,
                  To_C_Derivative_Depth (Destination_Depth),
-                 To_C_Derivative_Kernel (Kernel_Size),
+                 Interfaces.Integer_32 (Kernel_Size),
                  Interfaces.C.double (Scale),
                  Interfaces.C.double (Offset),
                  To_C_Border (Border));
@@ -1140,6 +1140,11 @@ package body OpenCV.Image_Processing is
    begin
       Validate_Derivative
         (Source, Destination_Depth, Scale, Offset, Border, "Laplacian");
+      if Kernel_Size mod 2 = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Laplacian kernel size must be odd and between 1 and 31");
+      end if;
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
       Raise_On_Error (Status, "Laplacian");
    end Laplacian;
