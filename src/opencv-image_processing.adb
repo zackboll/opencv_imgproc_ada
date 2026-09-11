@@ -1618,4 +1618,52 @@ package body OpenCV.Image_Processing is
       return OpenCV.Core.Float64_Value (Length);
    end Arc_Length;
 
+   function To_Public_Moments
+     (Value : Internal.C_API.C_Moments) return Moments_Result is
+   begin
+      return
+        (M_00  => OpenCV.Core.Float64_Value (Value.M00),
+         M_10  => OpenCV.Core.Float64_Value (Value.M10),
+         M_01  => OpenCV.Core.Float64_Value (Value.M01),
+         M_20  => OpenCV.Core.Float64_Value (Value.M20),
+         M_11  => OpenCV.Core.Float64_Value (Value.M11),
+         M_02  => OpenCV.Core.Float64_Value (Value.M02),
+         M_30  => OpenCV.Core.Float64_Value (Value.M30),
+         M_21  => OpenCV.Core.Float64_Value (Value.M21),
+         M_12  => OpenCV.Core.Float64_Value (Value.M12),
+         M_03  => OpenCV.Core.Float64_Value (Value.M03),
+         Mu_20 => OpenCV.Core.Float64_Value (Value.Mu20),
+         Mu_11 => OpenCV.Core.Float64_Value (Value.Mu11),
+         Mu_02 => OpenCV.Core.Float64_Value (Value.Mu02),
+         Mu_30 => OpenCV.Core.Float64_Value (Value.Mu30),
+         Mu_21 => OpenCV.Core.Float64_Value (Value.Mu21),
+         Mu_12 => OpenCV.Core.Float64_Value (Value.Mu12),
+         Mu_03 => OpenCV.Core.Float64_Value (Value.Mu03),
+         Nu_20 => OpenCV.Core.Float64_Value (Value.Nu20),
+         Nu_11 => OpenCV.Core.Float64_Value (Value.Nu11),
+         Nu_02 => OpenCV.Core.Float64_Value (Value.Nu02),
+         Nu_30 => OpenCV.Core.Float64_Value (Value.Nu30),
+         Nu_21 => OpenCV.Core.Float64_Value (Value.Nu21),
+         Nu_12 => OpenCV.Core.Float64_Value (Value.Nu12),
+         Nu_03 => OpenCV.Core.Float64_Value (Value.Nu03));
+   end To_Public_Moments;
+
+   function Compute_Moments (Points : Contour) return Moments_Result is
+      Packed : Internal.C_API.Point_I32_Array := Pack_Contour (Points);
+      Result : aliased Internal.C_API.C_Moments;
+      Status : Internal.C_API.Status;
+   begin
+      if Packed'Length = 0 then
+         Status := Internal.C_API.Contour_Moments (null, 0, Result'Access);
+      else
+         Status :=
+           Internal.C_API.Contour_Moments
+             (Packed (Packed'First)'Access,
+              Interfaces.Integer_32 (Packed'Length),
+              Result'Access);
+      end if;
+      Raise_On_Error (Status, "contour moments");
+      return To_Public_Moments (Result);
+   end Compute_Moments;
+
 end OpenCV.Image_Processing;

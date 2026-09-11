@@ -15,6 +15,35 @@ typedef struct {
     int32_t y;
 } opencv_imgproc_point_i32;
 
+typedef struct opencv_imgproc_moments {
+    double m00;
+    double m10;
+    double m01;
+    double m20;
+    double m11;
+    double m02;
+    double m30;
+    double m21;
+    double m12;
+    double m03;
+
+    double mu20;
+    double mu11;
+    double mu02;
+    double mu30;
+    double mu21;
+    double mu12;
+    double mu03;
+
+    double nu20;
+    double nu11;
+    double nu02;
+    double nu30;
+    double nu21;
+    double nu12;
+    double nu03;
+} opencv_imgproc_moments;
+
 typedef int32_t opencv_imgproc_status;
 
 #define OPENCV_IMGPROC_OK                     ((opencv_imgproc_status)0)
@@ -232,6 +261,12 @@ opencv_imgproc_arc_length(
     int32_t point_count,
     int32_t closed,
     double *out_length);
+
+opencv_imgproc_status
+opencv_imgproc_contour_moments(
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    opencv_imgproc_moments *out_moments);
 
 opencv_imgproc_status
 opencv_imgproc_sobel(

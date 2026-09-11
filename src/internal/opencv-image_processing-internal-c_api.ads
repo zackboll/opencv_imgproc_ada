@@ -1,4 +1,5 @@
 with Interfaces;
+with Interfaces.C;
 with Interfaces.C.Strings;
 with OpenCV.Core.Module_Interop;
 with System;
@@ -76,6 +77,36 @@ package OpenCV.Image_Processing.Internal.C_API is
    with Convention => C;
 
    type Point_I32_Array is array (Natural range <>) of aliased Point_I32
+   with Convention => C;
+
+   type C_Moments is record
+      M00 : Interfaces.C.double;
+      M10 : Interfaces.C.double;
+      M01 : Interfaces.C.double;
+      M20 : Interfaces.C.double;
+      M11 : Interfaces.C.double;
+      M02 : Interfaces.C.double;
+      M30 : Interfaces.C.double;
+      M21 : Interfaces.C.double;
+      M12 : Interfaces.C.double;
+      M03 : Interfaces.C.double;
+
+      Mu20 : Interfaces.C.double;
+      Mu11 : Interfaces.C.double;
+      Mu02 : Interfaces.C.double;
+      Mu30 : Interfaces.C.double;
+      Mu21 : Interfaces.C.double;
+      Mu12 : Interfaces.C.double;
+      Mu03 : Interfaces.C.double;
+
+      Nu20 : Interfaces.C.double;
+      Nu11 : Interfaces.C.double;
+      Nu02 : Interfaces.C.double;
+      Nu30 : Interfaces.C.double;
+      Nu21 : Interfaces.C.double;
+      Nu12 : Interfaces.C.double;
+      Nu03 : Interfaces.C.double;
+   end record
    with Convention => C;
 
    Derivative_Same_Depth : constant Interfaces.Integer_32 := 0;
@@ -272,6 +303,15 @@ package OpenCV.Image_Processing.Internal.C_API is
       Closed      : Interfaces.Integer_32;
       Length      : access Interfaces.C.double) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_arc_length";
+
+   function Contour_Moments
+     (Points      : access Point_I32;
+      Point_Count : Interfaces.Integer_32;
+      Result      : access C_Moments) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_contour_moments";
 
    function Sobel
      (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
