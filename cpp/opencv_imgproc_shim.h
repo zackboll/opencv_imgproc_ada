@@ -34,6 +34,12 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_MORPH_CROSS     ((int32_t)1)
 #define OPENCV_IMGPROC_MORPH_ELLIPSE   ((int32_t)2)
 
+#define OPENCV_IMGPROC_MORPH_OPEN      ((int32_t)0)
+#define OPENCV_IMGPROC_MORPH_CLOSE     ((int32_t)1)
+#define OPENCV_IMGPROC_MORPH_GRADIENT  ((int32_t)2)
+#define OPENCV_IMGPROC_MORPH_TOP_HAT   ((int32_t)3)
+#define OPENCV_IMGPROC_MORPH_BLACK_HAT ((int32_t)4)
+
 #define OPENCV_IMGPROC_CANNY_APERTURE_3 ((int32_t)0)
 #define OPENCV_IMGPROC_CANNY_APERTURE_5 ((int32_t)1)
 #define OPENCV_IMGPROC_CANNY_APERTURE_7 ((int32_t)2)
@@ -89,6 +95,17 @@ opencv_imgproc_status
 opencv_imgproc_dilate(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,
+    int32_t kernel_width,
+    int32_t kernel_height,
+    int32_t shape,
+    int32_t iterations,
+    int32_t border);
+
+opencv_imgproc_status
+opencv_imgproc_morphology_ex(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t operation,
     int32_t kernel_width,
     int32_t kernel_height,
     int32_t shape,

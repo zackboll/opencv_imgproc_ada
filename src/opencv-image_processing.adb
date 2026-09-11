@@ -134,6 +134,27 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Morphology_Shape;
 
+   function To_C_Morphology_Operation
+     (Operation : Morphology_Operation) return Interfaces.Integer_32 is
+   begin
+      case Operation is
+         when Opening   =>
+            return Internal.C_API.Morphology_Open;
+
+         when Closing   =>
+            return Internal.C_API.Morphology_Close;
+
+         when Gradient  =>
+            return Internal.C_API.Morphology_Gradient;
+
+         when Top_Hat   =>
+            return Internal.C_API.Morphology_Top_Hat;
+
+         when Black_Hat =>
+            return Internal.C_API.Morphology_Black_Hat;
+      end case;
+   end To_C_Morphology_Operation;
+
    procedure Validate_BGR_To_Gray (Source : OpenCV.Core.Mat) is
       use type OpenCV.Core.Channel_Count;
    begin
@@ -638,16 +659,16 @@ package body OpenCV.Image_Processing is
       Raise_On_Error (Status, "Gaussian blur");
    end Gaussian_Blur;
 
-   type Morphology_Operation is (Erosion, Dilation);
+   type Basic_Morphology_Operation is (Erosion, Dilation);
 
-   procedure Apply_Morphology
+   procedure Apply_Basic_Morphology
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Core.Size;
       Shape       : Morphology_Shape;
       Iterations  : Morphology_Iterations;
       Border      : OpenCV.Core.Border_Kind;
-      Operation   : Morphology_Operation)
+      Operation   : Basic_Morphology_Operation)
    is
       Status : Internal.C_API.Status := Internal.C_API.Success;
 
@@ -706,7 +727,7 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle
         (Source, Morphology_Input'Access);
       Raise_On_Error (Status, Name);
-   end Apply_Morphology;
+   end Apply_Basic_Morphology;
 
    procedure Erode
      (Source      : OpenCV.Core.Mat;
@@ -716,7 +737,7 @@ package body OpenCV.Image_Processing is
       Iterations  : Morphology_Iterations := 1;
       Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border) is
    begin
-      Apply_Morphology
+      Apply_Basic_Morphology
         (Source, Destination, Kernel_Size, Shape, Iterations, Border, Erosion);
    end Erode;
 
@@ -728,7 +749,7 @@ package body OpenCV.Image_Processing is
       Iterations  : Morphology_Iterations := 1;
       Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border) is
    begin
-      Apply_Morphology
+      Apply_Basic_Morphology
         (Source,
          Destination,
          Kernel_Size,
@@ -737,6 +758,54 @@ package body OpenCV.Image_Processing is
          Border,
          Dilation);
    end Dilate;
+
+   procedure Apply_Morphology
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Operation   : Morphology_Operation;
+      Kernel_Size : OpenCV.Core.Size;
+      Shape       : Morphology_Shape := Rectangle;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure Morphology_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Morphology_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Morphology_Ex
+                (Source_Handle,
+                 Destination_Handle,
+                 To_C_Morphology_Operation (Operation),
+                 Interfaces.Integer_32 (Kernel_Size.Width),
+                 Interfaces.Integer_32 (Kernel_Size.Height),
+                 To_C_Morphology_Shape (Shape),
+                 Interfaces.Integer_32 (Iterations),
+                 To_C_Border (Border));
+         end Morphology_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Morphology_Output'Access);
+      end Morphology_Input;
+
+      Name : constant String :=
+        (case Operation is
+           when Opening   => "Opening",
+           when Closing   => "Closing",
+           when Gradient  => "Gradient",
+           when Top_Hat   => "Top_Hat",
+           when Black_Hat => "Black_Hat");
+   begin
+      Validate_Morphology (Source, Kernel_Size, Border, Name);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Morphology_Input'Access);
+      Raise_On_Error (Status, Name);
+   end Apply_Morphology;
 
    procedure Canny_Edges
      (Source          : OpenCV.Core.Mat;

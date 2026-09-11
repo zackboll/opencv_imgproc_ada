@@ -227,6 +227,213 @@ package body Morphology_Tests is
         (Image, "0000000000001000000000000", "in-place erosion");
    end In_Place_Erosion_Is_Supported;
 
+   procedure Opening_Removes_Isolated_Foreground (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float64, 2));
+   begin
+      Set_UInt8_Image (Source, "0000101110011100111000000");
+      OpenCV.Image_Processing.Apply_Morphology
+        (Source, Destination, OpenCV.Image_Processing.Opening, (3, 3));
+
+      Assert_UInt8_Image
+        (Destination, "0000001110011100111000000", "opening result");
+      Assert_UInt8_Image
+        (Source, "0000101110011100111000000", "opening source");
+      AUnit.Assertions.Assert
+        (Destination.Rows = 5
+         and then Destination.Columns = 5
+         and then Destination.Depth = OpenCV.Core.UInt8
+         and then Destination.Channels = 1,
+         "opening must replace Destination with Source geometry and type");
+   end Opening_Removes_Isolated_Foreground;
+
+   procedure Closing_Fills_A_Dark_Hole_In_Place (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 1));
+   begin
+      Set_UInt8_Image
+        (Image,
+         "0000000"
+         & "0000000"
+         & "0011100"
+         & "0010100"
+         & "0011100"
+         & "0000000"
+         & "0000000");
+      OpenCV.Image_Processing.Apply_Morphology
+        (Image,
+         Image,
+         OpenCV.Image_Processing.Closing,
+         (Width => 3, Height => 3),
+         Border => OpenCV.Core.Replicate);
+
+      Assert_UInt8_Image
+        (Image,
+         "0000000"
+         & "0000000"
+         & "0011100"
+         & "0011100"
+         & "0011100"
+         & "0000000"
+         & "0000000",
+         "in-place closing result");
+   end Closing_Fills_A_Dark_Hole_In_Place;
+
+   procedure Gradient_Produces_The_Exact_Boundary (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 1));
+      Destination : OpenCV.Core.Mat;
+   begin
+      Set_UInt8_Image
+        (Source,
+         "0000000"
+         & "0000000"
+         & "0011100"
+         & "0011100"
+         & "0011100"
+         & "0000000"
+         & "0000000");
+      OpenCV.Image_Processing.Apply_Morphology
+        (Source,
+         Destination,
+         OpenCV.Image_Processing.Gradient,
+         (Width => 3, Height => 3));
+
+      Assert_UInt8_Image
+        (Destination,
+         "0000000"
+         & "0111110"
+         & "0111110"
+         & "0110110"
+         & "0111110"
+         & "0111110"
+         & "0000000",
+         "gradient result");
+   end Gradient_Produces_The_Exact_Boundary;
+
+   procedure Top_Hat_Extracts_A_Bright_Feature (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Destination : OpenCV.Core.Mat;
+   begin
+      Set_UInt8_Image (Source, "0000101110011100111000000");
+      OpenCV.Image_Processing.Apply_Morphology
+        (Source,
+         Destination,
+         OpenCV.Image_Processing.Top_Hat,
+         (Width => 3, Height => 3));
+
+      Assert_UInt8_Image
+        (Destination, "0000100000000000000000000", "top hat result");
+   end Top_Hat_Extracts_A_Bright_Feature;
+
+   procedure Black_Hat_Extracts_A_Dark_Feature (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 1));
+      Destination : OpenCV.Core.Mat;
+   begin
+      Set_UInt8_Image
+        (Source,
+         "0000000"
+         & "0000000"
+         & "0011100"
+         & "0010100"
+         & "0011100"
+         & "0000000"
+         & "0000000");
+      OpenCV.Image_Processing.Apply_Morphology
+        (Source,
+         Destination,
+         OpenCV.Image_Processing.Black_Hat,
+         (Width => 3, Height => 3));
+
+      Assert_UInt8_Image
+        (Destination,
+         "0000000"
+         & "0000000"
+         & "0000000"
+         & "0001000"
+         & "0000000"
+         & "0000000"
+         & "0000000",
+         "black hat result");
+   end Black_Hat_Extracts_A_Dark_Feature;
+
+   procedure Gradient_Processes_Cross_Channels_Independently
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 3));
+      Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Source, (others => 0.0));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 1, 1, (10, 20, 30));
+      OpenCV.Image_Processing.Apply_Morphology
+        (Source,
+         Destination,
+         OpenCV.Image_Processing.Gradient,
+         (Width => 3, Height => 3),
+         OpenCV.Image_Processing.Cross,
+         Border => OpenCV.Core.Reflect);
+
+      AUnit.Assertions.Assert
+        (Destination.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 0, 1)
+                  = (10, 20, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 1, 0)
+                  = (10, 20, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 1, 1)
+                  = (10, 20, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 1, 2)
+                  = (10, 20, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 2, 1)
+                  = (10, 20, 30),
+         "gradient must process each channel with a cross footprint");
+   end Gradient_Processes_Cross_Channels_Independently;
+
+   procedure Top_Hat_Accepts_Float32_Even_Kernel_And_Iterations
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.Float32, 1));
+      Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Source, (others => 0.0));
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 8.0);
+      OpenCV.Image_Processing.Apply_Morphology
+        (Source,
+         Destination,
+         OpenCV.Image_Processing.Top_Hat,
+         (Width => 2, Height => 1),
+         Iterations => 2,
+         Border     => OpenCV.Core.Reflect_101);
+
+      AUnit.Assertions.Assert
+        (Destination.Depth = OpenCV.Core.Float32
+         and then Destination.Rows = 1
+         and then Destination.Columns = 5
+         and then OpenCV.Core.Float32_Access.Get (Destination, 0, 2) = 8.0
+         and then OpenCV.Core.Float32_Access.Get (Destination, 0, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 0, 2) = 8.0,
+         "top hat must accept Float32, even kernels, and multiple iterations");
+   end Top_Hat_Accepts_Float32_Even_Kernel_And_Iterations;
+
    procedure Morphology_Rejects_Invalid_Sources (Test : in out Fixture) is
       pragma Unreferenced (Test);
 
@@ -305,6 +512,26 @@ package body Morphology_Tests is
         (Attempt'Access, "morphology must reject Wrap border");
    end Morphology_Rejects_Wrap_Border;
 
+   procedure Apply_Morphology_Rejects_Wrap_Border (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+
+      Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Destination : OpenCV.Core.Mat;
+      procedure Attempt is
+      begin
+         OpenCV.Image_Processing.Apply_Morphology
+           (Source,
+            Destination,
+            OpenCV.Image_Processing.Opening,
+            (Width => 1, Height => 1),
+            Border => OpenCV.Core.Wrap);
+      end Attempt;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Attempt'Access, "Apply_Morphology must reject Wrap border");
+   end Apply_Morphology_Rejects_Wrap_Border;
+
    procedure C_ABI_Rejects_Nonpositive_Primitives (Test : in out Fixture) is
       pragma Unreferenced (Test);
 
@@ -380,6 +607,48 @@ package body Morphology_Tests is
       Check (Dilation, -1, 1, 1, "width");
    end C_ABI_Rejects_Nonpositive_Primitives;
 
+   procedure C_ABI_Rejects_Malformed_Morphology_Operation
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Destination : OpenCV.Core.Mat;
+      Status      : C_API.Status := C_API.Success;
+
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              C_API.Morphology_Ex
+                (Source_Handle,
+                 Destination_Handle,
+                 99,
+                 1,
+                 1,
+                 C_API.Morphology_Rectangle,
+                 1,
+                 C_API.Border_Constant);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Error_Invalid_Argument,
+         "malformed morphology operation must return invalid argument");
+      AUnit.Assertions.Assert
+        (Ada.Strings.Fixed.Index (C_API.Last_Error_Message, "operation") /= 0,
+         "malformed morphology operation must identify operation");
+   end C_ABI_Rejects_Malformed_Morphology_Operation;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
       Result.Add_Test
@@ -408,6 +677,34 @@ package body Morphology_Tests is
             In_Place_Erosion_Is_Supported'Access));
       Result.Add_Test
         (Caller.Create
+           ("opening removes isolated foreground",
+            Opening_Removes_Isolated_Foreground'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("closing fills a dark hole in place",
+            Closing_Fills_A_Dark_Hole_In_Place'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("gradient produces the exact boundary",
+            Gradient_Produces_The_Exact_Boundary'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("top hat extracts a bright feature",
+            Top_Hat_Extracts_A_Bright_Feature'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("black hat extracts a dark feature",
+            Black_Hat_Extracts_A_Dark_Feature'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("gradient processes cross channels independently",
+            Gradient_Processes_Cross_Channels_Independently'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("top hat accepts Float32 even kernel and iterations",
+            Top_Hat_Accepts_Float32_Even_Kernel_And_Iterations'Access));
+      Result.Add_Test
+        (Caller.Create
            ("morphology rejects invalid sources",
             Morphology_Rejects_Invalid_Sources'Access));
       Result.Add_Test
@@ -420,8 +717,16 @@ package body Morphology_Tests is
             Morphology_Rejects_Wrap_Border'Access));
       Result.Add_Test
         (Caller.Create
+           ("Apply_Morphology rejects Wrap border",
+            Apply_Morphology_Rejects_Wrap_Border'Access));
+      Result.Add_Test
+        (Caller.Create
            ("morphology C ABI rejects nonpositive primitive inputs",
             C_ABI_Rejects_Nonpositive_Primitives'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("morphology C ABI rejects malformed operation",
+            C_ABI_Rejects_Malformed_Morphology_Operation'Access));
       return Result'Access;
    end Suite;
 

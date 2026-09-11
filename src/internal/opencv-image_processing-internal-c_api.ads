@@ -29,6 +29,12 @@ package OpenCV.Image_Processing.Internal.C_API is
    Morphology_Cross     : constant Interfaces.Integer_32 := 1;
    Morphology_Ellipse   : constant Interfaces.Integer_32 := 2;
 
+   Morphology_Open      : constant Interfaces.Integer_32 := 0;
+   Morphology_Close     : constant Interfaces.Integer_32 := 1;
+   Morphology_Gradient  : constant Interfaces.Integer_32 := 2;
+   Morphology_Top_Hat   : constant Interfaces.Integer_32 := 3;
+   Morphology_Black_Hat : constant Interfaces.Integer_32 := 4;
+
    Canny_Aperture_3 : constant Interfaces.Integer_32 := 0;
    Canny_Aperture_5 : constant Interfaces.Integer_32 := 1;
    Canny_Aperture_7 : constant Interfaces.Integer_32 := 2;
@@ -96,6 +102,20 @@ package OpenCV.Image_Processing.Internal.C_API is
       Iterations    : Interfaces.Integer_32;
       Border        : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_dilate";
+
+   function Morphology_Ex
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Operation     : Interfaces.Integer_32;
+      Kernel_Width  : Interfaces.Integer_32;
+      Kernel_Height : Interfaces.Integer_32;
+      Shape         : Interfaces.Integer_32;
+      Iterations    : Interfaces.Integer_32;
+      Border        : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_morphology_ex";
 
    function Canny
      (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;

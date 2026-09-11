@@ -18,6 +18,9 @@ package OpenCV.Image_Processing is
 
    type Morphology_Shape is (Rectangle, Cross, Ellipse);
 
+   type Morphology_Operation is
+     (Opening, Closing, Gradient, Top_Hat, Black_Hat);
+
    subtype Morphology_Iterations is Positive range 1 .. 2_147_483_647;
 
    --  BGR_To_Gray converts a non-empty, two-dimensional, three-channel BGR
@@ -87,6 +90,26 @@ package OpenCV.Image_Processing is
    procedure Dilate
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Shape       : Morphology_Shape := Rectangle;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
+
+   --  Apply_Morphology performs Opening, Closing, Gradient, Top_Hat, or
+   --  Black_Hat with a temporary structuring element of Kernel_Size and Shape.
+   --  Source must be a non-empty two-dimensional Mat of depth UInt8, UInt16,
+   --  Int16, Float32, or Float64; channels are processed independently. Kernel
+   --  dimensions must be positive, but need not be odd, and Iterations is at
+   --  least one. Constant_Border, Replicate, Reflect, and Reflect_101 are
+   --  supported; Wrap is rejected. Constant_Border uses OpenCV's morphology
+   --  default border value. Destination receives Source's geometry and element
+   --  type. Source remains unchanged unless it is also Destination, which is
+   --  supported in-place. Contract violations and OpenCV failures raise
+   --  OpenCV.OpenCV_Error.
+   procedure Apply_Morphology
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Operation   : Morphology_Operation;
       Kernel_Size : OpenCV.Core.Size;
       Shape       : Morphology_Shape := Rectangle;
       Iterations  : Morphology_Iterations := 1;
