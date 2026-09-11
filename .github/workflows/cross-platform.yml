@@ -243,7 +243,54 @@ jobs:
           alr exec -- sh -c 'ls -l /mingw64/bin/g++.exe && /mingw64/bin/g++.exe --version'
 
       - name: Build Imgproc with Core bridge
-        run: alr -n build
+        run: |
+          set -eu
+          log="${RUNNER_TEMP:-$PWD}/opencv-imgproc-windows-root-build.log"
+          if ! alr -n build -- -v >"${log}" 2>&1; then
+            cat "${log}"
+            exit 1
+          fi
+          cat "${log}"
+          grep -F 'Building External_Relocatable OpenCV Imgproc shim' "${log}"
+
+      - name: Verify Imgproc Windows shim isolation
+        run: |
+          set -eu
+          test -f lib/libopencv_imgproc_shim.dll
+          test -f lib/libopencv_imgproc_shim.dll.a
+          test -f obj/shim/external/opencv_imgproc_shim.o
+          test ! -f lib/libopencv_imgproc_shim.a
+
+          cat config/opencv_imgproc_install.gpr
+          grep -F 'Shim_Build : Shim_Build_Kind := "External_Relocatable";' config/opencv_imgproc_install.gpr
+          cxx_driver=$(sed -n 's/.*Cxx_Driver := "\(.*\)";/\1/p' config/opencv_imgproc_install.gpr)
+          case "${cxx_driver}" in
+            *gnat_native*)
+              echo "error: generated configuration selected GNAT g++: ${cxx_driver}" >&2
+              exit 1
+              ;;
+            *mingw64*g++*)
+              ;;
+            *)
+              echo "error: expected MSYS2 MinGW64 g++, got: ${cxx_driver}" >&2
+              exit 1
+              ;;
+          esac
+
+          for setting in OpenCV_Imgproc_Link_Option OpenCV_Core_Link_Option Core_Shim_Link_Option; do
+            import_library=$(sed -n "s/.*${setting} := \"\\(.*\\)\";/\\1/p" config/opencv_imgproc_install.gpr)
+            if [ ! -f "${import_library}" ]; then
+              echo "error: ${setting} does not name an existing import library: ${import_library}" >&2
+              exit 1
+            fi
+          done
+
+          dump=x86_64-w64-mingw32-objdump
+          deps=$(alr exec -- "${dump}" -p lib/libopencv_imgproc_shim.dll | grep -i 'DLL Name' || true)
+          echo "${deps}"
+          printf '%s\n' "${deps}" | grep -qi 'libopencv_imgproc'
+          printf '%s\n' "${deps}" | grep -qi 'libopencv_core-'
+          printf '%s\n' "${deps}" | grep -qi 'libopencv_core_shim.dll'
 
       - name: Run Imgproc tests
-        run: alr -n -C tests run
+        run: PATH="$PWD/lib:$PWD/../core/lib:/mingw64/bin:$PATH" alr -n -C tests run

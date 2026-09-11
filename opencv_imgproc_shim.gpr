@@ -18,6 +18,11 @@ project OpenCV_Imgproc_Shim is
          for Library_Kind use "static-pic";
       when "Relocatable" =>
          for Library_Kind use "relocatable";
+      when "External_Relocatable" =>
+         for Externally_Built use "True";
+         for Languages use ();
+         for Source_Dirs use ();
+         for Library_Kind use "relocatable";
    end case;
 
    Common_Cxx_Switches :=
@@ -61,7 +66,7 @@ project OpenCV_Imgproc_Shim is
             OpenCV_Imgproc_Install.Library_Search_Switch,
             OpenCV_Imgproc_Install.OpenCV_Imgproc_Link_Option,
             OpenCV_Imgproc_Install.OpenCV_Core_Link_Option);
-      when "Static_PIC" =>
+      when "Static_PIC" | "External_Relocatable" =>
          null;
    end case;
 
@@ -74,6 +79,8 @@ project OpenCV_Imgproc_Shim is
                OpenCV_Imgproc_Install.Cxx_Runtime_Switch);
          when "Relocatable" =>
             for Driver use OpenCV_Imgproc_Install.Cxx_Driver;
+         when "External_Relocatable" =>
+            null;
       end case;
    end Linker;
 
