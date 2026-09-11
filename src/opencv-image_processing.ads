@@ -11,6 +11,15 @@ package OpenCV.Image_Processing is
 
    type Canny_Gradient_Norm is (L1_Norm, L2_Norm);
 
+   type Sobel_Kernel_Size is (Kernel_1, Kernel_3, Kernel_5, Kernel_7);
+
+   subtype Derivative_Order is Natural range 0 .. 7;
+
+   type Derivative_Axis is (X_Axis, Y_Axis);
+
+   type Derivative_Depth is
+     (Same_Depth, Int16_Depth, Float32_Depth, Float64_Depth);
+
    type Threshold_Mode is
      (Binary, Binary_Inverse, Truncate, To_Zero, To_Zero_Inverse);
 
@@ -127,6 +136,48 @@ package OpenCV.Image_Processing is
       Upper_Threshold : OpenCV.Core.Float64_Value;
       Aperture        : Canny_Aperture := Sobel_3x3;
       Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
+
+   --  Sobel computes the X_Order/Y_Order spatial derivative independently for
+   --  every Source channel. Source must be a non-empty two-dimensional UInt8,
+   --  UInt16, Int16, Float32, or Float64 Mat. X_Order and Y_Order may not both
+   --  be zero; each order must be less than Kernel_Size, except Kernel_1 uses
+   --  OpenCV's special effective three-tap derivative kernel. Wrap is not
+   --  supported. Scale and OpenCV's delta term (Offset) must be finite.
+   --  Destination has Source's rows,
+   --  columns, and channel count, with depth selected by Destination_Depth:
+   --  UInt8 supports Same_Depth, Int16_Depth, Float32_Depth, and
+   --  Float64_Depth.
+   --  UInt16 and Int16 support Same_Depth, Float32_Depth, and Float64_Depth.
+   --  Float32 supports Same_Depth or Float32_Depth; Float64 supports
+   --  Same_Depth or Float64_Depth. OpenCV supports direct in-place use when
+   --  Destination_Depth is Same_Depth; Source remains unchanged otherwise.
+   --  Contract
+   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   procedure Sobel
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      X_Order           : Derivative_Order;
+      Y_Order           : Derivative_Order;
+      Destination_Depth : Derivative_Depth := Float32_Depth;
+      Kernel_Size       : Sobel_Kernel_Size := Kernel_3;
+      Scale             : OpenCV.Core.Float64_Value := 1.0;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  Scharr computes the first spatial derivative in Axis independently for
+   --  every Source channel. Its source, destination-depth, Scale, Delta, and
+   --  Border requirements are the same as Sobel's. OpenCV supports direct
+   --  in-place use when Destination_Depth is Same_Depth; Source remains
+   --  unchanged otherwise. Contract violations and failures reported by OpenCV raise
+   --  OpenCV.OpenCV_Error.
+   procedure Scharr
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Axis              : Derivative_Axis;
+      Destination_Depth : Derivative_Depth := Float32_Depth;
+      Scale             : OpenCV.Core.Float64_Value := 1.0;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
 
    --  Applies a fixed threshold independently to every channel of Source.
    --  Source must be non-empty, two-dimensional, and UInt8, UInt16, Int16,

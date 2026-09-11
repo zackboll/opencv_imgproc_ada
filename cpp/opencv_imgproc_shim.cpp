@@ -4,6 +4,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include <cstdio>
+#include <cmath>
 #include <exception>
 
 namespace {
@@ -118,6 +119,79 @@ bool to_opencv_border(int32_t border, int &opencv_border) noexcept
     default:
         return false;
     }
+}
+
+bool to_opencv_derivative_depth(
+    int32_t depth,
+    int &opencv_depth) noexcept
+{
+    switch (depth) {
+    case OPENCV_IMGPROC_DERIVATIVE_SAME_DEPTH:
+        opencv_depth = -1;
+        return true;
+    case OPENCV_IMGPROC_DERIVATIVE_INT16:
+        opencv_depth = CV_16S;
+        return true;
+    case OPENCV_IMGPROC_DERIVATIVE_FLOAT32:
+        opencv_depth = CV_32F;
+        return true;
+    case OPENCV_IMGPROC_DERIVATIVE_FLOAT64:
+        opencv_depth = CV_64F;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_sobel_kernel(int32_t kernel, int &opencv_kernel) noexcept
+{
+    switch (kernel) {
+    case OPENCV_IMGPROC_SOBEL_KERNEL_1:
+        opencv_kernel = 1;
+        return true;
+    case OPENCV_IMGPROC_SOBEL_KERNEL_3:
+        opencv_kernel = 3;
+        return true;
+    case OPENCV_IMGPROC_SOBEL_KERNEL_5:
+        opencv_kernel = 5;
+        return true;
+    case OPENCV_IMGPROC_SOBEL_KERNEL_7:
+        opencv_kernel = 7;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_derivative_axis(
+    int32_t axis,
+    int &dx,
+    int &dy) noexcept
+{
+    switch (axis) {
+    case OPENCV_IMGPROC_DERIVATIVE_X:
+        dx = 1;
+        dy = 0;
+        return true;
+    case OPENCV_IMGPROC_DERIVATIVE_Y:
+        dx = 0;
+        dy = 1;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool valid_sobel_orders(
+    int32_t x_order,
+    int32_t y_order,
+    int kernel_size) noexcept
+{
+    const int effective_kernel_size = kernel_size == 1 ? 3 : kernel_size;
+    return x_order >= 0 && y_order >= 0
+        && (x_order != 0 || y_order != 0)
+        && x_order < effective_kernel_size
+        && y_order < effective_kernel_size;
 }
 
 bool to_opencv_morphology_shape(int32_t shape, int &opencv_shape) noexcept
@@ -758,6 +832,124 @@ opencv_imgproc_automatic_threshold(
         const double computed = cv::threshold(
             *src, *dst, 0.0, maximum_value, opencv_mode | opencv_method);
         *computed_threshold = computed;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_sobel(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t destination_depth,
+    int32_t x_order,
+    int32_t y_order,
+    int32_t kernel_size,
+    double scale,
+    double delta,
+    int32_t border)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        int opencv_depth = 0;
+        if (!to_opencv_derivative_depth(destination_depth, opencv_depth)) {
+            return invalid_argument("unsupported derivative destination depth");
+        }
+
+        int opencv_kernel = 0;
+        if (!to_opencv_sobel_kernel(kernel_size, opencv_kernel)) {
+            return invalid_argument("unsupported Sobel kernel size");
+        }
+
+        // ABI safety: prevents malformed signed orders from reaching OpenCV's
+        // derivative-kernel construction and its signed index arithmetic.
+        if (!valid_sobel_orders(x_order, y_order, opencv_kernel)) {
+            return invalid_argument("invalid Sobel derivative orders for kernel size");
+        }
+
+        if (!std::isfinite(scale) || !std::isfinite(delta)) {
+            return invalid_argument("Sobel scale and delta must be finite");
+        }
+
+        int opencv_border = 0;
+        if (!to_opencv_border(border, opencv_border)) {
+            return invalid_argument("unsupported Sobel border");
+        }
+
+        cv::Sobel(*src, *dst, opencv_depth, x_order, y_order, opencv_kernel,
+                  scale, delta, opencv_border);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_scharr(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t destination_depth,
+    int32_t axis,
+    double scale,
+    double delta,
+    int32_t border)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        int opencv_depth = 0;
+        if (!to_opencv_derivative_depth(destination_depth, opencv_depth)) {
+            return invalid_argument("unsupported derivative destination depth");
+        }
+
+        int dx = 0;
+        int dy = 0;
+        if (!to_opencv_derivative_axis(axis, dx, dy)) {
+            return invalid_argument("unsupported Scharr derivative axis");
+        }
+
+        if (!std::isfinite(scale) || !std::isfinite(delta)) {
+            return invalid_argument("Scharr scale and delta must be finite");
+        }
+
+        int opencv_border = 0;
+        if (!to_opencv_border(border, opencv_border)) {
+            return invalid_argument("unsupported Scharr border");
+        }
+
+        cv::Scharr(*src, *dst, opencv_depth, dx, dy, scale, delta, opencv_border);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

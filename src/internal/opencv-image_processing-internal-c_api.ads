@@ -51,6 +51,19 @@ package OpenCV.Image_Processing.Internal.C_API is
    Automatic_Threshold_Otsu     : constant Interfaces.Integer_32 := 0;
    Automatic_Threshold_Triangle : constant Interfaces.Integer_32 := 1;
 
+   Derivative_Same_Depth : constant Interfaces.Integer_32 := 0;
+   Derivative_Int16      : constant Interfaces.Integer_32 := 1;
+   Derivative_Float32    : constant Interfaces.Integer_32 := 2;
+   Derivative_Float64    : constant Interfaces.Integer_32 := 3;
+
+   Sobel_Kernel_1 : constant Interfaces.Integer_32 := 1;
+   Sobel_Kernel_3 : constant Interfaces.Integer_32 := 3;
+   Sobel_Kernel_5 : constant Interfaces.Integer_32 := 5;
+   Sobel_Kernel_7 : constant Interfaces.Integer_32 := 7;
+
+   Derivative_X : constant Interfaces.Integer_32 := 0;
+   Derivative_Y : constant Interfaces.Integer_32 := 1;
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -145,6 +158,28 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_automatic_threshold";
+
+   function Sobel
+     (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Destination_Depth : Interfaces.Integer_32;
+      X_Order           : Interfaces.Integer_32;
+      Y_Order           : Interfaces.Integer_32;
+      Kernel_Size       : Interfaces.Integer_32;
+      Scale             : Interfaces.C.double;
+      Offset            : Interfaces.C.double;
+      Border            : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_sobel";
+
+   function Scharr
+     (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Destination_Depth : Interfaces.Integer_32;
+      Axis              : Interfaces.Integer_32;
+      Scale             : Interfaces.C.double;
+      Offset            : Interfaces.C.double;
+      Border            : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_scharr";
 
    function Last_Error_Message return String;
 

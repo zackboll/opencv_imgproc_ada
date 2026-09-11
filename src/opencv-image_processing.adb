@@ -86,6 +86,54 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Canny_Gradient_Norm;
 
+   function To_C_Derivative_Depth
+     (Depth : Derivative_Depth) return Interfaces.Integer_32 is
+   begin
+      case Depth is
+         when Same_Depth    =>
+            return Internal.C_API.Derivative_Same_Depth;
+
+         when Int16_Depth   =>
+            return Internal.C_API.Derivative_Int16;
+
+         when Float32_Depth =>
+            return Internal.C_API.Derivative_Float32;
+
+         when Float64_Depth =>
+            return Internal.C_API.Derivative_Float64;
+      end case;
+   end To_C_Derivative_Depth;
+
+   function To_C_Sobel_Kernel
+     (Kernel : Sobel_Kernel_Size) return Interfaces.Integer_32 is
+   begin
+      case Kernel is
+         when Kernel_1 =>
+            return Internal.C_API.Sobel_Kernel_1;
+
+         when Kernel_3 =>
+            return Internal.C_API.Sobel_Kernel_3;
+
+         when Kernel_5 =>
+            return Internal.C_API.Sobel_Kernel_5;
+
+         when Kernel_7 =>
+            return Internal.C_API.Sobel_Kernel_7;
+      end case;
+   end To_C_Sobel_Kernel;
+
+   function To_C_Derivative_Axis
+     (Axis : Derivative_Axis) return Interfaces.Integer_32 is
+   begin
+      case Axis is
+         when X_Axis =>
+            return Internal.C_API.Derivative_X;
+
+         when Y_Axis =>
+            return Internal.C_API.Derivative_Y;
+      end case;
+   end To_C_Derivative_Axis;
+
    function To_C_Threshold_Mode
      (Mode : Threshold_Mode) return Interfaces.Integer_32 is
    begin
@@ -432,6 +480,131 @@ package body OpenCV.Image_Processing is
             & " threshold");
       end if;
    end Validate_Canny;
+
+   procedure Validate_Derivative
+     (Source            : OpenCV.Core.Mat;
+      Destination_Depth : Derivative_Depth;
+      Scale             : OpenCV.Core.Float64_Value;
+      Offset            : OpenCV.Core.Float64_Value;
+      Border            : OpenCV.Core.Border_Kind;
+      Operation         : String)
+   is
+      use type OpenCV.Core.Border_Kind;
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a non-empty source Mat");
+      elsif Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a two-dimensional source Mat");
+      elsif Scale /= Scale
+        or else Scale > OpenCV.Core.Float64_Value'Last
+        or else Scale < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a finite scale");
+      elsif Offset /= Offset
+        or else Offset > OpenCV.Core.Float64_Value'Last
+        or else Offset < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a finite delta");
+      elsif Border = OpenCV.Core.Wrap then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " does not support Wrap border");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8                      =>
+            null;
+
+         when OpenCV.Core.UInt16 | OpenCV.Core.Int16 =>
+            if Destination_Depth = Int16_Depth then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  Operation
+                  & " does not support Int16 destination depth for "
+                  & "UInt16 or Int16 source Mats");
+            end if;
+
+         when OpenCV.Core.Float32                    =>
+            if Destination_Depth = Int16_Depth
+              or else Destination_Depth = Float64_Depth
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  Operation
+                  & " supports only Same_Depth or Float32_Depth for "
+                  & "Float32 source Mats");
+            end if;
+
+         when OpenCV.Core.Float64                    =>
+            if Destination_Depth = Int16_Depth
+              or else Destination_Depth = Float32_Depth
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  Operation
+                  & " supports only Same_Depth or Float64_Depth for "
+                  & "Float64 source Mats");
+            end if;
+
+         when others                                 =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               Operation
+               & " requires a UInt8, UInt16, Int16, Float32, or "
+               & "Float64 source Mat");
+      end case;
+   end Validate_Derivative;
+
+   procedure Validate_Sobel
+     (Source            : OpenCV.Core.Mat;
+      X_Order           : Derivative_Order;
+      Y_Order           : Derivative_Order;
+      Destination_Depth : Derivative_Depth;
+      Kernel_Size       : Sobel_Kernel_Size;
+      Scale             : OpenCV.Core.Float64_Value;
+      Offset            : OpenCV.Core.Float64_Value;
+      Border            : OpenCV.Core.Border_Kind)
+   is
+      Effective_Kernel_Size : Derivative_Order;
+   begin
+      Validate_Derivative
+        (Source, Destination_Depth, Scale, Offset, Border, "Sobel");
+
+      if X_Order = 0 and then Y_Order = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sobel requires a nonzero X_Order or Y_Order");
+      end if;
+
+      case Kernel_Size is
+         when Kernel_1 | Kernel_3 =>
+            Effective_Kernel_Size := 3;
+
+         when Kernel_5            =>
+            Effective_Kernel_Size := 5;
+
+         when Kernel_7            =>
+            Effective_Kernel_Size := 7;
+      end case;
+
+      if X_Order >= Effective_Kernel_Size
+        or else Y_Order >= Effective_Kernel_Size
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sobel derivative orders must be less than the effective "
+            & "kernel size");
+      end if;
+   end Validate_Sobel;
 
    procedure Validate_Threshold
      (Source                         : OpenCV.Core.Mat;
@@ -845,6 +1018,93 @@ package body OpenCV.Image_Processing is
         (Source, Canny_Input'Access);
       Raise_On_Error (Status, "Canny edge detection");
    end Canny_Edges;
+
+   procedure Sobel
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      X_Order           : Derivative_Order;
+      Y_Order           : Derivative_Order;
+      Destination_Depth : Derivative_Depth := Float32_Depth;
+      Kernel_Size       : Sobel_Kernel_Size := Kernel_3;
+      Scale             : OpenCV.Core.Float64_Value := 1.0;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Sobel
+                (Source_Handle,
+                 Destination_Handle,
+                 To_C_Derivative_Depth (Destination_Depth),
+                 Interfaces.Integer_32 (X_Order),
+                 Interfaces.Integer_32 (Y_Order),
+                 To_C_Sobel_Kernel (Kernel_Size),
+                 Interfaces.C.double (Scale),
+                 Interfaces.C.double (Offset),
+                 To_C_Border (Border));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Sobel
+        (Source,
+         X_Order,
+         Y_Order,
+         Destination_Depth,
+         Kernel_Size,
+         Scale,
+         Offset,
+         Border);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Sobel");
+   end Sobel;
+
+   procedure Scharr
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Axis              : Derivative_Axis;
+      Destination_Depth : Derivative_Depth := Float32_Depth;
+      Scale             : OpenCV.Core.Float64_Value := 1.0;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Scharr
+                (Source_Handle,
+                 Destination_Handle,
+                 To_C_Derivative_Depth (Destination_Depth),
+                 To_C_Derivative_Axis (Axis),
+                 Interfaces.C.double (Scale),
+                 Interfaces.C.double (Offset),
+                 To_C_Border (Border));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Derivative
+        (Source, Destination_Depth, Scale, Offset, Border, "Scharr");
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Scharr");
+   end Scharr;
 
    procedure Apply_Threshold
      (Source          : OpenCV.Core.Mat;

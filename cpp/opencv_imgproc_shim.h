@@ -56,6 +56,19 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_AUTO_THRESHOLD_OTSU     ((int32_t)0)
 #define OPENCV_IMGPROC_AUTO_THRESHOLD_TRIANGLE ((int32_t)1)
 
+#define OPENCV_IMGPROC_DERIVATIVE_SAME_DEPTH ((int32_t)0)
+#define OPENCV_IMGPROC_DERIVATIVE_INT16      ((int32_t)1)
+#define OPENCV_IMGPROC_DERIVATIVE_FLOAT32    ((int32_t)2)
+#define OPENCV_IMGPROC_DERIVATIVE_FLOAT64    ((int32_t)3)
+
+#define OPENCV_IMGPROC_SOBEL_KERNEL_1 ((int32_t)1)
+#define OPENCV_IMGPROC_SOBEL_KERNEL_3 ((int32_t)3)
+#define OPENCV_IMGPROC_SOBEL_KERNEL_5 ((int32_t)5)
+#define OPENCV_IMGPROC_SOBEL_KERNEL_7 ((int32_t)7)
+
+#define OPENCV_IMGPROC_DERIVATIVE_X ((int32_t)0)
+#define OPENCV_IMGPROC_DERIVATIVE_Y ((int32_t)1)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -137,6 +150,28 @@ opencv_imgproc_automatic_threshold(
     int32_t method,
     int32_t mode,
     double *computed_threshold);
+
+opencv_imgproc_status
+opencv_imgproc_sobel(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t destination_depth,
+    int32_t x_order,
+    int32_t y_order,
+    int32_t kernel_size,
+    double scale,
+    double delta,
+    int32_t border);
+
+opencv_imgproc_status
+opencv_imgproc_scharr(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t destination_depth,
+    int32_t axis,
+    double scale,
+    double delta,
+    int32_t border);
 
 #ifdef __cplusplus
 }
