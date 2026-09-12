@@ -427,6 +427,65 @@ package body OpenCV.Image_Processing is
       end case;
    end Validate_Gaussian_Blur;
 
+   procedure Validate_Median_Blur
+     (Source : OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size)
+   is
+      use type OpenCV.Core.Channel_Count;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Median_Blur requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Median_Blur requires a two-dimensional source Mat");
+      end if;
+
+      if Source.Channels /= 1
+        and then Source.Channels /= 3
+        and then Source.Channels /= 4
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Median_Blur requires a source Mat with 1, 3, or 4 channels");
+      end if;
+
+      if Kernel_Size mod 2 = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Median_Blur requires an odd kernel size");
+      end if;
+
+      if Kernel_Size = 3 or else Kernel_Size = 5 then
+         case Source.Depth is
+            when OpenCV.Core.UInt8 | OpenCV.Core.UInt16 | OpenCV.Core.Float32
+            =>
+               null;
+
+            when others
+            =>
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Median_Blur kernel sizes 3 and 5 require a UInt8,"
+                  & " UInt16, or Float32 source Mat");
+         end case;
+      else
+         case Source.Depth is
+            when OpenCV.Core.UInt8 =>
+               null;
+
+            when others            =>
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Median_Blur kernel sizes greater than 5 require a"
+                  & " UInt8 source Mat");
+         end case;
+      end if;
+   end Validate_Median_Blur;
+
    procedure Validate_Morphology
      (Source      : OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Core.Size;
@@ -978,6 +1037,38 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Blur_Input'Access);
       Raise_On_Error (Status, "Gaussian blur");
    end Gaussian_Blur;
+
+   procedure Median_Blur
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : Median_Kernel_Size)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Blur_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Blur_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Median_Blur
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.Integer_32 (Kernel_Size));
+         end Blur_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Blur_Output'Access);
+      end Blur_Input;
+   begin
+      Validate_Median_Blur (Source, Kernel_Size);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Blur_Input'Access);
+      Raise_On_Error (Status, "median blur");
+   end Median_Blur;
 
    type Basic_Morphology_Operation is (Erosion, Dilation);
 

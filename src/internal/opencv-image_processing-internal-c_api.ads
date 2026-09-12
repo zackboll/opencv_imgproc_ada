@@ -124,6 +124,12 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_gaussian_blur";
 
+   function Median_Blur
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel_Size : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_median_blur";
+
    function Erode
      (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;

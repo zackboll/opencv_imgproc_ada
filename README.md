@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **95 AUnit tests**
+> **Current test baseline:** **105 AUnit tests**
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
 >
@@ -50,6 +50,7 @@ Ada package, and built libraries serve different roles.
 - [Color conversion](#color-conversion)
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
+- [Median blur](#median-blur)
 - [Morphology](#morphology)
 - [Canny edge detection](#canny-edge-detection)
 - [Spatial derivatives](#spatial-derivatives)
@@ -81,6 +82,7 @@ The current public surface includes:
 - BGR-to-grayscale conversion;
 - image resize with five interpolation modes;
 - Gaussian blur;
+- median blur;
 - erosion and dilation;
 - morphology opening, closing, gradient, top-hat, and black-hat;
 - Canny edge detection;
@@ -148,6 +150,7 @@ The table below summarizes the current public operations.
 | Color | `Convert_Color` | nonempty 2-D BGR C3; `UInt8`, `UInt16`, or `Float32` | currently `BGR_To_Gray` only |
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
+| Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 | Morphology | `Erode`, `Dilate` | nonempty 2-D; supported numeric depths | rectangle/cross/ellipse, positive iterations, in-place supported |
 | Morphology | `Apply_Morphology` | same as above | opening, closing, gradient, top-hat, black-hat |
 | Edges | `Canny_Edges` | nonempty 2-D `UInt8` C1 | 3x3/5x5/7x7 Sobel aperture, L1/L2 norm |
@@ -268,6 +271,54 @@ Reflect_101
 `Wrap` is rejected.
 
 The output preserves rows, columns, depth, and channel count.
+
+---
+
+## Median blur
+
+API:
+
+```ada
+subtype Median_Kernel_Size is
+  Positive range 3 .. 2_147_483_647;
+
+procedure Median_Blur
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Kernel_Size : Median_Kernel_Size);
+```
+
+`Median_Blur` replaces each pixel with the median of its square aperture.
+Channels are processed independently. Destination receives Source's rows,
+columns, depth, and channel count.
+
+Requirements:
+
+- source is nonempty and two-dimensional;
+- source has 1, 3, or 4 channels;
+- `Kernel_Size` is odd and at least 3.
+
+Supported depths:
+
+```text
+Kernel 3 or 5:
+  UInt8
+  UInt16
+  Float32
+
+Kernel > 5:
+  UInt8 only
+```
+
+OpenCV uses `BORDER_REPLICATE` internally. There is no public Border parameter.
+
+Direct in-place operation is supported:
+
+```ada
+Median_Blur (Image, Image, 3);
+```
+
+When Source and Destination are distinct, Source remains unchanged.
 
 ---
 
@@ -1127,13 +1178,14 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **95-test** baseline is:
+The current **105-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
 | Color conversion | 7 |
 | Resize | 10 |
 | Gaussian blur | 10 |
+| Median blur | 10 |
 | Laplacian | 9 |
 | Morphology | 19 |
 | Canny | 5 |
@@ -1142,7 +1194,7 @@ The current **95-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **95** |
+| **Total** | **105** |
 
 The suite covers more than simple success paths. It includes:
 
@@ -1366,6 +1418,7 @@ opencv_imgproc_ada/
 │       ├── color_conversion_tests.*
 │       ├── resize_tests.*
 │       ├── gaussian_blur_tests.*
+│       ├── median_blur_tests.*
 │       ├── morphology_tests.*
 │       ├── canny_edge_tests.*
 │       ├── spatial_derivative_tests.*
@@ -1399,7 +1452,7 @@ Notable Imgproc families that are not yet broadly bound include:
 
 - the larger OpenCV color-conversion matrix beyond `BGR_To_Gray`;
 - general convolution/filtering such as `filter2D`, `sepFilter2D`, box blur,
-  median blur, and bilateral filtering;
+  and bilateral filtering;
 - custom morphology kernels, anchors, and arbitrary constant border values;
 - affine and perspective warps;
 - remapping and map conversion;

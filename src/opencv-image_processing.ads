@@ -17,6 +17,8 @@ package OpenCV.Image_Processing is
 
    type Laplacian_Kernel_Size is range 1 .. 31;
 
+   subtype Median_Kernel_Size is Positive range 3 .. 2_147_483_647;
+
    subtype Derivative_Order is Natural range 0 .. 7;
 
    type Derivative_Axis is (X_Axis, Y_Axis);
@@ -109,6 +111,21 @@ package OpenCV.Image_Processing is
       Kernel_Size : OpenCV.Core.Size;
       Sigma       : OpenCV.Core.Float64_Value;
       Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  Median_Blur replaces each Source pixel with the median of its square
+   --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat
+   --  with 1, 3, or 4 channels. Kernel_Size must be odd. Kernel sizes 3 and 5
+   --  accept UInt8, UInt16, or Float32; larger kernels accept UInt8 only.
+   --  Destination receives Source's rows, columns, depth, and channel count.
+   --  Channels are filtered independently. OpenCV uses replicated-border
+   --  handling internally; no public Border parameter is exposed. Source
+   --  remains unchanged when distinct from Destination; direct in-place
+   --  operation is supported. Contract violations and failures reported by
+   --  OpenCV raise OpenCV.OpenCV_Error.
+   procedure Median_Blur
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : Median_Kernel_Size);
 
    --  Erode replaces Destination with the neighborhood minimum selected by a
    --  temporary structuring element of Kernel_Size and Shape. Source must be a

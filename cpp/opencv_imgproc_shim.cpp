@@ -661,6 +661,75 @@ opencv_imgproc_gaussian_blur(
 }
 
 opencv_imgproc_status
+opencv_imgproc_median_blur(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t kernel_size)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status =
+            opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: reject malformed signed C kernel sizes before they
+        // reach OpenCV's median-filter allocation and neighborhood access.
+        if (kernel_size <= 1) {
+            return invalid_argument(
+                "median blur kernel size must be greater than 1");
+        }
+
+        if ((kernel_size % 2) == 0) {
+            return invalid_argument("median blur kernel size must be odd");
+        }
+
+        // ABI safety: OpenCV's medianBlur SIMD path copies a neighborhood
+        // from src before fully validating channel/depth combinations, so
+        // unsupported layouts must not reach cv::medianBlur.
+        if (src->dims != 2) {
+            return invalid_argument(
+                "median blur source must be two-dimensional");
+        }
+
+        const int channels = src->channels();
+        if (channels != 1 && channels != 3 && channels != 4) {
+            return invalid_argument(
+                "median blur source must have 1, 3, or 4 channels");
+        }
+
+        const int depth = src->depth();
+        if (kernel_size == 3 || kernel_size == 5) {
+            if (depth != CV_8U && depth != CV_16U && depth != CV_32F) {
+                return invalid_argument(
+                    "median blur kernel sizes 3 and 5 require CV_8U, CV_16U, or CV_32F");
+            }
+        } else if (depth != CV_8U) {
+            return invalid_argument(
+                "median blur kernel sizes greater than 5 require CV_8U");
+        }
+
+        cv::medianBlur(*src, *dst, static_cast<int>(kernel_size));
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_erode(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,
