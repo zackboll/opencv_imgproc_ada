@@ -730,6 +730,83 @@ opencv_imgproc_median_blur(
 }
 
 opencv_imgproc_status
+opencv_imgproc_box_blur(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t kernel_width,
+    int32_t kernel_height,
+    int32_t border)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status =
+            opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: reject non-positive signed C kernel sizes before they
+        // reach OpenCV's box-filter allocation and neighborhood access.
+        if (kernel_width <= 0) {
+            return invalid_argument(
+                "box blur kernel width must be greater than 0");
+        }
+
+        if (kernel_height <= 0) {
+            return invalid_argument(
+                "box blur kernel height must be greater than 0");
+        }
+
+        // ABI safety: OpenCV's FilterEngine accesses src as a 2-D image
+        // before fully rejecting higher-dimensional Mats.
+        if (src->dims != 2) {
+            return invalid_argument(
+                "box blur source must be two-dimensional");
+        }
+
+        // ABI safety: OpenCV's box-filter HAL dispatch uses src depth to
+        // select typed pointer access before rejecting unsupported depths.
+        const int depth = src->depth();
+        if (depth != CV_8U && depth != CV_16U && depth != CV_16S
+            && depth != CV_32F && depth != CV_64F) {
+            return invalid_argument(
+                "box blur requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
+        }
+
+        int opencv_border = 0;
+
+        if (!to_opencv_border(border, opencv_border)) {
+            return invalid_argument("unsupported box blur border");
+        }
+
+        cv::blur(
+            *src,
+            *dst,
+            cv::Size(
+                static_cast<int>(kernel_width),
+                static_cast<int>(kernel_height)),
+            cv::Point(-1, -1),
+            opencv_border);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_erode(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,

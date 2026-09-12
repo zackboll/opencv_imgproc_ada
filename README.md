@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **105 AUnit tests**
+> **Current test baseline:** **116 AUnit tests**
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
 >
@@ -51,6 +51,7 @@ Ada package, and built libraries serve different roles.
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
 - [Median blur](#median-blur)
+- [Box blur](#box-blur)
 - [Morphology](#morphology)
 - [Canny edge detection](#canny-edge-detection)
 - [Spatial derivatives](#spatial-derivatives)
@@ -83,6 +84,7 @@ The current public surface includes:
 - image resize with five interpolation modes;
 - Gaussian blur;
 - median blur;
+- box blur;
 - erosion and dilation;
 - morphology opening, closing, gradient, top-hat, and black-hat;
 - Canny edge detection;
@@ -151,6 +153,7 @@ The table below summarizes the current public operations.
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
+| Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
 | Morphology | `Erode`, `Dilate` | nonempty 2-D; supported numeric depths | rectangle/cross/ellipse, positive iterations, in-place supported |
 | Morphology | `Apply_Morphology` | same as above | opening, closing, gradient, top-hat, black-hat |
 | Edges | `Canny_Edges` | nonempty 2-D `UInt8` C1 | 3x3/5x5/7x7 Sobel aperture, L1/L2 norm |
@@ -316,6 +319,58 @@ Direct in-place operation is supported:
 
 ```ada
 Median_Blur (Image, Image, 3);
+```
+
+When Source and Destination are distinct, Source remains unchanged.
+
+---
+
+## Box blur
+
+API:
+
+```ada
+procedure Box_Blur
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Kernel_Size : OpenCV.Core.Size;
+   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+```
+
+`Box_Blur` replaces each pixel with the normalized average of its
+`Kernel_Size` neighborhood. Every kernel coefficient is
+`1 / (Width * Height)`. Channels are processed independently and are not
+restricted. Destination receives Source's rows, columns, depth, and channel
+count.
+
+Requirements:
+
+- source is nonempty and two-dimensional;
+- depth is one of the supported general Imgproc numeric depths;
+- kernel width and height are positive.
+
+Kernel dimensions need not be odd or equal. Even and non-square kernels such
+as `(Width => 2, Height => 4)` are valid. The kernel uses OpenCV's centered
+default anchor; no public Anchor parameter is exposed.
+
+Supported borders:
+
+```text
+Constant_Border
+Replicate
+Reflect
+Reflect_101
+```
+
+`Wrap` is rejected.
+
+Direct in-place operation is supported:
+
+```ada
+Box_Blur
+  (Source      => Image,
+   Destination => Image,
+   Kernel_Size => (Width => 3, Height => 3));
 ```
 
 When Source and Destination are distinct, Source remains unchanged.
@@ -1178,7 +1233,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **105-test** baseline is:
+The current **116-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -1186,6 +1241,7 @@ The current **105-test** baseline is:
 | Resize | 10 |
 | Gaussian blur | 10 |
 | Median blur | 10 |
+| Box blur | 11 |
 | Laplacian | 9 |
 | Morphology | 19 |
 | Canny | 5 |
@@ -1194,7 +1250,7 @@ The current **105-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **105** |
+| **Total** | **116** |
 
 The suite covers more than simple success paths. It includes:
 
@@ -1268,6 +1324,26 @@ begin
       Kernel_Size => (Width => 5, Height => 5),
       Sigma       => 1.2);
 end Blur_Example;
+```
+
+### Box blur
+
+```ada
+with OpenCV.Core;
+with OpenCV.Image_Processing;
+
+procedure Box_Blur_Example is
+   Input : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (480, 640, (OpenCV.Core.UInt8, 3));
+
+   Output : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+begin
+   OpenCV.Image_Processing.Box_Blur
+     (Source      => Input,
+      Destination => Output,
+      Kernel_Size => (Width => 3, Height => 3));
+end Box_Blur_Example;
 ```
 
 ### Sobel derivative
@@ -1419,6 +1495,7 @@ opencv_imgproc_ada/
 │       ├── resize_tests.*
 │       ├── gaussian_blur_tests.*
 │       ├── median_blur_tests.*
+│       ├── box_blur_tests.*
 │       ├── morphology_tests.*
 │       ├── canny_edge_tests.*
 │       ├── spatial_derivative_tests.*
@@ -1451,7 +1528,7 @@ pre-1.0.
 Notable Imgproc families that are not yet broadly bound include:
 
 - the larger OpenCV color-conversion matrix beyond `BGR_To_Gray`;
-- general convolution/filtering such as `filter2D`, `sepFilter2D`, box blur,
+- general convolution/filtering such as `filter2D`, `sepFilter2D`,
   and bilateral filtering;
 - custom morphology kernels, anchors, and arbitrary constant border values;
 - affine and perspective warps;

@@ -486,6 +486,60 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Median_Blur;
 
+   procedure Validate_Box_Blur
+     (Source      : OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Border      : OpenCV.Core.Border_Kind)
+   is
+      use type OpenCV.Core.Border_Kind;
+      use type OpenCV.Core.Size_Coordinate;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Box_Blur requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Box_Blur requires a two-dimensional source Mat");
+      end if;
+
+      if Kernel_Size.Width = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Box_Blur requires a positive kernel width");
+      end if;
+
+      if Kernel_Size.Height = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Box_Blur requires a positive kernel height");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8
+            | OpenCV.Core.UInt16
+            | OpenCV.Core.Int16
+            | OpenCV.Core.Float32
+            | OpenCV.Core.Float64 =>
+            null;
+
+         when others              =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Box_Blur requires a UInt8, UInt16, Int16, Float32, or"
+               & " Float64 source Mat");
+      end case;
+
+      if Border = OpenCV.Core.Wrap then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Box_Blur does not support Wrap border");
+      end if;
+   end Validate_Box_Blur;
+
    procedure Validate_Morphology
      (Source      : OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Core.Size;
@@ -1069,6 +1123,41 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Blur_Input'Access);
       Raise_On_Error (Status, "median blur");
    end Median_Blur;
+
+   procedure Box_Blur
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Blur_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Blur_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Box_Blur
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.Integer_32 (Kernel_Size.Width),
+                 Interfaces.Integer_32 (Kernel_Size.Height),
+                 To_C_Border (Border));
+         end Blur_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Blur_Output'Access);
+      end Blur_Input;
+   begin
+      Validate_Box_Blur (Source, Kernel_Size, Border);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Blur_Input'Access);
+      Raise_On_Error (Status, "box blur");
+   end Box_Blur;
 
    type Basic_Morphology_Operation is (Erosion, Dilation);
 

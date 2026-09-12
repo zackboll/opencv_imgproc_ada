@@ -130,6 +130,14 @@ package OpenCV.Image_Processing.Internal.C_API is
       Kernel_Size : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_median_blur";
 
+   function Box_Blur
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel_Width  : Interfaces.Integer_32;
+      Kernel_Height : Interfaces.Integer_32;
+      Border        : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_box_blur";
+
    function Erode
      (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;

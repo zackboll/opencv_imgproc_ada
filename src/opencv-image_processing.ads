@@ -127,6 +127,23 @@ package OpenCV.Image_Processing is
       Destination : in out OpenCV.Core.Mat;
       Kernel_Size : Median_Kernel_Size);
 
+   --  Box_Blur replaces each Source pixel with the normalized average of its
+   --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat
+   --  with depth UInt8, UInt16, Int16, Float32, or Float64. Channels are
+   --  processed independently and are not restricted. Kernel width and height
+   --  must be positive; they need not be odd or equal. Constant_Border,
+   --  Replicate, Reflect, and Reflect_101 are supported; Wrap is rejected.
+   --  The kernel uses OpenCV's centered default anchor. Destination receives
+   --  Source's rows, columns, depth, and channel count. Source remains
+   --  unchanged when distinct from Destination; direct in-place operation is
+   --  supported. Contract violations and failures reported by OpenCV raise
+   --  OpenCV.OpenCV_Error.
+   procedure Box_Blur
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Core.Size;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
    --  Erode replaces Destination with the neighborhood minimum selected by a
    --  temporary structuring element of Kernel_Size and Shape. Source must be a
    --  non-empty two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or

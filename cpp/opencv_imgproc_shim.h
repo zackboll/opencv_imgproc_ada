@@ -120,6 +120,14 @@ opencv_imgproc_median_blur(
     int32_t kernel_size);
 
 opencv_imgproc_status
+opencv_imgproc_box_blur(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t kernel_width,
+    int32_t kernel_height,
+    int32_t border);
+
+opencv_imgproc_status
 opencv_imgproc_erode(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,
