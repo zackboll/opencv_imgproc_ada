@@ -636,6 +636,34 @@ opencv_imgproc_status resolve_pyramid_source_and_destination(
     return OPENCV_IMGPROC_OK;
 }
 
+bool to_opencv_template_matching_method(
+    int32_t method,
+    int &opencv_method) noexcept
+{
+    switch (method) {
+    case OPENCV_IMGPROC_TEMPLATE_SQDIFF:
+        opencv_method = cv::TM_SQDIFF;
+        return true;
+    case OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED:
+        opencv_method = cv::TM_SQDIFF_NORMED;
+        return true;
+    case OPENCV_IMGPROC_TEMPLATE_CCORR:
+        opencv_method = cv::TM_CCORR;
+        return true;
+    case OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED:
+        opencv_method = cv::TM_CCORR_NORMED;
+        return true;
+    case OPENCV_IMGPROC_TEMPLATE_CCOEFF:
+        opencv_method = cv::TM_CCOEFF;
+        return true;
+    case OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED:
+        opencv_method = cv::TM_CCOEFF_NORMED;
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -2295,6 +2323,109 @@ opencv_imgproc_pyr_up(
         }
 
         cv::pyrUp(*src, *dst, cv::Size(), cv::BORDER_DEFAULT);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_match_template(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *templ,
+    opencv_core_mat_handle *destination,
+    int32_t method)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        const cv::Mat *tpl = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_input_mat(templ, &tpl);
+
+        if (core_status != OPENCV_CORE_OK || tpl == nullptr) {
+            return invalid_argument("invalid template Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: OpenCV matchTemplate uses image/template type and
+        // 2-D extents to size the result and dispatch typed correlation
+        // before fully rejecting empty or higher-dimensional Mats.
+        if (src->empty()) {
+            return invalid_argument("matchTemplate source must be nonempty");
+        }
+
+        if (src->dims != 2) {
+            return invalid_argument(
+                "matchTemplate source must be two-dimensional");
+        }
+
+        if (tpl->empty()) {
+            return invalid_argument("matchTemplate template must be nonempty");
+        }
+
+        if (tpl->dims != 2) {
+            return invalid_argument(
+                "matchTemplate template must be two-dimensional");
+        }
+
+        // ABI safety: OpenCV matchTemplate uses src depth to select typed
+        // correlation kernels before rejecting unsupported depths.
+        const int depth = src->depth();
+        if (depth != CV_8U && depth != CV_32F) {
+            return invalid_argument("matchTemplate requires CV_8U or CV_32F");
+        }
+
+        const int channels = src->channels();
+        if (channels < 1 || channels > 4) {
+            return invalid_argument(
+                "matchTemplate supports only 1 to 4 channels");
+        }
+
+        if (tpl->type() != src->type()) {
+            return invalid_argument(
+                "matchTemplate source and template types must match");
+        }
+
+        // ABI safety: OpenCV may swap image and template when dimensions
+        // are reversed. Reject that here so Source remains the search
+        // image and Template remains the patch.
+        if (tpl->rows > src->rows || tpl->cols > src->cols) {
+            return invalid_argument(
+                "matchTemplate template must not be larger than source");
+        }
+
+        int opencv_method = 0;
+        if (!to_opencv_template_matching_method(method, opencv_method)) {
+            return invalid_argument("unsupported matchTemplate method");
+        }
+
+        // ABI safety: writing dst while reading the same buffer as src
+        // or templ is undefined for this size-changing comparison.
+        if (src == dst
+            || tpl == dst
+            || (src->data != nullptr && src->data == dst->data)
+            || (tpl->data != nullptr && tpl->data == dst->data)) {
+            return invalid_argument(
+                "matchTemplate destination must not share storage with source or template");
+        }
+
+        cv::matchTemplate(*src, *tpl, *dst, opencv_method);
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {

@@ -102,6 +102,19 @@ package OpenCV.Image_Processing.Internal.C_API is
    Derivative_Kernel_Scharr : constant Interfaces.Integer_32 :=
      Interfaces.Integer_32 (Integer'(-1));
 
+   Template_Squared_Difference                 :
+     constant Interfaces.Integer_32 := 0;
+   Template_Normalized_Squared_Difference      :
+     constant Interfaces.Integer_32 := 1;
+   Template_Cross_Correlation                  :
+     constant Interfaces.Integer_32 := 2;
+   Template_Normalized_Cross_Correlation       :
+     constant Interfaces.Integer_32 := 3;
+   Template_Correlation_Coefficient            :
+     constant Interfaces.Integer_32 := 4;
+   Template_Normalized_Correlation_Coefficient :
+     constant Interfaces.Integer_32 := 5;
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -384,6 +397,16 @@ package OpenCV.Image_Processing.Internal.C_API is
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_pyr_up";
+
+   function Match_Template
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Template    : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Method      : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_match_template";
 
    function Last_Error_Message return String;
 

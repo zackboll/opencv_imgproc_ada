@@ -90,6 +90,14 @@ package OpenCV.Image_Processing is
 
    subtype Morphology_Iterations is Positive range 1 .. 2_147_483_647;
 
+   type Template_Matching_Method is
+     (Squared_Difference,
+      Normalized_Squared_Difference,
+      Cross_Correlation,
+      Normalized_Cross_Correlation,
+      Correlation_Coefficient,
+      Normalized_Correlation_Coefficient);
+
    --  BGR_To_Gray converts a non-empty, two-dimensional, three-channel BGR
    --  Source whose depth is UInt8, UInt16, or Float32. Destination is replaced
    --  with a Mat having Source's rows, columns, and depth, and exactly one
@@ -227,6 +235,29 @@ package OpenCV.Image_Processing is
    --  OpenCV.OpenCV_Error.
    procedure Pyramid_Up
      (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat);
+
+   --  Match_Template slides Template over Source and writes a score map to
+   --  Destination. Source and Template must each be a non-empty
+   --  two-dimensional Mat of depth UInt8 or Float32 with 1 to 4 channels, and
+   --  they must share the same depth and channel count. Template must fit
+   --  entirely inside Source: Template.Rows <= Source.Rows and
+   --  Template.Columns <= Source.Columns. A Template equal in size to Source
+   --  is valid. Destination is always replaced with a Float32 C1 Mat of
+   --  Rows = Source.Rows - Template.Rows + 1 and
+   --  Columns = Source.Columns - Template.Columns + 1. Multi-channel inputs
+   --  are combined into one score per location; they are not converted to
+   --  grayscale. For Squared_Difference and Normalized_Squared_Difference the
+   --  best match is the minimum score; for the other four methods the best
+   --  match is the maximum. Use OpenCV.Core.Min_Max_Loc on Destination to
+   --  recover those extrema. Source and Template are read-only and may share
+   --  storage. Destination must not share storage with Source or Template.
+   --  Masked template matching is not bound. Contract violations and failures
+   --  reported by OpenCV raise OpenCV.OpenCV_Error.
+   procedure Match_Template
+     (Source      : OpenCV.Core.Mat;
+      Template    : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Method      : Template_Matching_Method);
 
    --  Median_Blur replaces each Source pixel with the median of its square
    --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat

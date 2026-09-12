@@ -21,6 +21,7 @@ with Morphology_Tests;
 with Pyramid_Tests;
 with Resize_Tests;
 with Spatial_Derivative_Tests;
+with Template_Matching_Tests;
 with Threshold_Tests;
 
 procedure Tests is
@@ -42,8 +43,10 @@ begin
    Suite.Add_Test (Gaussian_Kernel_Tests.Suite);
    Suite.Add_Test (Derivative_Kernel_Tests.Suite);
    Suite.Add_Test (Pyramid_Tests.Suite);
+   Suite.Add_Test (Template_Matching_Tests.Suite);
    Suite.Add_Test (Median_Blur_Tests.Suite);
    Suite.Add_Test (Box_Blur_Tests.Suite);
+
    Suite.Add_Test (Bilateral_Filter_Tests.Suite);
    Suite.Add_Test (Filter_2D_Tests.Suite);
    Suite.Add_Test (Sep_Filter_2D_Tests.Suite);

@@ -119,6 +119,30 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Pyramid_Down_Border;
 
+   function To_C_Template_Matching_Method
+     (Method : Template_Matching_Method) return Interfaces.Integer_32 is
+   begin
+      case Method is
+         when Squared_Difference                 =>
+            return Internal.C_API.Template_Squared_Difference;
+
+         when Normalized_Squared_Difference      =>
+            return Internal.C_API.Template_Normalized_Squared_Difference;
+
+         when Cross_Correlation                  =>
+            return Internal.C_API.Template_Cross_Correlation;
+
+         when Normalized_Cross_Correlation       =>
+            return Internal.C_API.Template_Normalized_Cross_Correlation;
+
+         when Correlation_Coefficient            =>
+            return Internal.C_API.Template_Correlation_Coefficient;
+
+         when Normalized_Correlation_Coefficient =>
+            return Internal.C_API.Template_Normalized_Correlation_Coefficient;
+      end case;
+   end To_C_Template_Matching_Method;
+
    function To_C_Canny_Aperture
      (Aperture : Canny_Aperture) return Interfaces.Integer_32 is
    begin
@@ -594,6 +618,84 @@ package body OpenCV.Image_Processing is
             "Pyramid_Down does not support Constant_Border");
       end if;
    end Validate_Pyramid_Down;
+
+   procedure Validate_Match_Template
+     (Source : OpenCV.Core.Mat; Template : OpenCV.Core.Mat)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Match_Template requires a non-empty Source");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Match_Template requires a two-dimensional Source");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8 | OpenCV.Core.Float32 =>
+            null;
+
+         when others                                  =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Match_Template supports only UInt8 and Float32 inputs");
+      end case;
+
+      if Source.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Match_Template supports only 1 to 4 channels");
+      end if;
+
+      if Template.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Match_Template requires a non-empty Template");
+      end if;
+
+      if Template.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Match_Template requires a two-dimensional Template");
+      end if;
+
+      case Template.Depth is
+         when OpenCV.Core.UInt8 | OpenCV.Core.Float32 =>
+            null;
+
+         when others                                  =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Match_Template supports only UInt8 and Float32 inputs");
+      end case;
+
+      if Template.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Match_Template supports only 1 to 4 channels");
+      end if;
+
+      if Source.Depth /= Template.Depth
+        or else Source.Channels /= Template.Channels
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Match_Template Source and Template types must match");
+      end if;
+
+      if Template.Rows > Source.Rows or else Template.Columns > Source.Columns
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Match_Template Template must not be larger than Source");
+      end if;
+   end Validate_Match_Template;
 
    procedure Validate_Median_Blur
      (Source : OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size)
@@ -1797,6 +1899,48 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Up_Input'Access);
       Raise_On_Error (Status, "Pyramid_Up");
    end Pyramid_Up;
+
+   procedure Match_Template
+     (Source      : OpenCV.Core.Mat;
+      Template    : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Method      : Template_Matching_Method)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Source_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Template_Input
+           (Template_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Match_Output
+              (Destination_Handle :
+                 OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Match_Template
+                   (Source_Handle,
+                    Template_Handle,
+                    Destination_Handle,
+                    To_C_Template_Matching_Method (Method));
+            end Match_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Destination, Match_Output'Access);
+         end Template_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Template, Template_Input'Access);
+      end Source_Input;
+   begin
+      Validate_Match_Template (Source, Template);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Source_Input'Access);
+      Raise_On_Error (Status, "Match_Template");
+   end Match_Template;
 
    procedure Median_Blur
      (Source      : OpenCV.Core.Mat;

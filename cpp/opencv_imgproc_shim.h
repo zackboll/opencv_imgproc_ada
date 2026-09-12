@@ -97,6 +97,13 @@ typedef int32_t opencv_imgproc_status;
 
 #define OPENCV_IMGPROC_DERIVATIVE_KERNEL_SCHARR ((int32_t)-1)
 
+#define OPENCV_IMGPROC_TEMPLATE_SQDIFF         ((int32_t)0)
+#define OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED  ((int32_t)1)
+#define OPENCV_IMGPROC_TEMPLATE_CCORR          ((int32_t)2)
+#define OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED   ((int32_t)3)
+#define OPENCV_IMGPROC_TEMPLATE_CCOEFF         ((int32_t)4)
+#define OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED  ((int32_t)5)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -333,6 +340,13 @@ opencv_imgproc_status
 opencv_imgproc_pyr_up(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination);
+
+opencv_imgproc_status
+opencv_imgproc_match_template(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *templ,
+    opencv_core_mat_handle *destination,
+    int32_t method);
 
 #ifdef __cplusplus
 }

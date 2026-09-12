@@ -21,7 +21,8 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **178 AUnit tests**
+> **Current test baseline:** **188 AUnit tests**
+
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
 >
@@ -53,7 +54,9 @@ Ada package, and built libraries serve different roles.
 - [Gaussian kernel](#gaussian-kernel)
 - [Derivative kernels](#derivative-kernels)
 - [Image pyramids](#image-pyramids)
+- [Template matching](#template-matching)
 - [Median blur](#median-blur)
+
 - [Box blur](#box-blur)
 - [Bilateral filter](#bilateral-filter)
 - [Filter 2D](#filter-2d)
@@ -92,7 +95,9 @@ The current public surface includes:
 - Gaussian kernel generation;
 - Sobel and Scharr derivative kernel generation;
 - Gaussian pyramid downsampling and upsampling;
+- unmasked template matching;
 - median blur;
+
 - box blur;
 - bilateral filter;
 - custom-kernel Filter_2D correlation;
@@ -167,7 +172,9 @@ The table below summarizes the current public operations.
 | Filtering | `Get_Gaussian_Kernel` | odd positive size | automatic or explicit sigma; Float32/Float64 `N x 1` C1 kernel; usable with `Sep_Filter_2D` |
 | Derivatives | `Get_Derivative_Kernels`, `Get_Scharr_Kernels` | odd Sobel size 1/3/5/7 or Scharr axis | Float32/Float64 `N x 1` C1 pair; Kernel_1 may differ in X/Y length; usable with `Sep_Filter_2D` |
 | Pyramids | `Pyramid_Down`, `Pyramid_Up` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | natural half/double size; arbitrary channels; Down accepts Wrap and rejects Constant; Up has no Border; in-place unsupported |
+| Matching | `Match_Template` | nonempty 2-D; `UInt8` or `Float32`; C1..C4; matching Source/Template type | Float32 C1 score map; Template must fit in Source; SQDIFF min / others max; Destination must not share input storage |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
+
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
 | Filtering | `Bilateral_Filter` | nonempty 2-D; `UInt8` or `Float32`; 1 or 3 channels | automatic or explicit diameter; positive finite sigmas; Wrap rejected; in-place unsupported |
 | Filtering | `Filter_2D` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | correlation, not convolution; single-channel Float32/Float64 kernel; destination-depth matrix; Wrap rejected; Same_Depth in-place supported |
@@ -424,6 +431,88 @@ is exposed. Direct in-place use is unsupported.
 the original image. `buildPyramid` is not bound.
 
 ---
+
+## Template matching
+
+API:
+
+```ada
+type Template_Matching_Method is
+  (Squared_Difference,
+   Normalized_Squared_Difference,
+   Cross_Correlation,
+   Normalized_Cross_Correlation,
+   Correlation_Coefficient,
+   Normalized_Correlation_Coefficient);
+
+procedure Match_Template
+  (Source      : OpenCV.Core.Mat;
+   Template    : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Method      : Template_Matching_Method);
+```
+
+`Match_Template` slides Template over Source and writes a comparison-score map
+to Destination. There is no default `Method`; score interpretation depends on
+the selected comparison.
+
+Supported inputs:
+
+- nonempty two-dimensional Source and Template;
+- depth `UInt8` or `Float32`;
+- 1 to 4 channels;
+- identical Source and Template element type (depth and channel count).
+
+Template must fit entirely inside Source:
+
+```text
+Template.Rows    <= Source.Rows
+Template.Columns <= Source.Columns
+```
+
+A Template equal in size to Source is valid. Destination is always rebound to:
+
+```text
+Depth    = Float32
+Channels = 1
+Rows     = Source.Rows    - Template.Rows    + 1
+Columns  = Source.Columns - Template.Columns + 1
+```
+
+Callers do not need to preallocate Destination. Multi-channel inputs are
+combined into one score per candidate location; they are not converted to
+grayscale.
+
+Score interpretation:
+
+- `Squared_Difference` and `Normalized_Squared_Difference`: the best match is
+  the **minimum**;
+- the other four methods: the best match is the **maximum**.
+
+Use `OpenCV.Core.Min_Max_Loc` on the score map:
+
+```ada
+Scores  : OpenCV.Core.Mat;
+Extrema : OpenCV.Core.Min_Max_Result;
+
+Match_Template
+  (Source,
+   Template,
+   Scores,
+   Normalized_Correlation_Coefficient);
+
+Extrema := OpenCV.Core.Min_Max_Loc (Scores);
+-- Extrema.Maximum_Location is the best-match top-left for this method.
+```
+
+Source and Template are read-only and may share storage, including using the
+same Mat or a Template that is a `Region` of Source. Destination must not share
+storage with Source or Template.
+
+Masked template matching is not yet bound.
+
+---
+
 
 ## Median blur
 
@@ -1662,7 +1751,8 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **178-test** baseline is:
+The current **188-test** baseline is:
+
 
 | Suite | Tests |
 | --- | ---: |
@@ -1672,7 +1762,9 @@ The current **178-test** baseline is:
 | Gaussian kernel | 8 |
 | Derivative kernels | 10 |
 | Image pyramids | 10 |
+| Template matching | 10 |
 | Median blur | 10 |
+
 | Box blur | 11 |
 | Bilateral filter | 10 |
 | Filter 2D | 12 |
@@ -1685,7 +1777,8 @@ The current **178-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **178** |
+| **Total** | **188** |
+
 
 The suite covers more than simple success paths. It includes:
 
@@ -2097,7 +2190,9 @@ opencv_imgproc_ada/
 │       ├── gaussian_kernel_tests.*
 │       ├── derivative_kernel_tests.*
 │       ├── pyramid_tests.*
+│       ├── template_matching_tests.*
 │       ├── median_blur_tests.*
+
 │       ├── box_blur_tests.*
 │       ├── bilateral_filter_tests.*
 │       ├── filter_2d_tests.*
@@ -2146,10 +2241,10 @@ Notable Imgproc families that are not yet broadly bound include:
 - histogram calculation and equalization;
 - CLAHE;
 - distance transforms;
-- template matching;
 - integral images;
 - drawing primitives and text;
 - additional shape/image analysis that still belongs specifically to Imgproc.
+
 
 Computational geometry is **not** considered missing Imgproc functionality in
 this project architecture. OpenCV 5 gives those operations a separate native
