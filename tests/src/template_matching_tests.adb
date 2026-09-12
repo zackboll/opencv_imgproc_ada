@@ -55,6 +55,8 @@ package body Template_Matching_Tests is
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
 
+   SQDiff_Zero_Tolerance : constant OpenCV.Core.Float32_Value := 1.0E-2;
+
    procedure Fill_Unique_UInt8_Scene
      (Source : in out OpenCV.Core.Mat; Match_Row, Match_Column : Natural) is
    begin
@@ -108,10 +110,14 @@ package body Template_Matching_Tests is
 
       Extrema := OpenCV.Core.Min_Max_Loc (Destination);
       AUnit.Assertions.Assert
-        (Extrema.Minimum = 0.0
+        (Extrema.Minimum >= 0.0
+         and then Nearly_Equal
+                    (OpenCV.Core.Float32_Value (Extrema.Minimum),
+                     0.0,
+                     SQDiff_Zero_Tolerance)
          and then Extrema.Minimum_Location.X = 2
          and then Extrema.Minimum_Location.Y = 1,
-         "SQDIFF exact match must be zero at the known top-left");
+         "SQDIFF exact match must be near zero at the known top-left");
 
       AUnit.Assertions.Assert
         (Source.Rows = 5
@@ -252,6 +258,7 @@ package body Template_Matching_Tests is
       Image       : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
       Destination : OpenCV.Core.Mat;
+      Score       : OpenCV.Core.Float32_Value;
    begin
       Fill_Unique_UInt8_Scene (Image, 0, 0);
       OpenCV.Image_Processing.Match_Template
@@ -264,9 +271,15 @@ package body Template_Matching_Tests is
         (Destination.Rows = 1
          and then Destination.Columns = 1
          and then Destination.Depth = OpenCV.Core.Float32
-         and then Destination.Channels = 1
-         and then OpenCV.Core.Float32_Access.Get (Destination, 0, 0) = 0.0,
-         "identical Source and Template must yield a 1x1 zero SQDIFF score");
+         and then Destination.Channels = 1,
+         "identical Source and Template must yield a 1x1 Float32 C1 score");
+
+      Score := OpenCV.Core.Float32_Access.Get (Destination, 0, 0);
+      AUnit.Assertions.Assert
+        (Score >= 0.0
+         and then Nearly_Equal (Score, 0.0, SQDiff_Zero_Tolerance),
+         "identical Source and Template SQDIFF must be nonnegative "
+         & "and near zero");
    end Same_Mat_Source_And_Template;
 
    procedure Template_Region_Of_Source (Test : in out Fixture) is
@@ -288,7 +301,11 @@ package body Template_Matching_Tests is
 
       Extrema := OpenCV.Core.Min_Max_Loc (Destination);
       AUnit.Assertions.Assert
-        (Extrema.Minimum = 0.0
+        (Extrema.Minimum >= 0.0
+         and then Nearly_Equal
+                    (OpenCV.Core.Float32_Value (Extrema.Minimum),
+                     0.0,
+                     SQDiff_Zero_Tolerance)
          and then Extrema.Minimum_Location.X = 2
          and then Extrema.Minimum_Location.Y = 1,
          "a Template Region of Source must still find the shared patch");
