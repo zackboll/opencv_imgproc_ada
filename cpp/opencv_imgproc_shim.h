@@ -128,6 +128,15 @@ opencv_imgproc_box_blur(
     int32_t border);
 
 opencv_imgproc_status
+opencv_imgproc_bilateral_filter(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t diameter,
+    double sigma_color,
+    double sigma_space,
+    int32_t border);
+
+opencv_imgproc_status
 opencv_imgproc_erode(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,

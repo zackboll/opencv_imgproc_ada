@@ -807,6 +807,107 @@ opencv_imgproc_box_blur(
 }
 
 opencv_imgproc_status
+opencv_imgproc_bilateral_filter(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t diameter,
+    double sigma_color,
+    double sigma_space,
+    int32_t border)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status =
+            opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: negative diameters are reserved as malformed C input.
+        // Zero remains the automatic-diameter sentinel passed to OpenCV.
+        if (diameter < 0) {
+            return invalid_argument(
+                "bilateral filter diameter must be nonnegative");
+        }
+
+        // ABI safety: OpenCV's bilateral filter accesses src as a 2-D image
+        // before fully rejecting higher-dimensional Mats.
+        if (src->dims != 2) {
+            return invalid_argument(
+                "bilateral filter source must be two-dimensional");
+        }
+
+        // ABI safety: OpenCV's bilateral-filter dispatch uses src depth to
+        // select typed pointer access before rejecting unsupported depths.
+        const int depth = src->depth();
+        if (depth != CV_8U && depth != CV_32F) {
+            return invalid_argument(
+                "bilateral filter requires CV_8U or CV_32F");
+        }
+
+        // ABI safety: the SIMD bilateral kernels index 1- or 3-channel
+        // neighborhoods; other channel counts can cause out-of-bounds access.
+        const int channels = src->channels();
+        if (channels != 1 && channels != 3) {
+            return invalid_argument(
+                "bilateral filter requires 1 or 3 channels");
+        }
+
+        // ABI safety: NaN/Inf sigmas produce NaN exponential coefficients
+        // and out-of-range LUT indices in OpenCV's bilateral kernels.
+        // Non-positive values are reserved as malformed C input; OpenCV
+        // would otherwise remap them to 1.0 and silently change the
+        // requested operation.
+        if (!std::isfinite(sigma_color) || sigma_color <= 0.0) {
+            return invalid_argument(
+                "bilateral filter sigma_color must be positive and finite");
+        }
+
+        if (!std::isfinite(sigma_space) || sigma_space <= 0.0) {
+            return invalid_argument(
+                "bilateral filter sigma_space must be positive and finite");
+        }
+
+        int opencv_border = 0;
+
+        if (!to_opencv_border(border, opencv_border)) {
+            return invalid_argument("unsupported bilateral filter border");
+        }
+
+        // ABI safety: OpenCV documents that bilateralFilter does not work
+        // in-place; writing dst while reading the same buffer is undefined.
+        if (src == dst || src->data == dst->data) {
+            return invalid_argument(
+                "bilateral filter does not support in-place operation");
+        }
+
+        cv::bilateralFilter(
+            *src,
+            *dst,
+            static_cast<int>(diameter),
+            sigma_color,
+            sigma_space,
+            opencv_border);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_erode(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,

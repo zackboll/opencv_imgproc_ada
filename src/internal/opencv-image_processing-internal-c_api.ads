@@ -138,6 +138,18 @@ package OpenCV.Image_Processing.Internal.C_API is
       Border        : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_box_blur";
 
+   function Bilateral_Filter
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Diameter    : Interfaces.Integer_32;
+      Sigma_Color : Interfaces.C.double;
+      Sigma_Space : Interfaces.C.double;
+      Border      : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_bilateral_filter";
+
    function Erode
      (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;

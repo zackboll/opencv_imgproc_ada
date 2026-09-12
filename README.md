@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **116 AUnit tests**
+> **Current test baseline:** **126 AUnit tests**
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
 >
@@ -52,6 +52,7 @@ Ada package, and built libraries serve different roles.
 - [Gaussian blur](#gaussian-blur)
 - [Median blur](#median-blur)
 - [Box blur](#box-blur)
+- [Bilateral filter](#bilateral-filter)
 - [Morphology](#morphology)
 - [Canny edge detection](#canny-edge-detection)
 - [Spatial derivatives](#spatial-derivatives)
@@ -85,6 +86,7 @@ The current public surface includes:
 - Gaussian blur;
 - median blur;
 - box blur;
+- bilateral filter;
 - erosion and dilation;
 - morphology opening, closing, gradient, top-hat, and black-hat;
 - Canny edge detection;
@@ -154,6 +156,7 @@ The table below summarizes the current public operations.
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
+| Filtering | `Bilateral_Filter` | nonempty 2-D; `UInt8` or `Float32`; 1 or 3 channels | automatic or explicit diameter; positive finite sigmas; Wrap rejected; in-place unsupported |
 | Morphology | `Erode`, `Dilate` | nonempty 2-D; supported numeric depths | rectangle/cross/ellipse, positive iterations, in-place supported |
 | Morphology | `Apply_Morphology` | same as above | opening, closing, gradient, top-hat, black-hat |
 | Edges | `Canny_Edges` | nonempty 2-D `UInt8` C1 | 3x3/5x5/7x7 Sobel aperture, L1/L2 norm |
@@ -374,6 +377,75 @@ Box_Blur
 ```
 
 When Source and Destination are distinct, Source remains unchanged.
+
+---
+
+## Bilateral filter
+
+API:
+
+```ada
+subtype Bilateral_Diameter is
+  Positive range 1 .. 2_147_483_647;
+
+procedure Bilateral_Filter
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Sigma_Color : OpenCV.Core.Float64_Value;
+   Sigma_Space : OpenCV.Core.Float64_Value;
+   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+procedure Bilateral_Filter
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Diameter    : Bilateral_Diameter;
+   Sigma_Color : OpenCV.Core.Float64_Value;
+   Sigma_Space : OpenCV.Core.Float64_Value;
+   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+```
+
+`Bilateral_Filter` is an edge-preserving smoother. Each output pixel is a
+weighted average of its neighborhood, combining:
+
+- `Sigma_Space`, which controls similarity in spatial coordinates; and
+- `Sigma_Color`, which controls similarity in intensity or color.
+
+A small `Sigma_Color` preserves strong discontinuities more than a large one.
+Channels are not filtered independently for C3 sources; color-distance
+weighting uses the combined color difference.
+
+The overload without `Diameter` asks OpenCV to derive the neighborhood size
+from `Sigma_Space`. The overload with `Diameter` supplies a positive integer
+neighborhood size; it need not be odd. There is no public zero or negative
+diameter sentinel.
+
+Requirements:
+
+- source is nonempty and two-dimensional;
+- depth is `UInt8` or `Float32`;
+- channel count is 1 or 3;
+- `Sigma_Color` and `Sigma_Space` are positive and finite.
+
+Supported borders:
+
+```text
+Constant_Border
+Replicate
+Reflect
+Reflect_101
+```
+
+`Wrap` is rejected.
+
+Destination receives Source's rows, columns, depth, and channel count. Direct
+in-place operation is not supported:
+
+```ada
+--  raises OpenCV.OpenCV_Error
+Bilateral_Filter (Image, Image, 5, 25.0, 25.0);
+```
+
+When Destination is distinct, Source remains unchanged.
 
 ---
 
@@ -1233,7 +1305,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **116-test** baseline is:
+The current **126-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -1242,6 +1314,7 @@ The current **116-test** baseline is:
 | Gaussian blur | 10 |
 | Median blur | 10 |
 | Box blur | 11 |
+| Bilateral filter | 10 |
 | Laplacian | 9 |
 | Morphology | 19 |
 | Canny | 5 |
@@ -1250,7 +1323,7 @@ The current **116-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **116** |
+| **Total** | **126** |
 
 The suite covers more than simple success paths. It includes:
 
@@ -1344,6 +1417,28 @@ begin
       Destination => Output,
       Kernel_Size => (Width => 3, Height => 3));
 end Box_Blur_Example;
+```
+
+### Bilateral filter
+
+```ada
+with OpenCV.Core;
+with OpenCV.Image_Processing;
+
+procedure Bilateral_Example is
+   Source : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (480, 640, (OpenCV.Core.UInt8, 3));
+
+   Filtered : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+begin
+   OpenCV.Image_Processing.Bilateral_Filter
+     (Source      => Source,
+      Destination => Filtered,
+      Diameter    => 9,
+      Sigma_Color => 75.0,
+      Sigma_Space => 75.0);
+end Bilateral_Example;
 ```
 
 ### Sobel derivative
@@ -1496,6 +1591,7 @@ opencv_imgproc_ada/
 │       ├── gaussian_blur_tests.*
 │       ├── median_blur_tests.*
 │       ├── box_blur_tests.*
+│       ├── bilateral_filter_tests.*
 │       ├── morphology_tests.*
 │       ├── canny_edge_tests.*
 │       ├── spatial_derivative_tests.*
@@ -1528,8 +1624,7 @@ pre-1.0.
 Notable Imgproc families that are not yet broadly bound include:
 
 - the larger OpenCV color-conversion matrix beyond `BGR_To_Gray`;
-- general convolution/filtering such as `filter2D`, `sepFilter2D`,
-  and bilateral filtering;
+- general convolution/filtering such as `filter2D` and `sepFilter2D`;
 - custom morphology kernels, anchors, and arbitrary constant border values;
 - affine and perspective warps;
 - remapping and map conversion;

@@ -19,6 +19,8 @@ package OpenCV.Image_Processing is
 
    subtype Median_Kernel_Size is Positive range 3 .. 2_147_483_647;
 
+   subtype Bilateral_Diameter is Positive range 1 .. 2_147_483_647;
+
    subtype Derivative_Order is Natural range 0 .. 7;
 
    type Derivative_Axis is (X_Axis, Y_Axis);
@@ -142,6 +144,41 @@ package OpenCV.Image_Processing is
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Core.Size;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  Bilateral_Filter replaces Destination with an edge-preserving smoothing
+   --  of Source. Spatial distance and pixel/color distance both weight the
+   --  neighborhood average, so strong intensity or color discontinuities are
+   --  preserved more than with a linear blur. Source must be a non-empty
+   --  two-dimensional Mat of depth UInt8 or Float32 with exactly 1 or 3
+   --  channels. For 3-channel Sources, color-distance weighting uses the
+   --  combined color difference rather than filtering channels independently.
+   --  Sigma_Color and Sigma_Space must be positive and finite. This overload
+   --  asks OpenCV to derive the neighborhood diameter from Sigma_Space; there
+   --  is no public zero or negative diameter sentinel. Constant_Border,
+   --  Replicate, Reflect, and Reflect_101 are supported; Wrap is rejected.
+   --  Destination receives Source's rows, columns, depth, and channel count.
+   --  Source remains unchanged when Destination is distinct. Direct in-place
+   --  operation is not supported. Contract violations and failures reported by
+   --  OpenCV raise OpenCV.OpenCV_Error.
+   procedure Bilateral_Filter
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Sigma_Color : OpenCV.Core.Float64_Value;
+      Sigma_Space : OpenCV.Core.Float64_Value;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  This overload is the same Bilateral_Filter operation with an explicit
+   --  neighborhood Diameter. Diameter is a positive integer and need not be
+   --  odd. OpenCV uses Diameter as the neighborhood size independently of
+   --  Sigma_Space; Sigma_Space still weights samples inside that neighborhood.
+   --  Direct in-place operation is not supported.
+   procedure Bilateral_Filter
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Diameter    : Bilateral_Diameter;
+      Sigma_Color : OpenCV.Core.Float64_Value;
+      Sigma_Space : OpenCV.Core.Float64_Value;
       Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
 
    --  Erode replaces Destination with the neighborhood minimum selected by a

@@ -540,6 +540,69 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Box_Blur;
 
+   procedure Validate_Bilateral_Filter
+     (Source      : OpenCV.Core.Mat;
+      Sigma_Color : OpenCV.Core.Float64_Value;
+      Sigma_Space : OpenCV.Core.Float64_Value;
+      Border      : OpenCV.Core.Border_Kind)
+   is
+      use type OpenCV.Core.Border_Kind;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Bilateral_Filter requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Bilateral_Filter requires a two-dimensional source Mat");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8 | OpenCV.Core.Float32 =>
+            null;
+
+         when others                                  =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Bilateral_Filter requires a UInt8 or Float32 source Mat");
+      end case;
+
+      if Source.Channels /= 1 and then Source.Channels /= 3 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Bilateral_Filter requires a source Mat with 1 or 3 channels");
+      end if;
+
+      if Sigma_Color <= 0.0
+        or else Sigma_Color /= Sigma_Color
+        or else Sigma_Color > OpenCV.Core.Float64_Value'Last
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Bilateral_Filter requires a positive finite Sigma_Color");
+      end if;
+
+      if Sigma_Space <= 0.0
+        or else Sigma_Space /= Sigma_Space
+        or else Sigma_Space > OpenCV.Core.Float64_Value'Last
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Bilateral_Filter requires a positive finite Sigma_Space");
+      end if;
+
+      if Border = OpenCV.Core.Wrap then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Bilateral_Filter does not support Wrap border");
+      end if;
+   end Validate_Bilateral_Filter;
+
    procedure Validate_Morphology
      (Source      : OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Core.Size;
@@ -1158,6 +1221,73 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Blur_Input'Access);
       Raise_On_Error (Status, "box blur");
    end Box_Blur;
+
+   procedure Apply_Bilateral_Filter
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Diameter    : Interfaces.Integer_32;
+      Sigma_Color : OpenCV.Core.Float64_Value;
+      Sigma_Space : OpenCV.Core.Float64_Value;
+      Border      : OpenCV.Core.Border_Kind)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Filter_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Filter_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Bilateral_Filter
+                (Source_Handle,
+                 Destination_Handle,
+                 Diameter,
+                 Interfaces.C.double (Sigma_Color),
+                 Interfaces.C.double (Sigma_Space),
+                 To_C_Border (Border));
+         end Filter_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Filter_Output'Access);
+      end Filter_Input;
+   begin
+      Validate_Bilateral_Filter (Source, Sigma_Color, Sigma_Space, Border);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Filter_Input'Access);
+      Raise_On_Error (Status, "bilateral filter");
+   end Apply_Bilateral_Filter;
+
+   procedure Bilateral_Filter
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Sigma_Color : OpenCV.Core.Float64_Value;
+      Sigma_Space : OpenCV.Core.Float64_Value;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101) is
+   begin
+      Apply_Bilateral_Filter
+        (Source, Destination, 0, Sigma_Color, Sigma_Space, Border);
+   end Bilateral_Filter;
+
+   procedure Bilateral_Filter
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Diameter    : Bilateral_Diameter;
+      Sigma_Color : OpenCV.Core.Float64_Value;
+      Sigma_Space : OpenCV.Core.Float64_Value;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101) is
+   begin
+      Apply_Bilateral_Filter
+        (Source,
+         Destination,
+         Interfaces.Integer_32 (Diameter),
+         Sigma_Color,
+         Sigma_Space,
+         Border);
+   end Bilateral_Filter;
 
    type Basic_Morphology_Operation is (Erosion, Dilation);
 
