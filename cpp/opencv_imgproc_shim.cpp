@@ -580,6 +580,62 @@ bool valid_filter_depth_combination(int src_depth, int32_t destination_depth)
     }
 }
 
+opencv_imgproc_status resolve_pyramid_source_and_destination(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    const cv::Mat **src,
+    cv::Mat **dst,
+    const char *operation)
+{
+    opencv_core_status core_status =
+        opencv_core_module_input_mat(source, src);
+
+    if (core_status != OPENCV_CORE_OK || *src == nullptr) {
+        return invalid_argument("invalid source Mat");
+    }
+
+    core_status = opencv_core_module_output_mat(destination, dst);
+
+    if (core_status != OPENCV_CORE_OK || *dst == nullptr) {
+        return invalid_argument("invalid destination Mat");
+    }
+
+    // ABI safety: OpenCV pyramid kernels access src as a 2-D image and
+    // use typed pointer arithmetic before fully rejecting empty or
+    // higher-dimensional Mats.
+    if ((*src)->empty()) {
+        return invalid_argument("pyramid source must be nonempty");
+    }
+
+    if ((*src)->dims != 2) {
+        return invalid_argument("pyramid source must be two-dimensional");
+    }
+
+    // ABI safety: OpenCV pyramid HAL/dispatch uses src depth to select
+    // typed neighborhood access before rejecting unsupported depths.
+    const int depth = (*src)->depth();
+    if (depth != CV_8U && depth != CV_16U && depth != CV_16S
+        && depth != CV_32F && depth != CV_64F) {
+        return invalid_argument(
+            "pyramid requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
+    }
+
+    // ABI safety: writing dst while reading the same buffer is undefined
+    // for this size-changing pyramid operation.
+    if (*src == *dst
+        || ((*src)->data != nullptr && (*src)->data == (*dst)->data)) {
+        char message[error_message_capacity];
+        std::snprintf(
+            message,
+            error_message_capacity,
+            "%s does not support aliased source and destination",
+            operation);
+        return invalid_argument(message);
+    }
+
+    return OPENCV_IMGPROC_OK;
+}
+
 } // namespace
 
 extern "C" {
@@ -2161,62 +2217,6 @@ opencv_imgproc_sep_filter_2d(
     } catch (...) {
         return translate_current_exception();
     }
-}
-
-opencv_imgproc_status resolve_pyramid_source_and_destination(
-    const opencv_core_mat_handle *source,
-    opencv_core_mat_handle *destination,
-    const cv::Mat **src,
-    cv::Mat **dst,
-    const char *operation)
-{
-    opencv_core_status core_status =
-        opencv_core_module_input_mat(source, src);
-
-    if (core_status != OPENCV_CORE_OK || *src == nullptr) {
-        return invalid_argument("invalid source Mat");
-    }
-
-    core_status = opencv_core_module_output_mat(destination, dst);
-
-    if (core_status != OPENCV_CORE_OK || *dst == nullptr) {
-        return invalid_argument("invalid destination Mat");
-    }
-
-    // ABI safety: OpenCV pyramid kernels access src as a 2-D image and
-    // use typed pointer arithmetic before fully rejecting empty or
-    // higher-dimensional Mats.
-    if ((*src)->empty()) {
-        return invalid_argument("pyramid source must be nonempty");
-    }
-
-    if ((*src)->dims != 2) {
-        return invalid_argument("pyramid source must be two-dimensional");
-    }
-
-    // ABI safety: OpenCV pyramid HAL/dispatch uses src depth to select
-    // typed neighborhood access before rejecting unsupported depths.
-    const int depth = (*src)->depth();
-    if (depth != CV_8U && depth != CV_16U && depth != CV_16S
-        && depth != CV_32F && depth != CV_64F) {
-        return invalid_argument(
-            "pyramid requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
-    }
-
-    // ABI safety: writing dst while reading the same buffer is undefined
-    // for this size-changing pyramid operation.
-    if (*src == *dst
-        || ((*src)->data != nullptr && (*src)->data == (*dst)->data)) {
-        char message[error_message_capacity];
-        std::snprintf(
-            message,
-            error_message_capacity,
-            "%s does not support aliased source and destination",
-            operation);
-        return invalid_argument(message);
-    }
-
-    return OPENCV_IMGPROC_OK;
 }
 
 opencv_imgproc_status
