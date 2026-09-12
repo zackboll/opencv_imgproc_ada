@@ -224,6 +224,54 @@ package OpenCV.Image_Processing is
       Offset            : OpenCV.Core.Float64_Value := 0.0;
       Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
 
+   --  Sep_Filter_2D replaces Destination with a separable linear filter of
+   --  Source. Every Source row is filtered with Kernel_X, then every
+   --  intermediate column is filtered with Kernel_Y, and Offset is added to
+   --  the final value. Coefficient order is preserved; neither kernel is
+   --  flipped. Source must be a non-empty two-dimensional Mat of depth UInt8,
+   --  UInt16, Int16, Float32, or Float64. Channel count is unrestricted; the
+   --  same Kernel_X and Kernel_Y pair is applied independently to every Source
+   --  channel. Each kernel must be a non-empty two-dimensional single-channel
+   --  Float32 or Float64 vector (one row or one column). Kernel lengths need
+   --  not be odd, equal, normalized, or symmetric. Kernel_X and Kernel_Y must
+   --  share the same floating-point depth because native OpenCV requires a
+   --  common kernel type. Destination_Depth selects the output depth using
+   --  the same supported source/destination combinations as Filter_2D. Offset
+   --  is added to each filtered value and must be finite. This overload uses
+   --  OpenCV's centered default anchor; there is no public (-1, -1) sentinel.
+   --  Constant_Border, Replicate, Reflect, and Reflect_101 are supported;
+   --  Wrap is rejected. Destination receives Source's rows, columns, and
+   --  channel count, with the requested depth. Source remains unchanged when
+   --  Destination is distinct. Direct in-place operation is supported when
+   --  the requested destination depth matches Source. Contract violations and
+   --  failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   procedure Sep_Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_X          : OpenCV.Core.Mat;
+      Kernel_Y          : OpenCV.Core.Mat;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  This overload is the same Sep_Filter_2D separable filter with an
+   --  explicit Kernel Anchor. Anchor.X indexes Kernel_X and Anchor.Y indexes
+   --  Kernel_Y using each kernel's logical length (columns if it is a row
+   --  vector, otherwise rows). Both coordinates must be nonnegative and
+   --  strictly less than the corresponding logical length. There is no public
+   --  mixed or centered (-1, -1) sentinel in this overload. Direct in-place
+   --  operation is supported when the requested destination depth matches
+   --  Source.
+   procedure Sep_Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_X          : OpenCV.Core.Mat;
+      Kernel_Y          : OpenCV.Core.Mat;
+      Anchor            : OpenCV.Core.Point;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
    --  Erode replaces Destination with the neighborhood minimum selected by a
    --  temporary structuring element of Kernel_Size and Shape. Source must be a
    --  non-empty two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or

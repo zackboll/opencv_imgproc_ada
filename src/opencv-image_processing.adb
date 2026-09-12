@@ -726,6 +726,175 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Filter_2D_Anchor;
 
+   procedure Validate_Separable_Kernel
+     (Kernel : OpenCV.Core.Mat; Name : String)
+   is
+      use type OpenCV.Core.Channel_Count;
+   begin
+      if Kernel.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D requires a non-empty " & Name);
+      end if;
+
+      if Kernel.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D requires a two-dimensional " & Name);
+      end if;
+
+      if Kernel.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D "
+            & Name
+            & " must be a one-dimensional Float32 or Float64 kernel");
+      end if;
+
+      case Kernel.Depth is
+         when OpenCV.Core.Float32 | OpenCV.Core.Float64 =>
+            null;
+
+         when others                                    =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Sep_Filter_2D "
+               & Name
+               & " must be a one-dimensional Float32 or Float64 kernel");
+      end case;
+
+      if Kernel.Rows /= 1 and then Kernel.Columns /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D "
+            & Name
+            & " must be a one-dimensional Float32 or Float64 kernel");
+      end if;
+   end Validate_Separable_Kernel;
+
+   function Separable_Kernel_Length (Kernel : OpenCV.Core.Mat) return Natural
+   is
+   begin
+      if Kernel.Rows = 1 then
+         return Kernel.Columns;
+      else
+         return Kernel.Rows;
+      end if;
+   end Separable_Kernel_Length;
+
+   procedure Validate_Sep_Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Kernel_X          : OpenCV.Core.Mat;
+      Kernel_Y          : OpenCV.Core.Mat;
+      Destination_Depth : Filter_Depth;
+      Offset            : OpenCV.Core.Float64_Value;
+      Border            : OpenCV.Core.Border_Kind)
+   is
+      use type OpenCV.Core.Border_Kind;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D requires a two-dimensional source Mat");
+      end if;
+
+      Validate_Separable_Kernel (Kernel_X, "Kernel_X");
+      Validate_Separable_Kernel (Kernel_Y, "Kernel_Y");
+
+      if Kernel_X.Depth /= Kernel_Y.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D requires Kernel_X and Kernel_Y to share one"
+            & " floating-point depth");
+      end if;
+
+      if Offset /= Offset
+        or else Offset > OpenCV.Core.Float64_Value'Last
+        or else Offset < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D requires a finite Offset");
+      end if;
+
+      if Border = OpenCV.Core.Wrap then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D does not support Wrap border");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8                      =>
+            null;
+
+         when OpenCV.Core.UInt16 | OpenCV.Core.Int16 =>
+            if Destination_Depth = Int16_Depth then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Sep_Filter_2D does not support Int16 destination depth"
+                  & " for UInt16 or Int16 source Mats");
+            end if;
+
+         when OpenCV.Core.Float32                    =>
+            if Destination_Depth = Int16_Depth
+              or else Destination_Depth = Float64_Depth
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Sep_Filter_2D supports only Same_Depth or Float32_Depth"
+                  & " for Float32 source Mats");
+            end if;
+
+         when OpenCV.Core.Float64                    =>
+            if Destination_Depth = Int16_Depth
+              or else Destination_Depth = Float32_Depth
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Sep_Filter_2D supports only Same_Depth or Float64_Depth"
+                  & " for Float64 source Mats");
+            end if;
+
+         when others                                 =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Sep_Filter_2D requires a UInt8, UInt16, Int16, Float32, or"
+               & " Float64 source Mat");
+      end case;
+   end Validate_Sep_Filter_2D;
+
+   procedure Validate_Sep_Filter_2D_Anchor
+     (Kernel_X : OpenCV.Core.Mat;
+      Kernel_Y : OpenCV.Core.Mat;
+      Anchor   : OpenCV.Core.Point)
+   is
+      use type OpenCV.Core.Point_Coordinate;
+   begin
+      if Anchor.X < 0
+        or else Integer (Anchor.X) >= Separable_Kernel_Length (Kernel_X)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D Anchor.X lies outside Kernel_X");
+      end if;
+
+      if Anchor.Y < 0
+        or else Integer (Anchor.Y) >= Separable_Kernel_Length (Kernel_Y)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Sep_Filter_2D Anchor.Y lies outside Kernel_Y");
+      end if;
+   end Validate_Sep_Filter_2D_Anchor;
+
    procedure Validate_Morphology
      (Source      : OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Core.Size;
@@ -1504,6 +1673,114 @@ package body OpenCV.Image_Processing is
          Offset,
          Border);
    end Filter_2D;
+
+   procedure Apply_Sep_Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_X          : OpenCV.Core.Mat;
+      Kernel_Y          : OpenCV.Core.Mat;
+      Anchor_X          : Interfaces.Integer_32;
+      Anchor_Y          : Interfaces.Integer_32;
+      Destination_Depth : Filter_Depth;
+      Offset            : OpenCV.Core.Float64_Value;
+      Border            : OpenCV.Core.Border_Kind)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Source_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Kernel_X_Input
+           (Kernel_X_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Kernel_Y_Input
+              (Kernel_Y_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure Filter_Output
+                 (Destination_Handle :
+                    OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Sep_Filter_2D
+                      (Source_Handle,
+                       Destination_Handle,
+                       Kernel_X_Handle,
+                       Kernel_Y_Handle,
+                       To_C_Derivative_Depth (Destination_Depth),
+                       Anchor_X,
+                       Anchor_Y,
+                       Interfaces.C.double (Offset),
+                       To_C_Border (Border));
+               end Filter_Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Destination, Filter_Output'Access);
+            end Kernel_Y_Input;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Kernel_Y, Kernel_Y_Input'Access);
+         end Kernel_X_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Kernel_X, Kernel_X_Input'Access);
+      end Source_Input;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Source_Input'Access);
+      Raise_On_Error (Status, "Sep_Filter_2D");
+   end Apply_Sep_Filter_2D;
+
+   procedure Sep_Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_X          : OpenCV.Core.Mat;
+      Kernel_Y          : OpenCV.Core.Mat;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+   is
+   begin
+      Validate_Sep_Filter_2D
+        (Source, Kernel_X, Kernel_Y, Destination_Depth, Offset, Border);
+      Apply_Sep_Filter_2D
+        (Source,
+         Destination,
+         Kernel_X,
+         Kernel_Y,
+         Interfaces.Integer_32 (-1),
+         Interfaces.Integer_32 (-1),
+         Destination_Depth,
+         Offset,
+         Border);
+   end Sep_Filter_2D;
+
+   procedure Sep_Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_X          : OpenCV.Core.Mat;
+      Kernel_Y          : OpenCV.Core.Mat;
+      Anchor            : OpenCV.Core.Point;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+   is
+   begin
+      Validate_Sep_Filter_2D
+        (Source, Kernel_X, Kernel_Y, Destination_Depth, Offset, Border);
+      Validate_Sep_Filter_2D_Anchor (Kernel_X, Kernel_Y, Anchor);
+      Apply_Sep_Filter_2D
+        (Source,
+         Destination,
+         Kernel_X,
+         Kernel_Y,
+         Interfaces.Integer_32 (Anchor.X),
+         Interfaces.Integer_32 (Anchor.Y),
+         Destination_Depth,
+         Offset,
+         Border);
+   end Sep_Filter_2D;
 
    type Basic_Morphology_Operation is (Erosion, Dilation);
 

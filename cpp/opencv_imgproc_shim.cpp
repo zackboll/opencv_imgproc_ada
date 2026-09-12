@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <algorithm>
 #include <exception>
 #include <limits>
 
@@ -1733,6 +1734,215 @@ opencv_imgproc_filter_2d(
             *dst,
             opencv_depth,
             *krn,
+            cv::Point(
+                static_cast<int>(anchor_x),
+                static_cast<int>(anchor_y)),
+            offset,
+            opencv_border);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_sep_filter_2d(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    const opencv_core_mat_handle *kernel_x,
+    const opencv_core_mat_handle *kernel_y,
+    int32_t destination_depth,
+    int32_t anchor_x,
+    int32_t anchor_y,
+    double offset,
+    int32_t border)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        const cv::Mat *kx = nullptr;
+        const cv::Mat *ky = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_input_mat(kernel_x, &kx);
+
+        if (core_status != OPENCV_CORE_OK || kx == nullptr) {
+            return invalid_argument("invalid kernel_x Mat");
+        }
+
+        core_status = opencv_core_module_input_mat(kernel_y, &ky);
+
+        if (core_status != OPENCV_CORE_OK || ky == nullptr) {
+            return invalid_argument("invalid kernel_y Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: OpenCV's FilterEngine accesses src as a 2-D image
+        // before fully rejecting higher-dimensional Mats.
+        if (src->dims != 2) {
+            return invalid_argument(
+                "sepFilter2D source must be two-dimensional");
+        }
+
+        // ABI safety: OpenCV's sepFilter2D dispatch uses src depth to select
+        // typed pointer access before rejecting unsupported depths.
+        const int src_depth = src->depth();
+        if (src_depth != CV_8U && src_depth != CV_16U && src_depth != CV_16S
+            && src_depth != CV_32F && src_depth != CV_64F) {
+            return invalid_argument(
+                "sepFilter2D requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
+        }
+
+        // ABI safety: FilterEngine indexes 1-D kernel coefficients as a
+        // neighborhood. Empty, higher-dimensional, multi-channel, integer,
+        // or genuine 2-D kernels can cause out-of-bounds access.
+        if (kx->empty()) {
+            return invalid_argument("sepFilter2D kernel_x must be non-empty");
+        }
+
+        if (kx->dims != 2) {
+            return invalid_argument(
+                "sepFilter2D kernel_x must be two-dimensional");
+        }
+
+        if (kx->channels() != 1) {
+            return invalid_argument(
+                "sepFilter2D kernel_x must have exactly 1 channel");
+        }
+
+        const int kernel_x_depth = kx->depth();
+        if (kernel_x_depth != CV_32F && kernel_x_depth != CV_64F) {
+            return invalid_argument(
+                "sepFilter2D kernel_x must be CV_32F or CV_64F");
+        }
+
+        if (kx->rows != 1 && kx->cols != 1) {
+            return invalid_argument(
+                "sepFilter2D kernel_x must be a one-dimensional vector");
+        }
+
+        if (ky->empty()) {
+            return invalid_argument("sepFilter2D kernel_y must be non-empty");
+        }
+
+        if (ky->dims != 2) {
+            return invalid_argument(
+                "sepFilter2D kernel_y must be two-dimensional");
+        }
+
+        if (ky->channels() != 1) {
+            return invalid_argument(
+                "sepFilter2D kernel_y must have exactly 1 channel");
+        }
+
+        const int kernel_y_depth = ky->depth();
+        if (kernel_y_depth != CV_32F && kernel_y_depth != CV_64F) {
+            return invalid_argument(
+                "sepFilter2D kernel_y must be CV_32F or CV_64F");
+        }
+
+        if (ky->rows != 1 && ky->cols != 1) {
+            return invalid_argument(
+                "sepFilter2D kernel_y must be a one-dimensional vector");
+        }
+
+        // ABI safety: OpenCV's sepFilter2D HAL path uses one ktype for both
+        // kernels and indexes coefficients with that width. Mixed Float32 and
+        // Float64 kernels would mis-size coefficient access.
+        if (kx->type() != ky->type()) {
+            return invalid_argument(
+                "sepFilter2D kernel_x and kernel_y must share one type");
+        }
+
+        const int x_length = std::max(kx->rows, kx->cols);
+        const int y_length = std::max(ky->rows, ky->cols);
+        if (x_length <= 0 || y_length <= 0) {
+            return invalid_argument(
+                "sepFilter2D kernels must have positive length");
+        }
+
+        int opencv_depth = 0;
+        if (!to_opencv_derivative_depth(destination_depth, opencv_depth)) {
+            return invalid_argument(
+                "unsupported sepFilter2D destination depth");
+        }
+
+        // ABI safety: unsupported source/destination depth combinations
+        // reach typed FilterEngine kernels that assume the documented
+        // filter_depths matrix before OpenCV fully rejects them.
+        if (!valid_filter_depth_combination(src_depth, destination_depth)) {
+            return invalid_argument(
+                "unsupported sepFilter2D source/destination depth combination");
+        }
+
+        const bool centered_anchor = (anchor_x == -1 && anchor_y == -1);
+        const bool real_anchor =
+            anchor_x >= 0
+            && anchor_y >= 0
+            && anchor_x < x_length
+            && anchor_y < y_length;
+
+        // ABI safety: mixed or out-of-range anchors are used as kernel
+        // offsets in FilterEngine pointer arithmetic.
+        if (!centered_anchor && !real_anchor) {
+            return invalid_argument(
+                "sepFilter2D anchor lies outside the kernels");
+        }
+
+        // ABI safety: NaN/Inf offsets propagate through FilterEngine's
+        // typed accumulation before OpenCV stores destination pixels.
+        if (!std::isfinite(offset)) {
+            return invalid_argument("sepFilter2D offset must be finite");
+        }
+
+        int opencv_border = 0;
+        if (!to_opencv_border(border, opencv_border)) {
+            return invalid_argument("unsupported sepFilter2D border");
+        }
+
+        const bool depth_changes =
+            opencv_depth != -1 && opencv_depth != src_depth;
+
+        // ABI safety: writing a depth-changing destination into the same
+        // buffer as src is undefined; OpenCV documents in-place only when
+        // destination depth matches source.
+        if (depth_changes && (src == dst || src->data == dst->data)) {
+            return invalid_argument(
+                "sepFilter2D does not support in-place operation when destination depth changes");
+        }
+
+        // ABI safety: writing dst while kernel coefficients occupy the
+        // same buffer would mutate coefficients during neighborhood access.
+        if (kx->data != nullptr && kx->data == dst->data) {
+            return invalid_argument(
+                "sepFilter2D kernel_x and destination must not share storage");
+        }
+
+        if (ky->data != nullptr && ky->data == dst->data) {
+            return invalid_argument(
+                "sepFilter2D kernel_y and destination must not share storage");
+        }
+
+        cv::sepFilter2D(
+            *src,
+            *dst,
+            opencv_depth,
+            *kx,
+            *ky,
             cv::Point(
                 static_cast<int>(anchor_x),
                 static_cast<int>(anchor_y)),
