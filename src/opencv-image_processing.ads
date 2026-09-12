@@ -98,6 +98,9 @@ package OpenCV.Image_Processing is
       Correlation_Coefficient,
       Normalized_Correlation_Coefficient);
 
+   type Affine_Mapping_Direction is
+     (Source_To_Destination, Destination_To_Source);
+
    --  BGR_To_Gray converts a non-empty, two-dimensional, three-channel BGR
    --  Source whose depth is UInt8, UInt16, or Float32. Destination is replaced
    --  with a Mat having Source's rows, columns, and depth, and exactly one
@@ -258,6 +261,39 @@ package OpenCV.Image_Processing is
       Template    : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Method      : Template_Matching_Method);
+
+   --  Warp_Affine applies a 2x3 affine Transform to Source and writes the
+   --  warped image to Destination. Source must be a non-empty two-dimensional
+   --  Mat of depth UInt8, UInt16, Int16, Float32, or Float64 with 1 to 4
+   --  channels. Transform must be a non-empty two-dimensional 2x3
+   --  single-channel Mat of depth Float32 or Float64:
+   --
+   --     [ M00 M01 M02 ]
+   --     [ M10 M11 M12 ]
+   --
+   --  Output_Size.Width and Output_Size.Height must both be nonzero.
+   --  Destination is always replaced with a Mat of Rows = Output_Size.Height,
+   --  Columns = Output_Size.Width, and Source's depth and channel count.
+   --  Callers do not need to preallocate Destination. No color conversion
+   --  occurs. Interpolation is Nearest_Neighbor or Linear; Cubic, Area, and
+   --  Lanczos_4 are rejected. Border is Constant_Border or Replicate; Reflect,
+   --  Reflect_101, and Wrap are rejected. For Constant_Border, C1 uses
+   --  Component_0, C2 uses Components 0..1, C3 uses 0..2, and C4 uses 0..3.
+   --  For Replicate, Border_Value is ignored. Source_To_Destination is the
+   --  usual forward mapping; Destination_To_Source treats Transform as already
+   --  inverted. Source and Transform are read-only and may share storage.
+   --  Destination must not share storage with Source or Transform. Direct
+   --  in-place operation is not supported. Contract violations and failures
+   --  reported by OpenCV raise OpenCV.OpenCV_Error.
+   procedure Warp_Affine
+     (Source        : OpenCV.Core.Mat;
+      Transform     : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Output_Size   : OpenCV.Core.Size;
+      Interpolation : Interpolation_Method := Linear;
+      Mapping       : Affine_Mapping_Direction := Source_To_Destination;
+      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
+      Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
 
    --  Median_Blur replaces each Source pixel with the median of its square
    --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat

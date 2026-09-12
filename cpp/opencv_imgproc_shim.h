@@ -104,6 +104,12 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_TEMPLATE_CCOEFF         ((int32_t)4)
 #define OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED  ((int32_t)5)
 
+#define OPENCV_IMGPROC_WARP_INTER_NEAREST ((int32_t)0)
+#define OPENCV_IMGPROC_WARP_INTER_LINEAR  ((int32_t)1)
+
+#define OPENCV_IMGPROC_WARP_MAPPING_SOURCE_TO_DESTINATION ((int32_t)0)
+#define OPENCV_IMGPROC_WARP_MAPPING_DESTINATION_TO_SOURCE ((int32_t)1)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -347,6 +353,21 @@ opencv_imgproc_match_template(
     const opencv_core_mat_handle *templ,
     opencv_core_mat_handle *destination,
     int32_t method);
+
+opencv_imgproc_status
+opencv_imgproc_warp_affine(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *transform,
+    opencv_core_mat_handle *destination,
+    int32_t output_width,
+    int32_t output_height,
+    int32_t interpolation,
+    int32_t mapping,
+    int32_t border,
+    double border_value_0,
+    double border_value_1,
+    double border_value_2,
+    double border_value_3);
 
 #ifdef __cplusplus
 }

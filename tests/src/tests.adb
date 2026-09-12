@@ -23,6 +23,7 @@ with Resize_Tests;
 with Spatial_Derivative_Tests;
 with Template_Matching_Tests;
 with Threshold_Tests;
+with Warp_Affine_Tests;
 
 procedure Tests is
 
@@ -44,6 +45,8 @@ begin
    Suite.Add_Test (Derivative_Kernel_Tests.Suite);
    Suite.Add_Test (Pyramid_Tests.Suite);
    Suite.Add_Test (Template_Matching_Tests.Suite);
+   Suite.Add_Test (Warp_Affine_Tests.Suite);
+
    Suite.Add_Test (Median_Blur_Tests.Suite);
    Suite.Add_Test (Box_Blur_Tests.Suite);
 

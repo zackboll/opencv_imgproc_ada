@@ -664,6 +664,53 @@ bool to_opencv_template_matching_method(
     }
 }
 
+bool to_opencv_warp_interpolation(
+    int32_t interpolation,
+    int &opencv_interpolation) noexcept
+{
+    switch (interpolation) {
+    case OPENCV_IMGPROC_WARP_INTER_NEAREST:
+        opencv_interpolation = cv::INTER_NEAREST;
+        return true;
+    case OPENCV_IMGPROC_WARP_INTER_LINEAR:
+        opencv_interpolation = cv::INTER_LINEAR;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_affine_mapping_flags(
+    int32_t mapping,
+    int interpolation,
+    int &opencv_flags) noexcept
+{
+    switch (mapping) {
+    case OPENCV_IMGPROC_WARP_MAPPING_SOURCE_TO_DESTINATION:
+        opencv_flags = interpolation;
+        return true;
+    case OPENCV_IMGPROC_WARP_MAPPING_DESTINATION_TO_SOURCE:
+        opencv_flags = interpolation | cv::WARP_INVERSE_MAP;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_warp_border(int32_t border, int &opencv_border) noexcept
+{
+    switch (border) {
+    case OPENCV_IMGPROC_BORDER_CONSTANT:
+        opencv_border = cv::BORDER_CONSTANT;
+        return true;
+    case OPENCV_IMGPROC_BORDER_REPLICATE:
+        opencv_border = cv::BORDER_REPLICATE;
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -2426,6 +2473,165 @@ opencv_imgproc_match_template(
         }
 
         cv::matchTemplate(*src, *tpl, *dst, opencv_method);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_warp_affine(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *transform,
+    opencv_core_mat_handle *destination,
+    int32_t output_width,
+    int32_t output_height,
+    int32_t interpolation,
+    int32_t mapping,
+    int32_t border,
+    double border_value_0,
+    double border_value_1,
+    double border_value_2,
+    double border_value_3)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        const cv::Mat *matrix = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_input_mat(transform, &matrix);
+
+        if (core_status != OPENCV_CORE_OK || matrix == nullptr) {
+            return invalid_argument("invalid transform Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: warpAffine uses src type and dsize to allocate dst
+        // and index source pixels. Empty or higher-dimensional src can
+        // reach typed remap kernels before OpenCV fully rejects them.
+        if (src->empty()) {
+            return invalid_argument("warpAffine source must be nonempty");
+        }
+
+        if (src->dims != 2) {
+            return invalid_argument(
+                "warpAffine source must be two-dimensional");
+        }
+
+        const int src_depth = src->depth();
+        if (src_depth != CV_8U
+            && src_depth != CV_16U
+            && src_depth != CV_16S
+            && src_depth != CV_32F
+            && src_depth != CV_64F) {
+            return invalid_argument(
+                "warpAffine requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
+        }
+
+        const int src_channels = src->channels();
+        if (src_channels < 1 || src_channels > 4) {
+            return invalid_argument(
+                "warpAffine supports only 1 to 4 channels");
+        }
+
+        // ABI safety: warpAffine indexes a 2x3 coefficient matrix as
+        // six floating-point values. Empty, higher-dimensional,
+        // multi-channel, or integer matrices can cause out-of-bounds
+        // or mistyped coefficient access.
+        if (matrix->empty()) {
+            return invalid_argument("warpAffine transform must be nonempty");
+        }
+
+        if (matrix->dims != 2) {
+            return invalid_argument(
+                "warpAffine transform must be two-dimensional");
+        }
+
+        if (matrix->rows != 2 || matrix->cols != 3) {
+            return invalid_argument(
+                "warpAffine transform must be 2x3");
+        }
+
+        if (matrix->channels() != 1) {
+            return invalid_argument(
+                "warpAffine transform must have exactly 1 channel");
+        }
+
+        const int matrix_depth = matrix->depth();
+        if (matrix_depth != CV_32F && matrix_depth != CV_64F) {
+            return invalid_argument(
+                "warpAffine transform must be CV_32F or CV_64F");
+        }
+
+        // ABI safety: invertAffineTransform and remap kernels perform
+        // arithmetic on the six coefficients. NaN or infinity produce
+        // undefined index arithmetic rather than a documented rejection.
+        if (!cv::checkRange(*matrix, true, nullptr)) {
+            return invalid_argument(
+                "warpAffine transform must contain only finite values");
+        }
+
+        if (output_width <= 0 || output_height <= 0) {
+            // ABI safety: OpenCV constructs cv::Size from these signed
+            // extents and allocates dst before rejecting a zero size.
+            return invalid_argument(
+                "warpAffine output size must be positive");
+        }
+
+        int opencv_interpolation = 0;
+        if (!to_opencv_warp_interpolation(
+                interpolation, opencv_interpolation)) {
+            return invalid_argument("unsupported warpAffine interpolation");
+        }
+
+        int opencv_flags = 0;
+        if (!to_opencv_affine_mapping_flags(
+                mapping, opencv_interpolation, opencv_flags)) {
+            return invalid_argument("unsupported warpAffine mapping");
+        }
+
+        int opencv_border = 0;
+        if (!to_opencv_warp_border(border, opencv_border)) {
+            return invalid_argument("unsupported warpAffine border");
+        }
+
+        // ABI safety: writing dst while reading the same buffer as src
+        // or the transform is undefined for this size-changing warp.
+        if (src == dst
+            || matrix == dst
+            || (src->data != nullptr && src->data == dst->data)
+            || (matrix->data != nullptr && matrix->data == dst->data)) {
+            return invalid_argument(
+                "warpAffine destination must not share storage with source or transform");
+        }
+
+        cv::warpAffine(
+            *src,
+            *dst,
+            *matrix,
+            cv::Size(output_width, output_height),
+            opencv_flags,
+            opencv_border,
+            cv::Scalar(
+                border_value_0,
+                border_value_1,
+                border_value_2,
+                border_value_3));
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {

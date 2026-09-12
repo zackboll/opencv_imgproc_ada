@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **188 AUnit tests**
+> **Current test baseline:** **200 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -55,6 +55,7 @@ Ada package, and built libraries serve different roles.
 - [Derivative kernels](#derivative-kernels)
 - [Image pyramids](#image-pyramids)
 - [Template matching](#template-matching)
+- [Affine warping](#affine-warping)
 - [Median blur](#median-blur)
 
 - [Box blur](#box-blur)
@@ -96,6 +97,7 @@ The current public surface includes:
 - Sobel and Scharr derivative kernel generation;
 - Gaussian pyramid downsampling and upsampling;
 - unmasked template matching;
+- affine warping;
 - median blur;
 
 - box blur;
@@ -173,6 +175,7 @@ The table below summarizes the current public operations.
 | Derivatives | `Get_Derivative_Kernels`, `Get_Scharr_Kernels` | odd Sobel size 1/3/5/7 or Scharr axis | Float32/Float64 `N x 1` C1 pair; Kernel_1 may differ in X/Y length; usable with `Sep_Filter_2D` |
 | Pyramids | `Pyramid_Down`, `Pyramid_Up` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | natural half/double size; arbitrary channels; Down accepts Wrap and rejects Constant; Up has no Border; in-place unsupported |
 | Matching | `Match_Template` | nonempty 2-D; `UInt8` or `Float32`; C1..C4; matching Source/Template type | Float32 C1 score map; Template must fit in Source; SQDIFF min / others max; Destination must not share input storage |
+| Warping | `Warp_Affine` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 2x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
@@ -513,8 +516,135 @@ Masked template matching is not yet bound.
 
 ---
 
+## Affine warping
+
+Mapping direction:
+
+```ada
+type Affine_Mapping_Direction is
+  (Source_To_Destination, Destination_To_Source);
+```
+
+API:
+
+```ada
+procedure Warp_Affine
+  (Source        : OpenCV.Core.Mat;
+   Transform     : OpenCV.Core.Mat;
+   Destination   : in out OpenCV.Core.Mat;
+   Output_Size   : OpenCV.Core.Size;
+   Interpolation : Interpolation_Method := Linear;
+   Mapping       : Affine_Mapping_Direction := Source_To_Destination;
+   Border        : OpenCV.Core.Border_Kind :=
+                     OpenCV.Core.Constant_Border;
+   Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+```
+
+`Warp_Affine` applies a 2x3 affine `Transform` to `Source` and writes the
+warped image to `Destination`. Callers construct the matrix with ordinary
+Core typed Mat accessors; transform-construction helpers are not bound.
+
+Supported Source:
+
+- nonempty two-dimensional Mat;
+- depth `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`;
+- 1 to 4 channels.
+
+Transform requirements:
+
+```text
+Rows     = 2
+Columns  = 3
+Channels = 1
+Depth    = Float32 or Float64
+```
+
+Coefficients are:
+
+```text
+[ M00 M01 M02 ]
+[ M10 M11 M12 ]
+```
+
+`Output_Size.Width` and `Output_Size.Height` must both be nonzero. Destination
+is always rebound to:
+
+```text
+Rows     = Output_Size.Height
+Columns  = Output_Size.Width
+Depth    = Source.Depth
+Channels = Source.Channels
+```
+
+No color conversion occurs. Destination geometry is the requested size, not
+inferred from Source.
+
+Supported interpolation:
+
+```text
+Nearest_Neighbor
+Linear
+```
+
+`Cubic`, `Area`, and `Lanczos_4` are rejected. Resize still accepts all five
+interpolation methods.
+
+Supported borders:
+
+```text
+Constant_Border
+Replicate
+```
+
+`Reflect`, `Reflect_101`, and `Wrap` are rejected. For `Constant_Border`, C1
+uses `Component_0`, C2 uses components 0..1, C3 uses 0..2, and C4 uses 0..3.
+For `Replicate`, `Border_Value` is ignored.
+
+Mapping:
+
+- `Source_To_Destination` is the usual forward mapping (native call does not
+  set `WARP_INVERSE_MAP`);
+- `Destination_To_Source` treats `Transform` as already inverted.
+
+Source and Transform are read-only and may share storage. Destination must
+not share storage with Source or Transform.
+
+Example: one-pixel right translation using a Float64 2x3 matrix:
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.Float64_Access;
+with OpenCV.Image_Processing;
+
+procedure Translate_Example is
+   Source      : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+   Transform   : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (2, 3, (OpenCV.Core.Float64, 1));
+   Destination : OpenCV.Core.Mat;
+begin
+   OpenCV.Core.Float64_Access.Set (Transform, 0, 0, 1.0);
+   OpenCV.Core.Float64_Access.Set (Transform, 0, 1, 0.0);
+   OpenCV.Core.Float64_Access.Set (Transform, 0, 2, 1.0);
+   OpenCV.Core.Float64_Access.Set (Transform, 1, 0, 0.0);
+   OpenCV.Core.Float64_Access.Set (Transform, 1, 1, 1.0);
+   OpenCV.Core.Float64_Access.Set (Transform, 1, 2, 0.0);
+
+   OpenCV.Image_Processing.Warp_Affine
+     (Source,
+      Transform,
+      Destination,
+      (Width => 3, Height => 3),
+      OpenCV.Image_Processing.Nearest_Neighbor);
+end Translate_Example;
+```
+
+Perspective warping is not bound.
+
+---
 
 ## Median blur
+
 
 API:
 
@@ -1751,7 +1881,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **188-test** baseline is:
+The current **200-test** baseline is:
 
 
 | Suite | Tests |
@@ -1763,6 +1893,7 @@ The current **188-test** baseline is:
 | Derivative kernels | 10 |
 | Image pyramids | 10 |
 | Template matching | 10 |
+| Affine warping | 12 |
 | Median blur | 10 |
 
 | Box blur | 11 |
@@ -1777,7 +1908,7 @@ The current **188-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **188** |
+| **Total** | **200** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -2191,6 +2322,7 @@ opencv_imgproc_ada/
 │       ├── derivative_kernel_tests.*
 │       ├── pyramid_tests.*
 │       ├── template_matching_tests.*
+│       ├── warp_affine_tests.*
 │       ├── median_blur_tests.*
 
 │       ├── box_blur_tests.*
@@ -2230,7 +2362,7 @@ Notable Imgproc families that are not yet broadly bound include:
 
 - the larger OpenCV color-conversion matrix beyond `BGR_To_Gray`;
 - custom morphology kernels, anchors, and arbitrary constant border values;
-- affine and perspective warps;
+- perspective warps;
 - remapping and map conversion;
 - affine/perspective transform construction helpers;
 - polar transforms;

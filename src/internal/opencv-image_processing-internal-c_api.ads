@@ -115,6 +115,12 @@ package OpenCV.Image_Processing.Internal.C_API is
    Template_Normalized_Correlation_Coefficient :
      constant Interfaces.Integer_32 := 5;
 
+   Warp_Interpolation_Nearest : constant Interfaces.Integer_32 := 0;
+   Warp_Interpolation_Linear  : constant Interfaces.Integer_32 := 1;
+
+   Warp_Mapping_Source_To_Destination : constant Interfaces.Integer_32 := 0;
+   Warp_Mapping_Destination_To_Source : constant Interfaces.Integer_32 := 1;
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -407,6 +413,21 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_match_template";
+
+   function Warp_Affine
+     (Source         : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Transform      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination    : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Output_Width   : Interfaces.Integer_32;
+      Output_Height  : Interfaces.Integer_32;
+      Interpolation  : Interfaces.Integer_32;
+      Mapping        : Interfaces.Integer_32;
+      Border         : Interfaces.Integer_32;
+      Border_Value_0 : Interfaces.C.double;
+      Border_Value_1 : Interfaces.C.double;
+      Border_Value_2 : Interfaces.C.double;
+      Border_Value_3 : Interfaces.C.double) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_warp_affine";
 
    function Last_Error_Message return String;
 
