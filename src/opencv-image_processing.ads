@@ -21,6 +21,10 @@ package OpenCV.Image_Processing is
 
    subtype Bilateral_Diameter is Positive range 1 .. 2_147_483_647;
 
+   subtype Gaussian_Kernel_Size is Positive range 1 .. 2_147_483_647;
+
+   type Gaussian_Kernel_Depth is (Float32_Kernel, Float64_Kernel);
+
    subtype Derivative_Order is Natural range 0 .. 7;
 
    type Derivative_Axis is (X_Axis, Y_Axis);
@@ -115,6 +119,27 @@ package OpenCV.Image_Processing is
       Kernel_Size : OpenCV.Core.Size;
       Sigma       : OpenCV.Core.Float64_Value;
       Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  Get_Gaussian_Kernel returns an N x 1 single-channel Gaussian coefficient
+   --  vector of the requested Depth. Kernel_Size must be odd. This overload
+   --  asks OpenCV to derive sigma from Kernel_Size; there is no public zero
+   --  or negative sigma sentinel. Coefficients preserve OpenCV's values and
+   --  ordering and may be passed directly to Sep_Filter_2D. Contract
+   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   function Get_Gaussian_Kernel
+     (Kernel_Size : Gaussian_Kernel_Size;
+      Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
+      return OpenCV.Core.Mat;
+
+   --  This overload is the same Get_Gaussian_Kernel generator with an
+   --  explicit Sigma. Sigma must be finite and strictly greater than zero.
+   --  Zero and negative values are rejected rather than switching to
+   --  automatic sigma.
+   function Get_Gaussian_Kernel
+     (Kernel_Size : Gaussian_Kernel_Size;
+      Sigma       : OpenCV.Core.Float64_Value;
+      Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
+      return OpenCV.Core.Mat;
 
    --  Median_Blur replaces each Source pixel with the median of its square
    --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat

@@ -171,6 +171,18 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Derivative_Axis;
 
+   function To_C_Gaussian_Kernel_Depth
+     (Depth : Gaussian_Kernel_Depth) return Interfaces.Integer_32 is
+   begin
+      case Depth is
+         when Float32_Kernel =>
+            return Internal.C_API.Gaussian_Kernel_Float32;
+
+         when Float64_Kernel =>
+            return Internal.C_API.Gaussian_Kernel_Float64;
+      end case;
+   end To_C_Gaussian_Kernel_Depth;
+
    function To_C_Threshold_Mode
      (Mode : Threshold_Mode) return Interfaces.Integer_32 is
    begin
@@ -426,6 +438,33 @@ package body OpenCV.Image_Processing is
                & " Float64 source Mat");
       end case;
    end Validate_Gaussian_Blur;
+
+   procedure Validate_Get_Gaussian_Kernel
+     (Kernel_Size : Gaussian_Kernel_Size;
+      Sigma       : OpenCV.Core.Float64_Value;
+      Automatic   : Boolean)
+   is
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Kernel_Size mod 2 = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Gaussian_Kernel requires an odd kernel size");
+      end if;
+
+      if Automatic then
+         return;
+      end if;
+
+      if Sigma <= 0.0
+        or else Sigma /= Sigma
+        or else Sigma > OpenCV.Core.Float64_Value'Last
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Gaussian_Kernel requires a positive finite sigma");
+      end if;
+   end Validate_Get_Gaussian_Kernel;
 
    procedure Validate_Median_Blur
      (Source : OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size)
@@ -1446,6 +1485,58 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Blur_Input'Access);
       Raise_On_Error (Status, "Gaussian blur");
    end Gaussian_Blur;
+
+   Automatic_Gaussian_Sigma : constant Interfaces.C.double := 0.0;
+
+   function Apply_Get_Gaussian_Kernel
+     (Kernel_Size : Gaussian_Kernel_Size;
+      Sigma       : Interfaces.C.double;
+      Depth       : Gaussian_Kernel_Depth) return OpenCV.Core.Mat
+   is
+      use Internal.C_API;
+
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Success;
+
+      procedure Kernel_Output
+        (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Get_Gaussian_Kernel
+             (Destination_Handle,
+              Interfaces.Integer_32 (Kernel_Size),
+              Sigma,
+              To_C_Gaussian_Kernel_Depth (Depth));
+      end Kernel_Output;
+   begin
+      OpenCV.Core.Module_Interop.With_Output_Handle
+        (Destination, Kernel_Output'Access);
+      Raise_On_Error (Status, "Get_Gaussian_Kernel");
+      return Destination;
+   end Apply_Get_Gaussian_Kernel;
+
+   function Get_Gaussian_Kernel
+     (Kernel_Size : Gaussian_Kernel_Size;
+      Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
+      return OpenCV.Core.Mat is
+   begin
+      Validate_Get_Gaussian_Kernel (Kernel_Size, 1.0, Automatic => True);
+      return
+        Apply_Get_Gaussian_Kernel
+          (Kernel_Size, Automatic_Gaussian_Sigma, Depth);
+   end Get_Gaussian_Kernel;
+
+   function Get_Gaussian_Kernel
+     (Kernel_Size : Gaussian_Kernel_Size;
+      Sigma       : OpenCV.Core.Float64_Value;
+      Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
+      return OpenCV.Core.Mat is
+   begin
+      Validate_Get_Gaussian_Kernel (Kernel_Size, Sigma, Automatic => False);
+      return
+        Apply_Get_Gaussian_Kernel
+          (Kernel_Size, Interfaces.C.double (Sigma), Depth);
+   end Get_Gaussian_Kernel;
 
    procedure Median_Blur
      (Source      : OpenCV.Core.Mat;

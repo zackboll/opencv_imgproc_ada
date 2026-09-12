@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **150 AUnit tests**
+> **Current test baseline:** **158 AUnit tests**
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
 >
@@ -50,6 +50,7 @@ Ada package, and built libraries serve different roles.
 - [Color conversion](#color-conversion)
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
+- [Gaussian kernel](#gaussian-kernel)
 - [Median blur](#median-blur)
 - [Box blur](#box-blur)
 - [Bilateral filter](#bilateral-filter)
@@ -86,6 +87,7 @@ The current public surface includes:
 - BGR-to-grayscale conversion;
 - image resize with five interpolation modes;
 - Gaussian blur;
+- Gaussian kernel generation;
 - median blur;
 - box blur;
 - bilateral filter;
@@ -158,6 +160,7 @@ The table below summarizes the current public operations.
 | Color | `Convert_Color` | nonempty 2-D BGR C3; `UInt8`, `UInt16`, or `Float32` | currently `BGR_To_Gray` only |
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
+| Filtering | `Get_Gaussian_Kernel` | odd positive size | automatic or explicit sigma; Float32/Float64 `N x 1` C1 kernel; usable with `Sep_Filter_2D` |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
 | Filtering | `Bilateral_Filter` | nonempty 2-D; `UInt8` or `Float32`; 1 or 3 channels | automatic or explicit diameter; positive finite sigmas; Wrap rejected; in-place unsupported |
@@ -283,6 +286,49 @@ Reflect_101
 `Wrap` is rejected.
 
 The output preserves rows, columns, depth, and channel count.
+
+---
+
+## Gaussian kernel
+
+API:
+
+```ada
+subtype Gaussian_Kernel_Size is
+  Positive range 1 .. 2_147_483_647;
+
+type Gaussian_Kernel_Depth is
+  (Float32_Kernel, Float64_Kernel);
+
+function Get_Gaussian_Kernel
+  (Kernel_Size : Gaussian_Kernel_Size;
+   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
+   return OpenCV.Core.Mat;
+
+function Get_Gaussian_Kernel
+  (Kernel_Size : Gaussian_Kernel_Size;
+   Sigma       : OpenCV.Core.Float64_Value;
+   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
+   return OpenCV.Core.Mat;
+```
+
+`Get_Gaussian_Kernel` returns an `N x 1` single-channel Gaussian coefficient
+vector. Coefficient order is preserved and may be passed directly to
+`Sep_Filter_2D`.
+
+The overload without `Sigma` asks OpenCV to derive sigma from `Kernel_Size`.
+There is no public zero or negative sigma sentinel. The overload with `Sigma`
+requires a finite value strictly greater than zero; `0.0` does not switch to
+automatic sigma.
+
+Requirements:
+
+- `Kernel_Size` is positive and odd;
+- explicit `Sigma`, when provided, is finite and strictly greater than zero;
+- `Depth` selects `Float32` or `Float64` output.
+
+The returned Mat owns ordinary Core lifetime. Even lengths remain invalid even
+though `Sep_Filter_2D` accepts even-length arbitrary kernels.
 
 ---
 
@@ -1154,6 +1200,7 @@ Current groups are:
 cvt_color
 resize
 gaussian_blur
+get_gaussian_kernel
 median_blur
 box_blur
 bilateral_filter
@@ -1519,13 +1566,14 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **150-test** baseline is:
+The current **158-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
 | Color conversion | 7 |
 | Resize | 10 |
 | Gaussian blur | 10 |
+| Gaussian kernel | 8 |
 | Median blur | 10 |
 | Box blur | 11 |
 | Bilateral filter | 10 |
@@ -1539,7 +1587,7 @@ The current **150-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **150** |
+| **Total** | **158** |
 
 The suite covers more than simple success paths. It includes:
 
@@ -1613,6 +1661,33 @@ begin
       Kernel_Size => (Width => 5, Height => 5),
       Sigma       => 1.2);
 end Blur_Example;
+```
+
+### Gaussian kernel with Sep_Filter_2D
+
+```ada
+with OpenCV.Core;
+with OpenCV.Image_Processing;
+
+procedure Gaussian_Kernel_Example is
+   Source : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (480, 640, (OpenCV.Core.Float32, 1));
+
+   Kernel : constant OpenCV.Core.Mat :=
+     OpenCV.Image_Processing.Get_Gaussian_Kernel
+       (Kernel_Size => 5,
+        Sigma       => 1.2,
+        Depth       => OpenCV.Image_Processing.Float32_Kernel);
+
+   Filtered : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+begin
+   OpenCV.Image_Processing.Sep_Filter_2D
+     (Source      => Source,
+      Destination => Filtered,
+      Kernel_X    => Kernel,
+      Kernel_Y    => Kernel);
+end Gaussian_Kernel_Example;
 ```
 
 ### Box blur
@@ -1872,6 +1947,7 @@ opencv_imgproc_ada/
 │       ├── color_conversion_tests.*
 │       ├── resize_tests.*
 │       ├── gaussian_blur_tests.*
+│       ├── gaussian_kernel_tests.*
 │       ├── median_blur_tests.*
 │       ├── box_blur_tests.*
 │       ├── bilateral_filter_tests.*

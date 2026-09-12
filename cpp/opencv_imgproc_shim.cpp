@@ -150,6 +150,22 @@ bool to_opencv_derivative_depth(
     }
 }
 
+bool to_opencv_gaussian_kernel_depth(
+    int32_t depth,
+    int &opencv_depth) noexcept
+{
+    switch (depth) {
+    case OPENCV_IMGPROC_GAUSSIAN_KERNEL_FLOAT32:
+        opencv_depth = CV_32F;
+        return true;
+    case OPENCV_IMGPROC_GAUSSIAN_KERNEL_FLOAT64:
+        opencv_depth = CV_64F;
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool to_opencv_sobel_kernel(int32_t kernel, int &opencv_kernel) noexcept
 {
     switch (kernel) {
@@ -679,6 +695,63 @@ opencv_imgproc_gaussian_blur(
             sigma,
             sigma,
             opencv_border);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_get_gaussian_kernel(
+    opencv_core_mat_handle *destination,
+    int32_t kernel_size,
+    double sigma,
+    int32_t kernel_depth)
+{
+    clear_error();
+
+    try {
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: signed kernel sizes that are non-positive or even
+        // are used as coefficient-vector extents before OpenCV constructs
+        // the returned Mat.
+        if (kernel_size <= 0) {
+            return invalid_argument(
+                "getGaussianKernel size must be positive");
+        }
+
+        if ((kernel_size % 2) == 0) {
+            return invalid_argument(
+                "getGaussianKernel size must be odd");
+        }
+
+        // ABI safety: NaN/Inf sigma values propagate into coefficient
+        // exponentiation; negative sigma is not a documented automatic
+        // sentinel at this ABI.
+        if (!std::isfinite(sigma) || sigma < 0.0) {
+            return invalid_argument(
+                "getGaussianKernel sigma must be finite and nonnegative");
+        }
+
+        int opencv_depth = 0;
+        if (!to_opencv_gaussian_kernel_depth(kernel_depth, opencv_depth)) {
+            return invalid_argument(
+                "unsupported getGaussianKernel depth");
+        }
+
+        *dst = cv::getGaussianKernel(
+            static_cast<int>(kernel_size),
+            sigma,
+            opencv_depth);
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {
