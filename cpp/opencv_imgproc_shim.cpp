@@ -711,6 +711,31 @@ bool to_opencv_warp_border(int32_t border, int &opencv_border) noexcept
     }
 }
 
+bool affine_transform_is_finite(const cv::Mat &matrix) noexcept
+{
+    if (matrix.depth() == CV_32F) {
+        for (int row = 0; row < 2; ++row) {
+            const float *const coefficients = matrix.ptr<float>(row);
+            for (int col = 0; col < 3; ++col) {
+                if (!std::isfinite(coefficients[col])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    for (int row = 0; row < 2; ++row) {
+        const double *const coefficients = matrix.ptr<double>(row);
+        for (int col = 0; col < 3; ++col) {
+            if (!std::isfinite(coefficients[col])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 extern "C" {
@@ -2581,7 +2606,9 @@ opencv_imgproc_warp_affine(
         // ABI safety: invertAffineTransform and remap kernels perform
         // arithmetic on the six coefficients. NaN or infinity produce
         // undefined index arithmetic rather than a documented rejection.
-        if (!cv::checkRange(*matrix, true, nullptr)) {
+        // std::isfinite is required instead of cv::checkRange because
+        // checkRange's default upper bound excludes +DBL_MAX.
+        if (!affine_transform_is_finite(*matrix)) {
             return invalid_argument(
                 "warpAffine transform must contain only finite values");
         }

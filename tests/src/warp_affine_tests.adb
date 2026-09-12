@@ -66,8 +66,13 @@ package body Warp_Affine_Tests is
        (Source => Interfaces.Unsigned_64,
         Target => OpenCV.Core.Float64_Value);
 
-   NaN_Bits_32 : constant Interfaces.Unsigned_32 := 16#7FC0_0000#;
-   Inf_Bits_64 : constant Interfaces.Unsigned_64 := 16#7FF0_0000_0000_0000#;
+   NaN_Bits_32            : constant Interfaces.Unsigned_32 := 16#7FC0_0000#;
+   Inf_Bits_64            : constant Interfaces.Unsigned_64 :=
+     16#7FF0_0000_0000_0000#;
+   Max_Finite_Bits_64     : constant Interfaces.Unsigned_64 :=
+     16#7FEF_FFFF_FFFF_FFFF#;
+   Neg_Max_Finite_Bits_64 : constant Interfaces.Unsigned_64 :=
+     16#FFEF_FFFF_FFFF_FFFF#;
 
    procedure Fill_Unique_UInt8 (Source : in out OpenCV.Core.Mat) is
    begin
@@ -981,6 +986,78 @@ package body Warp_Affine_Tests is
          C_API.Border_Replicate);
    end C_ABI_Rejects_Malformed_Inputs;
 
+   procedure C_ABI_Accepts_Max_Finite_Float64_Coefficient
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Transform : OpenCV.Core.Mat := Identity_Float64;
+
+      procedure Check (Coefficient : OpenCV.Core.Float64_Value) is
+         Destination : OpenCV.Core.Mat;
+         Status      : C_API.Status := C_API.Error_Unknown;
+         procedure Source_Input
+           (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Transform_Input
+              (Transform_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure Output
+                 (Destination_Handle :
+                    OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    C_API.Warp_Affine
+                      (Source_Handle,
+                       Transform_Handle,
+                       Destination_Handle,
+                       3,
+                       3,
+                       C_API.Warp_Interpolation_Nearest,
+                       C_API.Warp_Mapping_Source_To_Destination,
+                       C_API.Border_Constant,
+                       0.0,
+                       0.0,
+                       0.0,
+                       0.0);
+               end Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Destination, Output'Access);
+            end Transform_Input;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Transform, Transform_Input'Access);
+         end Source_Input;
+      begin
+         OpenCV.Core.Float64_Access.Set (Transform, 0, 2, Coefficient);
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source, Source_Input'Access);
+         AUnit.Assertions.Assert
+           (not (Status = C_API.Error_Invalid_Argument
+                 and then Ada.Strings.Fixed.Index
+                            (C_API.Last_Error_Message, "finite values")
+                          /= 0),
+            "max-finite Float64 Transform must not be rejected as nonfinite");
+         AUnit.Assertions.Assert
+           (Status = C_API.Success,
+            "max-finite Float64 translation must pass the binding validator");
+      end Check;
+   begin
+      Fill_Unique_UInt8 (Source);
+      declare
+         pragma Suppress (Validity_Check);
+         Max_Finite     : OpenCV.Core.Float64_Value;
+         Neg_Max_Finite : OpenCV.Core.Float64_Value;
+      begin
+         Max_Finite := Bits_To_Float64 (Max_Finite_Bits_64);
+         Neg_Max_Finite := Bits_To_Float64 (Neg_Max_Finite_Bits_64);
+         Check (Max_Finite);
+         Check (Neg_Max_Finite);
+      end;
+   end C_ABI_Accepts_Max_Finite_Float64_Coefficient;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
       Result.Add_Test
@@ -1031,6 +1108,10 @@ package body Warp_Affine_Tests is
         (Caller.Create
            ("Warp_Affine C ABI rejects malformed inputs",
             C_ABI_Rejects_Malformed_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Warp_Affine C ABI accepts max-finite Float64 Transform",
+            C_ABI_Accepts_Max_Finite_Float64_Coefficient'Access));
       return Result'Access;
    end Suite;
 

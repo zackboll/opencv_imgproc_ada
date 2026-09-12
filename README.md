@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **200 AUnit tests**
+> **Current test baseline:** **201 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -1881,7 +1881,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **200-test** baseline is:
+The current **201-test** baseline is:
 
 
 | Suite | Tests |
@@ -1893,7 +1893,7 @@ The current **200-test** baseline is:
 | Derivative kernels | 10 |
 | Image pyramids | 10 |
 | Template matching | 10 |
-| Affine warping | 12 |
+| Affine warping | 13 |
 | Median blur | 10 |
 
 | Box blur | 11 |
@@ -1908,7 +1908,7 @@ The current **200-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **200** |
+| **Total** | **201** |
 
 
 The suite covers more than simple success paths. It includes:
