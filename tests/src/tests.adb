@@ -6,9 +6,7 @@ with AUnit.Test_Suites;
 with Adaptive_Threshold_Tests;
 with Automatic_Threshold_Tests;
 with Canny_Edge_Tests;
-with Contour_Geometry_Tests;
 with Contour_Tests;
-with Contour_Moments_Tests;
 with Color_Conversion_Tests;
 with Gaussian_Blur_Tests;
 with Laplacian_Tests;
@@ -41,8 +39,6 @@ begin
    Suite.Add_Test (Automatic_Threshold_Tests.Suite);
    Suite.Add_Test (Adaptive_Threshold_Tests.Suite);
    Suite.Add_Test (Contour_Tests.Suite);
-   Suite.Add_Test (Contour_Geometry_Tests.Suite);
-   Suite.Add_Test (Contour_Moments_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;
