@@ -10,6 +10,7 @@ with Box_Blur_Tests;
 with Canny_Edge_Tests;
 with Contour_Tests;
 with Color_Conversion_Tests;
+with Filter_2D_Tests;
 with Gaussian_Blur_Tests;
 with Laplacian_Tests;
 with Median_Blur_Tests;
@@ -37,6 +38,7 @@ begin
    Suite.Add_Test (Median_Blur_Tests.Suite);
    Suite.Add_Test (Box_Blur_Tests.Suite);
    Suite.Add_Test (Bilateral_Filter_Tests.Suite);
+   Suite.Add_Test (Filter_2D_Tests.Suite);
    Suite.Add_Test (Laplacian_Tests.Suite);
    Suite.Add_Test (Morphology_Tests.Suite);
    Suite.Add_Test (Canny_Edge_Tests.Suite);

@@ -603,6 +603,129 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Bilateral_Filter;
 
+   procedure Validate_Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Kernel            : OpenCV.Core.Mat;
+      Destination_Depth : Filter_Depth;
+      Offset            : OpenCV.Core.Float64_Value;
+      Border            : OpenCV.Core.Border_Kind)
+   is
+      use type OpenCV.Core.Border_Kind;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Filter_2D requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Filter_2D requires a two-dimensional source Mat");
+      end if;
+
+      if Kernel.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Filter_2D requires a non-empty kernel Mat");
+      end if;
+
+      if Kernel.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Filter_2D requires a two-dimensional kernel Mat");
+      end if;
+
+      if Kernel.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Filter_2D requires a single-channel Float32 or Float64 kernel");
+      end if;
+
+      case Kernel.Depth is
+         when OpenCV.Core.Float32 | OpenCV.Core.Float64 =>
+            null;
+
+         when others                                    =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Filter_2D requires a single-channel Float32 or"
+               & " Float64 kernel");
+      end case;
+
+      if Offset /= Offset
+        or else Offset > OpenCV.Core.Float64_Value'Last
+        or else Offset < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Filter_2D requires a finite Offset");
+      end if;
+
+      if Border = OpenCV.Core.Wrap then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Filter_2D does not support Wrap border");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8                      =>
+            null;
+
+         when OpenCV.Core.UInt16 | OpenCV.Core.Int16 =>
+            if Destination_Depth = Int16_Depth then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Filter_2D does not support Int16 destination depth for "
+                  & "UInt16 or Int16 source Mats");
+            end if;
+
+         when OpenCV.Core.Float32                    =>
+            if Destination_Depth = Int16_Depth
+              or else Destination_Depth = Float64_Depth
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Filter_2D supports only Same_Depth or Float32_Depth for "
+                  & "Float32 source Mats");
+            end if;
+
+         when OpenCV.Core.Float64                    =>
+            if Destination_Depth = Int16_Depth
+              or else Destination_Depth = Float32_Depth
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Filter_2D supports only Same_Depth or Float64_Depth for "
+                  & "Float64 source Mats");
+            end if;
+
+         when others                                 =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Filter_2D requires a UInt8, UInt16, Int16, Float32, or "
+               & "Float64 source Mat");
+      end case;
+   end Validate_Filter_2D;
+
+   procedure Validate_Filter_2D_Anchor
+     (Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Core.Point)
+   is
+      use type OpenCV.Core.Point_Coordinate;
+   begin
+      if Anchor.X < 0
+        or else Anchor.Y < 0
+        or else Integer (Anchor.X) >= Kernel.Columns
+        or else Integer (Anchor.Y) >= Kernel.Rows
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Filter_2D anchor lies outside the kernel");
+      end if;
+   end Validate_Filter_2D_Anchor;
+
    procedure Validate_Morphology
      (Source      : OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Core.Size;
@@ -1288,6 +1411,99 @@ package body OpenCV.Image_Processing is
          Sigma_Space,
          Border);
    end Bilateral_Filter;
+
+   procedure Apply_Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel            : OpenCV.Core.Mat;
+      Anchor_X          : Interfaces.Integer_32;
+      Anchor_Y          : Interfaces.Integer_32;
+      Destination_Depth : Filter_Depth;
+      Offset            : OpenCV.Core.Float64_Value;
+      Border            : OpenCV.Core.Border_Kind)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Source_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Kernel_Input
+           (Kernel_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Filter_Output
+              (Destination_Handle :
+                 OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Filter_2D
+                   (Source_Handle,
+                    Destination_Handle,
+                    Kernel_Handle,
+                    To_C_Derivative_Depth (Destination_Depth),
+                    Anchor_X,
+                    Anchor_Y,
+                    Interfaces.C.double (Offset),
+                    To_C_Border (Border));
+            end Filter_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Destination, Filter_Output'Access);
+         end Kernel_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Kernel, Kernel_Input'Access);
+      end Source_Input;
+   begin
+      Validate_Filter_2D (Source, Kernel, Destination_Depth, Offset, Border);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Source_Input'Access);
+      Raise_On_Error (Status, "Filter_2D");
+   end Apply_Filter_2D;
+
+   procedure Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel            : OpenCV.Core.Mat;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+   is
+   begin
+      Apply_Filter_2D
+        (Source,
+         Destination,
+         Kernel,
+         Interfaces.Integer_32 (-1),
+         Interfaces.Integer_32 (-1),
+         Destination_Depth,
+         Offset,
+         Border);
+   end Filter_2D;
+
+   procedure Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel            : OpenCV.Core.Mat;
+      Anchor            : OpenCV.Core.Point;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+   is
+   begin
+      Validate_Filter_2D (Source, Kernel, Destination_Depth, Offset, Border);
+      Validate_Filter_2D_Anchor (Kernel, Anchor);
+      Apply_Filter_2D
+        (Source,
+         Destination,
+         Kernel,
+         Interfaces.Integer_32 (Anchor.X),
+         Interfaces.Integer_32 (Anchor.Y),
+         Destination_Depth,
+         Offset,
+         Border);
+   end Filter_2D;
 
    type Basic_Morphology_Operation is (Erosion, Dilation);
 

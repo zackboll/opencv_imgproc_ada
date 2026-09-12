@@ -28,6 +28,8 @@ package OpenCV.Image_Processing is
    type Derivative_Depth is
      (Same_Depth, Int16_Depth, Float32_Depth, Float64_Depth);
 
+   subtype Filter_Depth is Derivative_Depth;
+
    type Threshold_Mode is
      (Binary, Binary_Inverse, Truncate, To_Zero, To_Zero_Inverse);
 
@@ -180,6 +182,47 @@ package OpenCV.Image_Processing is
       Sigma_Color : OpenCV.Core.Float64_Value;
       Sigma_Space : OpenCV.Core.Float64_Value;
       Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  Filter_2D replaces Destination with a linear correlation of Source
+   --  against Kernel. This is correlation, not mathematical convolution: the
+   --  kernel is not mirrored around the anchor. Source must be a non-empty
+   --  two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or Float64.
+   --  Channel count is unrestricted; the same single-channel Kernel is applied
+   --  independently to every Source channel. Kernel must be a non-empty
+   --  two-dimensional single-channel Float32 or Float64 Mat. Kernel dimensions
+   --  need not be odd, square, or normalized. Destination_Depth selects the
+   --  output depth using the same supported source/destination combinations as
+   --  Sobel and Laplacian. Offset is added to each filtered value and must be
+   --  finite. This overload uses OpenCV's centered default anchor; there is no
+   --  public (-1, -1) sentinel. Constant_Border, Replicate, Reflect, and
+   --  Reflect_101 are supported; Wrap is rejected. Destination receives
+   --  Source's rows, columns, and channel count, with the requested depth.
+   --  Source remains unchanged when Destination is distinct. Direct in-place
+   --  operation is supported when the requested destination depth matches
+   --  Source. Contract violations and failures reported by OpenCV raise
+   --  OpenCV.OpenCV_Error.
+   procedure Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel            : OpenCV.Core.Mat;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  This overload is the same Filter_2D correlation with an explicit Kernel
+   --  Anchor. Anchor must lie inside Kernel: X and Y are nonnegative and
+   --  strictly less than Kernel's columns and rows. There is no public mixed
+   --  or centered (-1, -1) sentinel in this overload. Direct in-place
+   --  operation is supported when the requested destination depth matches
+   --  Source.
+   procedure Filter_2D
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel            : OpenCV.Core.Mat;
+      Anchor            : OpenCV.Core.Point;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Offset            : OpenCV.Core.Float64_Value := 0.0;
+      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
 
    --  Erode replaces Destination with the neighborhood minimum selected by a
    --  temporary structuring element of Kernel_Size and Shape. Source must be a

@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **126 AUnit tests**
+> **Current test baseline:** **138 AUnit tests**
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
 >
@@ -53,6 +53,7 @@ Ada package, and built libraries serve different roles.
 - [Median blur](#median-blur)
 - [Box blur](#box-blur)
 - [Bilateral filter](#bilateral-filter)
+- [Filter 2D](#filter-2d)
 - [Morphology](#morphology)
 - [Canny edge detection](#canny-edge-detection)
 - [Spatial derivatives](#spatial-derivatives)
@@ -87,6 +88,7 @@ The current public surface includes:
 - median blur;
 - box blur;
 - bilateral filter;
+- custom-kernel Filter_2D correlation;
 - erosion and dilation;
 - morphology opening, closing, gradient, top-hat, and black-hat;
 - Canny edge detection;
@@ -157,6 +159,7 @@ The table below summarizes the current public operations.
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
 | Filtering | `Bilateral_Filter` | nonempty 2-D; `UInt8` or `Float32`; 1 or 3 channels | automatic or explicit diameter; positive finite sigmas; Wrap rejected; in-place unsupported |
+| Filtering | `Filter_2D` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | correlation, not convolution; single-channel Float32/Float64 kernel; destination-depth matrix; Wrap rejected; Same_Depth in-place supported |
 | Morphology | `Erode`, `Dilate` | nonempty 2-D; supported numeric depths | rectangle/cross/ellipse, positive iterations, in-place supported |
 | Morphology | `Apply_Morphology` | same as above | opening, closing, gradient, top-hat, black-hat |
 | Edges | `Canny_Edges` | nonempty 2-D `UInt8` C1 | 3x3/5x5/7x7 Sobel aperture, L1/L2 norm |
@@ -444,6 +447,107 @@ in-place operation is not supported:
 --  raises OpenCV.OpenCV_Error
 Bilateral_Filter (Image, Image, 5, 25.0, 25.0);
 ```
+
+When Destination is distinct, Source remains unchanged.
+
+---
+
+## Filter 2D
+
+API:
+
+```ada
+subtype Filter_Depth is Derivative_Depth;
+
+procedure Filter_2D
+  (Source            : OpenCV.Core.Mat;
+   Destination       : in out OpenCV.Core.Mat;
+   Kernel            : OpenCV.Core.Mat;
+   Destination_Depth : Filter_Depth := Same_Depth;
+   Offset            : OpenCV.Core.Float64_Value := 0.0;
+   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+procedure Filter_2D
+  (Source            : OpenCV.Core.Mat;
+   Destination       : in out OpenCV.Core.Mat;
+   Kernel            : OpenCV.Core.Mat;
+   Anchor            : OpenCV.Core.Point;
+   Destination_Depth : Filter_Depth := Same_Depth;
+   Offset            : OpenCV.Core.Float64_Value := 0.0;
+   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+```
+
+`Filter_2D` applies a custom linear kernel to every Source channel. This is
+**correlation, not mathematical convolution**: the kernel is not mirrored around
+the anchor.
+
+```text
+dst(x,y) =
+  sum kernel(x',y') * src(x + x' - anchor.x, y + y' - anchor.y)
+  + Offset
+```
+
+The overload without `Anchor` uses OpenCV's centered default. The overload with
+`Anchor` requires a real kernel position inside Kernel. There is no public
+`(-1, -1)` sentinel.
+
+Kernel requirements:
+
+- nonempty and two-dimensional;
+- exactly one channel;
+- depth `Float32` or `Float64`.
+
+Kernel dimensions need not be odd, square, or normalized. Examples such as
+`1x1`, `1x3`, `2x3`, and `4x2` are valid.
+
+Source depths:
+
+```text
+UInt8
+UInt16
+Int16
+Float32
+Float64
+```
+
+Channel count is unrestricted. The same single-channel kernel is applied
+independently to every Source channel.
+
+Destination-depth matrix:
+
+| Source | Supported `Destination_Depth` |
+| --- | --- |
+| `UInt8` | `Same_Depth`, `Int16_Depth`, `Float32_Depth`, `Float64_Depth` |
+| `UInt16` | `Same_Depth`, `Float32_Depth`, `Float64_Depth` |
+| `Int16` | `Same_Depth`, `Float32_Depth`, `Float64_Depth` |
+| `Float32` | `Same_Depth`, `Float32_Depth` |
+| `Float64` | `Same_Depth`, `Float64_Depth` |
+
+`Offset` is added to each filtered value. It must be finite and may be
+positive, zero, or negative.
+
+Supported borders:
+
+```text
+Constant_Border
+Replicate
+Reflect
+Reflect_101
+```
+
+`Wrap` is rejected.
+
+Direct Same_Depth in-place operation is supported:
+
+```ada
+Filter_2D
+  (Source            => Image,
+   Destination       => Image,
+   Kernel            => Kernel,
+   Destination_Depth => Same_Depth);
+```
+
+A depth-changing source/destination alias is rejected.
 
 When Destination is distinct, Source remains unchanged.
 
@@ -944,6 +1048,10 @@ Current groups are:
 cvt_color
 resize
 gaussian_blur
+median_blur
+box_blur
+bilateral_filter
+filter_2d
 erode
 dilate
 morphology_ex
@@ -1305,7 +1413,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **126-test** baseline is:
+The current **138-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -1315,6 +1423,7 @@ The current **126-test** baseline is:
 | Median blur | 10 |
 | Box blur | 11 |
 | Bilateral filter | 10 |
+| Filter 2D | 12 |
 | Laplacian | 9 |
 | Morphology | 19 |
 | Canny | 5 |
@@ -1323,7 +1432,7 @@ The current **126-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **126** |
+| **Total** | **138** |
 
 The suite covers more than simple success paths. It includes:
 
@@ -1440,6 +1549,36 @@ begin
       Sigma_Space => 75.0);
 end Bilateral_Example;
 ```
+
+### Filter 2D correlation
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.Float32_Access;
+with OpenCV.Image_Processing;
+
+procedure Filter_2D_Example is
+   Source : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+
+   Kernel : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+
+   Filtered : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+begin
+   OpenCV.Core.Float32_Access.Set (Kernel, 0, 0, 1.0);
+   OpenCV.Core.Float32_Access.Set (Kernel, 0, 1, 2.0);
+   OpenCV.Core.Float32_Access.Set (Kernel, 0, 2, 4.0);
+
+   OpenCV.Image_Processing.Filter_2D
+     (Source      => Source,
+      Destination => Filtered,
+      Kernel      => Kernel);
+end Filter_2D_Example;
+```
+
+The kernel is applied as correlation, not convolution.
 
 ### Sobel derivative
 
@@ -1592,6 +1731,7 @@ opencv_imgproc_ada/
 │       ├── median_blur_tests.*
 │       ├── box_blur_tests.*
 │       ├── bilateral_filter_tests.*
+│       ├── filter_2d_tests.*
 │       ├── morphology_tests.*
 │       ├── canny_edge_tests.*
 │       ├── spatial_derivative_tests.*
@@ -1624,7 +1764,7 @@ pre-1.0.
 Notable Imgproc families that are not yet broadly bound include:
 
 - the larger OpenCV color-conversion matrix beyond `BGR_To_Gray`;
-- general convolution/filtering such as `filter2D` and `sepFilter2D`;
+- general convolution/filtering such as `sepFilter2D`;
 - custom morphology kernels, anchors, and arbitrary constant border values;
 - affine and perspective warps;
 - remapping and map conversion;

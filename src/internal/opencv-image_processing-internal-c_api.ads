@@ -150,6 +150,17 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_bilateral_filter";
 
+   function Filter_2D
+     (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination_Depth : Interfaces.Integer_32;
+      Anchor_X          : Interfaces.Integer_32;
+      Anchor_Y          : Interfaces.Integer_32;
+      Offset            : Interfaces.C.double;
+      Border            : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_filter_2d";
+
    function Erode
      (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;

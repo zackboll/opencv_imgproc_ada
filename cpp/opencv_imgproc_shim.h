@@ -137,6 +137,17 @@ opencv_imgproc_bilateral_filter(
     int32_t border);
 
 opencv_imgproc_status
+opencv_imgproc_filter_2d(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    const opencv_core_mat_handle *kernel,
+    int32_t destination_depth,
+    int32_t anchor_x,
+    int32_t anchor_y,
+    double offset,
+    int32_t border);
+
+opencv_imgproc_status
 opencv_imgproc_erode(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,
