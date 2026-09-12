@@ -18,6 +18,7 @@ with Derivative_Kernel_Tests;
 with Laplacian_Tests;
 with Median_Blur_Tests;
 with Morphology_Tests;
+with Pyramid_Tests;
 with Resize_Tests;
 with Spatial_Derivative_Tests;
 with Threshold_Tests;
@@ -40,6 +41,7 @@ begin
    Suite.Add_Test (Gaussian_Blur_Tests.Suite);
    Suite.Add_Test (Gaussian_Kernel_Tests.Suite);
    Suite.Add_Test (Derivative_Kernel_Tests.Suite);
+   Suite.Add_Test (Pyramid_Tests.Suite);
    Suite.Add_Test (Median_Blur_Tests.Suite);
    Suite.Add_Test (Box_Blur_Tests.Suite);
    Suite.Add_Test (Bilateral_Filter_Tests.Suite);

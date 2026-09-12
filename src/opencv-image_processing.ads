@@ -203,6 +203,31 @@ package OpenCV.Image_Processing is
       Depth         : Derivative_Kernel_Depth := Float32_Kernel)
       return Derivative_Kernels;
 
+   --  Pyramid_Down performs OpenCV's Gaussian-pyramid downsampling of Source.
+   --  Source must be a non-empty two-dimensional Mat with depth UInt8, UInt16,
+   --  Int16, Float32, or Float64. Channel count is unrestricted. Destination
+   --  receives Source's depth and channel count with OpenCV's natural size:
+   --  Columns = (Source.Columns + 1) / 2 and Rows = (Source.Rows + 1) / 2.
+   --  Replicate, Reflect, Reflect_101, and Wrap are supported;
+   --  Constant_Border is rejected. Direct in-place operation is not
+   --  supported. Contract violations and failures reported by OpenCV raise
+   --  OpenCV.OpenCV_Error.
+   procedure Pyramid_Down
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+   --  Pyramid_Up performs OpenCV's Gaussian-pyramid upsampling of Source.
+   --  Source must be a non-empty two-dimensional Mat with depth UInt8, UInt16,
+   --  Int16, Float32, or Float64. Channel count is unrestricted. Destination
+   --  receives Source's depth and channel count with exactly doubled rows and
+   --  columns. OpenCV supports only its default border for this operation, so
+   --  no Border parameter is exposed. Direct in-place operation is not
+   --  supported. Contract violations and failures reported by OpenCV raise
+   --  OpenCV.OpenCV_Error.
+   procedure Pyramid_Up
+     (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat);
+
    --  Median_Blur replaces each Source pixel with the median of its square
    --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat
    --  with 1, 3, or 4 channels. Kernel_Size must be odd. Kernel sizes 3 and 5

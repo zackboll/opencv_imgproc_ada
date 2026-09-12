@@ -35,6 +35,7 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_BORDER_REPLICATE    ((int32_t)1)
 #define OPENCV_IMGPROC_BORDER_REFLECT      ((int32_t)2)
 #define OPENCV_IMGPROC_BORDER_REFLECT_101  ((int32_t)3)
+#define OPENCV_IMGPROC_BORDER_WRAP         ((int32_t)4)
 
 #define OPENCV_IMGPROC_MORPH_RECTANGLE ((int32_t)0)
 #define OPENCV_IMGPROC_MORPH_CROSS     ((int32_t)1)
@@ -321,6 +322,17 @@ opencv_imgproc_laplacian(
     double scale,
     double offset,
     int32_t border);
+
+opencv_imgproc_status
+opencv_imgproc_pyr_down(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t border);
+
+opencv_imgproc_status
+opencv_imgproc_pyr_up(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination);
 
 #ifdef __cplusplus
 }

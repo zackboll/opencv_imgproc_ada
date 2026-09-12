@@ -96,6 +96,29 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Border;
 
+   function To_C_Pyramid_Down_Border
+     (Border : OpenCV.Core.Border_Kind) return Interfaces.Integer_32 is
+   begin
+      case Border is
+         when OpenCV.Core.Replicate       =>
+            return Internal.C_API.Border_Replicate;
+
+         when OpenCV.Core.Reflect         =>
+            return Internal.C_API.Border_Reflect;
+
+         when OpenCV.Core.Reflect_101     =>
+            return Internal.C_API.Border_Reflect_101;
+
+         when OpenCV.Core.Wrap            =>
+            return Internal.C_API.Border_Wrap;
+
+         when OpenCV.Core.Constant_Border =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Pyramid_Down does not support Constant_Border");
+      end case;
+   end To_C_Pyramid_Down_Border;
+
    function To_C_Canny_Aperture
      (Aperture : Canny_Aperture) return Interfaces.Integer_32 is
    begin
@@ -525,6 +548,52 @@ package body OpenCV.Image_Processing is
             "Get_Derivative_Kernels Y_Order exceeds the effective kernel");
       end if;
    end Validate_Derivative_Kernel_Orders;
+
+   procedure Validate_Pyramid_Source
+     (Source : OpenCV.Core.Mat; Operation : String) is
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a non-empty source Mat");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " requires a two-dimensional source Mat");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8
+            | OpenCV.Core.UInt16
+            | OpenCV.Core.Int16
+            | OpenCV.Core.Float32
+            | OpenCV.Core.Float64 =>
+            null;
+
+         when others              =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               Operation
+               & " requires a UInt8, UInt16, Int16, Float32, or"
+               & " Float64 source Mat");
+      end case;
+   end Validate_Pyramid_Source;
+
+   procedure Validate_Pyramid_Down
+     (Source : OpenCV.Core.Mat; Border : OpenCV.Core.Border_Kind)
+   is
+      use type OpenCV.Core.Border_Kind;
+   begin
+      Validate_Pyramid_Source (Source, "Pyramid_Down");
+
+      if Border = OpenCV.Core.Constant_Border then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Pyramid_Down does not support Constant_Border");
+      end if;
+   end Validate_Pyramid_Down;
 
    procedure Validate_Median_Blur
      (Source : OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size)
@@ -1669,6 +1738,65 @@ package body OpenCV.Image_Processing is
            Normalization,
            Depth);
    end Get_Scharr_Kernels;
+
+   procedure Pyramid_Down
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Down_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Down_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Pyramid_Down
+                (Source_Handle,
+                 Destination_Handle,
+                 To_C_Pyramid_Down_Border (Border));
+         end Down_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Down_Output'Access);
+      end Down_Input;
+   begin
+      Validate_Pyramid_Down (Source, Border);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Down_Input'Access);
+      Raise_On_Error (Status, "Pyramid_Down");
+   end Pyramid_Down;
+
+   procedure Pyramid_Up
+     (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Up_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Up_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Pyramid_Up (Source_Handle, Destination_Handle);
+         end Up_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Up_Output'Access);
+      end Up_Input;
+   begin
+      Validate_Pyramid_Source (Source, "Pyramid_Up");
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Up_Input'Access);
+      Raise_On_Error (Status, "Pyramid_Up");
+   end Pyramid_Up;
 
    procedure Median_Blur
      (Source      : OpenCV.Core.Mat;

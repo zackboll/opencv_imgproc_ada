@@ -128,6 +128,30 @@ bool to_opencv_border(int32_t border, int &opencv_border) noexcept
     }
 }
 
+bool to_opencv_pyramid_down_border(int32_t border, int &opencv_border) noexcept
+{
+    switch (border) {
+    case OPENCV_IMGPROC_BORDER_REPLICATE:
+        opencv_border = cv::BORDER_REPLICATE;
+        return true;
+
+    case OPENCV_IMGPROC_BORDER_REFLECT:
+        opencv_border = cv::BORDER_REFLECT;
+        return true;
+
+    case OPENCV_IMGPROC_BORDER_REFLECT_101:
+        opencv_border = cv::BORDER_REFLECT_101;
+        return true;
+
+    case OPENCV_IMGPROC_BORDER_WRAP:
+        opencv_border = cv::BORDER_WRAP;
+        return true;
+
+    default:
+        return false;
+    }
+}
+
 bool to_opencv_derivative_depth(
     int32_t depth,
     int &opencv_depth) noexcept
@@ -2132,6 +2156,145 @@ opencv_imgproc_sep_filter_2d(
                 static_cast<int>(anchor_y)),
             offset,
             opencv_border);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status resolve_pyramid_source_and_destination(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    const cv::Mat **src,
+    cv::Mat **dst,
+    const char *operation)
+{
+    opencv_core_status core_status =
+        opencv_core_module_input_mat(source, src);
+
+    if (core_status != OPENCV_CORE_OK || *src == nullptr) {
+        return invalid_argument("invalid source Mat");
+    }
+
+    core_status = opencv_core_module_output_mat(destination, dst);
+
+    if (core_status != OPENCV_CORE_OK || *dst == nullptr) {
+        return invalid_argument("invalid destination Mat");
+    }
+
+    // ABI safety: OpenCV pyramid kernels access src as a 2-D image and
+    // use typed pointer arithmetic before fully rejecting empty or
+    // higher-dimensional Mats.
+    if ((*src)->empty()) {
+        return invalid_argument("pyramid source must be nonempty");
+    }
+
+    if ((*src)->dims != 2) {
+        return invalid_argument("pyramid source must be two-dimensional");
+    }
+
+    // ABI safety: OpenCV pyramid HAL/dispatch uses src depth to select
+    // typed neighborhood access before rejecting unsupported depths.
+    const int depth = (*src)->depth();
+    if (depth != CV_8U && depth != CV_16U && depth != CV_16S
+        && depth != CV_32F && depth != CV_64F) {
+        return invalid_argument(
+            "pyramid requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
+    }
+
+    // ABI safety: writing dst while reading the same buffer is undefined
+    // for this size-changing pyramid operation.
+    if (*src == *dst
+        || ((*src)->data != nullptr && (*src)->data == (*dst)->data)) {
+        char message[error_message_capacity];
+        std::snprintf(
+            message,
+            error_message_capacity,
+            "%s does not support aliased source and destination",
+            operation);
+        return invalid_argument(message);
+    }
+
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_pyr_down(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t border)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        const opencv_imgproc_status resolved =
+            resolve_pyramid_source_and_destination(
+                source,
+                destination,
+                &src,
+                &dst,
+                "pyrDown");
+
+        if (resolved != OPENCV_IMGPROC_OK) {
+            return resolved;
+        }
+
+        if (border == OPENCV_IMGPROC_BORDER_CONSTANT) {
+            // ABI safety: OpenCV pyrDown documents BORDER_CONSTANT as
+            // unsupported and constructs neighborhood tables before the
+            // exception path; reject it as a malformed selector rather than
+            // allowing signed index arithmetic on an unsupported mode.
+            return invalid_argument("pyrDown does not support Constant_Border");
+        }
+
+        int opencv_border = 0;
+
+        if (!to_opencv_pyramid_down_border(border, opencv_border)) {
+            return invalid_argument("unsupported pyrDown border");
+        }
+
+        cv::pyrDown(*src, *dst, cv::Size(), opencv_border);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_pyr_up(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        const opencv_imgproc_status resolved =
+            resolve_pyramid_source_and_destination(
+                source,
+                destination,
+                &src,
+                &dst,
+                "pyrUp");
+
+        if (resolved != OPENCV_IMGPROC_OK) {
+            return resolved;
+        }
+
+        // ABI safety: OpenCV constructs Size(src.cols * 2, src.rows * 2)
+        // with signed int multiplication before allocating dst.
+        const int max_extent = std::numeric_limits<int>::max() / 2;
+        if (src->cols > max_extent || src->rows > max_extent) {
+            return invalid_argument(
+                "pyrUp dimensions would overflow signed int");
+        }
+
+        cv::pyrUp(*src, *dst, cv::Size(), cv::BORDER_DEFAULT);
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {

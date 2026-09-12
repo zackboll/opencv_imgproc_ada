@@ -26,6 +26,7 @@ package OpenCV.Image_Processing.Internal.C_API is
    Border_Replicate   : constant Interfaces.Integer_32 := 1;
    Border_Reflect     : constant Interfaces.Integer_32 := 2;
    Border_Reflect_101 : constant Interfaces.Integer_32 := 3;
+   Border_Wrap        : constant Interfaces.Integer_32 := 4;
 
    Morphology_Rectangle : constant Interfaces.Integer_32 := 0;
    Morphology_Cross     : constant Interfaces.Integer_32 := 1;
@@ -372,6 +373,17 @@ package OpenCV.Image_Processing.Internal.C_API is
       Offset            : Interfaces.C.double;
       Border            : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_laplacian";
+
+   function Pyramid_Down
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Border      : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_pyr_down";
+
+   function Pyramid_Up
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_pyr_up";
 
    function Last_Error_Message return String;
 

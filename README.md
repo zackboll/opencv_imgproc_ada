@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **168 AUnit tests**
+> **Current test baseline:** **178 AUnit tests**
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
 >
@@ -52,6 +52,7 @@ Ada package, and built libraries serve different roles.
 - [Gaussian blur](#gaussian-blur)
 - [Gaussian kernel](#gaussian-kernel)
 - [Derivative kernels](#derivative-kernels)
+- [Image pyramids](#image-pyramids)
 - [Median blur](#median-blur)
 - [Box blur](#box-blur)
 - [Bilateral filter](#bilateral-filter)
@@ -90,6 +91,7 @@ The current public surface includes:
 - Gaussian blur;
 - Gaussian kernel generation;
 - Sobel and Scharr derivative kernel generation;
+- Gaussian pyramid downsampling and upsampling;
 - median blur;
 - box blur;
 - bilateral filter;
@@ -164,6 +166,7 @@ The table below summarizes the current public operations.
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
 | Filtering | `Get_Gaussian_Kernel` | odd positive size | automatic or explicit sigma; Float32/Float64 `N x 1` C1 kernel; usable with `Sep_Filter_2D` |
 | Derivatives | `Get_Derivative_Kernels`, `Get_Scharr_Kernels` | odd Sobel size 1/3/5/7 or Scharr axis | Float32/Float64 `N x 1` C1 pair; Kernel_1 may differ in X/Y length; usable with `Sep_Filter_2D` |
+| Pyramids | `Pyramid_Down`, `Pyramid_Up` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | natural half/double size; arbitrary channels; Down accepts Wrap and rejects Constant; Up has no Border; in-place unsupported |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
 | Filtering | `Bilateral_Filter` | nonempty 2-D; `UInt8` or `Float32`; 1 or 3 channels | automatic or explicit diameter; positive finite sigmas; Wrap rejected; in-place unsupported |
@@ -381,6 +384,44 @@ so the two lengths may differ.
 
 `Get_Scharr_Kernels` is a separate first-derivative API. There is no public
 `FILTER_SCHARR` or `-1` kernel-size sentinel. Both Scharr vectors are length 3.
+
+---
+
+## Image pyramids
+
+API:
+
+```ada
+procedure Pyramid_Down
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+
+procedure Pyramid_Up
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat);
+```
+
+`Pyramid_Down` performs OpenCV's Gaussian-pyramid downsampling. Destination
+keeps Source depth and channel count and uses the natural size:
+
+```text
+Destination.Columns = (Source.Columns + 1) / 2
+Destination.Rows    = (Source.Rows    + 1) / 2
+```
+
+Supported depths are `UInt8`, `UInt16`, `Int16`, `Float32`, and `Float64`.
+Channel count is unrestricted. `Replicate`, `Reflect`, `Reflect_101`, and
+`Wrap` are accepted; `Constant_Border` is rejected. Direct in-place use is
+unsupported.
+
+`Pyramid_Up` performs OpenCV's Gaussian-pyramid upsampling. Destination keeps
+Source depth and channel count and exactly doubles both dimensions. OpenCV
+supports only its default border for this operation, so no `Border` parameter
+is exposed. Direct in-place use is unsupported.
+
+`Pyramid_Up(Pyramid_Down(Image))` is generally a smoothed reconstruction, not
+the original image. `buildPyramid` is not bound.
 
 ---
 
@@ -1254,6 +1295,8 @@ resize
 gaussian_blur
 get_gaussian_kernel
 get_derivative_kernels
+pyr_down
+pyr_up
 median_blur
 box_blur
 bilateral_filter
@@ -1619,7 +1662,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **168-test** baseline is:
+The current **178-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -1628,6 +1671,7 @@ The current **168-test** baseline is:
 | Gaussian blur | 10 |
 | Gaussian kernel | 8 |
 | Derivative kernels | 10 |
+| Image pyramids | 10 |
 | Median blur | 10 |
 | Box blur | 11 |
 | Bilateral filter | 10 |
@@ -1641,7 +1685,7 @@ The current **168-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **168** |
+| **Total** | **178** |
 
 The suite covers more than simple success paths. It includes:
 
@@ -1771,6 +1815,27 @@ begin
       Destination_Depth => OpenCV.Image_Processing.Float32_Depth);
 end Derivative_Kernel_Example;
 ```
+
+### Image pyramids
+
+```ada
+with OpenCV.Core;
+with OpenCV.Image_Processing;
+
+procedure Pyramid_Example is
+   Source : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (480, 640, (OpenCV.Core.UInt8, 3));
+
+   Small          : OpenCV.Core.Mat;
+   Restored_Size  : OpenCV.Core.Mat;
+begin
+   OpenCV.Image_Processing.Pyramid_Down (Source, Small);
+   OpenCV.Image_Processing.Pyramid_Up (Small, Restored_Size);
+end Pyramid_Example;
+```
+
+`Restored_Size` has Source's original geometry, but the reconstruction is
+smoothed rather than identical to Source.
 
 ### Box blur
 
@@ -2031,6 +2096,7 @@ opencv_imgproc_ada/
 │       ├── gaussian_blur_tests.*
 │       ├── gaussian_kernel_tests.*
 │       ├── derivative_kernel_tests.*
+│       ├── pyramid_tests.*
 │       ├── median_blur_tests.*
 │       ├── box_blur_tests.*
 │       ├── bilateral_filter_tests.*
@@ -2073,7 +2139,7 @@ Notable Imgproc families that are not yet broadly bound include:
 - remapping and map conversion;
 - affine/perspective transform construction helpers;
 - polar transforms;
-- image pyramids;
+- Laplacian pyramids and `buildPyramid`;
 - Hough line and circle transforms;
 - connected-components labeling/statistics;
 - watershed, flood fill, and GrabCut;
