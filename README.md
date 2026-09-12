@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **158 AUnit tests**
+> **Current test baseline:** **168 AUnit tests**
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
 >
@@ -51,6 +51,7 @@ Ada package, and built libraries serve different roles.
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
 - [Gaussian kernel](#gaussian-kernel)
+- [Derivative kernels](#derivative-kernels)
 - [Median blur](#median-blur)
 - [Box blur](#box-blur)
 - [Bilateral filter](#bilateral-filter)
@@ -88,6 +89,7 @@ The current public surface includes:
 - image resize with five interpolation modes;
 - Gaussian blur;
 - Gaussian kernel generation;
+- Sobel and Scharr derivative kernel generation;
 - median blur;
 - box blur;
 - bilateral filter;
@@ -161,6 +163,7 @@ The table below summarizes the current public operations.
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
 | Filtering | `Get_Gaussian_Kernel` | odd positive size | automatic or explicit sigma; Float32/Float64 `N x 1` C1 kernel; usable with `Sep_Filter_2D` |
+| Derivatives | `Get_Derivative_Kernels`, `Get_Scharr_Kernels` | odd Sobel size 1/3/5/7 or Scharr axis | Float32/Float64 `N x 1` C1 pair; Kernel_1 may differ in X/Y length; usable with `Sep_Filter_2D` |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
 | Filtering | `Bilateral_Filter` | nonempty 2-D; `UInt8` or `Float32`; 1 or 3 channels | automatic or explicit diameter; positive finite sigmas; Wrap rejected; in-place unsupported |
@@ -329,6 +332,55 @@ Requirements:
 
 The returned Mat owns ordinary Core lifetime. Even lengths remain invalid even
 though `Sep_Filter_2D` accepts even-length arbitrary kernels.
+
+---
+
+## Derivative kernels
+
+API:
+
+```ada
+subtype Derivative_Kernel_Depth is Gaussian_Kernel_Depth;
+
+type Derivative_Kernel_Normalization is
+  (Unnormalized, Normalized);
+
+type Derivative_Kernels is record
+   Kernel_X : OpenCV.Core.Mat;
+   Kernel_Y : OpenCV.Core.Mat;
+end record;
+
+function Get_Derivative_Kernels
+  (X_Order       : Derivative_Order;
+   Y_Order       : Derivative_Order;
+   Kernel_Size   : Sobel_Kernel_Size := Kernel_3;
+   Normalization : Derivative_Kernel_Normalization := Unnormalized;
+   Depth         : Derivative_Kernel_Depth := Float32_Kernel)
+   return Derivative_Kernels;
+
+function Get_Scharr_Kernels
+  (Axis          : Derivative_Axis;
+   Normalization : Derivative_Kernel_Normalization := Unnormalized;
+   Depth         : Derivative_Kernel_Depth := Float32_Kernel)
+   return Derivative_Kernels;
+```
+
+These functions generate separable 1-D derivative coefficient vectors; they do
+not filter an image themselves. `Kernel_X` applies in X and `Kernel_Y` applies
+in Y. Both are independently owned single-channel column vectors (`N x 1`) of
+matching `Float32` or `Float64` depth. Coefficient order is preserved and may
+be passed directly to `Sep_Filter_2D`. `Normalized` changes coefficient
+scaling, not derivative order.
+
+`Get_Derivative_Kernels` uses the existing Sobel kernel sizes `Kernel_1`,
+`Kernel_3`, `Kernel_5`, and `Kernel_7`. `X_Order` and `Y_Order` cannot both be
+zero, and each order must be strictly less than the effective one-dimensional
+length in that direction. For `Kernel_1`, a nonzero-order direction uses an
+effective 3-tap vector while a zero-order direction remains a 1-tap identity,
+so the two lengths may differ.
+
+`Get_Scharr_Kernels` is a separate first-derivative API. There is no public
+`FILTER_SCHARR` or `-1` kernel-size sentinel. Both Scharr vectors are length 3.
 
 ---
 
@@ -1201,6 +1253,7 @@ cvt_color
 resize
 gaussian_blur
 get_gaussian_kernel
+get_derivative_kernels
 median_blur
 box_blur
 bilateral_filter
@@ -1566,7 +1619,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **158-test** baseline is:
+The current **168-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -1574,6 +1627,7 @@ The current **158-test** baseline is:
 | Resize | 10 |
 | Gaussian blur | 10 |
 | Gaussian kernel | 8 |
+| Derivative kernels | 10 |
 | Median blur | 10 |
 | Box blur | 11 |
 | Bilateral filter | 10 |
@@ -1587,7 +1641,7 @@ The current **158-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **158** |
+| **Total** | **168** |
 
 The suite covers more than simple success paths. It includes:
 
@@ -1688,6 +1742,34 @@ begin
       Kernel_X    => Kernel,
       Kernel_Y    => Kernel);
 end Gaussian_Kernel_Example;
+```
+
+### Derivative kernels with Sep_Filter_2D
+
+```ada
+with OpenCV.Core;
+with OpenCV.Image_Processing;
+
+procedure Derivative_Kernel_Example is
+   Source : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (480, 640, (OpenCV.Core.Float32, 1));
+
+   Kernels : constant OpenCV.Image_Processing.Derivative_Kernels :=
+     OpenCV.Image_Processing.Get_Derivative_Kernels
+       (X_Order     => 1,
+        Y_Order     => 0,
+        Kernel_Size => OpenCV.Image_Processing.Kernel_3);
+
+   Filtered : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+begin
+   OpenCV.Image_Processing.Sep_Filter_2D
+     (Source            => Source,
+      Destination       => Filtered,
+      Kernel_X          => Kernels.Kernel_X,
+      Kernel_Y          => Kernels.Kernel_Y,
+      Destination_Depth => OpenCV.Image_Processing.Float32_Depth);
+end Derivative_Kernel_Example;
 ```
 
 ### Box blur
@@ -1948,6 +2030,7 @@ opencv_imgproc_ada/
 │       ├── resize_tests.*
 │       ├── gaussian_blur_tests.*
 │       ├── gaussian_kernel_tests.*
+│       ├── derivative_kernel_tests.*
 │       ├── median_blur_tests.*
 │       ├── box_blur_tests.*
 │       ├── bilateral_filter_tests.*

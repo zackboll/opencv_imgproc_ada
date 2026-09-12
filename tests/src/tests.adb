@@ -14,6 +14,7 @@ with Filter_2D_Tests;
 with Sep_Filter_2D_Tests;
 with Gaussian_Blur_Tests;
 with Gaussian_Kernel_Tests;
+with Derivative_Kernel_Tests;
 with Laplacian_Tests;
 with Median_Blur_Tests;
 with Morphology_Tests;
@@ -38,6 +39,7 @@ begin
    Suite.Add_Test (Resize_Tests.Suite);
    Suite.Add_Test (Gaussian_Blur_Tests.Suite);
    Suite.Add_Test (Gaussian_Kernel_Tests.Suite);
+   Suite.Add_Test (Derivative_Kernel_Tests.Suite);
    Suite.Add_Test (Median_Blur_Tests.Suite);
    Suite.Add_Test (Box_Blur_Tests.Suite);
    Suite.Add_Test (Bilateral_Filter_Tests.Suite);

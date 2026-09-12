@@ -150,7 +150,7 @@ bool to_opencv_derivative_depth(
     }
 }
 
-bool to_opencv_gaussian_kernel_depth(
+bool to_opencv_kernel_coefficient_depth(
     int32_t depth,
     int &opencv_depth) noexcept
 {
@@ -164,6 +164,13 @@ bool to_opencv_gaussian_kernel_depth(
     default:
         return false;
     }
+}
+
+bool to_opencv_gaussian_kernel_depth(
+    int32_t depth,
+    int &opencv_depth) noexcept
+{
+    return to_opencv_kernel_coefficient_depth(depth, opencv_depth);
 }
 
 bool to_opencv_sobel_kernel(int32_t kernel, int &opencv_kernel) noexcept
@@ -751,6 +758,110 @@ opencv_imgproc_get_gaussian_kernel(
         *dst = cv::getGaussianKernel(
             static_cast<int>(kernel_size),
             sigma,
+            opencv_depth);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_get_derivative_kernels(
+    opencv_core_mat_handle *kernel_x,
+    opencv_core_mat_handle *kernel_y,
+    int32_t x_order,
+    int32_t y_order,
+    int32_t kernel_size,
+    int32_t normalize,
+    int32_t kernel_depth)
+{
+    clear_error();
+
+    try {
+        cv::Mat *kx = nullptr;
+        cv::Mat *ky = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_output_mat(kernel_x, &kx);
+
+        if (core_status != OPENCV_CORE_OK || kx == nullptr) {
+            return invalid_argument("invalid kernel_x Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(kernel_y, &ky);
+
+        if (core_status != OPENCV_CORE_OK || ky == nullptr) {
+            return invalid_argument("invalid kernel_y Mat");
+        }
+
+        // ABI safety: the same native Mat header cannot receive both
+        // independently assigned coefficient vectors.
+        if (kx == ky) {
+            return invalid_argument(
+                "getDerivKernels kernel_x and kernel_y must be distinct");
+        }
+
+        if (normalize != OPENCV_IMGPROC_DERIVATIVE_KERNELS_UNNORMALIZED
+            && normalize != OPENCV_IMGPROC_DERIVATIVE_KERNELS_NORMALIZED) {
+            return invalid_argument(
+                "unsupported getDerivKernels normalize selector");
+        }
+
+        int opencv_depth = 0;
+        if (!to_opencv_kernel_coefficient_depth(kernel_depth, opencv_depth)) {
+            return invalid_argument(
+                "unsupported getDerivKernels depth");
+        }
+
+        // ABI safety: signed orders and kernel sizes reach OpenCV's
+        // coefficient-vector construction and signed index arithmetic.
+        if (x_order < 0 || y_order < 0) {
+            return invalid_argument(
+                "getDerivKernels orders must be nonnegative");
+        }
+
+        if (x_order == 0 && y_order == 0) {
+            return invalid_argument(
+                "getDerivKernels requires a nonzero derivative order");
+        }
+
+        if (kernel_size == OPENCV_IMGPROC_DERIVATIVE_KERNEL_SCHARR) {
+            const bool scharr_x = x_order == 1 && y_order == 0;
+            const bool scharr_y = x_order == 0 && y_order == 1;
+            if (!scharr_x && !scharr_y) {
+                return invalid_argument(
+                    "getDerivKernels Scharr requires a first derivative");
+            }
+        } else if (kernel_size == OPENCV_IMGPROC_SOBEL_KERNEL_1
+                   || kernel_size == OPENCV_IMGPROC_SOBEL_KERNEL_3
+                   || kernel_size == OPENCV_IMGPROC_SOBEL_KERNEL_5
+                   || kernel_size == OPENCV_IMGPROC_SOBEL_KERNEL_7) {
+            const int32_t effective_x =
+                (kernel_size == OPENCV_IMGPROC_SOBEL_KERNEL_1 && x_order > 0)
+                    ? 3
+                    : kernel_size;
+            const int32_t effective_y =
+                (kernel_size == OPENCV_IMGPROC_SOBEL_KERNEL_1 && y_order > 0)
+                    ? 3
+                    : kernel_size;
+
+            if (x_order >= effective_x || y_order >= effective_y) {
+                return invalid_argument(
+                    "getDerivKernels orders exceed the effective kernel");
+            }
+        } else {
+            return invalid_argument(
+                "unsupported getDerivKernels kernel size");
+        }
+
+        cv::getDerivKernels(
+            *kx,
+            *ky,
+            static_cast<int>(x_order),
+            static_cast<int>(y_order),
+            static_cast<int>(kernel_size),
+            normalize != 0,
             opencv_depth);
 
         return OPENCV_IMGPROC_OK;

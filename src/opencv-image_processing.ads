@@ -25,6 +25,15 @@ package OpenCV.Image_Processing is
 
    type Gaussian_Kernel_Depth is (Float32_Kernel, Float64_Kernel);
 
+   subtype Derivative_Kernel_Depth is Gaussian_Kernel_Depth;
+
+   type Derivative_Kernel_Normalization is (Unnormalized, Normalized);
+
+   type Derivative_Kernels is record
+      Kernel_X : OpenCV.Core.Mat;
+      Kernel_Y : OpenCV.Core.Mat;
+   end record;
+
    subtype Derivative_Order is Natural range 0 .. 7;
 
    type Derivative_Axis is (X_Axis, Y_Axis);
@@ -140,6 +149,59 @@ package OpenCV.Image_Processing is
       Sigma       : OpenCV.Core.Float64_Value;
       Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
       return OpenCV.Core.Mat;
+
+   --  Get_Derivative_Kernels generates the separable 1-D Sobel-family
+   --  coefficient vectors used by spatial derivatives; it does not filter an
+   --  image itself. Kernel_X is the horizontal/X-direction vector and Kernel_Y
+   --  is the vertical/Y-direction vector. Both are independently owned
+   --  single-channel column vectors (N x 1) of matching Float32 or Float64
+   --  depth. Coefficient order is preserved; the generator does not flip
+   --  coefficients. The pair may be passed directly to Sep_Filter_2D:
+   --
+   --    Kernels :=
+   --      Get_Derivative_Kernels
+   --        (X_Order     => 1,
+   --         Y_Order     => 0,
+   --         Kernel_Size => Kernel_3);
+   --    Sep_Filter_2D
+   --      (Source,
+   --       Destination,
+   --       Kernel_X          => Kernels.Kernel_X,
+   --       Kernel_Y          => Kernels.Kernel_Y,
+   --       Destination_Depth => Float32_Depth);
+   --
+   --  X_Order and Y_Order cannot both be zero. Each order must be strictly
+   --  less than the effective one-dimensional length in that direction.
+   --  Kernel_3, Kernel_5, and Kernel_7 use that kernel size in both
+   --  directions. Kernel_1 uses OpenCV's special derivative behavior: a
+   --  nonzero-order direction has effective length 3, while a zero-order
+   --  direction remains a 1-tap identity, so Kernel_X and Kernel_Y lengths
+   --  may differ. Normalized changes coefficient scaling, not derivative
+   --  order. There is no public FILTER_SCHARR or -1 kernel-size sentinel;
+   --  use Get_Scharr_Kernels for Scharr coefficients. Contract violations
+   --  and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   function Get_Derivative_Kernels
+     (X_Order       : Derivative_Order;
+      Y_Order       : Derivative_Order;
+      Kernel_Size   : Sobel_Kernel_Size := Kernel_3;
+      Normalization : Derivative_Kernel_Normalization := Unnormalized;
+      Depth         : Derivative_Kernel_Depth := Float32_Kernel)
+      return Derivative_Kernels;
+
+   --  Get_Scharr_Kernels generates the separable 1-D Scharr first-derivative
+   --  coefficient pair for Axis. It does not filter an image itself. Both
+   --  returned vectors are independently owned 3 x 1 single-channel Mats of
+   --  matching Float32 or Float64 depth. Coefficient order is preserved and
+   --  may be passed directly to Sep_Filter_2D. X_Axis maps to X_Order 1 /
+   --  Y_Order 0; Y_Axis maps to X_Order 0 / Y_Order 1. Normalized changes
+   --  smoothing-vector scaling, not derivative order. The native Scharr
+   --  kernel-size sentinel remains private. Contract violations and failures
+   --  reported by OpenCV raise OpenCV.OpenCV_Error.
+   function Get_Scharr_Kernels
+     (Axis          : Derivative_Axis;
+      Normalization : Derivative_Kernel_Normalization := Unnormalized;
+      Depth         : Derivative_Kernel_Depth := Float32_Kernel)
+      return Derivative_Kernels;
 
    --  Median_Blur replaces each Source pixel with the median of its square
    --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat

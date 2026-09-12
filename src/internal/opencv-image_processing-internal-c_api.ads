@@ -95,6 +95,12 @@ package OpenCV.Image_Processing.Internal.C_API is
    Gaussian_Kernel_Float32 : constant Interfaces.Integer_32 := 0;
    Gaussian_Kernel_Float64 : constant Interfaces.Integer_32 := 1;
 
+   Derivative_Kernels_Unnormalized : constant Interfaces.Integer_32 := 0;
+   Derivative_Kernels_Normalized   : constant Interfaces.Integer_32 := 1;
+
+   Derivative_Kernel_Scharr : constant Interfaces.Integer_32 :=
+     Interfaces.Integer_32 (Integer'(-1));
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -136,6 +142,19 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_get_gaussian_kernel";
+
+   function Get_Derivative_Kernels
+     (Kernel_X     : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel_Y     : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      X_Order      : Interfaces.Integer_32;
+      Y_Order      : Interfaces.Integer_32;
+      Kernel_Size  : Interfaces.Integer_32;
+      Normalize    : Interfaces.Integer_32;
+      Kernel_Depth : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_get_derivative_kernels";
 
    function Median_Blur
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;

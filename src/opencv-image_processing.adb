@@ -183,6 +183,42 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Gaussian_Kernel_Depth;
 
+   function To_C_Derivative_Kernel_Normalization
+     (Normalization : Derivative_Kernel_Normalization)
+      return Interfaces.Integer_32 is
+   begin
+      case Normalization is
+         when Unnormalized =>
+            return Internal.C_API.Derivative_Kernels_Unnormalized;
+
+         when Normalized   =>
+            return Internal.C_API.Derivative_Kernels_Normalized;
+      end case;
+   end To_C_Derivative_Kernel_Normalization;
+
+   function Effective_Sobel_Kernel_Length
+     (Order : Derivative_Order; Kernel_Size : Sobel_Kernel_Size)
+      return Positive is
+   begin
+      case Kernel_Size is
+         when Kernel_1 =>
+            if Order > 0 then
+               return 3;
+            else
+               return 1;
+            end if;
+
+         when Kernel_3 =>
+            return 3;
+
+         when Kernel_5 =>
+            return 5;
+
+         when Kernel_7 =>
+            return 7;
+      end case;
+   end Effective_Sobel_Kernel_Length;
+
    function To_C_Threshold_Mode
      (Mode : Threshold_Mode) return Interfaces.Integer_32 is
    begin
@@ -465,6 +501,30 @@ package body OpenCV.Image_Processing is
             "Get_Gaussian_Kernel requires a positive finite sigma");
       end if;
    end Validate_Get_Gaussian_Kernel;
+
+   procedure Validate_Derivative_Kernel_Orders
+     (X_Order     : Derivative_Order;
+      Y_Order     : Derivative_Order;
+      Kernel_Size : Sobel_Kernel_Size) is
+   begin
+      if X_Order = 0 and then Y_Order = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Derivative_Kernels requires a nonzero derivative order");
+      end if;
+
+      if X_Order >= Effective_Sobel_Kernel_Length (X_Order, Kernel_Size) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Derivative_Kernels X_Order exceeds the effective kernel");
+      end if;
+
+      if Y_Order >= Effective_Sobel_Kernel_Length (Y_Order, Kernel_Size) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Derivative_Kernels Y_Order exceeds the effective kernel");
+      end if;
+   end Validate_Derivative_Kernel_Orders;
 
    procedure Validate_Median_Blur
      (Source : OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size)
@@ -1140,9 +1200,7 @@ package body OpenCV.Image_Processing is
       Kernel_Size       : Sobel_Kernel_Size;
       Scale             : OpenCV.Core.Float64_Value;
       Offset            : OpenCV.Core.Float64_Value;
-      Border            : OpenCV.Core.Border_Kind)
-   is
-      Effective_Kernel_Size : Derivative_Order;
+      Border            : OpenCV.Core.Border_Kind) is
    begin
       Validate_Derivative
         (Source, Destination_Depth, Scale, Offset, Border, "Sobel");
@@ -1153,19 +1211,8 @@ package body OpenCV.Image_Processing is
             "Sobel requires a nonzero X_Order or Y_Order");
       end if;
 
-      case Kernel_Size is
-         when Kernel_1 | Kernel_3 =>
-            Effective_Kernel_Size := 3;
-
-         when Kernel_5            =>
-            Effective_Kernel_Size := 5;
-
-         when Kernel_7            =>
-            Effective_Kernel_Size := 7;
-      end case;
-
-      if X_Order >= Effective_Kernel_Size
-        or else Y_Order >= Effective_Kernel_Size
+      if X_Order >= Effective_Sobel_Kernel_Length (X_Order, Kernel_Size)
+        or else Y_Order >= Effective_Sobel_Kernel_Length (Y_Order, Kernel_Size)
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
@@ -1537,6 +1584,91 @@ package body OpenCV.Image_Processing is
         Apply_Get_Gaussian_Kernel
           (Kernel_Size, Interfaces.C.double (Sigma), Depth);
    end Get_Gaussian_Kernel;
+
+   function Apply_Get_Derivative_Kernels
+     (X_Order       : Interfaces.Integer_32;
+      Y_Order       : Interfaces.Integer_32;
+      Kernel_Size   : Interfaces.Integer_32;
+      Normalization : Derivative_Kernel_Normalization;
+      Depth         : Derivative_Kernel_Depth) return Derivative_Kernels
+   is
+      use Internal.C_API;
+
+      Result : Derivative_Kernels;
+      Status : Internal.C_API.Status := Success;
+
+      procedure Kernel_X_Output
+        (Kernel_X_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      is
+         procedure Kernel_Y_Output
+           (Kernel_Y_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Get_Derivative_Kernels
+                (Kernel_X_Handle,
+                 Kernel_Y_Handle,
+                 X_Order,
+                 Y_Order,
+                 Kernel_Size,
+                 To_C_Derivative_Kernel_Normalization (Normalization),
+                 To_C_Gaussian_Kernel_Depth (Depth));
+         end Kernel_Y_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Result.Kernel_Y, Kernel_Y_Output'Access);
+      end Kernel_X_Output;
+   begin
+      OpenCV.Core.Module_Interop.With_Output_Handle
+        (Result.Kernel_X, Kernel_X_Output'Access);
+      Raise_On_Error (Status, "Get_Derivative_Kernels");
+      return Result;
+   end Apply_Get_Derivative_Kernels;
+
+   function Get_Derivative_Kernels
+     (X_Order       : Derivative_Order;
+      Y_Order       : Derivative_Order;
+      Kernel_Size   : Sobel_Kernel_Size := Kernel_3;
+      Normalization : Derivative_Kernel_Normalization := Unnormalized;
+      Depth         : Derivative_Kernel_Depth := Float32_Kernel)
+      return Derivative_Kernels is
+   begin
+      Validate_Derivative_Kernel_Orders (X_Order, Y_Order, Kernel_Size);
+      return
+        Apply_Get_Derivative_Kernels
+          (Interfaces.Integer_32 (X_Order),
+           Interfaces.Integer_32 (Y_Order),
+           To_C_Sobel_Kernel (Kernel_Size),
+           Normalization,
+           Depth);
+   end Get_Derivative_Kernels;
+
+   function Get_Scharr_Kernels
+     (Axis          : Derivative_Axis;
+      Normalization : Derivative_Kernel_Normalization := Unnormalized;
+      Depth         : Derivative_Kernel_Depth := Float32_Kernel)
+      return Derivative_Kernels
+   is
+      X_Order : Interfaces.Integer_32 := 0;
+      Y_Order : Interfaces.Integer_32 := 0;
+   begin
+      case Axis is
+         when X_Axis =>
+            X_Order := 1;
+            Y_Order := 0;
+
+         when Y_Axis =>
+            X_Order := 0;
+            Y_Order := 1;
+      end case;
+
+      return
+        Apply_Get_Derivative_Kernels
+          (X_Order,
+           Y_Order,
+           Internal.C_API.Derivative_Kernel_Scharr,
+           Normalization,
+           Depth);
+   end Get_Scharr_Kernels;
 
    procedure Median_Blur
      (Source      : OpenCV.Core.Mat;

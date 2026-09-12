@@ -91,6 +91,11 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_GAUSSIAN_KERNEL_FLOAT32 ((int32_t)0)
 #define OPENCV_IMGPROC_GAUSSIAN_KERNEL_FLOAT64 ((int32_t)1)
 
+#define OPENCV_IMGPROC_DERIVATIVE_KERNELS_UNNORMALIZED ((int32_t)0)
+#define OPENCV_IMGPROC_DERIVATIVE_KERNELS_NORMALIZED   ((int32_t)1)
+
+#define OPENCV_IMGPROC_DERIVATIVE_KERNEL_SCHARR ((int32_t)-1)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -121,6 +126,16 @@ opencv_imgproc_get_gaussian_kernel(
     opencv_core_mat_handle *destination,
     int32_t kernel_size,
     double sigma,
+    int32_t kernel_depth);
+
+opencv_imgproc_status
+opencv_imgproc_get_derivative_kernels(
+    opencv_core_mat_handle *kernel_x,
+    opencv_core_mat_handle *kernel_y,
+    int32_t x_order,
+    int32_t y_order,
+    int32_t kernel_size,
+    int32_t normalize,
     int32_t kernel_depth);
 
 opencv_imgproc_status
