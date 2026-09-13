@@ -297,6 +297,28 @@ package OpenCV.Image_Processing is
       Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
       Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
 
+   --  Get_Rotation_Matrix_2D generates a 2x3 Float64 C1 affine transform
+   --  that rotates around Center and applies an isotropic Scale. This
+   --  function does not warp an image; the returned Mat may be passed
+   --  directly to Warp_Affine. Angle may be supplied in Degrees or Radians.
+   --  Degrees is the default because that matches cv::getRotationMatrix2D.
+   --  Radians are converted to degrees in Ada before the C ABI is called.
+   --  Positive angles are counter-clockwise according to OpenCV's
+   --  image-coordinate convention (origin at the top-left). The rotation
+   --  center maps to itself. Scale defaults to 1.0. Finite zero and
+   --  negative Scale values are mathematically defined by OpenCV and
+   --  remain accepted. Center.X, Center.Y, Angle, and Scale must all be
+   --  finite; NaN and +/-Infinity raise OpenCV.OpenCV_Error. The returned
+   --  Mat always has Rows = 2, Columns = 3, Depth = Float64, and
+   --  Channels = 1, and owns ordinary Core Mat lifetime. Contract
+   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   function Get_Rotation_Matrix_2D
+     (Center : OpenCV.Core.Float32_Point;
+      Angle  : OpenCV.Core.Float64_Value;
+      Scale  : OpenCV.Core.Float64_Value := 1.0;
+      Units  : OpenCV.Core.Angle_Unit := OpenCV.Core.Degrees)
+      return OpenCV.Core.Mat;
+
    --  Warp_Perspective applies a 3x3 projective Transform to Source and writes
    --  the warped image to Destination. Source must be a non-empty
    --  two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or Float64

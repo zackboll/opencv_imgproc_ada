@@ -414,6 +414,17 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_match_template";
 
+   function Get_Rotation_Matrix_2D
+     (Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Center_X      : Interfaces.C.C_float;
+      Center_Y      : Interfaces.C.C_float;
+      Angle_Degrees : Interfaces.C.double;
+      Scale         : Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_get_rotation_matrix_2d";
+
    function Warp_Affine
      (Source         : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Transform      : OpenCV.Core.Module_Interop.Input_Mat_Handle;

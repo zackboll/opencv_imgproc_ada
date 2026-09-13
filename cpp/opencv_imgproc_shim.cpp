@@ -2570,6 +2570,50 @@ opencv_imgproc_match_template(
 }
 
 opencv_imgproc_status
+opencv_imgproc_get_rotation_matrix_2d(
+    opencv_core_mat_handle *destination,
+    float center_x,
+    float center_y,
+    double angle_degrees,
+    double scale)
+{
+    clear_error();
+
+    try {
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: OpenCV converts these values with std::cos / std::sin
+        // and constructs a 2x3 coefficient matrix. Non-finite center, angle,
+        // or scale produce NaN/Inf coefficients rather than a documented
+        // rejection, and those values later cause undefined index arithmetic
+        // in warpAffine.
+        if (!std::isfinite(center_x)
+            || !std::isfinite(center_y)
+            || !std::isfinite(angle_degrees)
+            || !std::isfinite(scale)) {
+            return invalid_argument(
+                "getRotationMatrix2D center, angle, and scale must be finite");
+        }
+
+        *dst = cv::getRotationMatrix2D(
+            cv::Point2f(center_x, center_y),
+            angle_degrees,
+            scale);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_warp_affine(
     const opencv_core_mat_handle *source,
     const opencv_core_mat_handle *transform,

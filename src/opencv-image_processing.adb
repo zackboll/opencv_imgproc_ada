@@ -1,4 +1,5 @@
 with Ada.Exceptions;
+with Ada.Numerics;
 with Interfaces;
 with Interfaces.C;
 with OpenCV.Core.Module_Interop;
@@ -790,6 +791,51 @@ package body OpenCV.Image_Processing is
             "Match_Template Template must not be larger than Source");
       end if;
    end Validate_Match_Template;
+
+   procedure Validate_Get_Rotation_Matrix_2D
+     (Center : OpenCV.Core.Float32_Point;
+      Angle  : OpenCV.Core.Float64_Value;
+      Scale  : OpenCV.Core.Float64_Value)
+   is
+      use type OpenCV.Core.Float32_Value;
+      use type OpenCV.Core.Float64_Value;
+   begin
+      if Center.X /= Center.X
+        or else Center.X > OpenCV.Core.Float32_Value'Last
+        or else Center.X < OpenCV.Core.Float32_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Rotation_Matrix_2D requires a finite Center.X");
+      end if;
+
+      if Center.Y /= Center.Y
+        or else Center.Y > OpenCV.Core.Float32_Value'Last
+        or else Center.Y < OpenCV.Core.Float32_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Rotation_Matrix_2D requires a finite Center.Y");
+      end if;
+
+      if Angle /= Angle
+        or else Angle > OpenCV.Core.Float64_Value'Last
+        or else Angle < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Rotation_Matrix_2D requires a finite Angle");
+      end if;
+
+      if Scale /= Scale
+        or else Scale > OpenCV.Core.Float64_Value'Last
+        or else Scale < OpenCV.Core.Float64_Value'First
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Rotation_Matrix_2D requires a finite Scale");
+      end if;
+   end Validate_Get_Rotation_Matrix_2D;
 
    procedure Validate_Warp_Affine
      (Source        : OpenCV.Core.Mat;
@@ -2387,6 +2433,46 @@ package body OpenCV.Image_Processing is
         (Source, Source_Input'Access);
       Raise_On_Error (Status, "Warp_Affine");
    end Warp_Affine;
+
+   function Get_Rotation_Matrix_2D
+     (Center : OpenCV.Core.Float32_Point;
+      Angle  : OpenCV.Core.Float64_Value;
+      Scale  : OpenCV.Core.Float64_Value := 1.0;
+      Units  : OpenCV.Core.Angle_Unit := OpenCV.Core.Degrees)
+      return OpenCV.Core.Mat
+   is
+      use Internal.C_API;
+      use type OpenCV.Core.Angle_Unit;
+      use type OpenCV.Core.Float64_Value;
+
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Success;
+      Degrees     : OpenCV.Core.Float64_Value := Angle;
+
+      procedure Rotation_Output
+        (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Get_Rotation_Matrix_2D
+             (Destination_Handle,
+              Interfaces.C.C_float (Center.X),
+              Interfaces.C.C_float (Center.Y),
+              Interfaces.C.double (Degrees),
+              Interfaces.C.double (Scale));
+      end Rotation_Output;
+   begin
+      Validate_Get_Rotation_Matrix_2D (Center, Angle, Scale);
+
+      if Units = OpenCV.Core.Radians then
+         Degrees :=
+           Angle * (180.0 / OpenCV.Core.Float64_Value (Ada.Numerics.Pi));
+      end if;
+
+      OpenCV.Core.Module_Interop.With_Output_Handle
+        (Destination, Rotation_Output'Access);
+      Raise_On_Error (Status, "Get_Rotation_Matrix_2D");
+      return Destination;
+   end Get_Rotation_Matrix_2D;
 
    procedure Warp_Perspective
      (Source        : OpenCV.Core.Mat;

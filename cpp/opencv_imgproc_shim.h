@@ -355,6 +355,14 @@ opencv_imgproc_match_template(
     int32_t method);
 
 opencv_imgproc_status
+opencv_imgproc_get_rotation_matrix_2d(
+    opencv_core_mat_handle *destination,
+    float center_x,
+    float center_y,
+    double angle_degrees,
+    double scale);
+
+opencv_imgproc_status
 opencv_imgproc_warp_affine(
     const opencv_core_mat_handle *source,
     const opencv_core_mat_handle *transform,
