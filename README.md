@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **238 AUnit tests**
+> **Current test baseline:** **227 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -56,7 +56,6 @@ Ada package, and built libraries serve different roles.
 - [Image pyramids](#image-pyramids)
 - [Template matching](#template-matching)
 - [Affine warping](#affine-warping)
-- [Rotation matrix](#rotation-matrix)
 - [Perspective warping](#perspective-warping)
 - [Remapping](#remapping)
 - [Median blur](#median-blur)
@@ -101,7 +100,6 @@ The current public surface includes:
 - Gaussian pyramid downsampling and upsampling;
 - unmasked template matching;
 - affine warping;
-- 2-D rotation-matrix construction;
 - perspective warping;
 - split-Float32 remapping;
 - median blur;
@@ -182,7 +180,6 @@ The table below summarizes the current public operations.
 | Pyramids | `Pyramid_Down`, `Pyramid_Up` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | natural half/double size; arbitrary channels; Down accepts Wrap and rejects Constant; Up has no Border; in-place unsupported |
 | Matching | `Match_Template` | nonempty 2-D; `UInt8` or `Float32`; C1..C4; matching Source/Template type | Float32 C1 score map; Template must fit in Source; SQDIFF min / others max; Destination must not share input storage |
 | Warping | `Warp_Affine` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 2x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
-| Warping | `Get_Rotation_Matrix_2D` | finite Center, Angle, and Scale | 2x3 Float64 C1 generator; Degrees default, Radians converted in Ada; positive angle is counter-clockwise; zero/negative Scale accepted; composes with `Warp_Affine` |
 | Warping | `Warp_Perspective` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 3x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
 | Warping | `Remap` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4; Rows/Columns < 32767 | separate Float32 C1 Map_X/Map_Y; output follows maps; Nearest/Linear/Cubic/Lanczos_4; Area rejected; all public borders; Destination must not share input storage |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
@@ -552,10 +549,8 @@ procedure Warp_Affine
 ```
 
 `Warp_Affine` applies a 2x3 affine `Transform` to `Source` and writes the
-warped image to `Destination`. Callers may construct the matrix with ordinary
-Core typed Mat accessors, or generate a rotation/scale matrix with
-`Get_Rotation_Matrix_2D`. Other affine-construction helpers such as
-`Get_Affine_Transform` are not bound.
+warped image to `Destination`. Warp_Affine accepts a caller-supplied 2x3
+Float32/Float64 C1 Core Mat transform.
 
 Supported Source:
 
@@ -653,69 +648,6 @@ end Translate_Example;
 ```
 
 Perspective warping is bound separately as `Warp_Perspective`.
-
----
-
-## Rotation matrix
-
-API:
-
-```ada
-function Get_Rotation_Matrix_2D
-  (Center : OpenCV.Core.Float32_Point;
-   Angle  : OpenCV.Core.Float64_Value;
-   Scale  : OpenCV.Core.Float64_Value := 1.0;
-   Units  : OpenCV.Core.Angle_Unit := OpenCV.Core.Degrees)
-   return OpenCV.Core.Mat;
-```
-
-`Get_Rotation_Matrix_2D` is a transform generator. It does not warp an image.
-The returned Mat is always:
-
-```text
-Rows     = 2
-Columns  = 3
-Depth    = Float64
-Channels = 1
-```
-
-and may be passed directly to `Warp_Affine`.
-
-`Angle` may be supplied in `Degrees` or `Radians`. `Degrees` is the default
-because that matches `cv::getRotationMatrix2D`. Radians are converted to
-degrees in Ada before the C ABI is called; there is no OpenCV unit flag.
-
-Positive angles are counter-clockwise according to OpenCV's image-coordinate
-convention (origin at the top-left). The rotation center maps to itself.
-
-`Scale` is isotropic and defaults to `1.0`. Finite zero and negative Scale
-values are mathematically defined by OpenCV and remain accepted.
-
-`Center.X`, `Center.Y`, `Angle`, and `Scale` must all be finite. NaN and
-`+/-Infinity` raise `OpenCV.OpenCV_Error`.
-
-Example: rotate 90 degrees about the image center, then warp:
-
-```ada
-with OpenCV.Core;
-with OpenCV.Image_Processing;
-
-procedure Rotate_Example is
-   Source      : OpenCV.Core.Mat :=
-     OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
-   Transform   : constant OpenCV.Core.Mat :=
-     OpenCV.Image_Processing.Get_Rotation_Matrix_2D
-       ((X => 1.0, Y => 1.0), 90.0);
-   Destination : OpenCV.Core.Mat;
-begin
-   OpenCV.Image_Processing.Warp_Affine
-     (Source,
-      Transform,
-      Destination,
-      (Width => 3, Height => 3),
-      OpenCV.Image_Processing.Nearest_Neighbor);
-end Rotate_Example;
-```
 
 ---
 
@@ -1798,7 +1730,9 @@ Arc_Length
 Compute_Moments
 ```
 
-and future contour/point geometry operations.
+and future contour/point geometry operations. Geometry-owned
+transform-construction and computational-geometry APIs are intentionally
+provided by `opencv_geometry` rather than this crate.
 
 The crates remain independent at the Ada level:
 
@@ -2227,7 +2161,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **238-test** baseline is:
+The current **227-test** baseline is:
 
 
 | Suite | Tests |
@@ -2240,7 +2174,6 @@ The current **238-test** baseline is:
 | Image pyramids | 10 |
 | Template matching | 10 |
 | Affine warping | 13 |
-| Rotation matrix | 11 |
 | Perspective warping | 13 |
 | Remapping | 13 |
 | Median blur | 10 |
@@ -2257,7 +2190,7 @@ The current **238-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **238** |
+| **Total** | **227** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -2672,7 +2605,6 @@ opencv_imgproc_ada/
 │       ├── pyramid_tests.*
 │       ├── template_matching_tests.*
 │       ├── warp_affine_tests.*
-│       ├── rotation_matrix_tests.*
 │       ├── warp_perspective_tests.*
 │       ├── remap_tests.*
 │       ├── median_blur_tests.*
@@ -2715,8 +2647,6 @@ Notable Imgproc families that are not yet broadly bound include:
 - the larger OpenCV color-conversion matrix beyond `BGR_To_Gray`;
 - custom morphology kernels, anchors, and arbitrary constant border values;
 - additional map encodings and `Convert_Maps`;
-- remaining affine/perspective transform construction helpers such as
-  `Get_Affine_Transform` and `Get_Perspective_Transform`;
 - polar transforms;
 - Laplacian pyramids and `buildPyramid`;
 - Hough line and circle transforms;
@@ -2733,7 +2663,9 @@ Notable Imgproc families that are not yet broadly bound include:
 Computational geometry is **not** considered missing Imgproc functionality in
 this project architecture. OpenCV 5 gives those operations a separate native
 Geometry module, and the Ada project follows that split through
-`opencv_geometry`.
+`opencv_geometry`. Geometry-owned transform-construction and
+computational-geometry APIs are intentionally provided by `opencv_geometry`
+rather than this crate.
 
 Future features should continue to be added vertically:
 
