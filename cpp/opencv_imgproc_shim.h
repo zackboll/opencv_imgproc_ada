@@ -369,6 +369,21 @@ opencv_imgproc_warp_affine(
     double border_value_2,
     double border_value_3);
 
+opencv_imgproc_status
+opencv_imgproc_warp_perspective(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *transform,
+    opencv_core_mat_handle *destination,
+    int32_t output_width,
+    int32_t output_height,
+    int32_t interpolation,
+    int32_t mapping,
+    int32_t border,
+    double border_value_0,
+    double border_value_1,
+    double border_value_2,
+    double border_value_3);
+
 #ifdef __cplusplus
 }
 #endif

@@ -162,7 +162,7 @@ package body OpenCV.Image_Processing is
    end To_C_Warp_Interpolation;
 
    function To_C_Warp_Mapping
-     (Mapping : Affine_Mapping_Direction) return Interfaces.Integer_32 is
+     (Mapping : Warp_Mapping_Direction) return Interfaces.Integer_32 is
    begin
       case Mapping is
          when Source_To_Destination =>
@@ -842,6 +842,102 @@ package body OpenCV.Image_Processing is
             "Warp_Affine supports only Constant_Border and Replicate");
       end if;
    end Validate_Warp_Affine;
+
+   procedure Validate_Warp_Perspective
+     (Source        : OpenCV.Core.Mat;
+      Transform     : OpenCV.Core.Mat;
+      Output_Size   : OpenCV.Core.Size;
+      Interpolation : Interpolation_Method;
+      Border        : OpenCV.Core.Border_Kind)
+   is
+      use type OpenCV.Core.Border_Kind;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Size_Coordinate;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Warp_Perspective requires a non-empty Source");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Warp_Perspective requires a two-dimensional Source");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8
+            | OpenCV.Core.UInt16
+            | OpenCV.Core.Int16
+            | OpenCV.Core.Float32
+            | OpenCV.Core.Float64 =>
+            null;
+
+         when others              =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Warp_Perspective requires a UInt8, UInt16, Int16, Float32, or"
+               & " Float64 source Mat");
+      end case;
+
+      if Source.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Warp_Perspective supports only 1 to 4 channels");
+      end if;
+
+      if Transform.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Warp_Perspective requires a non-empty Transform");
+      end if;
+
+      if Transform.Dimension_Count /= 2
+        or else Transform.Rows /= 3
+        or else Transform.Columns /= 3
+        or else Transform.Channels /= 1
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Warp_Perspective requires a 3x3 single-channel Transform");
+      end if;
+
+      case Transform.Depth is
+         when OpenCV.Core.Float32 | OpenCV.Core.Float64 =>
+            null;
+
+         when others                                    =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Warp_Perspective Transform must use Float32 or Float64");
+      end case;
+
+      if Output_Size.Width = 0 or else Output_Size.Height = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Warp_Perspective requires a nonzero Output_Size");
+      end if;
+
+      case Interpolation is
+         when Nearest_Neighbor | Linear =>
+            null;
+
+         when Cubic | Area | Lanczos_4  =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Warp_Perspective supports only Nearest_Neighbor and Linear"
+               & " interpolation");
+      end case;
+
+      if Border /= OpenCV.Core.Constant_Border
+        and then Border /= OpenCV.Core.Replicate
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Warp_Perspective supports only Constant_Border and Replicate");
+      end if;
+   end Validate_Warp_Perspective;
 
    procedure Validate_Median_Blur
      (Source : OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size)
@@ -2142,6 +2238,61 @@ package body OpenCV.Image_Processing is
         (Source, Source_Input'Access);
       Raise_On_Error (Status, "Warp_Affine");
    end Warp_Affine;
+
+   procedure Warp_Perspective
+     (Source        : OpenCV.Core.Mat;
+      Transform     : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Output_Size   : OpenCV.Core.Size;
+      Interpolation : Interpolation_Method := Linear;
+      Mapping       : Warp_Mapping_Direction := Source_To_Destination;
+      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
+      Border_Value  : OpenCV.Core.Scalar := (others => 0.0))
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Source_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Transform_Input
+           (Transform_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Warp_Output
+              (Destination_Handle :
+                 OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Warp_Perspective
+                   (Source_Handle,
+                    Transform_Handle,
+                    Destination_Handle,
+                    Interfaces.Integer_32 (Output_Size.Width),
+                    Interfaces.Integer_32 (Output_Size.Height),
+                    To_C_Warp_Interpolation (Interpolation),
+                    To_C_Warp_Mapping (Mapping),
+                    To_C_Warp_Border (Border),
+                    Interfaces.C.double (Border_Value.Component_0),
+                    Interfaces.C.double (Border_Value.Component_1),
+                    Interfaces.C.double (Border_Value.Component_2),
+                    Interfaces.C.double (Border_Value.Component_3));
+            end Warp_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Destination, Warp_Output'Access);
+         end Transform_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Transform, Transform_Input'Access);
+      end Source_Input;
+   begin
+      Validate_Warp_Perspective
+        (Source, Transform, Output_Size, Interpolation, Border);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Source_Input'Access);
+      Raise_On_Error (Status, "Warp_Perspective");
+   end Warp_Perspective;
 
    procedure Median_Blur
      (Source      : OpenCV.Core.Mat;
