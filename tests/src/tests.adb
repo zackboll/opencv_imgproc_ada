@@ -25,6 +25,7 @@ with Template_Matching_Tests;
 with Threshold_Tests;
 with Warp_Affine_Tests;
 with Warp_Perspective_Tests;
+with Remap_Tests;
 
 procedure Tests is
 
@@ -48,6 +49,7 @@ begin
    Suite.Add_Test (Template_Matching_Tests.Suite);
    Suite.Add_Test (Warp_Affine_Tests.Suite);
    Suite.Add_Test (Warp_Perspective_Tests.Suite);
+   Suite.Add_Test (Remap_Tests.Suite);
 
    Suite.Add_Test (Median_Blur_Tests.Suite);
    Suite.Add_Test (Box_Blur_Tests.Suite);

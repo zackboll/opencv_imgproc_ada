@@ -193,6 +193,50 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Warp_Border;
 
+   function To_C_Remap_Interpolation
+     (Interpolation : Interpolation_Method) return Interfaces.Integer_32 is
+   begin
+      case Interpolation is
+         when Nearest_Neighbor =>
+            return Internal.C_API.Interpolation_Nearest_Neighbor;
+
+         when Linear           =>
+            return Internal.C_API.Interpolation_Linear;
+
+         when Cubic            =>
+            return Internal.C_API.Interpolation_Cubic;
+
+         when Lanczos_4        =>
+            return Internal.C_API.Interpolation_Lanczos_4;
+
+         when Area             =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Remap does not support Area interpolation");
+      end case;
+   end To_C_Remap_Interpolation;
+
+   function To_C_Remap_Border
+     (Border : OpenCV.Core.Border_Kind) return Interfaces.Integer_32 is
+   begin
+      case Border is
+         when OpenCV.Core.Constant_Border =>
+            return Internal.C_API.Border_Constant;
+
+         when OpenCV.Core.Replicate       =>
+            return Internal.C_API.Border_Replicate;
+
+         when OpenCV.Core.Reflect         =>
+            return Internal.C_API.Border_Reflect;
+
+         when OpenCV.Core.Reflect_101     =>
+            return Internal.C_API.Border_Reflect_101;
+
+         when OpenCV.Core.Wrap            =>
+            return Internal.C_API.Border_Wrap;
+      end case;
+   end To_C_Remap_Border;
+
    function To_C_Canny_Aperture
      (Aperture : Canny_Aperture) return Interfaces.Integer_32 is
    begin
@@ -938,6 +982,111 @@ package body OpenCV.Image_Processing is
             "Warp_Perspective supports only Constant_Border and Replicate");
       end if;
    end Validate_Warp_Perspective;
+
+   procedure Validate_Remap
+     (Source        : OpenCV.Core.Mat;
+      Map_X         : OpenCV.Core.Mat;
+      Map_Y         : OpenCV.Core.Mat;
+      Interpolation : Interpolation_Method)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+      Remap_Limit : constant Natural := 32_767;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "Remap requires a non-empty Source");
+      end if;
+
+      if Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap requires a two-dimensional Source");
+      end if;
+
+      case Source.Depth is
+         when OpenCV.Core.UInt8
+            | OpenCV.Core.UInt16
+            | OpenCV.Core.Int16
+            | OpenCV.Core.Float32
+            | OpenCV.Core.Float64 =>
+            null;
+
+         when others              =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Remap requires a UInt8, UInt16, Int16, Float32, or"
+               & " Float64 source Mat");
+      end case;
+
+      if Source.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap supports only 1 to 4 channels");
+      end if;
+
+      if Source.Rows >= Remap_Limit or else Source.Columns >= Remap_Limit then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap requires Source Rows and Columns less than 32767");
+      end if;
+
+      if Map_X.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "Remap requires a non-empty Map_X");
+      end if;
+
+      if Map_Y.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "Remap requires a non-empty Map_Y");
+      end if;
+
+      if Map_X.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap requires a two-dimensional Map_X");
+      end if;
+
+      if Map_Y.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap requires a two-dimensional Map_Y");
+      end if;
+
+      if Map_X.Depth /= OpenCV.Core.Float32 or else Map_X.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap requires a single-channel Float32 Map_X");
+      end if;
+
+      if Map_Y.Depth /= OpenCV.Core.Float32 or else Map_Y.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap requires a single-channel Float32 Map_Y");
+      end if;
+
+      if Map_X.Rows /= Map_Y.Rows or else Map_X.Columns /= Map_Y.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap requires Map_X and Map_Y to have identical geometry");
+      end if;
+
+      if Map_X.Rows >= Remap_Limit or else Map_X.Columns >= Remap_Limit then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Remap requires map Rows and Columns less than 32767");
+      end if;
+
+      case Interpolation is
+         when Nearest_Neighbor | Linear | Cubic | Lanczos_4 =>
+            null;
+
+         when Area                                          =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Remap does not support Area interpolation");
+      end case;
+   end Validate_Remap;
 
    procedure Validate_Median_Blur
      (Source : OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size)
@@ -2293,6 +2442,64 @@ package body OpenCV.Image_Processing is
         (Source, Source_Input'Access);
       Raise_On_Error (Status, "Warp_Perspective");
    end Warp_Perspective;
+
+   procedure Remap
+     (Source        : OpenCV.Core.Mat;
+      Map_X         : OpenCV.Core.Mat;
+      Map_Y         : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Interpolation : Interpolation_Method := Linear;
+      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
+      Border_Value  : OpenCV.Core.Scalar := (others => 0.0))
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Source_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Map_X_Input
+           (Map_X_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Map_Y_Input
+              (Map_Y_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure Remap_Output
+                 (Destination_Handle :
+                    OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Remap
+                      (Source_Handle,
+                       Map_X_Handle,
+                       Map_Y_Handle,
+                       Destination_Handle,
+                       To_C_Remap_Interpolation (Interpolation),
+                       To_C_Remap_Border (Border),
+                       Interfaces.C.double (Border_Value.Component_0),
+                       Interfaces.C.double (Border_Value.Component_1),
+                       Interfaces.C.double (Border_Value.Component_2),
+                       Interfaces.C.double (Border_Value.Component_3));
+               end Remap_Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Destination, Remap_Output'Access);
+            end Map_Y_Input;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Map_Y, Map_Y_Input'Access);
+         end Map_X_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Map_X, Map_X_Input'Access);
+      end Source_Input;
+   begin
+      Validate_Remap (Source, Map_X, Map_Y, Interpolation);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Source_Input'Access);
+      Raise_On_Error (Status, "Remap");
+   end Remap;
 
    procedure Median_Blur
      (Source      : OpenCV.Core.Mat;

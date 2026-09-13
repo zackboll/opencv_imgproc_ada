@@ -447,6 +447,19 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_warp_perspective";
 
+   function Remap
+     (Source         : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Map_X          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Map_Y          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination    : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Interpolation  : Interfaces.Integer_32;
+      Border         : Interfaces.Integer_32;
+      Border_Value_0 : Interfaces.C.double;
+      Border_Value_1 : Interfaces.C.double;
+      Border_Value_2 : Interfaces.C.double;
+      Border_Value_3 : Interfaces.C.double) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_remap";
+
    function Last_Error_Message return String;
 
 end OpenCV.Image_Processing.Internal.C_API;

@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **214 AUnit tests**
+> **Current test baseline:** **227 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -57,6 +57,7 @@ Ada package, and built libraries serve different roles.
 - [Template matching](#template-matching)
 - [Affine warping](#affine-warping)
 - [Perspective warping](#perspective-warping)
+- [Remapping](#remapping)
 - [Median blur](#median-blur)
 
 - [Box blur](#box-blur)
@@ -100,6 +101,7 @@ The current public surface includes:
 - unmasked template matching;
 - affine warping;
 - perspective warping;
+- split-Float32 remapping;
 - median blur;
 
 - box blur;
@@ -179,6 +181,7 @@ The table below summarizes the current public operations.
 | Matching | `Match_Template` | nonempty 2-D; `UInt8` or `Float32`; C1..C4; matching Source/Template type | Float32 C1 score map; Template must fit in Source; SQDIFF min / others max; Destination must not share input storage |
 | Warping | `Warp_Affine` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 2x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
 | Warping | `Warp_Perspective` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 3x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
+| Warping | `Remap` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4; Rows/Columns < 32767 | separate Float32 C1 Map_X/Map_Y; output follows maps; Nearest/Linear/Cubic/Lanczos_4; Area rejected; all public borders; Destination must not share input storage |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
@@ -784,6 +787,136 @@ begin
       (Width => 3, Height => 3),
       OpenCV.Image_Processing.Nearest_Neighbor);
 end Translate_Perspective_Example;
+```
+
+---
+
+## Remapping
+
+API:
+
+```ada
+procedure Remap
+  (Source        : OpenCV.Core.Mat;
+   Map_X         : OpenCV.Core.Mat;
+   Map_Y         : OpenCV.Core.Mat;
+   Destination   : in out OpenCV.Core.Mat;
+   Interpolation : Interpolation_Method := Linear;
+   Border        : OpenCV.Core.Border_Kind :=
+                     OpenCV.Core.Constant_Border;
+   Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+```
+
+`Remap` applies an absolute source-coordinate map. Destination `(Row,
+Column)` samples Source at:
+
+```text
+X = Map_X(Row, Column)   -- source column
+Y = Map_Y(Row, Column)   -- source row
+```
+
+Conceptually `dst(x, y) = src(map_x(x, y), map_y(x, y))`. Relative maps
+and `WARP_RELATIVE_MAP` are not bound.
+
+Supported Source:
+
+- nonempty two-dimensional Mat;
+- depth `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`;
+- 1 to 4 channels;
+- Rows and Columns less than 32767.
+
+Map requirements:
+
+```text
+nonempty 2-D
+Channels = 1
+Depth    = Float32
+Map_X and Map_Y have identical Rows/Columns
+Rows and Columns < 32767
+all coordinates finite
+```
+
+Map geometry does not need to match Source. Destination is always rebound
+to:
+
+```text
+Rows     = Map_X.Rows
+Columns  = Map_X.Columns
+Depth    = Source.Depth
+Channels = Source.Channels
+```
+
+Coordinates may lie outside Source; the selected border mode fills those
+samples. NaN and +/-Infinity map values are rejected.
+
+Supported interpolation:
+
+```text
+Nearest_Neighbor
+Linear
+Cubic
+Lanczos_4
+```
+
+`Area` is rejected. Resize still accepts all five interpolation methods.
+
+Supported borders:
+
+```text
+Constant_Border
+Replicate
+Reflect
+Reflect_101
+Wrap
+```
+
+For `Constant_Border`, C1 uses `Component_0`, C2 uses components 0..1, C3
+uses 0..2, and C4 uses 0..3. For other borders, `Border_Value` is ignored.
+`BORDER_TRANSPARENT` is not bound.
+
+Source, Map_X, and Map_Y are read-only and may share storage. Destination
+must not share storage with Source or either map. Direct in-place
+operation is not supported.
+
+Interleaved `CV_32FC2` maps, fixed-point maps, relative maps, and
+`Convert_Maps` are not yet bound.
+
+Example: identity remap of a 2x3 UInt8 image:
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.Float32_Access;
+with OpenCV.Image_Processing;
+
+procedure Identity_Remap_Example is
+   Source      : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+   Map_X       : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+   Map_Y       : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+   Destination : OpenCV.Core.Mat;
+begin
+   OpenCV.Core.Float32_Access.Set (Map_X, 0, 0, 0.0);
+   OpenCV.Core.Float32_Access.Set (Map_X, 0, 1, 1.0);
+   OpenCV.Core.Float32_Access.Set (Map_X, 0, 2, 2.0);
+   OpenCV.Core.Float32_Access.Set (Map_X, 1, 0, 0.0);
+   OpenCV.Core.Float32_Access.Set (Map_X, 1, 1, 1.0);
+   OpenCV.Core.Float32_Access.Set (Map_X, 1, 2, 2.0);
+   OpenCV.Core.Float32_Access.Set (Map_Y, 0, 0, 0.0);
+   OpenCV.Core.Float32_Access.Set (Map_Y, 0, 1, 0.0);
+   OpenCV.Core.Float32_Access.Set (Map_Y, 0, 2, 0.0);
+   OpenCV.Core.Float32_Access.Set (Map_Y, 1, 0, 1.0);
+   OpenCV.Core.Float32_Access.Set (Map_Y, 1, 1, 1.0);
+   OpenCV.Core.Float32_Access.Set (Map_Y, 1, 2, 1.0);
+
+   OpenCV.Image_Processing.Remap
+     (Source,
+      Map_X,
+      Map_Y,
+      Destination,
+      OpenCV.Image_Processing.Nearest_Neighbor);
+end Identity_Remap_Example;
 ```
 
 ---
@@ -2026,7 +2159,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **214-test** baseline is:
+The current **227-test** baseline is:
 
 
 | Suite | Tests |
@@ -2040,6 +2173,7 @@ The current **214-test** baseline is:
 | Template matching | 10 |
 | Affine warping | 13 |
 | Perspective warping | 13 |
+| Remapping | 13 |
 | Median blur | 10 |
 
 | Box blur | 11 |
@@ -2054,7 +2188,7 @@ The current **214-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Contours | 7 |
-| **Total** | **214** |
+| **Total** | **227** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -2470,6 +2604,7 @@ opencv_imgproc_ada/
 │       ├── template_matching_tests.*
 │       ├── warp_affine_tests.*
 │       ├── warp_perspective_tests.*
+│       ├── remap_tests.*
 │       ├── median_blur_tests.*
 
 │       ├── box_blur_tests.*
@@ -2509,7 +2644,7 @@ Notable Imgproc families that are not yet broadly bound include:
 
 - the larger OpenCV color-conversion matrix beyond `BGR_To_Gray`;
 - custom morphology kernels, anchors, and arbitrary constant border values;
-- remapping and map conversion;
+- additional map encodings and `Convert_Maps`;
 - affine/perspective transform construction helpers;
 - polar transforms;
 - Laplacian pyramids and `buildPyramid`;

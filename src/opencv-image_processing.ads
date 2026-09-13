@@ -333,6 +333,35 @@ package OpenCV.Image_Processing is
       Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
       Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
 
+   --  Remap applies an absolute source-coordinate map. Destination(Row,
+   --  Column) samples Source at X = Map_X(Row, Column) and
+   --  Y = Map_Y(Row, Column). Source must be a non-empty two-dimensional
+   --  Mat of depth UInt8, UInt16, Int16, Float32, or Float64 with 1 to 4
+   --  channels and with Rows and Columns less than 32767. Map_X and Map_Y
+   --  must be non-empty two-dimensional single-channel Float32 Mats of
+   --  identical size, each with Rows and Columns less than 32767. Map
+   --  coordinates must be finite; they may lie outside Source. Destination
+   --  is always replaced with a Mat of Rows = Map_X.Rows,
+   --  Columns = Map_X.Columns, and Source's depth and channel count.
+   --  Callers do not need to preallocate Destination. No color conversion
+   --  occurs. Interpolation is Nearest_Neighbor, Linear, Cubic, or
+   --  Lanczos_4; Area is rejected. All public Border_Kind values are
+   --  supported. For Constant_Border, C1 uses Component_0, C2 uses
+   --  Components 0..1, C3 uses 0..2, and C4 uses 0..3. For other borders,
+   --  Border_Value is ignored. Source, Map_X, and Map_Y are read-only and
+   --  may share storage. Destination must not share storage with Source,
+   --  Map_X, or Map_Y. Direct in-place operation is not supported.
+   --  Interleaved, fixed-point, and relative maps are not bound. Contract
+   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   procedure Remap
+     (Source        : OpenCV.Core.Mat;
+      Map_X         : OpenCV.Core.Mat;
+      Map_Y         : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Interpolation : Interpolation_Method := Linear;
+      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
+      Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+
    --  Median_Blur replaces each Source pixel with the median of its square
    --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat
    --  with 1, 3, or 4 channels. Kernel_Size must be odd. Kernel sizes 3 and 5

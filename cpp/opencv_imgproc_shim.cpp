@@ -739,6 +739,67 @@ bool floating_transform_is_finite(const cv::Mat &matrix) noexcept
     return true;
 }
 
+bool to_opencv_remap_interpolation(
+    int32_t interpolation,
+    int &opencv_interpolation) noexcept
+{
+    switch (interpolation) {
+    case OPENCV_IMGPROC_INTER_NEAREST:
+        opencv_interpolation = cv::INTER_NEAREST;
+        return true;
+    case OPENCV_IMGPROC_INTER_LINEAR:
+        opencv_interpolation = cv::INTER_LINEAR;
+        return true;
+    case OPENCV_IMGPROC_INTER_CUBIC:
+        opencv_interpolation = cv::INTER_CUBIC;
+        return true;
+    case OPENCV_IMGPROC_INTER_LANCZOS4:
+        opencv_interpolation = cv::INTER_LANCZOS4;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_remap_border(int32_t border, int &opencv_border) noexcept
+{
+    switch (border) {
+    case OPENCV_IMGPROC_BORDER_CONSTANT:
+        opencv_border = cv::BORDER_CONSTANT;
+        return true;
+    case OPENCV_IMGPROC_BORDER_REPLICATE:
+        opencv_border = cv::BORDER_REPLICATE;
+        return true;
+    case OPENCV_IMGPROC_BORDER_REFLECT:
+        opencv_border = cv::BORDER_REFLECT;
+        return true;
+    case OPENCV_IMGPROC_BORDER_REFLECT_101:
+        opencv_border = cv::BORDER_REFLECT_101;
+        return true;
+    case OPENCV_IMGPROC_BORDER_WRAP:
+        opencv_border = cv::BORDER_WRAP;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool float32_map_is_finite(const cv::Mat &matrix) noexcept
+{
+    const int rows = matrix.rows;
+    const int cols = matrix.cols;
+
+    for (int row = 0; row < rows; ++row) {
+        const float *const coordinates = matrix.ptr<float>(row);
+        for (int col = 0; col < cols; ++col) {
+            if (!std::isfinite(coordinates[col])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 extern "C" {
@@ -2819,6 +2880,182 @@ opencv_imgproc_warp_perspective(
             *matrix,
             cv::Size(output_width, output_height),
             opencv_flags,
+            opencv_border,
+            cv::Scalar(
+                border_value_0,
+                border_value_1,
+                border_value_2,
+                border_value_3));
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_remap(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *map_x,
+    const opencv_core_mat_handle *map_y,
+    opencv_core_mat_handle *destination,
+    int32_t interpolation,
+    int32_t border,
+    double border_value_0,
+    double border_value_1,
+    double border_value_2,
+    double border_value_3)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        const cv::Mat *mx = nullptr;
+        const cv::Mat *my = nullptr;
+        cv::Mat *dst = nullptr;
+
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_input_mat(map_x, &mx);
+
+        if (core_status != OPENCV_CORE_OK || mx == nullptr) {
+            return invalid_argument("invalid map_x Mat");
+        }
+
+        core_status = opencv_core_module_input_mat(map_y, &my);
+
+        if (core_status != OPENCV_CORE_OK || my == nullptr) {
+            return invalid_argument("invalid map_y Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: remap uses src type to allocate dst and indexes
+        // source pixels through typed kernels. Empty or higher-dimensional
+        // src can reach those kernels before OpenCV fully rejects them.
+        if (src->empty()) {
+            return invalid_argument("remap source must be nonempty");
+        }
+
+        if (src->dims != 2) {
+            return invalid_argument("remap source must be two-dimensional");
+        }
+
+        const int src_depth = src->depth();
+        if (src_depth != CV_8U
+            && src_depth != CV_16U
+            && src_depth != CV_16S
+            && src_depth != CV_32F
+            && src_depth != CV_64F) {
+            return invalid_argument(
+                "remap requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
+        }
+
+        const int src_channels = src->channels();
+        if (src_channels < 1 || src_channels > 4) {
+            return invalid_argument("remap supports only 1 to 4 channels");
+        }
+
+        if (src->rows >= 32767 || src->cols >= 32767) {
+            // ABI safety: OpenCV remap kernels use 16-bit coordinate
+            // tables and document a 32767 size limit. Larger extents can
+            // overflow those tables before OpenCV rejects the input.
+            return invalid_argument(
+                "remap source dimensions must be less than 32767");
+        }
+
+        // ABI safety: remap walks Float32 C1 map rows with ptr<float>.
+        // Empty, higher-dimensional, multi-channel, or non-float maps
+        // can cause out-of-bounds or mistyped coordinate access.
+        if (mx->empty()) {
+            return invalid_argument("remap map_x must be nonempty");
+        }
+
+        if (my->empty()) {
+            return invalid_argument("remap map_y must be nonempty");
+        }
+
+        if (mx->dims != 2) {
+            return invalid_argument("remap map_x must be two-dimensional");
+        }
+
+        if (my->dims != 2) {
+            return invalid_argument("remap map_y must be two-dimensional");
+        }
+
+        if (mx->type() != CV_32FC1) {
+            return invalid_argument("remap map_x must be CV_32FC1");
+        }
+
+        if (my->type() != CV_32FC1) {
+            return invalid_argument("remap map_y must be CV_32FC1");
+        }
+
+        if (mx->rows != my->rows || mx->cols != my->cols) {
+            return invalid_argument(
+                "remap map_x and map_y must have identical geometry");
+        }
+
+        if (mx->rows >= 32767 || mx->cols >= 32767) {
+            // ABI safety: remap output size equals map size and uses
+            // 16-bit coordinate tables. Walking a map at or above 32767
+            // can overflow those tables before OpenCV rejects it.
+            return invalid_argument(
+                "remap map dimensions must be less than 32767");
+        }
+
+        // ABI safety: remap converts map coordinates into source indices.
+        // NaN or infinity produce undefined index arithmetic rather than
+        // a documented rejection. Validate after geometry so ptr<float>
+        // walks only Float32 C1 storage.
+        if (!float32_map_is_finite(*mx)) {
+            return invalid_argument(
+                "remap map_x must contain only finite values");
+        }
+
+        if (!float32_map_is_finite(*my)) {
+            return invalid_argument(
+                "remap map_y must contain only finite values");
+        }
+
+        int opencv_interpolation = 0;
+        if (!to_opencv_remap_interpolation(
+                interpolation, opencv_interpolation)) {
+            return invalid_argument("unsupported remap interpolation");
+        }
+
+        int opencv_border = 0;
+        if (!to_opencv_remap_border(border, opencv_border)) {
+            return invalid_argument("unsupported remap border");
+        }
+
+        // ABI safety: writing dst while reading the same buffer as src
+        // or a map is undefined; OpenCV documents remap as not in-place.
+        if (src == dst
+            || mx == dst
+            || my == dst
+            || (src->data != nullptr && src->data == dst->data)
+            || (mx->data != nullptr && mx->data == dst->data)
+            || (my->data != nullptr && my->data == dst->data)) {
+            return invalid_argument(
+                "remap destination must not share storage with source or maps");
+        }
+
+        cv::remap(
+            *src,
+            *dst,
+            *mx,
+            *my,
+            opencv_interpolation,
             opencv_border,
             cv::Scalar(
                 border_value_0,
