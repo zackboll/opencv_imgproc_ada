@@ -8,6 +8,7 @@ with Automatic_Threshold_Tests;
 with Bilateral_Filter_Tests;
 with Box_Blur_Tests;
 with Canny_Edge_Tests;
+with CLAHE_Tests;
 with Contour_Tests;
 with Color_Conversion_Tests;
 with Filter_2D_Tests;
@@ -66,6 +67,7 @@ begin
    Suite.Add_Test (Automatic_Threshold_Tests.Suite);
    Suite.Add_Test (Adaptive_Threshold_Tests.Suite);
    Suite.Add_Test (Histogram_Equalization_Tests.Suite);
+   Suite.Add_Test (CLAHE_Tests.Suite);
 
    Suite.Add_Test (Contour_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then

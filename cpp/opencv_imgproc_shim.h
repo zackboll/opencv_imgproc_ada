@@ -271,6 +271,14 @@ opencv_imgproc_equalize_histogram(
     opencv_core_mat_handle *destination);
 
 opencv_imgproc_status
+opencv_imgproc_clahe(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double clip_limit,
+    int32_t tile_grid_width,
+    int32_t tile_grid_height);
+
+opencv_imgproc_status
 opencv_imgproc_find_contours(
     const opencv_core_mat_handle *source,
     int32_t retrieval_mode,

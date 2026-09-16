@@ -312,6 +312,14 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_equalize_histogram";
 
+   function CLAHE
+     (Source           : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination      : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Clip_Limit       : Interfaces.C.double;
+      Tile_Grid_Width  : Interfaces.Integer_32;
+      Tile_Grid_Height : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_clahe";
+
    function Find_Contours
      (Source             : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Retrieval_Mode     : Interfaces.Integer_32;

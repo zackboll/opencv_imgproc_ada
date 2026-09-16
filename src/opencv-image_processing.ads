@@ -724,6 +724,24 @@ package OpenCV.Image_Processing is
    procedure Equalize_Histogram
      (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat);
 
+   --  CLAHE performs Contrast Limited Adaptive Histogram Equalization locally,
+   --  unlike Equalize_Histogram, which uses one global histogram. Source is
+   --  divided into Tile_Grid_Size.Width by Tile_Grid_Size.Height contextual
+   --  regions; Clip_Limit controls contrast limiting in each region. Source
+   --  must be a non-empty two-dimensional UInt8 or UInt16 single-channel Mat.
+   --  No implicit color or depth conversion is performed. Tile counts need not
+   --  divide Source dimensions evenly: OpenCV pads internally as needed.
+   --  Destination may initially be empty or incompatible; on success it has
+   --  Source's geometry, depth, and one channel. Direct same-object in-place
+   --  use, including an ROI, is supported. Distinct Source/Destination Mats
+   --  with overlapping storage are rejected before native writes. Contract
+   --  violations and native failures raise OpenCV.OpenCV_Error.
+   procedure CLAHE
+     (Source         : OpenCV.Core.Mat;
+      Destination    : in out OpenCV.Core.Mat;
+      Clip_Limit     : OpenCV.Float64_Value := 40.0;
+      Tile_Grid_Size : OpenCV.Size := (Width => 8, Height => 8));
+
    --  Extracts contours from a non-empty, two-dimensional UInt8 single-channel
    --  Source. Zero pixels are background and nonzero pixels are foreground.
    --  Source remains unchanged. Contours and hierarchy are copied into the

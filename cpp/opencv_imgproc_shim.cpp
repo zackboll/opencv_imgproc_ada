@@ -1795,6 +1795,98 @@ opencv_imgproc_equalize_histogram(
 }
 
 opencv_imgproc_status
+opencv_imgproc_clahe(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double clip_limit,
+    int32_t tile_grid_width,
+    int32_t tile_grid_height)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: CLAHE computes width % tilesX and height % tilesY before
+        // it can reject invalid settings; zero tile counts cause division by
+        // zero and negative counts make its tile geometry invalid.
+        if (tile_grid_width <= 0 || tile_grid_height <= 0) {
+            return invalid_argument("CLAHE tile grid dimensions must be positive");
+        }
+
+        // ABI safety: CLAHE converts clip_limit * tileSizeTotal / histSize to
+        // int. Converting a non-finite floating value to int is undefined.
+        if (!std::isfinite(clip_limit)) {
+            return invalid_argument("CLAHE clip limit must be finite");
+        }
+
+        // ABI safety: CLAHE forms tilesX * tilesY as int for its LUT rows and
+        // parallel range. It also adds padding to source dimensions and takes
+        // tileSize.area() as int before allocating or indexing the LUT.
+        const std::int64_t max_int = std::numeric_limits<int>::max();
+        const std::int64_t tiles_x = tile_grid_width;
+        const std::int64_t tiles_y = tile_grid_height;
+        if (tiles_x > max_int / tiles_y) {
+            return invalid_argument("CLAHE tile count exceeds 32-bit range");
+        }
+
+        if (src->dims == 2 && src->rows > 0 && src->cols > 0) {
+            const std::int64_t padded_width =
+                static_cast<std::int64_t>(src->cols)
+                + tiles_x - (static_cast<std::int64_t>(src->cols) % tiles_x);
+            const std::int64_t padded_height =
+                static_cast<std::int64_t>(src->rows)
+                + tiles_y - (static_cast<std::int64_t>(src->rows) % tiles_y);
+            if (padded_width > max_int || padded_height > max_int) {
+                return invalid_argument("CLAHE padded geometry exceeds 32-bit range");
+            }
+
+            const std::int64_t tile_width = padded_width / tiles_x;
+            const std::int64_t tile_height = padded_height / tiles_y;
+            if (tile_width > max_int / tile_height) {
+                return invalid_argument("CLAHE tile area exceeds 32-bit range");
+            }
+
+            // ABI safety: CLAHE converts clip_limit * tileSizeTotal / histSize
+            // to int. Even a finite positive double is unsafe if that result
+            // exceeds INT_MAX before OpenCV can report an argument error.
+            const double max_clip_limit =
+                static_cast<double>(max_int) * 65536.0
+                / static_cast<double>(tile_width * tile_height);
+            if (clip_limit > max_clip_limit) {
+                return invalid_argument("CLAHE clip limit exceeds 32-bit range");
+            }
+        }
+
+        // ABI safety: CLAHE computes all LUTs before interpolation, so the
+        // identical Mat object is safe. A distinct overlapping view can be
+        // overwritten while later source pixels are still read by interpolation.
+        if (src != dst && equalize_hist_views_overlap(*src, *dst)) {
+            return invalid_argument(
+                "CLAHE destination must not share storage with source");
+        }
+
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(
+            clip_limit, cv::Size(tile_grid_width, tile_grid_height));
+        clahe->apply(*src, *dst);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_find_contours(
     const opencv_core_mat_handle *source,
     int32_t retrieval_mode,

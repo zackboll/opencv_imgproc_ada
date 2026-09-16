@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **239 AUnit tests**
+> **Current test baseline:** **248 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -69,6 +69,7 @@ Ada package, and built libraries serve different roles.
 - [Spatial derivatives](#spatial-derivatives)
 - [Thresholding](#thresholding)
 - [Histogram equalization](#histogram-equalization)
+- [CLAHE](#clahe)
 - [Contour extraction](#contour-extraction)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
@@ -118,6 +119,7 @@ The current public surface includes:
 - Otsu and Triangle automatic thresholding;
 - mean and Gaussian adaptive thresholding;
 - global grayscale histogram equalization;
+- contrast limited adaptive histogram equalization (CLAHE);
 - contour extraction, hierarchy, and approximation modes.
 
 Computational contour geometry such as area, arc length, and moments is
@@ -201,6 +203,7 @@ The table below summarizes the current public operations.
 | Thresholding | `Apply_Automatic_Threshold` | nonempty 2-D C1 | Otsu: `UInt8`/`UInt16`; Triangle: `UInt8` |
 | Thresholding | `Apply_Adaptive_Threshold` | nonempty 2-D `UInt8` C1 | mean/Gaussian, odd block size >= 3, in-place supported |
 | Histogram | `Equalize_Histogram` | nonempty 2-D `UInt8` C1 | global CDF equalization; constant images retain intensity; same-object in-place supported; other storage-sharing aliases rejected |
+| Histogram | `CLAHE` | nonempty 2-D `UInt8`/`UInt16` C1 | local contrast-limited equalization; default clip 40.0 and grid 8x8; same-object in-place supported; other storage-sharing aliases rejected |
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
 
 The supported general-purpose Imgproc numeric depths are:
@@ -1609,7 +1612,7 @@ procedure Equalize_Histogram
 `Equalize_Histogram` performs OpenCV's global grayscale histogram equalization.
 It computes the histogram of the supplied `UInt8` C1 view, builds a CDF lookup
 table, and remaps intensities. There is no implicit conversion from color or
-from another depth. CLAHE is not bound.
+from another depth. Use `CLAHE` below for local contrast-limited equalization.
 
 Requirements:
 
@@ -1640,6 +1643,53 @@ This is not a claim that OpenCV universally forbids every alias.
 Public contract violations raise `OpenCV.OpenCV_Error` before Destination is
 modified. Failures reported by OpenCV after Destination allocation or native
 execution raise `OpenCV.OpenCV_Error` and do not roll back Destination.
+
+---
+
+## CLAHE
+
+API:
+
+```ada
+procedure CLAHE
+  (Source         : OpenCV.Core.Mat;
+   Destination    : in out OpenCV.Core.Mat;
+   Clip_Limit     : OpenCV.Float64_Value := 40.0;
+   Tile_Grid_Size : OpenCV.Size := (Width => 8, Height => 8));
+```
+
+`CLAHE` is local Contrast Limited Adaptive Histogram Equalization. Unlike
+`Equalize_Histogram`, which uses one global histogram, it divides the image
+into `Tile_Grid_Size.Width` by `Tile_Grid_Size.Height` contextual regions and
+interpolates their contrast-limited mappings. The default clip limit is `40.0`
+and the default tile grid is `8 x 8`; the size describes tile *counts*, not
+pixel dimensions. `Clip_Limit` must be finite and greater than zero.
+
+Source must be nonempty, two-dimensional, single-channel `UInt8` or `UInt16`.
+No color conversion, depth conversion, normalization, or scaling is implicit.
+Output preserves Source geometry and depth. Tile dimensions need not divide the
+image evenly; OpenCV uses Reflect_101 padding internally.
+
+Destination may be empty or incompatible and is rebound on success. Direct
+same-object in-place use, including a Mat ROI, is supported. Distinct Mats
+whose storage overlaps (including shallow aliases or offset ROIs) are rejected
+before native writes. When storage is independent, Source remains unchanged.
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.UInt8_Access;
+with OpenCV.Image_Processing;
+
+procedure CLAHE_Example is
+   Source : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (64, 64, (OpenCV.Core.UInt8, 1));
+   Enhanced : OpenCV.Core.Mat;
+begin
+   OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 48);
+   OpenCV.Image_Processing.CLAHE
+     (Source, Enhanced, Clip_Limit => 4.0, Tile_Grid_Size => (8, 8));
+end CLAHE_Example;
+```
 
 ---
 
@@ -2269,8 +2319,9 @@ The current **239-test** baseline is:
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
 | Histogram equalization | 12 |
+| CLAHE | 9 |
 | Contours | 7 |
-| **Total** | **239** |
+| **Total** | **248** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -2725,6 +2776,7 @@ opencv_imgproc_ada/
 │       ├── automatic_threshold_tests.*
 │       ├── adaptive_threshold_tests.*
 │       ├── histogram_equalization_tests.*
+│       ├── clahe_tests.*
 │       ├── contour_tests.*
 │       └── tests.adb
 │
@@ -2757,8 +2809,7 @@ Notable Imgproc families that are not yet broadly bound include:
 - Hough line and circle transforms;
 - connected-components labeling/statistics;
 - watershed, flood fill, and GrabCut;
-- histogram calculation;
-- CLAHE;
+- histogram calculation and comparison;
 - distance transforms;
 - integral images;
 - drawing primitives and text;
