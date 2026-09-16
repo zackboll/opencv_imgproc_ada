@@ -320,6 +320,27 @@ package OpenCV.Image_Processing.Internal.C_API is
       Tile_Grid_Height : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_clahe";
 
+   function Connected_Components_With_Stats
+     (Source       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Labels       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Stats        : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Centroids    : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Connectivity : Interfaces.Integer_32;
+      Label_Count  : access Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_connected_components_with_stats";
+
+   function Mats_Overlap
+     (First   : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Second  : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Overlap : access Interfaces.Unsigned_8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_mats_overlap";
+
    function Find_Contours
      (Source             : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Retrieval_Mode     : Interfaces.Integer_32;

@@ -83,6 +83,21 @@ package OpenCV.Image_Processing is
 
    type Contour_Set is private;
 
+   type Pixel_Connectivity is (Four_Connected, Eight_Connected);
+
+   type Component_Label is new Natural;
+
+   Background_Label : constant Component_Label := 0;
+
+   type Component_Statistics is record
+      Bounds     : OpenCV.Rect;
+      Area       : Natural;
+      Centroid_X : OpenCV.Float64_Value;
+      Centroid_Y : OpenCV.Float64_Value;
+   end record;
+
+   type Connected_Component_Set is private;
+
    type Morphology_Shape is (Rectangle, Cross, Ellipse);
 
    type Morphology_Operation is
@@ -763,6 +778,30 @@ package OpenCV.Image_Processing is
      (Self : Contour_Set; Index : Contour_Index)
       return Contour_Hierarchy_Entry;
 
+   --  Labels the nonzero regions of a non-empty two-dimensional UInt8
+   --  single-channel Source. Zero is background and every nonzero value is
+   --  foreground. Labels is replaced with a distinct Int32 single-channel Mat
+   --  having Source's geometry; zero is Background_Label and foreground labels
+   --  are 1 through Component_Count. Components contains Ada-owned foreground
+   --  statistics only. Four_Connected and Eight_Connected select 4- and
+   --  8-neighborhoods. Foreground label numbering has no spatial-order
+   --  guarantee. Source and Labels must not share storage. Contract violations
+   --  and OpenCV failures raise OpenCV.OpenCV_Error.
+   procedure Connected_Components_With_Stats
+     (Source       : OpenCV.Core.Mat;
+      Labels       : in out OpenCV.Core.Mat;
+      Components   : out Connected_Component_Set;
+      Connectivity : Pixel_Connectivity := Eight_Connected);
+
+   --  Returns the foreground count, excluding Background_Label.
+   function Component_Count (Self : Connected_Component_Set) return Natural;
+
+   --  Label must designate a foreground component in 1 .. Component_Count.
+   --  Background_Label and out-of-range labels raise OpenCV.OpenCV_Error.
+   function Get_Component
+     (Self : Connected_Component_Set; Label : Component_Label)
+      return Component_Statistics;
+
 private
    package Contour_Vectors is new
      Ada.Containers.Indefinite_Vectors
@@ -777,5 +816,14 @@ private
    type Contour_Set is record
       Contours  : Contour_Vectors.Vector;
       Hierarchy : Hierarchy_Vectors.Vector;
+   end record;
+
+   package Component_Vectors is new
+     Ada.Containers.Vectors
+       (Index_Type   => Natural,
+        Element_Type => Component_Statistics);
+
+   type Connected_Component_Set is record
+      Components : Component_Vectors.Vector;
    end record;
 end OpenCV.Image_Processing;

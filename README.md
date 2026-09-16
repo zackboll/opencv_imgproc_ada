@@ -6,7 +6,7 @@ A thick, idiomatic Ada binding for the **OpenCV Imgproc** module.
 
 `opencv_imgproc_ada` exposes a focused, growing subset of OpenCV image-processing
 functionality through strong Ada types, Ada exceptions, Core-owned `Mat`
-objects, and Ada-owned contour results. C++ implementation details stay behind
+objects, and Ada-owned contour and connected-component results. C++ implementation details stay behind
 a small C ABI and the cross-module `Mat` bridge provided by
 [`opencv_core_ada`](https://github.com/zackboll/opencv_core_ada).
 
@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **248 AUnit tests**
+> **Current registered test baseline:** **254 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -71,6 +71,7 @@ Ada package, and built libraries serve different roles.
 - [Histogram equalization](#histogram-equalization)
 - [CLAHE](#clahe)
 - [Contour extraction](#contour-extraction)
+- [Connected components](#connected-components)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
 - [Architecture](#architecture)
@@ -205,6 +206,7 @@ The table below summarizes the current public operations.
 | Histogram | `Equalize_Histogram` | nonempty 2-D `UInt8` C1 | global CDF equalization; constant images retain intensity; same-object in-place supported; other storage-sharing aliases rejected |
 | Histogram | `CLAHE` | nonempty 2-D `UInt8`/`UInt16` C1 | local contrast-limited equalization; default clip 40.0 and grid 8x8; same-object in-place supported; other storage-sharing aliases rejected |
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
+| Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
 
 The supported general-purpose Imgproc numeric depths are:
 
@@ -1693,6 +1695,51 @@ end CLAHE_Example;
 
 ---
 
+## Connected components
+
+`Connected_Components_With_Stats` labels the connected foreground regions of a
+binary `UInt8` C1 mask using OpenCV's `connectedComponentsWithStats`.
+
+```ada
+declare
+   Mask       : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (480, 640, (OpenCV.Core.UInt8, 1));
+   Labels     : OpenCV.Core.Mat;
+   Components : OpenCV.Image_Processing.Connected_Component_Set;
+begin
+   --  Set nonzero mask pixels as desired.
+   OpenCV.Image_Processing.Connected_Components_With_Stats
+     (Source       => Mask,
+      Labels       => Labels,
+      Components   => Components,
+      Connectivity => OpenCV.Image_Processing.Eight_Connected);
+
+   for Label in 1 .. OpenCV.Image_Processing.Component_Count (Components) loop
+      declare
+         Item : constant OpenCV.Image_Processing.Component_Statistics :=
+           OpenCV.Image_Processing.Get_Component
+             (Components, OpenCV.Image_Processing.Component_Label (Label));
+      begin
+         null; --  Use Item.Bounds, Item.Area, Item.Centroid_X, Item.Centroid_Y.
+      end;
+   end loop;
+end;
+```
+
+Mask semantics are binary: zero is background and every nonzero `UInt8` value
+is foreground. `Four_Connected` and `Eight_Connected` select 4-way and 8-way
+pixel neighborhoods respectively. `Labels` is always rebound to a distinct
+`Int32` C1 Mat with the same rows and columns as `Source`. Its value zero is
+`Background_Label`; foreground pixels are labeled from 1 through
+`Component_Count`.
+
+`Connected_Component_Set` is Ada-owned and exposes foreground components only:
+`Component_Count` excludes the background row. `Get_Component` accepts only a
+foreground label and returns its `Bounds`, pixel `Area`, and `Float64`
+`Centroid_X`/`Centroid_Y`. Foreground numbering has no guaranteed spatial
+order. The operation is not in-place: `Source` and `Labels` must not share
+storage, including shallow aliases and overlapping ROIs.
+
 ## Contour extraction
 
 Contours are represented entirely in Ada:
@@ -2807,7 +2854,6 @@ Notable Imgproc families that are not yet broadly bound include:
 - polar transforms;
 - Laplacian pyramids and `buildPyramid`;
 - Hough line and circle transforms;
-- connected-components labeling/statistics;
 - watershed, flood fill, and GrabCut;
 - histogram calculation and comparison;
 - distance transforms;

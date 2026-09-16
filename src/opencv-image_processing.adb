@@ -2,6 +2,8 @@ with Ada.Exceptions;
 with Interfaces;
 with Interfaces.C;
 with OpenCV.Core.Module_Interop;
+with OpenCV.Core.Float64_Access;
+with OpenCV.Core.Int32_Access;
 with OpenCV.Image_Processing.Internal.C_API;
 
 package body OpenCV.Image_Processing is
@@ -1985,9 +1987,88 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Contour_Source;
 
+   procedure Validate_Connected_Component_Source (Source : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Connected_Components_With_Stats requires a non-empty source Mat");
+      elsif Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Connected_Components_With_Stats requires a two-dimensional"
+            & " source Mat");
+      elsif Source.Depth /= OpenCV.Core.UInt8 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Connected_Components_With_Stats requires a UInt8 source Mat");
+      elsif Source.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Connected_Components_With_Stats requires a single-channel"
+            & " source Mat");
+      end if;
+   end Validate_Connected_Component_Source;
+
+   procedure Validate_Connected_Component_Storage
+     (Source, Labels : OpenCV.Core.Mat)
+   is
+      use type Interfaces.Unsigned_8;
+      use type Internal.C_API.Status;
+
+      Overlap : aliased Interfaces.Unsigned_8 := 0;
+      Status  : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure First_Input
+        (First_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Second_Input
+           (Second_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Mats_Overlap
+                (First_Handle, Second_Handle, Overlap'Access);
+         end Second_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Labels, Second_Input'Access);
+      end First_Input;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, First_Input'Access);
+      if Status /= Internal.C_API.Success then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "connected-components storage validation failed: "
+            & Internal.C_API.Last_Error_Message);
+      end if;
+      if Overlap /= 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Connected_Components_With_Stats requires Labels not to share"
+            & " storage with Source");
+      end if;
+   end Validate_Connected_Component_Storage;
+
+   function To_C_Connectivity
+     (Connectivity : Pixel_Connectivity) return Interfaces.Integer_32 is
+   begin
+      case Connectivity is
+         when Four_Connected  =>
+            return 4;
+
+         when Eight_Connected =>
+            return 8;
+      end case;
+   end To_C_Connectivity;
+
    function To_Optional_Contour_Index
      (Value : Interfaces.Integer_32) return Optional_Contour_Index
    is
+      use type Interfaces.Integer_32;
+
       use type Interfaces.Integer_32;
    begin
       if Value < 0 then
@@ -3482,5 +3563,111 @@ package body OpenCV.Image_Processing is
       Validate_Contour_Index (Self, Index, "Get_Hierarchy");
       return Self.Hierarchy.Element (Natural (Index));
    end Get_Hierarchy;
+
+   procedure Connected_Components_With_Stats
+     (Source       : OpenCV.Core.Mat;
+      Labels       : in out OpenCV.Core.Mat;
+      Components   : out Connected_Component_Set;
+      Connectivity : Pixel_Connectivity := Eight_Connected)
+   is
+      Native_Stats     : OpenCV.Core.Mat;
+      Native_Centroids : OpenCV.Core.Mat;
+      Label_Count      : aliased Interfaces.Integer_32 := 0;
+      Status           : Internal.C_API.Status := Internal.C_API.Success;
+      Result           : Connected_Component_Set;
+
+      use type Interfaces.Integer_32;
+
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Label_Output
+           (Label_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            procedure Stats_Output
+              (Stats_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               procedure Centroids_Output
+                 (Centroids_Handle :
+                    OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Connected_Components_With_Stats
+                      (Source_Handle,
+                       Label_Handle,
+                       Stats_Handle,
+                       Centroids_Handle,
+                       To_C_Connectivity (Connectivity),
+                       Label_Count'Access);
+               end Centroids_Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Native_Centroids, Centroids_Output'Access);
+            end Stats_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Native_Stats, Stats_Output'Access);
+         end Label_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Labels, Label_Output'Access);
+      end Input;
+   begin
+      Validate_Connected_Component_Source (Source);
+      Validate_Connected_Component_Storage (Source, Labels);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "connected components with statistics");
+
+      if Label_Count <= 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "connected components returned an invalid label count");
+      end if;
+
+      for Label in 1 .. Natural (Label_Count) - 1 loop
+         Result.Components.Append
+           (Component_Statistics'
+              (Bounds     =>
+                 (X      =>
+                    OpenCV.Point_Coordinate
+                      (OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 0)),
+                  Y      =>
+                    OpenCV.Point_Coordinate
+                      (OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 1)),
+                  Width  =>
+                    OpenCV.Size_Coordinate
+                      (OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 2)),
+                  Height =>
+                    OpenCV.Size_Coordinate
+                      (OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 3))),
+               Area       =>
+                 Natural
+                   (OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 4)),
+               Centroid_X =>
+                 OpenCV.Core.Float64_Access.Get (Native_Centroids, Label, 0),
+               Centroid_Y =>
+                 OpenCV.Core.Float64_Access.Get (Native_Centroids, Label, 1)));
+      end loop;
+      Components := Result;
+   end Connected_Components_With_Stats;
+
+   function Component_Count (Self : Connected_Component_Set) return Natural is
+   begin
+      return Natural (Self.Components.Length);
+   end Component_Count;
+
+   function Get_Component
+     (Self : Connected_Component_Set; Label : Component_Label)
+      return Component_Statistics
+   is
+      Count : constant Natural := Component_Count (Self);
+   begin
+      if Label = Background_Label or else Natural (Label) > Count then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Get_Component requires a foreground label in 1 .. Component_Count");
+      end if;
+      return Self.Components.Element (Natural (Label) - 1);
+   end Get_Component;
 
 end OpenCV.Image_Processing;

@@ -279,6 +279,21 @@ opencv_imgproc_clahe(
     int32_t tile_grid_height);
 
 opencv_imgproc_status
+opencv_imgproc_connected_components_with_stats(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *labels,
+    opencv_core_mat_handle *stats,
+    opencv_core_mat_handle *centroids,
+    int32_t connectivity,
+    int32_t *label_count);
+
+opencv_imgproc_status
+opencv_imgproc_mats_overlap(
+    const opencv_core_mat_handle *first,
+    const opencv_core_mat_handle *second,
+    uint8_t *overlap);
+
+opencv_imgproc_status
 opencv_imgproc_find_contours(
     const opencv_core_mat_handle *source,
     int32_t retrieval_mode,

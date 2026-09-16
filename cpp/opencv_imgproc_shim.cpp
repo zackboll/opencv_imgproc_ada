@@ -1887,6 +1887,104 @@ opencv_imgproc_clahe(
 }
 
 opencv_imgproc_status
+opencv_imgproc_connected_components_with_stats(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *labels,
+    opencv_core_mat_handle *stats,
+    opencv_core_mat_handle *centroids,
+    int32_t connectivity,
+    int32_t *label_count)
+{
+    clear_error();
+
+    if (label_count == nullptr) {
+        return invalid_argument("label count output is null");
+    }
+    *label_count = 0;
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *label_image = nullptr;
+        cv::Mat *statistics = nullptr;
+        cv::Mat *centroid_image = nullptr;
+
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+        if (opencv_core_module_output_mat(labels, &label_image) != OPENCV_CORE_OK
+            || label_image == nullptr) {
+            return invalid_argument("invalid labels Mat");
+        }
+        if (opencv_core_module_output_mat(stats, &statistics) != OPENCV_CORE_OK
+            || statistics == nullptr) {
+            return invalid_argument("invalid statistics Mat");
+        }
+        if (opencv_core_module_output_mat(centroids, &centroid_image)
+                != OPENCV_CORE_OK
+            || centroid_image == nullptr) {
+            return invalid_argument("invalid centroids Mat");
+        }
+
+        if (connectivity != 4 && connectivity != 8) {
+            return invalid_argument("connectivity must be 4 or 8");
+        }
+
+        // ABI safety: passing one cv::Mat header as multiple OutputArrays lets
+        // their create calls rebind a previously published output header.
+        if (src == label_image || src == statistics || src == centroid_image
+            || label_image == statistics || label_image == centroid_image
+            || statistics == centroid_image) {
+            return invalid_argument("connected-components outputs must be distinct");
+        }
+
+        // ABI safety: connected-components reads Source while it writes Labels;
+        // overlapping storage can overwrite unread source pixels.
+        if (equalize_hist_views_overlap(*src, *label_image)) {
+            return invalid_argument("labels must not share storage with source");
+        }
+
+        *label_count = cv::connectedComponentsWithStats(
+            *src, *label_image, *statistics, *centroid_image, connectivity,
+            CV_32S);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_mats_overlap(
+    const opencv_core_mat_handle *first,
+    const opencv_core_mat_handle *second,
+    uint8_t *overlap)
+{
+    clear_error();
+
+    if (overlap == nullptr) {
+        return invalid_argument("overlap output is null");
+    }
+    *overlap = 0;
+
+    try {
+        const cv::Mat *first_mat = nullptr;
+        const cv::Mat *second_mat = nullptr;
+        if (opencv_core_module_input_mat(first, &first_mat) != OPENCV_CORE_OK
+            || first_mat == nullptr) {
+            return invalid_argument("invalid first Mat");
+        }
+        if (opencv_core_module_input_mat(second, &second_mat) != OPENCV_CORE_OK
+            || second_mat == nullptr) {
+            return invalid_argument("invalid second Mat");
+        }
+        *overlap = equalize_hist_views_overlap(*first_mat, *second_mat) ? 1 : 0;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_find_contours(
     const opencv_core_mat_handle *source,
     int32_t retrieval_mode,
