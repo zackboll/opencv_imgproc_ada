@@ -19,7 +19,7 @@ package body Morphology_Tests is
    use type Interfaces.Integer_32;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -146,7 +146,7 @@ package body Morphology_Tests is
          Destination,
          (Width => 3, Height => 3),
          OpenCV.Image_Processing.Cross,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (Destination.Channels = 3
@@ -179,7 +179,7 @@ package body Morphology_Tests is
          Destination,
          (Width => 3, Height => 3),
          OpenCV.Image_Processing.Ellipse,
-         Border => OpenCV.Core.Reflect);
+         Border => OpenCV.Reflect);
 
       Assert_UInt8_Image (Destination, "010111010", "ellipse dilation");
    end Ellipse_Dilation_Uses_Elliptical_Footprint;
@@ -200,7 +200,7 @@ package body Morphology_Tests is
          Destination,
          (Width => 2, Height => 1),
          Iterations => 2,
-         Border     => OpenCV.Core.Reflect_101);
+         Border     => OpenCV.Reflect_101);
 
       AUnit.Assertions.Assert
         (Destination.Depth = OpenCV.Core.Float32
@@ -271,7 +271,7 @@ package body Morphology_Tests is
          Image,
          OpenCV.Image_Processing.Closing,
          (Width => 3, Height => 3),
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       Assert_UInt8_Image
         (Image,
@@ -388,7 +388,7 @@ package body Morphology_Tests is
          OpenCV.Image_Processing.Gradient,
          (Width => 3, Height => 3),
          OpenCV.Image_Processing.Cross,
-         Border => OpenCV.Core.Reflect);
+         Border => OpenCV.Reflect);
 
       AUnit.Assertions.Assert
         (Destination.Channels = 3
@@ -422,7 +422,7 @@ package body Morphology_Tests is
          OpenCV.Image_Processing.Top_Hat,
          (Width => 2, Height => 1),
          Iterations => 2,
-         Border     => OpenCV.Core.Reflect_101);
+         Border     => OpenCV.Reflect_101);
 
       AUnit.Assertions.Assert
         (Destination.Depth = OpenCV.Core.Float32
@@ -505,7 +505,7 @@ package body Morphology_Tests is
            (Source,
             Destination,
             (Width => 1, Height => 1),
-            Border => OpenCV.Core.Wrap);
+            Border => OpenCV.Wrap);
       end Attempt;
    begin
       Assert_Raises_OpenCV_Error
@@ -525,7 +525,7 @@ package body Morphology_Tests is
             Destination,
             OpenCV.Image_Processing.Opening,
             (Width => 1, Height => 1),
-            Border => OpenCV.Core.Wrap);
+            Border => OpenCV.Wrap);
       end Attempt;
    begin
       Assert_Raises_OpenCV_Error

@@ -66,7 +66,7 @@ package body Spatial_Derivative_Tests is
          1,
          0,
          OpenCV.Image_Processing.Int16_Depth,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (Destination.Rows = 3
@@ -107,7 +107,7 @@ package body Spatial_Derivative_Tests is
          0,
          1,
          OpenCV.Image_Processing.Int16_Depth,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       for Column in 0 .. 2 loop
          AUnit.Assertions.Assert
@@ -140,7 +140,7 @@ package body Spatial_Derivative_Tests is
          1,
          0,
          OpenCV.Image_Processing.Int16_Depth,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Int16_Access.Get (Destination, 1, 2) = -80,
@@ -165,7 +165,7 @@ package body Spatial_Derivative_Tests is
          Destination,
          OpenCV.Image_Processing.X_Axis,
          OpenCV.Image_Processing.Int16_Depth,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Int16_Access.Get (Destination, 1, 2) = 320,
@@ -190,7 +190,7 @@ package body Spatial_Derivative_Tests is
          1,
          0,
          OpenCV.Image_Processing.Same_Depth,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (Image.Depth = OpenCV.Core.Int16
@@ -219,7 +219,7 @@ package body Spatial_Derivative_Tests is
          0,
          OpenCV.Image_Processing.Int16_Depth,
          OpenCV.Image_Processing.Kernel_1,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Int16_Access.Get (Destination, 1, 0) = 10
@@ -251,7 +251,7 @@ package body Spatial_Derivative_Tests is
          OpenCV.Image_Processing.Kernel_5,
          Scale  => 0.5,
          Offset => 3.0,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Int16_Access.Get (Destination, 2, 2) = 643,
@@ -276,7 +276,7 @@ package body Spatial_Derivative_Tests is
          Destination,
          OpenCV.Image_Processing.Y_Axis,
          OpenCV.Image_Processing.Int16_Depth,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Int16_Access.Get (Destination, 2, 1) = 320,
@@ -309,7 +309,7 @@ package body Spatial_Derivative_Tests is
          1,
          0,
          OpenCV.Image_Processing.Same_Depth,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (Destination.Channels = 3
@@ -429,7 +429,7 @@ package body Spatial_Derivative_Tests is
       procedure Wrap_Border is
       begin
          OpenCV.Image_Processing.Sobel
-           (Source, Destination, 1, 0, Border => OpenCV.Core.Wrap);
+           (Source, Destination, 1, 0, Border => OpenCV.Wrap);
       end Wrap_Border;
    begin
       Assert_Raises_OpenCV_Error

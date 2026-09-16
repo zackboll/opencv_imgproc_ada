@@ -69,6 +69,7 @@ Ada package, and built libraries serve different roles.
 - [Spatial derivatives](#spatial-derivatives)
 - [Thresholding](#thresholding)
 - [Contour extraction](#contour-extraction)
+- [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
 - [Architecture](#architecture)
 - [Cross-module Mat interoperability](#cross-module-mat-interoperability)
@@ -259,7 +260,7 @@ API:
 procedure Resize
   (Source        : OpenCV.Core.Mat;
    Destination   : in out OpenCV.Core.Mat;
-   Output_Size   : OpenCV.Core.Size;
+   Output_Size   : OpenCV.Size;
    Interpolation : Interpolation_Method := Linear);
 ```
 
@@ -281,9 +282,9 @@ API:
 procedure Gaussian_Blur
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat;
-   Kernel_Size : OpenCV.Core.Size;
-   Sigma       : OpenCV.Core.Float64_Value;
-   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Kernel_Size : OpenCV.Size;
+   Sigma       : OpenCV.Float64_Value;
+   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 ```
 
 The binding currently exposes an isotropic Gaussian blur: the same `Sigma`
@@ -329,7 +330,7 @@ function Get_Gaussian_Kernel
 
 function Get_Gaussian_Kernel
   (Kernel_Size : Gaussian_Kernel_Size;
-   Sigma       : OpenCV.Core.Float64_Value;
+   Sigma       : OpenCV.Float64_Value;
    Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
    return OpenCV.Core.Mat;
 ```
@@ -411,7 +412,7 @@ API:
 procedure Pyramid_Down
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat;
-   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
 procedure Pyramid_Up
   (Source      : OpenCV.Core.Mat;
@@ -540,12 +541,12 @@ procedure Warp_Affine
   (Source        : OpenCV.Core.Mat;
    Transform     : OpenCV.Core.Mat;
    Destination   : in out OpenCV.Core.Mat;
-   Output_Size   : OpenCV.Core.Size;
+   Output_Size   : OpenCV.Size;
    Interpolation : Interpolation_Method := Linear;
    Mapping       : Affine_Mapping_Direction := Source_To_Destination;
-   Border        : OpenCV.Core.Border_Kind :=
-                     OpenCV.Core.Constant_Border;
-   Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+   Border        : OpenCV.Border_Kind :=
+                     OpenCV.Constant_Border;
+   Border_Value  : OpenCV.Scalar := (others => 0.0));
 ```
 
 `Warp_Affine` applies a 2x3 affine `Transform` to `Source` and writes the
@@ -669,12 +670,12 @@ procedure Warp_Perspective
   (Source        : OpenCV.Core.Mat;
    Transform     : OpenCV.Core.Mat;
    Destination   : in out OpenCV.Core.Mat;
-   Output_Size   : OpenCV.Core.Size;
+   Output_Size   : OpenCV.Size;
    Interpolation : Interpolation_Method := Linear;
    Mapping       : Warp_Mapping_Direction := Source_To_Destination;
-   Border        : OpenCV.Core.Border_Kind :=
-                     OpenCV.Core.Constant_Border;
-   Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+   Border        : OpenCV.Border_Kind :=
+                     OpenCV.Constant_Border;
+   Border_Value  : OpenCV.Scalar := (others => 0.0));
 ```
 
 `Warp_Perspective` applies a 3x3 projective `Transform` to `Source` and writes
@@ -802,9 +803,9 @@ procedure Remap
    Map_Y         : OpenCV.Core.Mat;
    Destination   : in out OpenCV.Core.Mat;
    Interpolation : Interpolation_Method := Linear;
-   Border        : OpenCV.Core.Border_Kind :=
-                     OpenCV.Core.Constant_Border;
-   Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+   Border        : OpenCV.Border_Kind :=
+                     OpenCV.Constant_Border;
+   Border_Value  : OpenCV.Scalar := (others => 0.0));
 ```
 
 `Remap` applies an absolute source-coordinate map. Destination `(Row,
@@ -978,8 +979,8 @@ API:
 procedure Box_Blur
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat;
-   Kernel_Size : OpenCV.Core.Size;
-   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Kernel_Size : OpenCV.Size;
+   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 ```
 
 `Box_Blur` replaces each pixel with the normalized average of its
@@ -1033,17 +1034,17 @@ subtype Bilateral_Diameter is
 procedure Bilateral_Filter
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat;
-   Sigma_Color : OpenCV.Core.Float64_Value;
-   Sigma_Space : OpenCV.Core.Float64_Value;
-   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Sigma_Color : OpenCV.Float64_Value;
+   Sigma_Space : OpenCV.Float64_Value;
+   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
 procedure Bilateral_Filter
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat;
    Diameter    : Bilateral_Diameter;
-   Sigma_Color : OpenCV.Core.Float64_Value;
-   Sigma_Space : OpenCV.Core.Float64_Value;
-   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Sigma_Color : OpenCV.Float64_Value;
+   Sigma_Space : OpenCV.Float64_Value;
+   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 ```
 
 `Bilateral_Filter` is an edge-preserving smoother. Each output pixel is a
@@ -1103,17 +1104,17 @@ procedure Filter_2D
    Destination       : in out OpenCV.Core.Mat;
    Kernel            : OpenCV.Core.Mat;
    Destination_Depth : Filter_Depth := Same_Depth;
-   Offset            : OpenCV.Core.Float64_Value := 0.0;
-   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Offset            : OpenCV.Float64_Value := 0.0;
+   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
 procedure Filter_2D
   (Source            : OpenCV.Core.Mat;
    Destination       : in out OpenCV.Core.Mat;
    Kernel            : OpenCV.Core.Mat;
-   Anchor            : OpenCV.Core.Point;
+   Anchor            : OpenCV.Point;
    Destination_Depth : Filter_Depth := Same_Depth;
-   Offset            : OpenCV.Core.Float64_Value := 0.0;
-   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Offset            : OpenCV.Float64_Value := 0.0;
+   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 ```
 
 `Filter_2D` applies a custom linear kernel to every Source channel. This is
@@ -1203,18 +1204,18 @@ procedure Sep_Filter_2D
    Kernel_X          : OpenCV.Core.Mat;
    Kernel_Y          : OpenCV.Core.Mat;
    Destination_Depth : Filter_Depth := Same_Depth;
-   Offset            : OpenCV.Core.Float64_Value := 0.0;
-   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Offset            : OpenCV.Float64_Value := 0.0;
+   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
 procedure Sep_Filter_2D
   (Source            : OpenCV.Core.Mat;
    Destination       : in out OpenCV.Core.Mat;
    Kernel_X          : OpenCV.Core.Mat;
    Kernel_Y          : OpenCV.Core.Mat;
-   Anchor            : OpenCV.Core.Point;
+   Anchor            : OpenCV.Point;
    Destination_Depth : Filter_Depth := Same_Depth;
-   Offset            : OpenCV.Core.Float64_Value := 0.0;
-   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Offset            : OpenCV.Float64_Value := 0.0;
+   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 ```
 
 `Sep_Filter_2D` applies a separable linear filter. Every Source row is filtered
@@ -1322,18 +1323,18 @@ Basic operations:
 procedure Erode
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat;
-   Kernel_Size : OpenCV.Core.Size;
+   Kernel_Size : OpenCV.Size;
    Shape       : Morphology_Shape := Rectangle;
    Iterations  : Morphology_Iterations := 1;
-   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
+   Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
 
 procedure Dilate
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat;
-   Kernel_Size : OpenCV.Core.Size;
+   Kernel_Size : OpenCV.Size;
    Shape       : Morphology_Shape := Rectangle;
    Iterations  : Morphology_Iterations := 1;
-   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
+   Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
 ```
 
 Combined morphology:
@@ -1343,10 +1344,10 @@ procedure Apply_Morphology
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat;
    Operation   : Morphology_Operation;
-   Kernel_Size : OpenCV.Core.Size;
+   Kernel_Size : OpenCV.Size;
    Shape       : Morphology_Shape := Rectangle;
    Iterations  : Morphology_Iterations := 1;
-   Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
+   Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
 ```
 
 Behavior:
@@ -1378,8 +1379,8 @@ API:
 procedure Canny_Edges
   (Source          : OpenCV.Core.Mat;
    Destination     : in out OpenCV.Core.Mat;
-   Lower_Threshold : OpenCV.Core.Float64_Value;
-   Upper_Threshold : OpenCV.Core.Float64_Value;
+   Lower_Threshold : OpenCV.Float64_Value;
+   Upper_Threshold : OpenCV.Float64_Value;
    Aperture        : Canny_Aperture := Sobel_3x3;
    Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
 ```
@@ -1442,9 +1443,9 @@ procedure Sobel
    Y_Order           : Derivative_Order;
    Destination_Depth : Derivative_Depth := Float32_Depth;
    Kernel_Size       : Sobel_Kernel_Size := Kernel_3;
-   Scale             : OpenCV.Core.Float64_Value := 1.0;
-   Offset            : OpenCV.Core.Float64_Value := 0.0;
-   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Scale             : OpenCV.Float64_Value := 1.0;
+   Offset            : OpenCV.Float64_Value := 0.0;
+   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 ```
 
 `X_Order` and `Y_Order` may not both be zero. Orders are checked against the
@@ -1465,9 +1466,9 @@ procedure Scharr
    Destination       : in out OpenCV.Core.Mat;
    Axis              : Derivative_Axis;
    Destination_Depth : Derivative_Depth := Float32_Depth;
-   Scale             : OpenCV.Core.Float64_Value := 1.0;
-   Offset            : OpenCV.Core.Float64_Value := 0.0;
-   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Scale             : OpenCV.Float64_Value := 1.0;
+   Offset            : OpenCV.Float64_Value := 0.0;
+   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 ```
 
 Scharr exposes first-derivative selection by axis instead of requiring callers
@@ -1487,9 +1488,9 @@ procedure Laplacian
    Destination       : in out OpenCV.Core.Mat;
    Destination_Depth : Derivative_Depth := Float32_Depth;
    Kernel_Size       : Laplacian_Kernel_Size := 1;
-   Scale             : OpenCV.Core.Float64_Value := 1.0;
-   Offset            : OpenCV.Core.Float64_Value := 0.0;
-   Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+   Scale             : OpenCV.Float64_Value := 1.0;
+   Offset            : OpenCV.Float64_Value := 0.0;
+   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 ```
 
 The public numeric subtype admits `1 .. 31`; the implementation requires an odd
@@ -1514,9 +1515,9 @@ API:
 procedure Apply_Threshold
   (Source          : OpenCV.Core.Mat;
    Destination     : in out OpenCV.Core.Mat;
-   Threshold_Value : OpenCV.Core.Float64_Value;
+   Threshold_Value : OpenCV.Float64_Value;
    Mode            : Threshold_Mode := Binary;
-   Maximum_Value   : OpenCV.Core.Float64_Value := 255.0);
+   Maximum_Value   : OpenCV.Float64_Value := 255.0);
 ```
 
 Requirements:
@@ -1543,10 +1544,10 @@ API:
 procedure Apply_Automatic_Threshold
   (Source             : OpenCV.Core.Mat;
    Destination        : in out OpenCV.Core.Mat;
-   Computed_Threshold : out OpenCV.Core.Float64_Value;
+   Computed_Threshold : out OpenCV.Float64_Value;
    Method             : Automatic_Threshold_Method := Otsu;
    Mode               : Threshold_Mode := Binary;
-   Maximum_Value      : OpenCV.Core.Float64_Value := 255.0);
+   Maximum_Value      : OpenCV.Float64_Value := 255.0);
 ```
 
 Input is single-channel.
@@ -1577,8 +1578,8 @@ procedure Apply_Adaptive_Threshold
    Block_Size    : Adaptive_Block_Size;
    Method        : Adaptive_Threshold_Method := Mean;
    Mode          : Adaptive_Threshold_Mode := Binary;
-   Bias          : OpenCV.Core.Float64_Value := 0.0;
-   Maximum_Value : OpenCV.Core.UInt8_Value := 255);
+   Bias          : OpenCV.Float64_Value := 0.0;
+   Maximum_Value : OpenCV.UInt8_Value := 255);
 ```
 
 Requirements:
@@ -1597,7 +1598,7 @@ in-place operation is supported.
 Contours are represented entirely in Ada:
 
 ```ada
-subtype Contour is OpenCV.Core.Point_Array;
+subtype Contour is OpenCV.Point_Array;
 ```
 
 Retrieval modes:
@@ -1639,7 +1640,7 @@ function Find_Contours
   (Source        : OpenCV.Core.Mat;
    Retrieval     : Contour_Retrieval_Mode := External_Only;
    Approximation : Contour_Approximation_Mode := Simple;
-   Offset        : OpenCV.Core.Point := (X => 0, Y => 0))
+   Offset        : OpenCV.Point := (X => 0, Y => 0))
   return Contour_Set;
 ```
 
@@ -1715,6 +1716,34 @@ native contour-result lifetime.
 
 ---
 
+## Shared value types
+
+Imgproc reuses shared public values from `OpenCV`, which the `opencv_core`
+crate still distributes. `OpenCV.Core` continues to own `Mat`. Imgproc does
+not redeclare `Point`, `Point_Array`, `Size`, `Rect`, `Scalar`,
+`Make_Scalar`, `Border_Kind`, or `Angle_Unit`.
+
+This relocation is source-breaking. Callers that previously wrote
+`OpenCV.Core.Point` or `OpenCV.Core.Reflect_101` must update qualification
+to the root `OpenCV` package. Representative spellings:
+
+| Old | New |
+| --- | --- |
+| `OpenCV.Core.Point` | `OpenCV.Point` |
+| `OpenCV.Core.Point_Array` | `OpenCV.Point_Array` |
+| `OpenCV.Core.Size` | `OpenCV.Size` |
+| `OpenCV.Core.Scalar` | `OpenCV.Scalar` |
+| `OpenCV.Core.Make_Scalar` | `OpenCV.Make_Scalar` |
+| `OpenCV.Core.Reflect_101` | `OpenCV.Reflect_101` |
+
+`Contour` remains a subtype of the shared point array:
+
+```ada
+subtype Contour is OpenCV.Point_Array;
+```
+
+---
+
 ## Geometry is a separate module
 
 OpenCV 5 moved a substantial set of computational geometry APIs out of Imgproc
@@ -1743,7 +1772,7 @@ The crates remain independent at the Ada level:
        opencv_imgproc    opencv_geometry
 ```
 
-Both define `Contour` as a subtype of `OpenCV.Core.Point_Array`, so a contour
+Both define `Contour` as a subtype of `OpenCV.Point_Array`, so a contour
 returned by `Find_Contours` can be passed directly to `OpenCV.Geometry`
 without copying or conversion.
 
@@ -2536,7 +2565,7 @@ begin
          Shape : constant OpenCV.Image_Processing.Contour :=
            OpenCV.Image_Processing.Get_Contour (Contours, 0);
       begin
-         -- Shape is an Ada OpenCV.Core.Point_Array.
+         -- Shape is an Ada OpenCV.Point_Array.
          null;
       end;
    end if;
@@ -2556,7 +2585,7 @@ declare
    Shape : constant OpenCV.Image_Processing.Contour :=
      OpenCV.Image_Processing.Get_Contour (Contours, 0);
 
-   Area : constant OpenCV.Core.Float64_Value :=
+   Area : constant OpenCV.Float64_Value :=
      OpenCV.Geometry.Contour_Area (Shape);
 begin
    null;
@@ -2564,7 +2593,7 @@ end;
 ```
 
 No conversion is needed because both packages use
-`OpenCV.Core.Point_Array`.
+`OpenCV.Point_Array`.
 
 ---
 

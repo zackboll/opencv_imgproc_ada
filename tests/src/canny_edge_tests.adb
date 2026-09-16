@@ -12,7 +12,7 @@ package body Canny_Edge_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float64_Value;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
 

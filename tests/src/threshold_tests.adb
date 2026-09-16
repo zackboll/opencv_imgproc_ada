@@ -16,8 +16,8 @@ package body Threshold_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;

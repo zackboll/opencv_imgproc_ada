@@ -25,9 +25,9 @@ package body Sep_Filter_2D_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Float64_Value;
-   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
+   use type OpenCV.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -57,7 +57,7 @@ package body Sep_Filter_2D_Tests is
    function Bits_To_Float64 is new
      Ada.Unchecked_Conversion
        (Source => Interfaces.Unsigned_64,
-        Target => OpenCV.Core.Float64_Value);
+        Target => OpenCV.Float64_Value);
 
    Infinity_Bits : constant Interfaces.Unsigned_64 := 16#7FF0_0000_0000_0000#;
    Neg_Inf_Bits  : constant Interfaces.Unsigned_64 := 16#FFF0_0000_0000_0000#;
@@ -72,7 +72,7 @@ package body Sep_Filter_2D_Tests is
    end Identity_Kernel;
 
    function Row_Kernel_1x3
-     (A, B, C : OpenCV.Core.Float32_Value) return OpenCV.Core.Mat
+     (A, B, C : OpenCV.Float32_Value) return OpenCV.Core.Mat
    is
       Kernel : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
@@ -84,7 +84,7 @@ package body Sep_Filter_2D_Tests is
    end Row_Kernel_1x3;
 
    function Column_Kernel_3x1
-     (A, B, C : OpenCV.Core.Float32_Value) return OpenCV.Core.Mat
+     (A, B, C : OpenCV.Float32_Value) return OpenCV.Core.Mat
    is
       Kernel : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
@@ -96,7 +96,7 @@ package body Sep_Filter_2D_Tests is
    end Column_Kernel_3x1;
 
    procedure Fill_5x5_Sequence (Source : in out OpenCV.Core.Mat) is
-      Value : OpenCV.Core.Float32_Value := 1.0;
+      Value : OpenCV.Float32_Value := 1.0;
    begin
       for Row in 0 .. 4 loop
          for Column in 0 .. 4 loop
@@ -192,7 +192,7 @@ package body Sep_Filter_2D_Tests is
          Kernel_X,
          Kernel_Y,
          OpenCV.Image_Processing.Int16_Depth,
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (Destination.Depth = OpenCV.Core.Int16
@@ -333,7 +333,7 @@ package body Sep_Filter_2D_Tests is
          Even_X,
          Even_Y,
          Anchor => (X => 0, Y => 0),
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
       --  Even-length Kernel_X with Anchor.X = 0 at (2,2): 13*1 + 14*2 = 41.
       AUnit.Assertions.Assert
         (OpenCV.Core.Float32_Access.Get (Even_Result, 2, 2) = 41.0,
@@ -377,13 +377,13 @@ package body Sep_Filter_2D_Tests is
          Constant_Result,
          Kernel_X,
          Kernel_Y,
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
       OpenCV.Image_Processing.Sep_Filter_2D
         (Source,
          Replicate_Result,
          Kernel_X,
          Kernel_Y,
-         Border => OpenCV.Core.Replicate);
+         Border => OpenCV.Replicate);
       OpenCV.Image_Processing.Sep_Filter_2D
         (Source, Default_Result, Kernel_X, Kernel_Y);
 
@@ -420,7 +420,7 @@ package body Sep_Filter_2D_Tests is
          Kernel_X,
          Kernel_Y,
          Destination_Depth => OpenCV.Image_Processing.Same_Depth,
-         Border            => OpenCV.Core.Constant_Border);
+         Border            => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (Image.Depth = OpenCV.Core.Float32
@@ -607,7 +607,7 @@ package body Sep_Filter_2D_Tests is
 
       procedure Nan_Offset is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (NaN_Bits);
          OpenCV.Image_Processing.Sep_Filter_2D
@@ -620,7 +620,7 @@ package body Sep_Filter_2D_Tests is
 
       procedure Positive_Inf_Offset is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Infinity_Bits);
          OpenCV.Image_Processing.Sep_Filter_2D
@@ -633,7 +633,7 @@ package body Sep_Filter_2D_Tests is
 
       procedure Negative_Inf_Offset is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Neg_Inf_Bits);
          OpenCV.Image_Processing.Sep_Filter_2D
@@ -651,7 +651,7 @@ package body Sep_Filter_2D_Tests is
             Destination,
             Valid_Kernel,
             Valid_Kernel,
-            Border => OpenCV.Core.Wrap);
+            Border => OpenCV.Wrap);
       end Wrap_Border;
 
       procedure Depth_Changing_Alias is

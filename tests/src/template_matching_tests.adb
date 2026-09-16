@@ -20,8 +20,8 @@ package body Template_Matching_Tests is
 
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -49,13 +49,13 @@ package body Template_Matching_Tests is
    end Assert_Raises_OpenCV_Error;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Core.Float32_Value;
-      Tolerance   : OpenCV.Core.Float32_Value) return Boolean is
+     (Left, Right : OpenCV.Float32_Value;
+      Tolerance   : OpenCV.Float32_Value) return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
 
-   SQDiff_Zero_Tolerance : constant OpenCV.Core.Float32_Value := 1.0E-2;
+   SQDiff_Zero_Tolerance : constant OpenCV.Float32_Value := 1.0E-2;
 
    procedure Fill_Unique_UInt8_Scene
      (Source : in out OpenCV.Core.Mat; Match_Row, Match_Column : Natural) is
@@ -112,7 +112,7 @@ package body Template_Matching_Tests is
       AUnit.Assertions.Assert
         (Extrema.Minimum >= 0.0
          and then Nearly_Equal
-                    (OpenCV.Core.Float32_Value (Extrema.Minimum),
+                    (OpenCV.Float32_Value (Extrema.Minimum),
                      0.0,
                      SQDiff_Zero_Tolerance)
          and then Extrema.Minimum_Location.X = 2
@@ -258,7 +258,7 @@ package body Template_Matching_Tests is
       Image       : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
       Destination : OpenCV.Core.Mat;
-      Score       : OpenCV.Core.Float32_Value;
+      Score       : OpenCV.Float32_Value;
    begin
       Fill_Unique_UInt8_Scene (Image, 0, 0);
       OpenCV.Image_Processing.Match_Template
@@ -303,7 +303,7 @@ package body Template_Matching_Tests is
       AUnit.Assertions.Assert
         (Extrema.Minimum >= 0.0
          and then Nearly_Equal
-                    (OpenCV.Core.Float32_Value (Extrema.Minimum),
+                    (OpenCV.Float32_Value (Extrema.Minimum),
                      0.0,
                      SQDiff_Zero_Tolerance)
          and then Extrema.Minimum_Location.X = 2

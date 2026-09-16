@@ -20,7 +20,7 @@ package body Median_Blur_Tests is
    use type Interfaces.Unsigned_16;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -102,7 +102,7 @@ package body Median_Blur_Tests is
       Source      : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
       Destination : OpenCV.Core.Mat;
-      Value       : OpenCV.Core.Float32_Value := 1.0;
+      Value       : OpenCV.Float32_Value := 1.0;
    begin
       for Row in 0 .. 2 loop
          for Column in 0 .. 2 loop

@@ -22,8 +22,8 @@ package body Bilateral_Filter_Tests is
    use type Interfaces.C.double;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -53,7 +53,7 @@ package body Bilateral_Filter_Tests is
    function Bits_To_Float64 is new
      Ada.Unchecked_Conversion
        (Source => Interfaces.Unsigned_64,
-        Target => OpenCV.Core.Float64_Value);
+        Target => OpenCV.Float64_Value);
 
    Infinity_Bits : constant Interfaces.Unsigned_64 := 16#7FF0_0000_0000_0000#;
    NaN_Bits      : constant Interfaces.Unsigned_64 := 16#7FF8_0000_0000_0000#;
@@ -69,7 +69,7 @@ package body Bilateral_Filter_Tests is
    end Fill_UInt8_C1;
 
    procedure Fill_Float32_C1
-     (Image : in out OpenCV.Core.Mat; Value : OpenCV.Core.Float32_Value) is
+     (Image : in out OpenCV.Core.Mat; Value : OpenCV.Float32_Value) is
    begin
       for Row in 0 .. Integer (Image.Rows) - 1 loop
          for Column in 0 .. Integer (Image.Columns) - 1 loop
@@ -122,7 +122,7 @@ package body Bilateral_Filter_Tests is
       Source      : OpenCV.Core.Mat :=
         OpenCV.Core.Create (5, 5, (OpenCV.Core.Float32, 1));
       Destination : OpenCV.Core.Mat;
-      Center      : OpenCV.Core.Float32_Value;
+      Center      : OpenCV.Float32_Value;
    begin
       Fill_Float32_C1 (Source, 1.25);
       OpenCV.Image_Processing.Bilateral_Filter
@@ -268,9 +268,9 @@ package body Bilateral_Filter_Tests is
       Fill_UInt8_C1 (Source, 0);
       OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 255);
       OpenCV.Image_Processing.Bilateral_Filter
-        (Source, Constant_Result, 5, 150.0, 50.0, OpenCV.Core.Constant_Border);
+        (Source, Constant_Result, 5, 150.0, 50.0, OpenCV.Constant_Border);
       OpenCV.Image_Processing.Bilateral_Filter
-        (Source, Replicate_Result, 5, 150.0, 50.0, OpenCV.Core.Replicate);
+        (Source, Replicate_Result, 5, 150.0, 50.0, OpenCV.Replicate);
       OpenCV.Image_Processing.Bilateral_Filter
         (Source, Default_Result, 5, 150.0, 50.0);
 
@@ -380,7 +380,7 @@ package body Bilateral_Filter_Tests is
 
       procedure Nan_Sigma_Color is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (NaN_Bits);
          OpenCV.Image_Processing.Bilateral_Filter
@@ -389,7 +389,7 @@ package body Bilateral_Filter_Tests is
 
       procedure Inf_Sigma_Color is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Infinity_Bits);
          OpenCV.Image_Processing.Bilateral_Filter
@@ -410,7 +410,7 @@ package body Bilateral_Filter_Tests is
 
       procedure Nan_Sigma_Space is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (NaN_Bits);
          OpenCV.Image_Processing.Bilateral_Filter
@@ -419,7 +419,7 @@ package body Bilateral_Filter_Tests is
 
       procedure Inf_Sigma_Space is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Infinity_Bits);
          OpenCV.Image_Processing.Bilateral_Filter
@@ -429,7 +429,7 @@ package body Bilateral_Filter_Tests is
       procedure Wrap_Border is
       begin
          OpenCV.Image_Processing.Bilateral_Filter
-           (Valid_Source, Destination, 5, 25.0, 25.0, OpenCV.Core.Wrap);
+           (Valid_Source, Destination, 5, 25.0, 25.0, OpenCV.Wrap);
       end Wrap_Border;
    begin
       Assert_Raises_OpenCV_Error

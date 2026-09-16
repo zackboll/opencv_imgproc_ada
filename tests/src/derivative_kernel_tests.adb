@@ -16,8 +16,8 @@ package body Derivative_Kernel_Tests is
    use type Interfaces.Integer_32;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
 
@@ -44,8 +44,8 @@ package body Derivative_Kernel_Tests is
    end Assert_Raises_OpenCV_Error;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Core.Float32_Value;
-      Tolerance   : OpenCV.Core.Float32_Value) return Boolean is
+     (Left, Right : OpenCV.Float32_Value;
+      Tolerance   : OpenCV.Float32_Value) return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
@@ -99,7 +99,7 @@ package body Derivative_Kernel_Tests is
          "Sobel X Kernel_3 Kernel_Y must be [1, 2, 1]");
 
       declare
-         Original_Y : constant OpenCV.Core.Float32_Value :=
+         Original_Y : constant OpenCV.Float32_Value :=
            OpenCV.Core.Float32_Access.Get (Kernels.Kernel_Y, 1, 0);
       begin
          OpenCV.Core.Float32_Access.Set (Kernels.Kernel_X, 0, 0, 42.0);
@@ -300,8 +300,8 @@ package body Derivative_Kernel_Tests is
           (Axis          => OpenCV.Image_Processing.Y_Axis,
            Normalization => OpenCV.Image_Processing.Normalized,
            Depth         => OpenCV.Image_Processing.Float64_Kernel);
-      Three_32 : constant OpenCV.Core.Float64_Value := 3.0 / 32.0;
-      Ten_32   : constant OpenCV.Core.Float64_Value := 10.0 / 32.0;
+      Three_32 : constant OpenCV.Float64_Value := 3.0 / 32.0;
+      Ten_32   : constant OpenCV.Float64_Value := 10.0 / 32.0;
    begin
       Assert_Column_Vector
         (Kernels.Kernel_X,
@@ -346,7 +346,7 @@ package body Derivative_Kernel_Tests is
               (Source,
                Row,
                Column,
-               OpenCV.Core.Float32_Value (Row + 2 * Column));
+               OpenCV.Float32_Value (Row + 2 * Column));
          end loop;
       end loop;
 
@@ -363,7 +363,7 @@ package body Derivative_Kernel_Tests is
          Kernels.Kernel_X,
          Kernels.Kernel_Y,
          Destination_Depth => OpenCV.Image_Processing.Same_Depth,
-         Border            => OpenCV.Core.Reflect_101);
+         Border            => OpenCV.Reflect_101);
 
       OpenCV.Image_Processing.Sobel
         (Source,
@@ -374,7 +374,7 @@ package body Derivative_Kernel_Tests is
          Kernel_Size       => OpenCV.Image_Processing.Kernel_3,
          Scale             => 1.0,
          Offset            => 0.0,
-         Border            => OpenCV.Core.Reflect_101);
+         Border            => OpenCV.Reflect_101);
 
       for Row in 0 .. 6 loop
          for Column in 0 .. 6 loop
@@ -397,7 +397,7 @@ package body Derivative_Kernel_Tests is
          Scharr_Kernels.Kernel_X,
          Scharr_Kernels.Kernel_Y,
          Destination_Depth => OpenCV.Image_Processing.Same_Depth,
-         Border            => OpenCV.Core.Reflect_101);
+         Border            => OpenCV.Reflect_101);
 
       OpenCV.Image_Processing.Scharr
         (Source,
@@ -406,7 +406,7 @@ package body Derivative_Kernel_Tests is
          Destination_Depth => OpenCV.Image_Processing.Same_Depth,
          Scale             => 1.0,
          Offset            => 0.0,
-         Border            => OpenCV.Core.Reflect_101);
+         Border            => OpenCV.Reflect_101);
 
       for Row in 0 .. 6 loop
          for Column in 0 .. 6 loop

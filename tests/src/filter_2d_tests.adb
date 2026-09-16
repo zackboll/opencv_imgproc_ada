@@ -25,9 +25,9 @@ package body Filter_2D_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Float64_Value;
-   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
+   use type OpenCV.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -57,7 +57,7 @@ package body Filter_2D_Tests is
    function Bits_To_Float64 is new
      Ada.Unchecked_Conversion
        (Source => Interfaces.Unsigned_64,
-        Target => OpenCV.Core.Float64_Value);
+        Target => OpenCV.Float64_Value);
 
    Infinity_Bits : constant Interfaces.Unsigned_64 := 16#7FF0_0000_0000_0000#;
    Neg_Inf_Bits  : constant Interfaces.Unsigned_64 := 16#FFF0_0000_0000_0000#;
@@ -124,7 +124,7 @@ package body Filter_2D_Tests is
       OpenCV.Core.Float32_Access.Set (Source, 0, 3, 8.0);
       OpenCV.Core.Float32_Access.Set (Source, 0, 4, 16.0);
       OpenCV.Image_Processing.Filter_2D
-        (Source, Destination, Kernel, Border => OpenCV.Core.Constant_Border);
+        (Source, Destination, Kernel, Border => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Float32_Access.Get (Destination, 0, 2) = 42.0,
@@ -235,13 +235,13 @@ package body Filter_2D_Tests is
       OpenCV.Core.Float32_Access.Set (Source, 0, 3, 8.0);
       OpenCV.Core.Float32_Access.Set (Source, 0, 4, 16.0);
       OpenCV.Image_Processing.Filter_2D
-        (Source, Centered, Kernel, Border => OpenCV.Core.Constant_Border);
+        (Source, Centered, Kernel, Border => OpenCV.Constant_Border);
       OpenCV.Image_Processing.Filter_2D
         (Source,
          Explicit_Result,
          Kernel,
          Anchor => (X => 0, Y => 0),
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Float32_Access.Get (Centered, 0, 1) = 21.0,
@@ -290,9 +290,9 @@ package body Filter_2D_Tests is
         (Source,
          Constant_Result,
          Kernel,
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
       OpenCV.Image_Processing.Filter_2D
-        (Source, Replicate_Result, Kernel, Border => OpenCV.Core.Replicate);
+        (Source, Replicate_Result, Kernel, Border => OpenCV.Replicate);
       OpenCV.Image_Processing.Filter_2D (Source, Default_Result, Kernel);
 
       AUnit.Assertions.Assert
@@ -472,7 +472,7 @@ package body Filter_2D_Tests is
 
       procedure Nan_Offset is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (NaN_Bits);
          OpenCV.Image_Processing.Filter_2D
@@ -481,7 +481,7 @@ package body Filter_2D_Tests is
 
       procedure Positive_Inf_Offset is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Infinity_Bits);
          OpenCV.Image_Processing.Filter_2D
@@ -490,7 +490,7 @@ package body Filter_2D_Tests is
 
       procedure Negative_Inf_Offset is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Neg_Inf_Bits);
          OpenCV.Image_Processing.Filter_2D
@@ -503,7 +503,7 @@ package body Filter_2D_Tests is
            (Valid_Source,
             Destination,
             Valid_Kernel,
-            Border => OpenCV.Core.Wrap);
+            Border => OpenCV.Wrap);
       end Wrap_Border;
 
       procedure Depth_Changing_Alias is

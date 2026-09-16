@@ -21,9 +21,9 @@ package body Warp_Perspective_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float64_Value;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
 
@@ -50,8 +50,8 @@ package body Warp_Perspective_Tests is
    end Assert_Raises_OpenCV_Error;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Core.Float32_Value;
-      Tolerance   : OpenCV.Core.Float32_Value) return Boolean is
+     (Left, Right : OpenCV.Float32_Value;
+      Tolerance   : OpenCV.Float32_Value) return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
@@ -59,12 +59,12 @@ package body Warp_Perspective_Tests is
    function Bits_To_Float32 is new
      Ada.Unchecked_Conversion
        (Source => Interfaces.Unsigned_32,
-        Target => OpenCV.Core.Float32_Value);
+        Target => OpenCV.Float32_Value);
 
    function Bits_To_Float64 is new
      Ada.Unchecked_Conversion
        (Source => Interfaces.Unsigned_64,
-        Target => OpenCV.Core.Float64_Value);
+        Target => OpenCV.Float64_Value);
 
    NaN_Bits_32 : constant Interfaces.Unsigned_32 := 16#7FC0_0000#;
    Inf_Bits_64 : constant Interfaces.Unsigned_64 := 16#7FF0_0000_0000_0000#;
@@ -113,7 +113,7 @@ package body Warp_Perspective_Tests is
    end Identity_Float64;
 
    function Translate_X_Float32
-     (Shift : OpenCV.Core.Float32_Value) return OpenCV.Core.Mat
+     (Shift : OpenCV.Float32_Value) return OpenCV.Core.Mat
    is
       Transform : OpenCV.Core.Mat := Identity_Float32;
    begin
@@ -172,7 +172,7 @@ package body Warp_Perspective_Tests is
          (Width => 3, Height => 3),
          OpenCV.Image_Processing.Nearest_Neighbor,
          OpenCV.Image_Processing.Source_To_Destination,
-         OpenCV.Core.Constant_Border,
+         OpenCV.Constant_Border,
          (others => 0.0));
 
       for Row in 0 .. 2 loop
@@ -266,8 +266,8 @@ package body Warp_Perspective_Tests is
       Transform   : constant OpenCV.Core.Mat := Translate_X_Float32 (0.5);
       Linear_Out  : OpenCV.Core.Mat;
       Nearest_Out : OpenCV.Core.Mat;
-      Linear_Mid  : OpenCV.Core.Float32_Value;
-      Nearest_Mid : OpenCV.Core.Float32_Value;
+      Linear_Mid  : OpenCV.Float32_Value;
+      Nearest_Mid : OpenCV.Float32_Value;
    begin
       OpenCV.Core.Float32_Access.Set (Source, 0, 0, 0.0);
       OpenCV.Core.Float32_Access.Set (Source, 0, 1, 10.0);
@@ -316,7 +316,7 @@ package body Warp_Perspective_Tests is
          (Width => 3, Height => 3),
          OpenCV.Image_Processing.Nearest_Neighbor,
          OpenCV.Image_Processing.Source_To_Destination,
-         OpenCV.Core.Constant_Border,
+         OpenCV.Constant_Border,
          (Component_0 => 37.0, others => 0.0));
 
       for Row in 0 .. 2 loop
@@ -345,7 +345,7 @@ package body Warp_Perspective_Tests is
          (Width => 3, Height => 3),
          OpenCV.Image_Processing.Nearest_Neighbor,
          OpenCV.Image_Processing.Source_To_Destination,
-         OpenCV.Core.Replicate,
+         OpenCV.Replicate,
          (Component_0 => 99.0, others => 0.0));
 
       for Row in 0 .. 2 loop
@@ -447,7 +447,7 @@ package body Warp_Perspective_Tests is
          (Width => 2, Height => 2),
          OpenCV.Image_Processing.Nearest_Neighbor,
          OpenCV.Image_Processing.Source_To_Destination,
-         OpenCV.Core.Constant_Border,
+         OpenCV.Constant_Border,
          (Component_0 => 10.0,
           Component_1 => 20.0,
           Component_2 => 30.0,
@@ -588,7 +588,7 @@ package body Warp_Perspective_Tests is
             Valid_Xform,
             Destination,
             (Width => 3, Height => 3),
-            Border => OpenCV.Core.Wrap);
+            Border => OpenCV.Wrap);
       end Wrap_Border;
 
       procedure Alias_Source is
@@ -615,7 +615,7 @@ package body Warp_Perspective_Tests is
       procedure Nan_Transform is
          pragma Suppress (Validity_Check);
          Nan_Xform : OpenCV.Core.Mat := Identity_Float32;
-         Value     : OpenCV.Core.Float32_Value;
+         Value     : OpenCV.Float32_Value;
       begin
          Value := Bits_To_Float32 (NaN_Bits_32);
          OpenCV.Core.Float32_Access.Set (Nan_Xform, 0, 2, Value);
@@ -626,7 +626,7 @@ package body Warp_Perspective_Tests is
       procedure Inf_Transform is
          pragma Suppress (Validity_Check);
          Inf_Xform : OpenCV.Core.Mat := Identity_Float64;
-         Value     : OpenCV.Core.Float64_Value;
+         Value     : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Inf_Bits_64);
          OpenCV.Core.Float64_Access.Set (Inf_Xform, 2, 2, Value);
@@ -900,7 +900,7 @@ package body Warp_Perspective_Tests is
       Fill_Unique_UInt8 (UInt8_Source);
       declare
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float32_Value;
+         Value : OpenCV.Float32_Value;
       begin
          Value := Bits_To_Float32 (NaN_Bits_32);
          OpenCV.Core.Float32_Access.Set (Nan_Xform, 2, 2, Value);

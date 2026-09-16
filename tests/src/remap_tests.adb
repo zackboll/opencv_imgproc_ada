@@ -20,7 +20,7 @@ package body Remap_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -48,8 +48,8 @@ package body Remap_Tests is
    end Assert_Raises_OpenCV_Error;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Core.Float32_Value;
-      Tolerance   : OpenCV.Core.Float32_Value) return Boolean is
+     (Left, Right : OpenCV.Float32_Value;
+      Tolerance   : OpenCV.Float32_Value) return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
@@ -57,7 +57,7 @@ package body Remap_Tests is
    function Bits_To_Float32 is new
      Ada.Unchecked_Conversion
        (Source => Interfaces.Unsigned_32,
-        Target => OpenCV.Core.Float32_Value);
+        Target => OpenCV.Float32_Value);
 
    NaN_Bits_32 : constant Interfaces.Unsigned_32 := 16#7FC0_0000#;
    Inf_Bits_32 : constant Interfaces.Unsigned_32 := 16#7F80_0000#;
@@ -84,7 +84,7 @@ package body Remap_Tests is
       for Row in 0 .. Rows - 1 loop
          for Column in 0 .. Columns - 1 loop
             OpenCV.Core.Float32_Access.Set
-              (Map_X, Row, Column, OpenCV.Core.Float32_Value (Column));
+              (Map_X, Row, Column, OpenCV.Float32_Value (Column));
          end loop;
       end loop;
       return Map_X;
@@ -99,7 +99,7 @@ package body Remap_Tests is
       for Row in 0 .. Rows - 1 loop
          for Column in 0 .. Columns - 1 loop
             OpenCV.Core.Float32_Access.Set
-              (Map_Y, Row, Column, OpenCV.Core.Float32_Value (Row));
+              (Map_Y, Row, Column, OpenCV.Float32_Value (Row));
          end loop;
       end loop;
       return Map_Y;
@@ -185,8 +185,8 @@ package body Remap_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
       Linear_Out  : OpenCV.Core.Mat;
       Nearest_Out : OpenCV.Core.Mat;
-      Linear_Mid  : OpenCV.Core.Float32_Value;
-      Nearest_Mid : OpenCV.Core.Float32_Value;
+      Linear_Mid  : OpenCV.Float32_Value;
+      Nearest_Mid : OpenCV.Float32_Value;
    begin
       OpenCV.Core.Float32_Access.Set (Source, 0, 0, 0.0);
       OpenCV.Core.Float32_Access.Set (Source, 0, 1, 10.0);
@@ -327,7 +327,7 @@ package body Remap_Tests is
          Map_Y,
          Destination,
          OpenCV.Image_Processing.Nearest_Neighbor,
-         OpenCV.Core.Constant_Border,
+         OpenCV.Constant_Border,
          (Component_0 => 10.0,
           Component_1 => 20.0,
           Component_2 => 30.0,
@@ -349,7 +349,7 @@ package body Remap_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
 
       function Sample
-        (Kind : OpenCV.Core.Border_Kind) return Interfaces.Unsigned_8
+        (Kind : OpenCV.Border_Kind) return Interfaces.Unsigned_8
       is
          Destination : OpenCV.Core.Mat;
       begin
@@ -371,16 +371,16 @@ package body Remap_Tests is
       OpenCV.Core.Float32_Access.Set (Map_Y, 0, 0, 0.0);
 
       AUnit.Assertions.Assert
-        (Sample (OpenCV.Core.Replicate) = 10,
+        (Sample (OpenCV.Replicate) = 10,
          "Replicate at x=-1 must sample the left edge");
       AUnit.Assertions.Assert
-        (Sample (OpenCV.Core.Reflect) = 10,
+        (Sample (OpenCV.Reflect) = 10,
          "Reflect at x=-1 must sample Source column 0");
       AUnit.Assertions.Assert
-        (Sample (OpenCV.Core.Reflect_101) = 20,
+        (Sample (OpenCV.Reflect_101) = 20,
          "Reflect_101 at x=-1 must sample Source column 1");
       AUnit.Assertions.Assert
-        (Sample (OpenCV.Core.Wrap) = 30,
+        (Sample (OpenCV.Wrap) = 30,
          "Wrap at x=-1 must sample Source column 2");
    end Supports_Nonconstant_Borders;
 
@@ -392,8 +392,8 @@ package body Remap_Tests is
       Map_Y       : constant OpenCV.Core.Mat := Identity_Map_Y (2, 2);
       Destination : OpenCV.Core.Mat;
       Saved_Src   : Interfaces.Unsigned_8;
-      Saved_X     : OpenCV.Core.Float32_Value;
-      Saved_Y     : OpenCV.Core.Float32_Value;
+      Saved_X     : OpenCV.Float32_Value;
+      Saved_Y     : OpenCV.Float32_Value;
    begin
       Fill_Unique_UInt8 (Source);
       Saved_Src := OpenCV.Core.UInt8_Access.Get (Source, 1, 1);
@@ -549,7 +549,7 @@ package body Remap_Tests is
 
       procedure Nan_Map is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float32_Value;
+         Value : OpenCV.Float32_Value;
       begin
          Value := Bits_To_Float32 (NaN_Bits_32);
          OpenCV.Core.Float32_Access.Set (Nan_X, 0, 0, Value);
@@ -559,7 +559,7 @@ package body Remap_Tests is
 
       procedure Inf_Map is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float32_Value;
+         Value : OpenCV.Float32_Value;
       begin
          Value := Bits_To_Float32 (Inf_Bits_32);
          OpenCV.Core.Float32_Access.Set (Inf_Y, 0, 1, Value);
@@ -809,7 +809,7 @@ package body Remap_Tests is
       Fill_Unique_UInt8 (UInt8_Source);
       declare
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float32_Value;
+         Value : OpenCV.Float32_Value;
       begin
          Value := Bits_To_Float32 (NaN_Bits_32);
          OpenCV.Core.Float32_Access.Set (Nan_Map, 0, 0, Value);

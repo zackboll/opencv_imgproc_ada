@@ -14,8 +14,8 @@ package body Contour_Tests is
 
    use type Interfaces.Integer_32;
    use type Interfaces.Unsigned_8;
-   use type OpenCV.Core.Point;
-   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Point;
+   use type OpenCV.Point_Coordinate;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
 
@@ -42,7 +42,7 @@ package body Contour_Tests is
    procedure Fill_Rectangle
      (Image                    : in out OpenCV.Core.Mat;
       Left, Top, Right, Bottom : Natural;
-      Value                    : OpenCV.Core.UInt8_Value := 255) is
+      Value                    : OpenCV.UInt8_Value := 255) is
    begin
       for Row in Top .. Bottom loop
          for Column in Left .. Right loop
@@ -57,7 +57,7 @@ package body Contour_Tests is
    end Clear;
 
    function Contains
-     (Contour : OpenCV.Image_Processing.Contour; Point : OpenCV.Core.Point)
+     (Contour : OpenCV.Image_Processing.Contour; Point : OpenCV.Point)
       return Boolean is
    begin
       for Item of Contour loop

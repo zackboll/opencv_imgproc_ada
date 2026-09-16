@@ -20,7 +20,7 @@ package body Laplacian_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -63,7 +63,7 @@ package body Laplacian_Tests is
          Destination,
          OpenCV.Image_Processing.Int16_Depth,
          1,
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (Destination.Rows = 3
@@ -93,7 +93,7 @@ package body Laplacian_Tests is
          Destination,
          OpenCV.Image_Processing.Int16_Depth,
          3,
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Int16_Access.Get (Destination, 1, 1) = -80
@@ -114,7 +114,7 @@ package body Laplacian_Tests is
          Destination,
          OpenCV.Image_Processing.Int16_Depth,
          Kernel_Size => 9,
-         Border      => OpenCV.Core.Constant_Border);
+         Border      => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (Destination.Rows = 9
@@ -136,7 +136,7 @@ package body Laplacian_Tests is
          Image,
          Destination_Depth => OpenCV.Image_Processing.Same_Depth,
          Kernel_Size       => 1,
-         Border            => OpenCV.Core.Constant_Border);
+         Border            => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (Image.Rows = 3
@@ -161,7 +161,7 @@ package body Laplacian_Tests is
          OpenCV.Image_Processing.Int16_Depth,
          Scale  => 0.5,
          Offset => 3.0,
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (OpenCV.Core.Int16_Access.Get (Destination, 1, 1) = -17,
@@ -181,7 +181,7 @@ package body Laplacian_Tests is
         (Source,
          Destination,
          OpenCV.Image_Processing.Same_Depth,
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (Destination.Channels = 3
@@ -202,7 +202,7 @@ package body Laplacian_Tests is
         (Source,
          Destination,
          OpenCV.Image_Processing.Float32_Depth,
-         Border => OpenCV.Core.Constant_Border);
+         Border => OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (Destination.Depth = OpenCV.Core.Float32,
@@ -242,7 +242,7 @@ package body Laplacian_Tests is
       procedure Wrap_Border is
       begin
          OpenCV.Image_Processing.Laplacian
-           (UInt16_Source, Destination, Border => OpenCV.Core.Wrap);
+           (UInt16_Source, Destination, Border => OpenCV.Wrap);
       end Wrap_Border;
    begin
       Assert_Raises_OpenCV_Error

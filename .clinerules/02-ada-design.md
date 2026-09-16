@@ -63,20 +63,23 @@ solely to represent runtime OpenCV matrix type metadata.
 
 Use tagged types where they improve the Ada abstraction, not simply because the corresponding OpenCV type is a C++ class.
 
-Common OpenCV value types and matrix metadata abstractions must be reused from `OpenCV.Core` where they already exist. This includes `Mat`, `Point`, `Size`, `Rect`, `Scalar`, `Depth_Type`, `Mat_Type`, channel information, and their associated operations.
+Common OpenCV value types must be reused from `OpenCV` where they already
+exist. This includes `Point`, `Size`, `Rect`, `Scalar`, `Point_Array`,
+`Border_Kind`, and their associated operations. Matrix metadata
+abstractions such as `Mat`, `Depth_Type`, `Mat_Type`, and channel
+information remain in `OpenCV.Core`.
 
-`OpenCV.Image_Processing` may define a public type only when it is specifically required by the imgproc module and is not already supplied by `OpenCV.Core`.
+`OpenCV.Image_Processing` may define a public type only when it is specifically required by the imgproc module and is not already supplied by `OpenCV` or `OpenCV.Core`.
 
 ## Public Naming Conventions
 
-Reuse recognizable OpenCV domain types from `OpenCV.Core` rather than redeclaring them in `OpenCV.Image_Processing`.
+Reuse recognizable OpenCV domain types from `OpenCV` and `OpenCV.Core`
+rather than redeclaring them in `OpenCV.Image_Processing`.
 
 Examples include:
 
-- `Mat`
-- `Point`
-- `Size`
-- `Scalar`
+- `Mat` from `OpenCV.Core`
+- `Point`, `Size`, `Scalar`, and `Point_Array` from `OpenCV`
 - `Range`
 
 Reuse `OpenCV.Core` matrix operations such as `Rows`, `Columns`, `Channels`, `Depth`, `Element_Type`, and `Clone` rather than redeclaring them in this crate. Use Ada-style names for imgproc-specific public operations.

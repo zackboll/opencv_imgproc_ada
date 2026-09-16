@@ -12,7 +12,7 @@ package body Gaussian_Blur_Tests is
 
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
@@ -51,7 +51,7 @@ package body Gaussian_Blur_Tests is
          Destination,
          (Width => 3, Height => 3),
          1.0,
-         OpenCV.Core.Constant_Border);
+         OpenCV.Constant_Border);
 
       AUnit.Assertions.Assert
         (Destination.Rows = Source.Rows
@@ -82,7 +82,7 @@ package body Gaussian_Blur_Tests is
          Destination,
          (Width => 3, Height => 3),
          1.0,
-         OpenCV.Core.Replicate);
+         OpenCV.Replicate);
 
       AUnit.Assertions.Assert
         (Destination.Depth = OpenCV.Core.UInt8
@@ -106,7 +106,7 @@ package body Gaussian_Blur_Tests is
          Destination,
          (Width => 3, Height => 3),
          1.0,
-         OpenCV.Core.Reflect);
+         OpenCV.Reflect);
       AUnit.Assertions.Assert
         (Destination.Depth = OpenCV.Core.UInt16
          and then Destination.Channels = 1,
@@ -126,7 +126,7 @@ package body Gaussian_Blur_Tests is
          Destination,
          (Width => 3, Height => 3),
          1.0,
-         OpenCV.Core.Reflect_101);
+         OpenCV.Reflect_101);
       AUnit.Assertions.Assert
         (Destination.Depth = OpenCV.Core.Int16
          and then Destination.Channels = 2,
@@ -268,7 +268,7 @@ package body Gaussian_Blur_Tests is
             Destination,
             (Width => 3, Height => 3),
             1.0,
-            OpenCV.Core.Wrap);
+            OpenCV.Wrap);
       end Attempt;
    begin
       Assert_Raises_OpenCV_Error

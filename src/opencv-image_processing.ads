@@ -54,7 +54,7 @@ package OpenCV.Image_Processing is
 
    subtype Adaptive_Block_Size is Positive range 3 .. 2_147_483_647;
 
-   subtype Contour is OpenCV.Core.Point_Array;
+   subtype Contour is OpenCV.Point_Array;
 
    type Contour_Retrieval_Mode is
      (External_Only, Flat_List, Two_Level, Full_Tree);
@@ -124,7 +124,7 @@ package OpenCV.Image_Processing is
    procedure Resize
      (Source        : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
-      Output_Size   : OpenCV.Core.Size;
+      Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method := Linear);
 
    --  Gaussian_Blur convolves Source with an isotropic Gaussian kernel.
@@ -138,9 +138,9 @@ package OpenCV.Image_Processing is
    procedure Gaussian_Blur
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
-      Sigma       : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Kernel_Size : OpenCV.Size;
+      Sigma       : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Get_Gaussian_Kernel returns an N x 1 single-channel Gaussian coefficient
    --  vector of the requested Depth. Kernel_Size must be odd. This overload
@@ -159,7 +159,7 @@ package OpenCV.Image_Processing is
    --  automatic sigma.
    function Get_Gaussian_Kernel
      (Kernel_Size : Gaussian_Kernel_Size;
-      Sigma       : OpenCV.Core.Float64_Value;
+      Sigma       : OpenCV.Float64_Value;
       Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
       return OpenCV.Core.Mat;
 
@@ -228,7 +228,7 @@ package OpenCV.Image_Processing is
    procedure Pyramid_Down
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Pyramid_Up performs OpenCV's Gaussian-pyramid upsampling of Source.
    --  Source must be a non-empty two-dimensional Mat with depth UInt8, UInt16,
@@ -291,11 +291,11 @@ package OpenCV.Image_Processing is
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
-      Output_Size   : OpenCV.Core.Size;
+      Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method := Linear;
       Mapping       : Affine_Mapping_Direction := Source_To_Destination;
-      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
-      Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0));
 
    --  Warp_Perspective applies a 3x3 projective Transform to Source and writes
    --  the warped image to Destination. Source must be a non-empty
@@ -327,11 +327,11 @@ package OpenCV.Image_Processing is
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
-      Output_Size   : OpenCV.Core.Size;
+      Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method := Linear;
       Mapping       : Warp_Mapping_Direction := Source_To_Destination;
-      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
-      Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0));
 
    --  Remap applies an absolute source-coordinate map. Destination(Row,
    --  Column) samples Source at X = Map_X(Row, Column) and
@@ -359,8 +359,8 @@ package OpenCV.Image_Processing is
       Map_Y         : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
       Interpolation : Interpolation_Method := Linear;
-      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
-      Border_Value  : OpenCV.Core.Scalar := (others => 0.0));
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0));
 
    --  Median_Blur replaces each Source pixel with the median of its square
    --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat
@@ -391,8 +391,8 @@ package OpenCV.Image_Processing is
    procedure Box_Blur
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Kernel_Size : OpenCV.Size;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Bilateral_Filter replaces Destination with an edge-preserving smoothing
    --  of Source. Spatial distance and pixel/color distance both weight the
@@ -412,9 +412,9 @@ package OpenCV.Image_Processing is
    procedure Bilateral_Filter
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Sigma_Color : OpenCV.Core.Float64_Value;
-      Sigma_Space : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Sigma_Color : OpenCV.Float64_Value;
+      Sigma_Space : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  This overload is the same Bilateral_Filter operation with an explicit
    --  neighborhood Diameter. Diameter is a positive integer and need not be
@@ -425,9 +425,9 @@ package OpenCV.Image_Processing is
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Diameter    : Bilateral_Diameter;
-      Sigma_Color : OpenCV.Core.Float64_Value;
-      Sigma_Space : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Sigma_Color : OpenCV.Float64_Value;
+      Sigma_Space : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Filter_2D replaces Destination with a linear correlation of Source
    --  against Kernel. This is correlation, not mathematical convolution: the
@@ -452,8 +452,8 @@ package OpenCV.Image_Processing is
       Destination       : in out OpenCV.Core.Mat;
       Kernel            : OpenCV.Core.Mat;
       Destination_Depth : Filter_Depth := Same_Depth;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  This overload is the same Filter_2D correlation with an explicit Kernel
    --  Anchor. Anchor must lie inside Kernel: X and Y are nonnegative and
@@ -465,10 +465,10 @@ package OpenCV.Image_Processing is
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
       Kernel            : OpenCV.Core.Mat;
-      Anchor            : OpenCV.Core.Point;
+      Anchor            : OpenCV.Point;
       Destination_Depth : Filter_Depth := Same_Depth;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Sep_Filter_2D replaces Destination with a separable linear filter of
    --  Source. Every Source row is filtered with Kernel_X, then every
@@ -497,8 +497,8 @@ package OpenCV.Image_Processing is
       Kernel_X          : OpenCV.Core.Mat;
       Kernel_Y          : OpenCV.Core.Mat;
       Destination_Depth : Filter_Depth := Same_Depth;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  This overload is the same Sep_Filter_2D separable filter with an
    --  explicit Kernel Anchor. Anchor.X indexes Kernel_X and Anchor.Y indexes
@@ -513,10 +513,10 @@ package OpenCV.Image_Processing is
       Destination       : in out OpenCV.Core.Mat;
       Kernel_X          : OpenCV.Core.Mat;
       Kernel_Y          : OpenCV.Core.Mat;
-      Anchor            : OpenCV.Core.Point;
+      Anchor            : OpenCV.Point;
       Destination_Depth : Filter_Depth := Same_Depth;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Erode replaces Destination with the neighborhood minimum selected by a
    --  temporary structuring element of Kernel_Size and Shape. Source must be a
@@ -532,10 +532,10 @@ package OpenCV.Image_Processing is
    procedure Erode
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
+      Kernel_Size : OpenCV.Size;
       Shape       : Morphology_Shape := Rectangle;
       Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
 
    --  Dilate replaces Destination with the neighborhood maximum selected by a
    --  temporary structuring element of Kernel_Size and Shape. It has the same
@@ -546,10 +546,10 @@ package OpenCV.Image_Processing is
    procedure Dilate
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
+      Kernel_Size : OpenCV.Size;
       Shape       : Morphology_Shape := Rectangle;
       Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
 
    --  Apply_Morphology performs Opening, Closing, Gradient, Top_Hat, or
    --  Black_Hat with a temporary structuring element of Kernel_Size and Shape.
@@ -566,10 +566,10 @@ package OpenCV.Image_Processing is
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Operation   : Morphology_Operation;
-      Kernel_Size : OpenCV.Core.Size;
+      Kernel_Size : OpenCV.Size;
       Shape       : Morphology_Shape := Rectangle;
       Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border);
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
 
    --  Canny_Edges finds edges in a non-empty two-dimensional UInt8 C1 Source.
    --  Lower_Threshold and Upper_Threshold must be finite, nonnegative, and
@@ -579,8 +579,8 @@ package OpenCV.Image_Processing is
    procedure Canny_Edges
      (Source          : OpenCV.Core.Mat;
       Destination     : in out OpenCV.Core.Mat;
-      Lower_Threshold : OpenCV.Core.Float64_Value;
-      Upper_Threshold : OpenCV.Core.Float64_Value;
+      Lower_Threshold : OpenCV.Float64_Value;
+      Upper_Threshold : OpenCV.Float64_Value;
       Aperture        : Canny_Aperture := Sobel_3x3;
       Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
 
@@ -607,9 +607,9 @@ package OpenCV.Image_Processing is
       Y_Order           : Derivative_Order;
       Destination_Depth : Derivative_Depth := Float32_Depth;
       Kernel_Size       : Sobel_Kernel_Size := Kernel_3;
-      Scale             : OpenCV.Core.Float64_Value := 1.0;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Scale             : OpenCV.Float64_Value := 1.0;
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Scharr computes the first spatial derivative in Axis independently for
    --  every Source channel. Its source, destination-depth, Scale, Delta, and
@@ -622,9 +622,9 @@ package OpenCV.Image_Processing is
       Destination       : in out OpenCV.Core.Mat;
       Axis              : Derivative_Axis;
       Destination_Depth : Derivative_Depth := Float32_Depth;
-      Scale             : OpenCV.Core.Float64_Value := 1.0;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Scale             : OpenCV.Float64_Value := 1.0;
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Laplacian computes the sum of the second X and Y derivatives for every
    --  Source channel. Source must be non-empty and two-dimensional with depth
@@ -645,9 +645,9 @@ package OpenCV.Image_Processing is
       Destination       : in out OpenCV.Core.Mat;
       Destination_Depth : Derivative_Depth := Float32_Depth;
       Kernel_Size       : Laplacian_Kernel_Size := 1;
-      Scale             : OpenCV.Core.Float64_Value := 1.0;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101);
+      Scale             : OpenCV.Float64_Value := 1.0;
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Applies a fixed threshold independently to every channel of Source.
    --  Source must be non-empty, two-dimensional, and UInt8, UInt16, Int16,
@@ -660,9 +660,9 @@ package OpenCV.Image_Processing is
    procedure Apply_Threshold
      (Source          : OpenCV.Core.Mat;
       Destination     : in out OpenCV.Core.Mat;
-      Threshold_Value : OpenCV.Core.Float64_Value;
+      Threshold_Value : OpenCV.Float64_Value;
       Mode            : Threshold_Mode := Binary;
-      Maximum_Value   : OpenCV.Core.Float64_Value := 255.0);
+      Maximum_Value   : OpenCV.Float64_Value := 255.0);
 
    --  Applies Otsu or Triangle automatic thresholding to a non-empty,
    --  two-dimensional, single-channel Source. Maximum_Value must be finite.
@@ -675,10 +675,10 @@ package OpenCV.Image_Processing is
    procedure Apply_Automatic_Threshold
      (Source             : OpenCV.Core.Mat;
       Destination        : in out OpenCV.Core.Mat;
-      Computed_Threshold : out OpenCV.Core.Float64_Value;
+      Computed_Threshold : out OpenCV.Float64_Value;
       Method             : Automatic_Threshold_Method := Otsu;
       Mode               : Threshold_Mode := Binary;
-      Maximum_Value      : OpenCV.Core.Float64_Value := 255.0);
+      Maximum_Value      : OpenCV.Float64_Value := 255.0);
 
    --  Applies an adaptive binary threshold to a non-empty, two-dimensional,
    --  UInt8, single-channel Source. Block_Size must be odd. OpenCV calculates
@@ -697,8 +697,8 @@ package OpenCV.Image_Processing is
       Block_Size    : Adaptive_Block_Size;
       Method        : Adaptive_Threshold_Method := Mean;
       Mode          : Adaptive_Threshold_Mode := Binary;
-      Bias          : OpenCV.Core.Float64_Value := 0.0;
-      Maximum_Value : OpenCV.Core.UInt8_Value := 255);
+      Bias          : OpenCV.Float64_Value := 0.0;
+      Maximum_Value : OpenCV.UInt8_Value := 255);
 
    --  Extracts contours from a non-empty, two-dimensional UInt8 single-channel
    --  Source. Zero pixels are background and nonzero pixels are foreground.
@@ -710,8 +710,7 @@ package OpenCV.Image_Processing is
      (Source        : OpenCV.Core.Mat;
       Retrieval     : Contour_Retrieval_Mode := External_Only;
       Approximation : Contour_Approximation_Mode := Simple;
-      Offset        : OpenCV.Core.Point := (X => 0, Y => 0))
-      return Contour_Set;
+      Offset        : OpenCV.Point := (X => 0, Y => 0)) return Contour_Set;
 
    function Contour_Count (Self : Contour_Set) return Natural;
 
@@ -727,7 +726,7 @@ private
      Ada.Containers.Indefinite_Vectors
        (Index_Type   => Natural,
         Element_Type => Contour,
-        "="          => OpenCV.Core."=");
+        "="          => OpenCV."=");
    package Hierarchy_Vectors is new
      Ada.Containers.Vectors
        (Index_Type   => Natural,

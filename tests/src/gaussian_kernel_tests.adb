@@ -19,8 +19,8 @@ package body Gaussian_Kernel_Tests is
    use type Interfaces.C.double;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
 
@@ -49,22 +49,22 @@ package body Gaussian_Kernel_Tests is
    function Bits_To_Float64 is new
      Ada.Unchecked_Conversion
        (Source => Interfaces.Unsigned_64,
-        Target => OpenCV.Core.Float64_Value);
+        Target => OpenCV.Float64_Value);
 
    Infinity_Bits : constant Interfaces.Unsigned_64 := 16#7FF0_0000_0000_0000#;
    Neg_Inf_Bits  : constant Interfaces.Unsigned_64 := 16#FFF0_0000_0000_0000#;
    NaN_Bits      : constant Interfaces.Unsigned_64 := 16#7FF8_0000_0000_0000#;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Core.Float64_Value;
-      Tolerance   : OpenCV.Core.Float64_Value) return Boolean is
+     (Left, Right : OpenCV.Float64_Value;
+      Tolerance   : OpenCV.Float64_Value) return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Core.Float32_Value;
-      Tolerance   : OpenCV.Core.Float32_Value) return Boolean is
+     (Left, Right : OpenCV.Float32_Value;
+      Tolerance   : OpenCV.Float32_Value) return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
@@ -74,9 +74,9 @@ package body Gaussian_Kernel_Tests is
 
       Kernel : constant OpenCV.Core.Mat :=
         OpenCV.Image_Processing.Get_Gaussian_Kernel (5);
-      Sum    : OpenCV.Core.Float64_Value := 0.0;
-      Center : OpenCV.Core.Float64_Value;
-      Edge   : OpenCV.Core.Float64_Value;
+      Sum    : OpenCV.Float64_Value := 0.0;
+      Center : OpenCV.Float64_Value;
+      Edge   : OpenCV.Float64_Value;
    begin
       AUnit.Assertions.Assert
         (Kernel.Rows = 5
@@ -87,7 +87,7 @@ package body Gaussian_Kernel_Tests is
 
       for Row in 0 .. 4 loop
          declare
-            Value : constant OpenCV.Core.Float64_Value :=
+            Value : constant OpenCV.Float64_Value :=
               OpenCV.Core.Float64_Access.Get (Kernel, Row, 0);
          begin
             Sum := Sum + Value;
@@ -116,7 +116,7 @@ package body Gaussian_Kernel_Tests is
       Kernel : constant OpenCV.Core.Mat :=
         OpenCV.Image_Processing.Get_Gaussian_Kernel
           (5, OpenCV.Image_Processing.Float32_Kernel);
-      Sum    : OpenCV.Core.Float32_Value := 0.0;
+      Sum    : OpenCV.Float32_Value := 0.0;
    begin
       AUnit.Assertions.Assert
         (Kernel.Rows = 5
@@ -127,7 +127,7 @@ package body Gaussian_Kernel_Tests is
 
       for Row in 0 .. 4 loop
          declare
-            Value : constant OpenCV.Core.Float32_Value :=
+            Value : constant OpenCV.Float32_Value :=
               OpenCV.Core.Float32_Access.Get (Kernel, Row, 0);
          begin
             Sum := Sum + Value;
@@ -158,9 +158,9 @@ package body Gaussian_Kernel_Tests is
    begin
       for Row in 0 .. 4 loop
          declare
-            Narrow_Value : constant OpenCV.Core.Float64_Value :=
+            Narrow_Value : constant OpenCV.Float64_Value :=
               OpenCV.Core.Float64_Access.Get (Narrow, Row, 0);
-            Wide_Value   : constant OpenCV.Core.Float64_Value :=
+            Wide_Value   : constant OpenCV.Float64_Value :=
               OpenCV.Core.Float64_Access.Get (Wide, Row, 0);
          begin
             AUnit.Assertions.Assert
@@ -230,14 +230,14 @@ package body Gaussian_Kernel_Tests is
          Separable,
          Kernel_X => Kernel,
          Kernel_Y => Kernel,
-         Border   => OpenCV.Core.Reflect_101);
+         Border   => OpenCV.Reflect_101);
 
       OpenCV.Image_Processing.Gaussian_Blur
         (Source,
          Blurred,
          (Width => 5, Height => 5),
          1.2,
-         OpenCV.Core.Reflect_101);
+         OpenCV.Reflect_101);
 
       for Row in 0 .. 6 loop
          for Column in 0 .. 6 loop
@@ -291,7 +291,7 @@ package body Gaussian_Kernel_Tests is
 
       procedure Nan_Sigma is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (NaN_Bits);
          Discard := OpenCV.Image_Processing.Get_Gaussian_Kernel (5, Value);
@@ -299,7 +299,7 @@ package body Gaussian_Kernel_Tests is
 
       procedure Positive_Inf_Sigma is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Infinity_Bits);
          Discard := OpenCV.Image_Processing.Get_Gaussian_Kernel (5, Value);
@@ -307,7 +307,7 @@ package body Gaussian_Kernel_Tests is
 
       procedure Negative_Inf_Sigma is
          pragma Suppress (Validity_Check);
-         Value : OpenCV.Core.Float64_Value;
+         Value : OpenCV.Float64_Value;
       begin
          Value := Bits_To_Float64 (Neg_Inf_Bits);
          Discard := OpenCV.Image_Processing.Get_Gaussian_Kernel (5, Value);

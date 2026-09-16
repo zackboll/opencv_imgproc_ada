@@ -74,22 +74,22 @@ package body OpenCV.Image_Processing is
    end To_C_Interpolation;
 
    function To_C_Border
-     (Border : OpenCV.Core.Border_Kind) return Interfaces.Integer_32 is
+     (Border : OpenCV.Border_Kind) return Interfaces.Integer_32 is
    begin
       case Border is
-         when OpenCV.Core.Constant_Border =>
+         when OpenCV.Constant_Border =>
             return Internal.C_API.Border_Constant;
 
-         when OpenCV.Core.Replicate       =>
+         when OpenCV.Replicate       =>
             return Internal.C_API.Border_Replicate;
 
-         when OpenCV.Core.Reflect         =>
+         when OpenCV.Reflect         =>
             return Internal.C_API.Border_Reflect;
 
-         when OpenCV.Core.Reflect_101     =>
+         when OpenCV.Reflect_101     =>
             return Internal.C_API.Border_Reflect_101;
 
-         when OpenCV.Core.Wrap            =>
+         when OpenCV.Wrap            =>
             Ada.Exceptions.Raise_Exception
               (OpenCV.OpenCV_Error'Identity,
                "Gaussian_Blur does not support Wrap border");
@@ -97,22 +97,22 @@ package body OpenCV.Image_Processing is
    end To_C_Border;
 
    function To_C_Pyramid_Down_Border
-     (Border : OpenCV.Core.Border_Kind) return Interfaces.Integer_32 is
+     (Border : OpenCV.Border_Kind) return Interfaces.Integer_32 is
    begin
       case Border is
-         when OpenCV.Core.Replicate       =>
+         when OpenCV.Replicate       =>
             return Internal.C_API.Border_Replicate;
 
-         when OpenCV.Core.Reflect         =>
+         when OpenCV.Reflect         =>
             return Internal.C_API.Border_Reflect;
 
-         when OpenCV.Core.Reflect_101     =>
+         when OpenCV.Reflect_101     =>
             return Internal.C_API.Border_Reflect_101;
 
-         when OpenCV.Core.Wrap            =>
+         when OpenCV.Wrap            =>
             return Internal.C_API.Border_Wrap;
 
-         when OpenCV.Core.Constant_Border =>
+         when OpenCV.Constant_Border =>
             Ada.Exceptions.Raise_Exception
               (OpenCV.OpenCV_Error'Identity,
                "Pyramid_Down does not support Constant_Border");
@@ -174,19 +174,16 @@ package body OpenCV.Image_Processing is
    end To_C_Warp_Mapping;
 
    function To_C_Warp_Border
-     (Border : OpenCV.Core.Border_Kind) return Interfaces.Integer_32 is
+     (Border : OpenCV.Border_Kind) return Interfaces.Integer_32 is
    begin
       case Border is
-         when OpenCV.Core.Constant_Border
-         =>
+         when OpenCV.Constant_Border                            =>
             return Internal.C_API.Border_Constant;
 
-         when OpenCV.Core.Replicate
-         =>
+         when OpenCV.Replicate                                  =>
             return Internal.C_API.Border_Replicate;
 
-         when OpenCV.Core.Reflect | OpenCV.Core.Reflect_101 | OpenCV.Core.Wrap
-         =>
+         when OpenCV.Reflect | OpenCV.Reflect_101 | OpenCV.Wrap =>
             Ada.Exceptions.Raise_Exception
               (OpenCV.OpenCV_Error'Identity,
                "Warp_Affine supports only Constant_Border and Replicate");
@@ -217,22 +214,22 @@ package body OpenCV.Image_Processing is
    end To_C_Remap_Interpolation;
 
    function To_C_Remap_Border
-     (Border : OpenCV.Core.Border_Kind) return Interfaces.Integer_32 is
+     (Border : OpenCV.Border_Kind) return Interfaces.Integer_32 is
    begin
       case Border is
-         when OpenCV.Core.Constant_Border =>
+         when OpenCV.Constant_Border =>
             return Internal.C_API.Border_Constant;
 
-         when OpenCV.Core.Replicate       =>
+         when OpenCV.Replicate       =>
             return Internal.C_API.Border_Replicate;
 
-         when OpenCV.Core.Reflect         =>
+         when OpenCV.Reflect         =>
             return Internal.C_API.Border_Reflect;
 
-         when OpenCV.Core.Reflect_101     =>
+         when OpenCV.Reflect_101     =>
             return Internal.C_API.Border_Reflect_101;
 
-         when OpenCV.Core.Wrap            =>
+         when OpenCV.Wrap            =>
             return Internal.C_API.Border_Wrap;
       end case;
    end To_C_Remap_Border;
@@ -495,9 +492,7 @@ package body OpenCV.Image_Processing is
    end Validate_Conversion;
 
    procedure Validate_Resize
-     (Source : OpenCV.Core.Mat; Output_Size : OpenCV.Core.Size)
-   is
-      use type OpenCV.Core.Size_Coordinate;
+     (Source : OpenCV.Core.Mat; Output_Size : OpenCV.Size) is
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -541,13 +536,11 @@ package body OpenCV.Image_Processing is
 
    procedure Validate_Gaussian_Blur
      (Source      : OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
-      Sigma       : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind)
+      Kernel_Size : OpenCV.Size;
+      Sigma       : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind)
    is
-      use type OpenCV.Core.Border_Kind;
-      use type OpenCV.Core.Float64_Value;
-      use type OpenCV.Core.Size_Coordinate;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -587,14 +580,14 @@ package body OpenCV.Image_Processing is
 
       if Sigma <= 0.0
         or else Sigma /= Sigma
-        or else Sigma > OpenCV.Core.Float64_Value'Last
+        or else Sigma > OpenCV.Float64_Value'Last
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Gaussian_Blur requires a positive finite sigma");
       end if;
 
-      if Border = OpenCV.Core.Wrap then
+      if Border = OpenCV.Wrap then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Gaussian_Blur does not support Wrap border");
@@ -618,10 +611,10 @@ package body OpenCV.Image_Processing is
 
    procedure Validate_Get_Gaussian_Kernel
      (Kernel_Size : Gaussian_Kernel_Size;
-      Sigma       : OpenCV.Core.Float64_Value;
+      Sigma       : OpenCV.Float64_Value;
       Automatic   : Boolean)
    is
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Kernel_Size mod 2 = 0 then
          Ada.Exceptions.Raise_Exception
@@ -635,7 +628,7 @@ package body OpenCV.Image_Processing is
 
       if Sigma <= 0.0
         or else Sigma /= Sigma
-        or else Sigma > OpenCV.Core.Float64_Value'Last
+        or else Sigma > OpenCV.Float64_Value'Last
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
@@ -700,13 +693,11 @@ package body OpenCV.Image_Processing is
    end Validate_Pyramid_Source;
 
    procedure Validate_Pyramid_Down
-     (Source : OpenCV.Core.Mat; Border : OpenCV.Core.Border_Kind)
-   is
-      use type OpenCV.Core.Border_Kind;
+     (Source : OpenCV.Core.Mat; Border : OpenCV.Border_Kind) is
    begin
       Validate_Pyramid_Source (Source, "Pyramid_Down");
 
-      if Border = OpenCV.Core.Constant_Border then
+      if Border = OpenCV.Constant_Border then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Pyramid_Down does not support Constant_Border");
@@ -794,13 +785,11 @@ package body OpenCV.Image_Processing is
    procedure Validate_Warp_Affine
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;
-      Output_Size   : OpenCV.Core.Size;
+      Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method;
-      Border        : OpenCV.Core.Border_Kind)
+      Border        : OpenCV.Border_Kind)
    is
-      use type OpenCV.Core.Border_Kind;
       use type OpenCV.Core.Channel_Count;
-      use type OpenCV.Core.Size_Coordinate;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -878,8 +867,7 @@ package body OpenCV.Image_Processing is
                & " interpolation");
       end case;
 
-      if Border /= OpenCV.Core.Constant_Border
-        and then Border /= OpenCV.Core.Replicate
+      if Border /= OpenCV.Constant_Border and then Border /= OpenCV.Replicate
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
@@ -890,13 +878,11 @@ package body OpenCV.Image_Processing is
    procedure Validate_Warp_Perspective
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;
-      Output_Size   : OpenCV.Core.Size;
+      Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method;
-      Border        : OpenCV.Core.Border_Kind)
+      Border        : OpenCV.Border_Kind)
    is
-      use type OpenCV.Core.Border_Kind;
       use type OpenCV.Core.Channel_Count;
-      use type OpenCV.Core.Size_Coordinate;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -974,8 +960,7 @@ package body OpenCV.Image_Processing is
                & " interpolation");
       end case;
 
-      if Border /= OpenCV.Core.Constant_Border
-        and then Border /= OpenCV.Core.Replicate
+      if Border /= OpenCV.Constant_Border and then Border /= OpenCV.Replicate
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
@@ -1149,11 +1134,8 @@ package body OpenCV.Image_Processing is
 
    procedure Validate_Box_Blur
      (Source      : OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
-      Border      : OpenCV.Core.Border_Kind)
-   is
-      use type OpenCV.Core.Border_Kind;
-      use type OpenCV.Core.Size_Coordinate;
+      Kernel_Size : OpenCV.Size;
+      Border      : OpenCV.Border_Kind) is
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1194,7 +1176,7 @@ package body OpenCV.Image_Processing is
                & " Float64 source Mat");
       end case;
 
-      if Border = OpenCV.Core.Wrap then
+      if Border = OpenCV.Wrap then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Box_Blur does not support Wrap border");
@@ -1203,13 +1185,12 @@ package body OpenCV.Image_Processing is
 
    procedure Validate_Bilateral_Filter
      (Source      : OpenCV.Core.Mat;
-      Sigma_Color : OpenCV.Core.Float64_Value;
-      Sigma_Space : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind)
+      Sigma_Color : OpenCV.Float64_Value;
+      Sigma_Space : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind)
    is
-      use type OpenCV.Core.Border_Kind;
       use type OpenCV.Core.Channel_Count;
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1241,7 +1222,7 @@ package body OpenCV.Image_Processing is
 
       if Sigma_Color <= 0.0
         or else Sigma_Color /= Sigma_Color
-        or else Sigma_Color > OpenCV.Core.Float64_Value'Last
+        or else Sigma_Color > OpenCV.Float64_Value'Last
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
@@ -1250,14 +1231,14 @@ package body OpenCV.Image_Processing is
 
       if Sigma_Space <= 0.0
         or else Sigma_Space /= Sigma_Space
-        or else Sigma_Space > OpenCV.Core.Float64_Value'Last
+        or else Sigma_Space > OpenCV.Float64_Value'Last
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Bilateral_Filter requires a positive finite Sigma_Space");
       end if;
 
-      if Border = OpenCV.Core.Wrap then
+      if Border = OpenCV.Wrap then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Bilateral_Filter does not support Wrap border");
@@ -1268,12 +1249,11 @@ package body OpenCV.Image_Processing is
      (Source            : OpenCV.Core.Mat;
       Kernel            : OpenCV.Core.Mat;
       Destination_Depth : Filter_Depth;
-      Offset            : OpenCV.Core.Float64_Value;
-      Border            : OpenCV.Core.Border_Kind)
+      Offset            : OpenCV.Float64_Value;
+      Border            : OpenCV.Border_Kind)
    is
-      use type OpenCV.Core.Border_Kind;
       use type OpenCV.Core.Channel_Count;
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1317,15 +1297,15 @@ package body OpenCV.Image_Processing is
       end case;
 
       if Offset /= Offset
-        or else Offset > OpenCV.Core.Float64_Value'Last
-        or else Offset < OpenCV.Core.Float64_Value'First
+        or else Offset > OpenCV.Float64_Value'Last
+        or else Offset < OpenCV.Float64_Value'First
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Filter_2D requires a finite Offset");
       end if;
 
-      if Border = OpenCV.Core.Wrap then
+      if Border = OpenCV.Wrap then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Filter_2D does not support Wrap border");
@@ -1372,9 +1352,7 @@ package body OpenCV.Image_Processing is
    end Validate_Filter_2D;
 
    procedure Validate_Filter_2D_Anchor
-     (Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Core.Point)
-   is
-      use type OpenCV.Core.Point_Coordinate;
+     (Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point) is
    begin
       if Anchor.X < 0
         or else Anchor.Y < 0
@@ -1448,12 +1426,11 @@ package body OpenCV.Image_Processing is
       Kernel_X          : OpenCV.Core.Mat;
       Kernel_Y          : OpenCV.Core.Mat;
       Destination_Depth : Filter_Depth;
-      Offset            : OpenCV.Core.Float64_Value;
-      Border            : OpenCV.Core.Border_Kind)
+      Offset            : OpenCV.Float64_Value;
+      Border            : OpenCV.Border_Kind)
    is
-      use type OpenCV.Core.Border_Kind;
       use type OpenCV.Core.Depth_Type;
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1478,15 +1455,15 @@ package body OpenCV.Image_Processing is
       end if;
 
       if Offset /= Offset
-        or else Offset > OpenCV.Core.Float64_Value'Last
-        or else Offset < OpenCV.Core.Float64_Value'First
+        or else Offset > OpenCV.Float64_Value'Last
+        or else Offset < OpenCV.Float64_Value'First
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Sep_Filter_2D requires a finite Offset");
       end if;
 
-      if Border = OpenCV.Core.Wrap then
+      if Border = OpenCV.Wrap then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Sep_Filter_2D does not support Wrap border");
@@ -1535,9 +1512,7 @@ package body OpenCV.Image_Processing is
    procedure Validate_Sep_Filter_2D_Anchor
      (Kernel_X : OpenCV.Core.Mat;
       Kernel_Y : OpenCV.Core.Mat;
-      Anchor   : OpenCV.Core.Point)
-   is
-      use type OpenCV.Core.Point_Coordinate;
+      Anchor   : OpenCV.Point) is
    begin
       if Anchor.X < 0
         or else Integer (Anchor.X) >= Separable_Kernel_Length (Kernel_X)
@@ -1558,12 +1533,9 @@ package body OpenCV.Image_Processing is
 
    procedure Validate_Morphology
      (Source      : OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
-      Border      : OpenCV.Core.Border_Kind;
-      Operation   : String)
-   is
-      use type OpenCV.Core.Border_Kind;
-      use type OpenCV.Core.Size_Coordinate;
+      Kernel_Size : OpenCV.Size;
+      Border      : OpenCV.Border_Kind;
+      Operation   : String) is
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1589,7 +1561,7 @@ package body OpenCV.Image_Processing is
             Operation & " requires a positive kernel height");
       end if;
 
-      if Border = OpenCV.Core.Wrap then
+      if Border = OpenCV.Wrap then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             Operation & " does not support Wrap border");
@@ -1614,12 +1586,12 @@ package body OpenCV.Image_Processing is
 
    procedure Validate_Canny
      (Source          : OpenCV.Core.Mat;
-      Lower_Threshold : OpenCV.Core.Float64_Value;
-      Upper_Threshold : OpenCV.Core.Float64_Value)
+      Lower_Threshold : OpenCV.Float64_Value;
+      Upper_Threshold : OpenCV.Float64_Value)
    is
       use type OpenCV.Core.Channel_Count;
       use type OpenCV.Core.Depth_Type;
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1646,7 +1618,7 @@ package body OpenCV.Image_Processing is
       end if;
 
       if Lower_Threshold /= Lower_Threshold
-        or else Lower_Threshold > OpenCV.Core.Float64_Value'Last
+        or else Lower_Threshold > OpenCV.Float64_Value'Last
         or else Lower_Threshold < 0.0
       then
          Ada.Exceptions.Raise_Exception
@@ -1655,7 +1627,7 @@ package body OpenCV.Image_Processing is
       end if;
 
       if Upper_Threshold /= Upper_Threshold
-        or else Upper_Threshold > OpenCV.Core.Float64_Value'Last
+        or else Upper_Threshold > OpenCV.Float64_Value'Last
         or else Upper_Threshold < 0.0
       then
          Ada.Exceptions.Raise_Exception
@@ -1674,13 +1646,12 @@ package body OpenCV.Image_Processing is
    procedure Validate_Derivative
      (Source            : OpenCV.Core.Mat;
       Destination_Depth : Derivative_Depth;
-      Scale             : OpenCV.Core.Float64_Value;
-      Offset            : OpenCV.Core.Float64_Value;
-      Border            : OpenCV.Core.Border_Kind;
+      Scale             : OpenCV.Float64_Value;
+      Offset            : OpenCV.Float64_Value;
+      Border            : OpenCV.Border_Kind;
       Operation         : String)
    is
-      use type OpenCV.Core.Border_Kind;
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1691,20 +1662,20 @@ package body OpenCV.Image_Processing is
            (OpenCV.OpenCV_Error'Identity,
             Operation & " requires a two-dimensional source Mat");
       elsif Scale /= Scale
-        or else Scale > OpenCV.Core.Float64_Value'Last
-        or else Scale < OpenCV.Core.Float64_Value'First
+        or else Scale > OpenCV.Float64_Value'Last
+        or else Scale < OpenCV.Float64_Value'First
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             Operation & " requires a finite scale");
       elsif Offset /= Offset
-        or else Offset > OpenCV.Core.Float64_Value'Last
-        or else Offset < OpenCV.Core.Float64_Value'First
+        or else Offset > OpenCV.Float64_Value'Last
+        or else Offset < OpenCV.Float64_Value'First
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             Operation & " requires a finite delta");
-      elsif Border = OpenCV.Core.Wrap then
+      elsif Border = OpenCV.Wrap then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             Operation & " does not support Wrap border");
@@ -1760,9 +1731,9 @@ package body OpenCV.Image_Processing is
       Y_Order           : Derivative_Order;
       Destination_Depth : Derivative_Depth;
       Kernel_Size       : Sobel_Kernel_Size;
-      Scale             : OpenCV.Core.Float64_Value;
-      Offset            : OpenCV.Core.Float64_Value;
-      Border            : OpenCV.Core.Border_Kind) is
+      Scale             : OpenCV.Float64_Value;
+      Offset            : OpenCV.Float64_Value;
+      Border            : OpenCV.Border_Kind) is
    begin
       Validate_Derivative
         (Source, Destination_Depth, Scale, Offset, Border, "Sobel");
@@ -1785,9 +1756,9 @@ package body OpenCV.Image_Processing is
 
    procedure Validate_Threshold
      (Source                         : OpenCV.Core.Mat;
-      Threshold_Value, Maximum_Value : OpenCV.Core.Float64_Value)
+      Threshold_Value, Maximum_Value : OpenCV.Float64_Value)
    is
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1798,15 +1769,15 @@ package body OpenCV.Image_Processing is
            (OpenCV.OpenCV_Error'Identity,
             "Apply_Threshold requires a two-dimensional source Mat");
       elsif Threshold_Value /= Threshold_Value
-        or else Threshold_Value > OpenCV.Core.Float64_Value'Last
-        or else Threshold_Value < OpenCV.Core.Float64_Value'First
+        or else Threshold_Value > OpenCV.Float64_Value'Last
+        or else Threshold_Value < OpenCV.Float64_Value'First
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
             "Apply_Threshold requires a finite threshold value");
       elsif Maximum_Value /= Maximum_Value
-        or else Maximum_Value > OpenCV.Core.Float64_Value'Last
-        or else Maximum_Value < OpenCV.Core.Float64_Value'First
+        or else Maximum_Value > OpenCV.Float64_Value'Last
+        or else Maximum_Value < OpenCV.Float64_Value'First
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
@@ -1831,11 +1802,11 @@ package body OpenCV.Image_Processing is
    procedure Validate_Automatic_Threshold
      (Source        : OpenCV.Core.Mat;
       Method        : Automatic_Threshold_Method;
-      Maximum_Value : OpenCV.Core.Float64_Value)
+      Maximum_Value : OpenCV.Float64_Value)
    is
       use type OpenCV.Core.Channel_Count;
       use type OpenCV.Core.Depth_Type;
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1851,8 +1822,8 @@ package body OpenCV.Image_Processing is
             "Apply_Automatic_Threshold requires a source Mat with exactly 1"
             & " channel");
       elsif Maximum_Value /= Maximum_Value
-        or else Maximum_Value > OpenCV.Core.Float64_Value'Last
-        or else Maximum_Value < OpenCV.Core.Float64_Value'First
+        or else Maximum_Value > OpenCV.Float64_Value'Last
+        or else Maximum_Value < OpenCV.Float64_Value'First
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
@@ -1885,11 +1856,11 @@ package body OpenCV.Image_Processing is
    procedure Validate_Adaptive_Threshold
      (Source     : OpenCV.Core.Mat;
       Block_Size : Adaptive_Block_Size;
-      Bias       : OpenCV.Core.Float64_Value)
+      Bias       : OpenCV.Float64_Value)
    is
       use type OpenCV.Core.Channel_Count;
       use type OpenCV.Core.Depth_Type;
-      use type OpenCV.Core.Float64_Value;
+      use type OpenCV.Float64_Value;
    begin
       if Source.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1913,8 +1884,8 @@ package body OpenCV.Image_Processing is
            (OpenCV.OpenCV_Error'Identity,
             "Apply_Adaptive_Threshold requires an odd block size");
       elsif Bias /= Bias
-        or else Bias > OpenCV.Core.Float64_Value'Last
-        or else Bias < OpenCV.Core.Float64_Value'First
+        or else Bias > OpenCV.Float64_Value'Last
+        or else Bias < OpenCV.Float64_Value'First
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
@@ -2025,7 +1996,7 @@ package body OpenCV.Image_Processing is
    procedure Resize
      (Source        : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
-      Output_Size   : OpenCV.Core.Size;
+      Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method := Linear)
    is
       use Internal.C_API;
@@ -2061,9 +2032,9 @@ package body OpenCV.Image_Processing is
    procedure Gaussian_Blur
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
-      Sigma       : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+      Kernel_Size : OpenCV.Size;
+      Sigma       : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
    is
       use Internal.C_API;
 
@@ -2137,7 +2108,7 @@ package body OpenCV.Image_Processing is
 
    function Get_Gaussian_Kernel
      (Kernel_Size : Gaussian_Kernel_Size;
-      Sigma       : OpenCV.Core.Float64_Value;
+      Sigma       : OpenCV.Float64_Value;
       Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
       return OpenCV.Core.Mat is
    begin
@@ -2235,7 +2206,7 @@ package body OpenCV.Image_Processing is
    procedure Pyramid_Down
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
    is
       use Internal.C_API;
 
@@ -2337,11 +2308,11 @@ package body OpenCV.Image_Processing is
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
-      Output_Size   : OpenCV.Core.Size;
+      Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method := Linear;
       Mapping       : Affine_Mapping_Direction := Source_To_Destination;
-      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
-      Border_Value  : OpenCV.Core.Scalar := (others => 0.0))
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0))
    is
       use Internal.C_API;
 
@@ -2392,11 +2363,11 @@ package body OpenCV.Image_Processing is
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
-      Output_Size   : OpenCV.Core.Size;
+      Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method := Linear;
       Mapping       : Warp_Mapping_Direction := Source_To_Destination;
-      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
-      Border_Value  : OpenCV.Core.Scalar := (others => 0.0))
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0))
    is
       use Internal.C_API;
 
@@ -2449,8 +2420,8 @@ package body OpenCV.Image_Processing is
       Map_Y         : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
       Interpolation : Interpolation_Method := Linear;
-      Border        : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border;
-      Border_Value  : OpenCV.Core.Scalar := (others => 0.0))
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0))
    is
       use Internal.C_API;
 
@@ -2536,8 +2507,8 @@ package body OpenCV.Image_Processing is
    procedure Box_Blur
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+      Kernel_Size : OpenCV.Size;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
    is
       use Internal.C_API;
 
@@ -2572,9 +2543,9 @@ package body OpenCV.Image_Processing is
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Diameter    : Interfaces.Integer_32;
-      Sigma_Color : OpenCV.Core.Float64_Value;
-      Sigma_Space : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind)
+      Sigma_Color : OpenCV.Float64_Value;
+      Sigma_Space : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind)
    is
       use Internal.C_API;
 
@@ -2610,9 +2581,9 @@ package body OpenCV.Image_Processing is
    procedure Bilateral_Filter
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Sigma_Color : OpenCV.Core.Float64_Value;
-      Sigma_Space : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101) is
+      Sigma_Color : OpenCV.Float64_Value;
+      Sigma_Space : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101) is
    begin
       Apply_Bilateral_Filter
         (Source, Destination, 0, Sigma_Color, Sigma_Space, Border);
@@ -2622,9 +2593,9 @@ package body OpenCV.Image_Processing is
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Diameter    : Bilateral_Diameter;
-      Sigma_Color : OpenCV.Core.Float64_Value;
-      Sigma_Space : OpenCV.Core.Float64_Value;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101) is
+      Sigma_Color : OpenCV.Float64_Value;
+      Sigma_Space : OpenCV.Float64_Value;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101) is
    begin
       Apply_Bilateral_Filter
         (Source,
@@ -2642,8 +2613,8 @@ package body OpenCV.Image_Processing is
       Anchor_X          : Interfaces.Integer_32;
       Anchor_Y          : Interfaces.Integer_32;
       Destination_Depth : Filter_Depth;
-      Offset            : OpenCV.Core.Float64_Value;
-      Border            : OpenCV.Core.Border_Kind)
+      Offset            : OpenCV.Float64_Value;
+      Border            : OpenCV.Border_Kind)
    is
       use Internal.C_API;
 
@@ -2690,9 +2661,8 @@ package body OpenCV.Image_Processing is
       Destination       : in out OpenCV.Core.Mat;
       Kernel            : OpenCV.Core.Mat;
       Destination_Depth : Filter_Depth := Same_Depth;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
-   is
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101) is
    begin
       Apply_Filter_2D
         (Source,
@@ -2709,11 +2679,10 @@ package body OpenCV.Image_Processing is
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
       Kernel            : OpenCV.Core.Mat;
-      Anchor            : OpenCV.Core.Point;
+      Anchor            : OpenCV.Point;
       Destination_Depth : Filter_Depth := Same_Depth;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
-   is
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101) is
    begin
       Validate_Filter_2D (Source, Kernel, Destination_Depth, Offset, Border);
       Validate_Filter_2D_Anchor (Kernel, Anchor);
@@ -2736,8 +2705,8 @@ package body OpenCV.Image_Processing is
       Anchor_X          : Interfaces.Integer_32;
       Anchor_Y          : Interfaces.Integer_32;
       Destination_Depth : Filter_Depth;
-      Offset            : OpenCV.Core.Float64_Value;
-      Border            : OpenCV.Core.Border_Kind)
+      Offset            : OpenCV.Float64_Value;
+      Border            : OpenCV.Border_Kind)
    is
       use Internal.C_API;
 
@@ -2792,9 +2761,8 @@ package body OpenCV.Image_Processing is
       Kernel_X          : OpenCV.Core.Mat;
       Kernel_Y          : OpenCV.Core.Mat;
       Destination_Depth : Filter_Depth := Same_Depth;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
-   is
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101) is
    begin
       Validate_Sep_Filter_2D
         (Source, Kernel_X, Kernel_Y, Destination_Depth, Offset, Border);
@@ -2815,11 +2783,10 @@ package body OpenCV.Image_Processing is
       Destination       : in out OpenCV.Core.Mat;
       Kernel_X          : OpenCV.Core.Mat;
       Kernel_Y          : OpenCV.Core.Mat;
-      Anchor            : OpenCV.Core.Point;
+      Anchor            : OpenCV.Point;
       Destination_Depth : Filter_Depth := Same_Depth;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
-   is
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101) is
    begin
       Validate_Sep_Filter_2D
         (Source, Kernel_X, Kernel_Y, Destination_Depth, Offset, Border);
@@ -2841,10 +2808,10 @@ package body OpenCV.Image_Processing is
    procedure Apply_Basic_Morphology
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
+      Kernel_Size : OpenCV.Size;
       Shape       : Morphology_Shape;
       Iterations  : Morphology_Iterations;
-      Border      : OpenCV.Core.Border_Kind;
+      Border      : OpenCV.Border_Kind;
       Operation   : Basic_Morphology_Operation)
    is
       Status : Internal.C_API.Status := Internal.C_API.Success;
@@ -2909,10 +2876,10 @@ package body OpenCV.Image_Processing is
    procedure Erode
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
+      Kernel_Size : OpenCV.Size;
       Shape       : Morphology_Shape := Rectangle;
       Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border) is
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border) is
    begin
       Apply_Basic_Morphology
         (Source, Destination, Kernel_Size, Shape, Iterations, Border, Erosion);
@@ -2921,10 +2888,10 @@ package body OpenCV.Image_Processing is
    procedure Dilate
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Core.Size;
+      Kernel_Size : OpenCV.Size;
       Shape       : Morphology_Shape := Rectangle;
       Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border) is
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border) is
    begin
       Apply_Basic_Morphology
         (Source,
@@ -2940,10 +2907,10 @@ package body OpenCV.Image_Processing is
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Operation   : Morphology_Operation;
-      Kernel_Size : OpenCV.Core.Size;
+      Kernel_Size : OpenCV.Size;
       Shape       : Morphology_Shape := Rectangle;
       Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Core.Border_Kind := OpenCV.Core.Constant_Border)
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border)
    is
       Status : Internal.C_API.Status := Internal.C_API.Success;
 
@@ -2987,8 +2954,8 @@ package body OpenCV.Image_Processing is
    procedure Canny_Edges
      (Source          : OpenCV.Core.Mat;
       Destination     : in out OpenCV.Core.Mat;
-      Lower_Threshold : OpenCV.Core.Float64_Value;
-      Upper_Threshold : OpenCV.Core.Float64_Value;
+      Lower_Threshold : OpenCV.Float64_Value;
+      Upper_Threshold : OpenCV.Float64_Value;
       Aperture        : Canny_Aperture := Sobel_3x3;
       Gradient_Norm   : Canny_Gradient_Norm := L1_Norm)
    is
@@ -3030,9 +2997,9 @@ package body OpenCV.Image_Processing is
       Y_Order           : Derivative_Order;
       Destination_Depth : Derivative_Depth := Float32_Depth;
       Kernel_Size       : Sobel_Kernel_Size := Kernel_3;
-      Scale             : OpenCV.Core.Float64_Value := 1.0;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+      Scale             : OpenCV.Float64_Value := 1.0;
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)
    is
       Status : Internal.C_API.Status := Internal.C_API.Success;
       procedure Input
@@ -3077,9 +3044,9 @@ package body OpenCV.Image_Processing is
       Destination       : in out OpenCV.Core.Mat;
       Axis              : Derivative_Axis;
       Destination_Depth : Derivative_Depth := Float32_Depth;
-      Scale             : OpenCV.Core.Float64_Value := 1.0;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+      Scale             : OpenCV.Float64_Value := 1.0;
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)
    is
       Status : Internal.C_API.Status := Internal.C_API.Success;
       procedure Input
@@ -3115,9 +3082,9 @@ package body OpenCV.Image_Processing is
       Destination       : in out OpenCV.Core.Mat;
       Destination_Depth : Derivative_Depth := Float32_Depth;
       Kernel_Size       : Laplacian_Kernel_Size := 1;
-      Scale             : OpenCV.Core.Float64_Value := 1.0;
-      Offset            : OpenCV.Core.Float64_Value := 0.0;
-      Border            : OpenCV.Core.Border_Kind := OpenCV.Core.Reflect_101)
+      Scale             : OpenCV.Float64_Value := 1.0;
+      Offset            : OpenCV.Float64_Value := 0.0;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)
    is
       Status : Internal.C_API.Status := Internal.C_API.Success;
       procedure Input
@@ -3156,9 +3123,9 @@ package body OpenCV.Image_Processing is
    procedure Apply_Threshold
      (Source          : OpenCV.Core.Mat;
       Destination     : in out OpenCV.Core.Mat;
-      Threshold_Value : OpenCV.Core.Float64_Value;
+      Threshold_Value : OpenCV.Float64_Value;
       Mode            : Threshold_Mode := Binary;
-      Maximum_Value   : OpenCV.Core.Float64_Value := 255.0)
+      Maximum_Value   : OpenCV.Float64_Value := 255.0)
    is
       Status : Internal.C_API.Status := Internal.C_API.Success;
       procedure Input
@@ -3189,10 +3156,10 @@ package body OpenCV.Image_Processing is
    procedure Apply_Automatic_Threshold
      (Source             : OpenCV.Core.Mat;
       Destination        : in out OpenCV.Core.Mat;
-      Computed_Threshold : out OpenCV.Core.Float64_Value;
+      Computed_Threshold : out OpenCV.Float64_Value;
       Method             : Automatic_Threshold_Method := Otsu;
       Mode               : Threshold_Mode := Binary;
-      Maximum_Value      : OpenCV.Core.Float64_Value := 255.0)
+      Maximum_Value      : OpenCV.Float64_Value := 255.0)
    is
       Status   : Internal.C_API.Status := Internal.C_API.Success;
       Computed : aliased Interfaces.C.double;
@@ -3221,7 +3188,7 @@ package body OpenCV.Image_Processing is
       Validate_Automatic_Threshold (Source, Method, Maximum_Value);
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
       Raise_On_Error (Status, "automatic threshold");
-      Computed_Threshold := OpenCV.Core.Float64_Value (Computed);
+      Computed_Threshold := OpenCV.Float64_Value (Computed);
    end Apply_Automatic_Threshold;
 
    procedure Apply_Adaptive_Threshold
@@ -3230,8 +3197,8 @@ package body OpenCV.Image_Processing is
       Block_Size    : Adaptive_Block_Size;
       Method        : Adaptive_Threshold_Method := Mean;
       Mode          : Adaptive_Threshold_Mode := Binary;
-      Bias          : OpenCV.Core.Float64_Value := 0.0;
-      Maximum_Value : OpenCV.Core.UInt8_Value := 255)
+      Bias          : OpenCV.Float64_Value := 0.0;
+      Maximum_Value : OpenCV.UInt8_Value := 255)
    is
       Status : Internal.C_API.Status := Internal.C_API.Success;
       procedure Input
@@ -3265,7 +3232,7 @@ package body OpenCV.Image_Processing is
      (Source        : OpenCV.Core.Mat;
       Retrieval     : Contour_Retrieval_Mode := External_Only;
       Approximation : Contour_Approximation_Mode := Simple;
-      Offset        : OpenCV.Core.Point := (X => 0, Y => 0)) return Contour_Set
+      Offset        : OpenCV.Point := (X => 0, Y => 0)) return Contour_Set
    is
       Result : aliased Internal.C_API.Contours_Handle :=
         Internal.C_API.Null_Contours_Handle;
@@ -3333,10 +3300,10 @@ package body OpenCV.Image_Processing is
                         for Point_Index in Points'Range loop
                            Points (Point_Index) :=
                              (X =>
-                                OpenCV.Core.Point_Coordinate
+                                OpenCV.Point_Coordinate
                                   (Raw_Points (Point_Index).X),
                               Y =>
-                                OpenCV.Core.Point_Coordinate
+                                OpenCV.Point_Coordinate
                                   (Raw_Points (Point_Index).Y));
                         end loop;
                         Output.Contours.Append (Points);

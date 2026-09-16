@@ -12,7 +12,7 @@ package body Automatic_Threshold_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float64_Value;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
 
@@ -65,7 +65,7 @@ package body Automatic_Threshold_Tests is
       Destination      : OpenCV.Core.Mat;
       Automatic_Result : OpenCV.Core.Mat;
       Expected         : OpenCV.Core.Mat;
-      Threshold        : OpenCV.Core.Float64_Value;
+      Threshold        : OpenCV.Float64_Value;
    begin
       OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 10);
       OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 20);
@@ -111,7 +111,7 @@ package body Automatic_Threshold_Tests is
       Automatic_Result : OpenCV.Core.Mat;
       Expected         : OpenCV.Core.Mat;
       High_Values      : OpenCV.Core.Mat;
-      Threshold        : OpenCV.Core.Float64_Value;
+      Threshold        : OpenCV.Float64_Value;
    begin
       OpenCV.Core.Set_To (Source, (Component_0 => 1_000.0, others => 0.0));
       High_Values := Source.Region ((X => 1, Y => 0, Width => 1, Height => 2));
@@ -157,7 +157,7 @@ package body Automatic_Threshold_Tests is
       Destination      : OpenCV.Core.Mat;
       Automatic_Result : OpenCV.Core.Mat;
       Expected         : OpenCV.Core.Mat;
-      Threshold        : OpenCV.Core.Float64_Value;
+      Threshold        : OpenCV.Float64_Value;
    begin
       OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 5);
       OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 10);
@@ -220,7 +220,7 @@ package body Automatic_Threshold_Tests is
       UInt16_Source : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
       Destination   : OpenCV.Core.Mat;
-      Threshold     : OpenCV.Core.Float64_Value;
+      Threshold     : OpenCV.Float64_Value;
 
       procedure Empty is
       begin

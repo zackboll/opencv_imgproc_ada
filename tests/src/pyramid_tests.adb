@@ -18,7 +18,7 @@ package body Pyramid_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -46,8 +46,8 @@ package body Pyramid_Tests is
    end Assert_Raises_OpenCV_Error;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Core.Float32_Value;
-      Tolerance   : OpenCV.Core.Float32_Value) return Boolean is
+     (Left, Right : OpenCV.Float32_Value;
+      Tolerance   : OpenCV.Float32_Value) return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
@@ -186,14 +186,14 @@ package body Pyramid_Tests is
       OpenCV.Core.UInt8_Access.Set (Source, 3, 0, 64);
 
       OpenCV.Image_Processing.Pyramid_Down
-        (Source, Replicate_Result, OpenCV.Core.Replicate);
+        (Source, Replicate_Result, OpenCV.Replicate);
       OpenCV.Image_Processing.Pyramid_Down
-        (Source, Reflect_Result, OpenCV.Core.Reflect);
+        (Source, Reflect_Result, OpenCV.Reflect);
       OpenCV.Image_Processing.Pyramid_Down (Source, Default_Result);
       OpenCV.Image_Processing.Pyramid_Down
-        (Source, Explicit_Default, OpenCV.Core.Reflect_101);
+        (Source, Explicit_Default, OpenCV.Reflect_101);
       OpenCV.Image_Processing.Pyramid_Down
-        (Source, Wrap_Result, OpenCV.Core.Wrap);
+        (Source, Wrap_Result, OpenCV.Wrap);
 
       AUnit.Assertions.Assert
         (Replicate_Result.Rows = 2
@@ -279,7 +279,7 @@ package body Pyramid_Tests is
       for Row in 0 .. 7 loop
          for Column in 0 .. 7 loop
             OpenCV.Core.Float32_Access.Set
-              (Source, Row, Column, OpenCV.Core.Float32_Value (Row + Column));
+              (Source, Row, Column, OpenCV.Float32_Value (Row + Column));
          end loop;
       end loop;
 
@@ -353,7 +353,7 @@ package body Pyramid_Tests is
       procedure Constant_Border is
       begin
          OpenCV.Image_Processing.Pyramid_Down
-           (Valid_Source, Destination, OpenCV.Core.Constant_Border);
+           (Valid_Source, Destination, OpenCV.Constant_Border);
       end Constant_Border;
 
       procedure Aliased_Down is

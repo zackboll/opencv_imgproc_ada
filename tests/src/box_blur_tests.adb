@@ -24,8 +24,8 @@ package body Box_Blur_Tests is
    use type Interfaces.Unsigned_16;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -233,12 +233,12 @@ package body Box_Blur_Tests is
         (Source,
          Constant_Result,
          (Width => 3, Height => 3),
-         OpenCV.Core.Constant_Border);
+         OpenCV.Constant_Border);
       OpenCV.Image_Processing.Box_Blur
         (Source,
          Replicate_Result,
          (Width => 3, Height => 3),
-         OpenCV.Core.Replicate);
+         OpenCV.Replicate);
       OpenCV.Image_Processing.Box_Blur
         (Source, Default_Result, (Width => 3, Height => 3));
 
@@ -327,7 +327,7 @@ package body Box_Blur_Tests is
            (Valid_Source,
             Destination,
             (Width => 3, Height => 3),
-            OpenCV.Core.Wrap);
+            OpenCV.Wrap);
       end Wrap_Border;
    begin
       Assert_Raises_OpenCV_Error
