@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current test baseline:** **227 AUnit tests**
+> **Current test baseline:** **239 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -68,6 +68,7 @@ Ada package, and built libraries serve different roles.
 - [Canny edge detection](#canny-edge-detection)
 - [Spatial derivatives](#spatial-derivatives)
 - [Thresholding](#thresholding)
+- [Histogram equalization](#histogram-equalization)
 - [Contour extraction](#contour-extraction)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
@@ -116,6 +117,7 @@ The current public surface includes:
 - fixed thresholding;
 - Otsu and Triangle automatic thresholding;
 - mean and Gaussian adaptive thresholding;
+- global grayscale histogram equalization;
 - contour extraction, hierarchy, and approximation modes.
 
 Computational contour geometry such as area, arc length, and moments is
@@ -198,6 +200,7 @@ The table below summarizes the current public operations.
 | Thresholding | `Apply_Threshold` | nonempty 2-D; supported numeric depths | five fixed-threshold modes |
 | Thresholding | `Apply_Automatic_Threshold` | nonempty 2-D C1 | Otsu: `UInt8`/`UInt16`; Triangle: `UInt8` |
 | Thresholding | `Apply_Adaptive_Threshold` | nonempty 2-D `UInt8` C1 | mean/Gaussian, odd block size >= 3, in-place supported |
+| Histogram | `Equalize_Histogram` | nonempty 2-D `UInt8` C1 | global CDF equalization; constant images retain intensity; same-object in-place supported; other storage-sharing aliases rejected |
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
 
 The supported general-purpose Imgproc numeric depths are:
@@ -1593,6 +1596,53 @@ in-place operation is supported.
 
 ---
 
+## Histogram equalization
+
+API:
+
+```ada
+procedure Equalize_Histogram
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat);
+```
+
+`Equalize_Histogram` performs OpenCV's global grayscale histogram equalization.
+It computes the histogram of the supplied `UInt8` C1 view, builds a CDF lookup
+table, and remaps intensities. There is no implicit conversion from color or
+from another depth. CLAHE is not bound.
+
+Requirements:
+
+- source is nonempty and two-dimensional;
+- source depth is `UInt8`;
+- source has exactly one channel.
+
+Destination may initially be empty or have a different size, depth, or channel
+count. On success it receives Source's rows and columns with `UInt8` depth and
+one channel.
+
+Constant images retain their intensity. The histogram is computed over the
+supplied Mat view, including a non-contiguous ROI, not over an enclosing parent
+image outside that view.
+
+Direct same-object in-place use is supported:
+
+```ada
+Equalize_Histogram (Image, Image);
+```
+
+When Source and Destination do not share storage, Source remains unchanged.
+Other Source/Destination storage-sharing combinations are an Ada binding
+restriction for this slice and are rejected before native writes. That includes
+distinct shallow aliases and partially overlapping source and destination ROIs.
+This is not a claim that OpenCV universally forbids every alias.
+
+Public contract violations raise `OpenCV.OpenCV_Error` before Destination is
+modified. Failures reported by OpenCV after Destination allocation or native
+execution raise `OpenCV.OpenCV_Error` and do not roll back Destination.
+
+---
+
 ## Contour extraction
 
 Contours are represented entirely in Ada:
@@ -2190,7 +2240,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **227-test** baseline is:
+The current **239-test** baseline is:
 
 
 | Suite | Tests |
@@ -2218,8 +2268,9 @@ The current **227-test** baseline is:
 | Fixed threshold | 7 |
 | Automatic threshold | 4 |
 | Adaptive threshold | 6 |
+| Histogram equalization | 12 |
 | Contours | 7 |
-| **Total** | **227** |
+| **Total** | **239** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -2531,6 +2582,30 @@ begin
 end Adaptive_Threshold_Example;
 ```
 
+### Histogram equalization
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.UInt8_Access;
+with OpenCV.Image_Processing;
+
+procedure Histogram_Equalization_Example is
+   Source : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+
+   Equalized : OpenCV.Core.Mat;
+begin
+   OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 10);
+   OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 20);
+   OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 30);
+   OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 30);
+   OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 40);
+   OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 40);
+
+   OpenCV.Image_Processing.Equalize_Histogram (Source, Equalized);
+end Histogram_Equalization_Example;
+```
+
 ### Find contours
 
 ```ada
@@ -2649,6 +2724,7 @@ opencv_imgproc_ada/
 │       ├── threshold_tests.*
 │       ├── automatic_threshold_tests.*
 │       ├── adaptive_threshold_tests.*
+│       ├── histogram_equalization_tests.*
 │       ├── contour_tests.*
 │       └── tests.adb
 │
@@ -2681,7 +2757,7 @@ Notable Imgproc families that are not yet broadly bound include:
 - Hough line and circle transforms;
 - connected-components labeling/statistics;
 - watershed, flood fill, and GrabCut;
-- histogram calculation and equalization;
+- histogram calculation;
 - CLAHE;
 - distance transforms;
 - integral images;

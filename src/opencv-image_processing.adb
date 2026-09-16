@@ -1893,6 +1893,30 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Adaptive_Threshold;
 
+   procedure Validate_Equalize_Histogram (Source : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Source.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Equalize_Histogram requires a non-empty source Mat");
+      elsif Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Equalize_Histogram requires a two-dimensional source Mat");
+      elsif Source.Depth /= OpenCV.Core.UInt8 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Equalize_Histogram requires a UInt8 source Mat");
+      elsif Source.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Equalize_Histogram requires a source Mat with exactly 1"
+            & " channel");
+      end if;
+   end Validate_Equalize_Histogram;
+
    procedure Validate_Contour_Source (Source : OpenCV.Core.Mat) is
       use type OpenCV.Core.Channel_Count;
       use type OpenCV.Core.Depth_Type;
@@ -3227,6 +3251,32 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
       Raise_On_Error (Status, "adaptive threshold");
    end Apply_Adaptive_Threshold;
+
+   procedure Equalize_Histogram
+     (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Equalize_Histogram
+                (Source_Handle, Destination_Handle);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Equalize_Histogram (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "histogram equalization");
+   end Equalize_Histogram;
 
    function Find_Contours
      (Source        : OpenCV.Core.Mat;

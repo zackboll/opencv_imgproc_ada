@@ -304,6 +304,14 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_adaptive_threshold";
 
+   function Equalize_Histogram
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_equalize_histogram";
+
    function Find_Contours
      (Source             : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Retrieval_Mode     : Interfaces.Integer_32;

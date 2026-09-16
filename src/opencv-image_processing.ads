@@ -700,6 +700,30 @@ package OpenCV.Image_Processing is
       Bias          : OpenCV.Float64_Value := 0.0;
       Maximum_Value : OpenCV.UInt8_Value := 255);
 
+   --  Equalize_Histogram performs global histogram equalization of a grayscale
+   --  UInt8 image. Source must be a non-empty two-dimensional single-channel
+   --  UInt8 Mat. There is no implicit conversion from color or from another
+   --  depth. The histogram is computed over the supplied Mat view, not over an
+   --  enclosing parent image outside that view. Constant images retain their
+   --  intensity. Destination may initially be empty or have a different size,
+   --  depth, or channel count; on success it receives Source's rows and
+   --  columns with UInt8 depth and one channel. Source remains unchanged when
+   --  Source and Destination do not share storage. Direct same-object in-place
+   --  use is supported:
+   --
+   --    Equalize_Histogram (Image, Image);
+   --
+   --  Other Source/Destination storage-sharing combinations are an Ada binding
+   --  restriction for this slice and are rejected before native writes. That
+   --  includes distinct shallow aliases and partially overlapping source and
+   --  destination ROIs; it is not a claim that OpenCV forbids every alias.
+   --  Public contract violations raise OpenCV.OpenCV_Error before Destination
+   --  is modified. Failures reported by OpenCV after Destination allocation or
+   --  native execution raise OpenCV.OpenCV_Error and do not roll back
+   --  Destination.
+   procedure Equalize_Histogram
+     (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat);
+
    --  Extracts contours from a non-empty, two-dimensional UInt8 single-channel
    --  Source. Zero pixels are background and nonzero pixels are foreground.
    --  Source remains unchanged. Contours and hierarchy are copied into the

@@ -266,6 +266,11 @@ opencv_imgproc_adaptive_threshold(
     double bias);
 
 opencv_imgproc_status
+opencv_imgproc_equalize_histogram(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination);
+
+opencv_imgproc_status
 opencv_imgproc_find_contours(
     const opencv_core_mat_handle *source,
     int32_t retrieval_mode,

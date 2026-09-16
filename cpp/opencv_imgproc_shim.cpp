@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <limits>
 
@@ -553,6 +554,51 @@ bool valid_contour_index(
 bool fits_int32(std::size_t value) noexcept
 {
     return value <= static_cast<std::size_t>(std::numeric_limits<int32_t>::max());
+}
+
+bool equalize_hist_pixel_count_fits_int(const cv::Mat &src) noexcept
+{
+    if (src.dims != 2 || src.rows <= 0 || src.cols <= 0) {
+        return true;
+    }
+
+    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
+    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
+    const std::uint64_t max_int =
+        static_cast<std::uint64_t>(std::numeric_limits<int>::max());
+
+    return rows <= max_int / cols;
+}
+
+bool equalize_hist_views_overlap(const cv::Mat &src, const cv::Mat &dst) noexcept
+{
+    if (src.data == nullptr || dst.data == nullptr) {
+        return false;
+    }
+
+    if (src.data == dst.data) {
+        return true;
+    }
+
+    if (src.datastart == nullptr || src.datastart != dst.datastart) {
+        return false;
+    }
+
+    if (src.dims != 2 || dst.dims != 2) {
+        return true;
+    }
+
+    cv::Size whole_src;
+    cv::Point origin_src;
+    src.locateROI(whole_src, origin_src);
+
+    cv::Size whole_dst;
+    cv::Point origin_dst;
+    dst.locateROI(whole_dst, origin_dst);
+
+    const cv::Rect src_rect(origin_src, src.size());
+    const cv::Rect dst_rect(origin_dst, dst.size());
+    return (src_rect & dst_rect).area() > 0;
 }
 
 bool valid_filter_depth_combination(int src_depth, int32_t destination_depth)
@@ -1687,6 +1733,61 @@ opencv_imgproc_adaptive_threshold(
 
         cv::adaptiveThreshold(*src, *dst, static_cast<double>(maximum_value),
                               opencv_method, opencv_mode, block_size, bias);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_equalize_histogram(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        opencv_core_status core_status =
+            opencv_core_module_input_mat(source, &src);
+
+        if (core_status != OPENCV_CORE_OK || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        core_status = opencv_core_module_output_mat(destination, &dst);
+
+        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: OpenCV casts src.total() to int and increments 32-bit
+        // histogram bins before building the LUT. A 2-D view whose pixel
+        // count exceeds INT_MAX overflows those counters and the LUT scale.
+        if (!equalize_hist_pixel_count_fits_int(*src)) {
+            return invalid_argument(
+                "equalizeHist pixel count exceeds 32-bit histogram range");
+        }
+
+        // ABI safety: equalizeHist walks src.rows as a 2-D height, then
+        // searches hist[] for a nonzero bin. A higher-dimensional Mat can
+        // leave that histogram empty and overflow the 256-bin scan.
+        if (src->dims != 2) {
+            return invalid_argument(
+                "equalizeHist source must be two-dimensional");
+        }
+
+        // ABI safety: equalizeHist writes dst from a LUT while still reading
+        // src row-wise. Same-object in-place is supported, but a distinct
+        // overlapping view can be overwritten before remaining source pixels
+        // are read.
+        if (src != dst && equalize_hist_views_overlap(*src, *dst)) {
+            return invalid_argument(
+                "equalizeHist destination must not share storage with source");
+        }
+
+        cv::equalizeHist(*src, *dst);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();
