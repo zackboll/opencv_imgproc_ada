@@ -1873,17 +1873,21 @@ opencv_imgproc_clahe(
             clip_limit, cv::Size(tile_grid_width, tile_grid_height));
 
         // ABI safety: when dimensions are not divisible by the tile grid,
-        // OpenCV 4.1 and 4.10 pad with copyMakeBorder_8u, which copies
-        // width*elemSize bytes per row and ignores a larger row step. A
-        // non-contiguous ROI therefore incorporates parent pixels outside the
-        // view. The tile histogram also advances by the full source step, so
-        // the native read is not confined to the Mat view. A continuous
-        // snapshot gives CLAHE only the pixels in the view. Same-object
-        // operation additionally needs that snapshot because interpolation
-        // reads source rows while writing the destination. The result is
-        // copied back only after native execution succeeds. Distinct
-        // overlapping views are still rejected: copying into one of them can
-        // overwrite unread pixels of the other.
+        // CLAHE_Impl::apply calls copyMakeBorder with BORDER_REFLECT_101.
+        // copyMakeBorder sees src.isSubmatrix() and, unless BORDER_ISOLATED
+        // is set, uses locateROI and adjustROI to expand the view into its
+        // parent wherever border pixels are available. CLAHE does not request
+        // BORDER_ISOLATED, so a non-contiguous ROI can incorporate parent
+        // pixels into the padded source and LUT. This is present in OpenCV
+        // 4.1.0, 4.10.0, and 5.0.0. The row copy and histogram walk respect
+        // row stride; they are not the source of the parent pixels. Cloning
+        // first drops the submatrix relationship, so the supplied view is
+        // treated as an isolated image. Same-object CLAHE also needs that
+        // snapshot because interpolation reads source pixels while destination
+        // writes could otherwise modify them. The result is copied back only
+        // after native execution succeeds. Distinct overlapping views are
+        // still rejected: copying into one of them can overwrite unread
+        // pixels of the other.
         if (src != dst && equalize_hist_views_overlap(*src, *dst)) {
             return invalid_argument(
                 "CLAHE destination must not share storage with source");
