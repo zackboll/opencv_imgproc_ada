@@ -30,10 +30,6 @@ package body CLAHE_Tests is
 
    function Bits_To_Float64 is new
      Ada.Unchecked_Conversion (Interfaces.Unsigned_64, OpenCV.Float64_Value);
-   NaN      : constant OpenCV.Float64_Value :=
-     Bits_To_Float64 (16#7FF8_0000_0000_0000#);
-   Infinity : constant OpenCV.Float64_Value :=
-     Bits_To_Float64 (16#7FF0_0000_0000_0000#);
 
    function Raw_CLAHE
      (Source, Destination : System.Address;
@@ -250,7 +246,7 @@ package body CLAHE_Tests is
 
    procedure Rejects_Invalid_Public_Inputs (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Valid       : OpenCV.Core.Mat :=
+      Valid       : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
       Empty       : OpenCV.Core.Mat;
       Three_D     : constant OpenCV.Core.Mat :=
@@ -297,15 +293,22 @@ package body CLAHE_Tests is
       end Zero;
       procedure Negative is
       begin
-         OpenCV.Image_Processing.CLAHE (Valid, Destination, -1.0);
+         OpenCV.Image_Processing.CLAHE
+           (Valid, Destination, OpenCV.Float64_Value (-1.0));
       end Negative;
       procedure Nan_Call is
+         pragma Suppress (Validity_Check);
+         Value : OpenCV.Float64_Value;
       begin
-         OpenCV.Image_Processing.CLAHE (Valid, Destination, NaN);
+         Value := Bits_To_Float64 (16#7FF8_0000_0000_0000#);
+         OpenCV.Image_Processing.CLAHE (Valid, Destination, Value);
       end Nan_Call;
       procedure Inf_Call is
+         pragma Suppress (Validity_Check);
+         Value : OpenCV.Float64_Value;
       begin
-         OpenCV.Image_Processing.CLAHE (Valid, Destination, Infinity);
+         Value := Bits_To_Float64 (16#7FF0_0000_0000_0000#);
+         OpenCV.Image_Processing.CLAHE (Valid, Destination, Value);
       end Inf_Call;
       procedure Zero_Width is
       begin
@@ -367,13 +370,17 @@ package body CLAHE_Tests is
          is
             procedure Output
               (Destination_Handle :
-                 OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+                 OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               pragma Suppress (Validity_Check);
+               Nan_Value : OpenCV.Float64_Value;
             begin
+               Nan_Value := Bits_To_Float64 (16#7FF8_0000_0000_0000#);
                Status :=
                  Raw_CLAHE
                    (To_Address (Source_Handle),
                     To_Address (Destination_Handle),
-                    NaN,
+                    Interfaces.C.double (Nan_Value),
                     1,
                     1);
                AUnit.Assertions.Assert

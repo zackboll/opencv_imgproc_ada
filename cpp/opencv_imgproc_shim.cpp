@@ -1869,17 +1869,38 @@ opencv_imgproc_clahe(
             }
         }
 
-        // ABI safety: CLAHE computes all LUTs before interpolation, so the
-        // identical Mat object is safe. A distinct overlapping view can be
-        // overwritten while later source pixels are still read by interpolation.
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(
+            clip_limit, cv::Size(tile_grid_width, tile_grid_height));
+
+        // ABI safety: when dimensions are not divisible by the tile grid,
+        // CLAHE_Impl::apply calls copyMakeBorder with BORDER_REFLECT_101.
+        // copyMakeBorder sees src.isSubmatrix() and, unless BORDER_ISOLATED
+        // is set, uses locateROI and adjustROI to expand the view into its
+        // parent wherever border pixels are available. CLAHE does not request
+        // BORDER_ISOLATED, so a non-contiguous ROI can incorporate parent
+        // pixels into the padded source and LUT. This is present in OpenCV
+        // 4.1.0, 4.10.0, and 5.0.0. The row copy and histogram walk respect
+        // row stride; they are not the source of the parent pixels. Cloning
+        // first drops the submatrix relationship, so the supplied view is
+        // treated as an isolated image. Same-object CLAHE also needs that
+        // snapshot because interpolation reads source pixels while destination
+        // writes could otherwise modify them. The result is copied back only
+        // after native execution succeeds. Distinct overlapping views are
+        // still rejected: copying into one of them can overwrite unread
+        // pixels of the other.
         if (src != dst && equalize_hist_views_overlap(*src, *dst)) {
             return invalid_argument(
                 "CLAHE destination must not share storage with source");
         }
 
-        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(
-            clip_limit, cv::Size(tile_grid_width, tile_grid_height));
-        clahe->apply(*src, *dst);
+        if (src == dst || !src->isContinuous()) {
+            const cv::Mat source_copy = src->clone();
+            cv::Mat result;
+            clahe->apply(source_copy, result);
+            result.copyTo(*dst);
+        } else {
+            clahe->apply(*src, *dst);
+        }
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

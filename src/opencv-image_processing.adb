@@ -2068,8 +2068,6 @@ package body OpenCV.Image_Processing is
      (Value : Interfaces.Integer_32) return Optional_Contour_Index
    is
       use type Interfaces.Integer_32;
-
-      use type Interfaces.Integer_32;
    begin
       if Value < 0 then
          return (Present => False);
@@ -3665,7 +3663,8 @@ package body OpenCV.Image_Processing is
       if Label = Background_Label or else Natural (Label) > Count then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
-            "Get_Component requires a foreground label in 1 .. Component_Count");
+            "Get_Component requires a foreground label in 1 .."
+            & " Component_Count");
       end if;
       return Self.Components.Element (Natural (Label) - 1);
    end Get_Component;
