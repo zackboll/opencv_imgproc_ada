@@ -1,4 +1,5 @@
 with Ada.Exceptions;
+with Ada.Numerics;
 with Interfaces;
 with Interfaces.C;
 with OpenCV.Core.Module_Interop;
@@ -3668,5 +3669,479 @@ package body OpenCV.Image_Processing is
       end if;
       return Self.Components.Element (Natural (Label) - 1);
    end Get_Component;
+
+   function Is_Finite (Value : OpenCV.Float64_Value) return Boolean is
+      use type OpenCV.Float64_Value;
+   begin
+      return
+        Value = Value
+        and then Value <= OpenCV.Float64_Value'Last
+        and then Value >= OpenCV.Float64_Value'First;
+   end Is_Finite;
+
+   procedure Validate_Drawing_Image
+     (Image : OpenCV.Core.Mat; Line_Style : Drawing_Line_Style)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Image.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "drawing requires a non-empty image");
+      elsif Image.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "drawing requires a two-dimensional image");
+      elsif Image.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "drawing requires 1 to 4 channels");
+      end if;
+
+      case Image.Depth is
+         when OpenCV.Core.UInt8
+            | OpenCV.Core.UInt16
+            | OpenCV.Core.Int16
+            | OpenCV.Core.Float32
+            | OpenCV.Core.Float64 =>
+            null;
+
+         when others              =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "drawing requires a UInt8, UInt16, Int16, Float32, or"
+               & " Float64 image");
+      end case;
+
+      if Line_Style = Anti_Aliased_Line
+        and then Image.Depth /= OpenCV.Core.UInt8
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Anti_Aliased_Line requires a UInt8 image");
+      end if;
+   end Validate_Drawing_Image;
+
+   procedure Validate_Drawing_Color
+     (Image : OpenCV.Core.Mat; Color : OpenCV.Scalar)
+   is
+      Components : constant array (0 .. 3) of OpenCV.Float64_Value :=
+        (OpenCV.Float64_Value (Color.Component_0),
+         OpenCV.Float64_Value (Color.Component_1),
+         OpenCV.Float64_Value (Color.Component_2),
+         OpenCV.Float64_Value (Color.Component_3));
+   begin
+      for Index in 0 .. Natural (Image.Channels) - 1 loop
+         if not Is_Finite (Components (Index)) then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "drawing requires finite color components for every channel");
+         end if;
+      end loop;
+   end Validate_Drawing_Color;
+
+   function To_C_Line_Style
+     (Line_Style : Drawing_Line_Style) return Interfaces.Integer_32 is
+   begin
+      case Line_Style is
+         when Four_Connected_Line  =>
+            return Internal.C_API.Drawing_Line_4;
+
+         when Eight_Connected_Line =>
+            return Internal.C_API.Drawing_Line_8;
+
+         when Anti_Aliased_Line    =>
+            return Internal.C_API.Drawing_Line_AA;
+      end case;
+   end To_C_Line_Style;
+
+   function To_Degrees
+     (Angle : OpenCV.Float64_Value; Units : OpenCV.Angle_Unit)
+      return OpenCV.Float64_Value
+   is
+      use type OpenCV.Float64_Value;
+   begin
+      if Units = OpenCV.Degrees then
+         return Angle;
+      end if;
+
+      return
+        Angle
+        * (OpenCV.Float64_Value (180.0)
+           / OpenCV.Float64_Value (Ada.Numerics.Pi));
+   end To_Degrees;
+
+   procedure Validate_Drawing_Angles
+     (Angle, Start_Angle, End_Angle : OpenCV.Float64_Value) is
+   begin
+      if not Is_Finite (Angle)
+        or else not Is_Finite (Start_Angle)
+        or else not Is_Finite (End_Angle)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "drawing ellipse angles must be finite");
+      end if;
+   end Validate_Drawing_Angles;
+
+   function To_C_Points
+     (Points : OpenCV.Point_Array) return Internal.C_API.Point_I32_Array
+   is
+      Result : Internal.C_API.Point_I32_Array (0 .. Points'Length - 1);
+      Index  : Natural := 0;
+   begin
+      for Point of Points loop
+         Result (Index) :=
+           (X => Interfaces.Integer_32 (Point.X),
+            Y => Interfaces.Integer_32 (Point.Y));
+         Index := Index + 1;
+      end loop;
+      return Result;
+   end To_C_Points;
+
+   procedure Draw_Line
+     (Image      : in out OpenCV.Core.Mat;
+      Start      : OpenCV.Point;
+      Finish     : OpenCV.Point;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line)
+   is
+      Status : Internal.C_API.Status;
+
+      procedure Draw
+        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Draw_Line
+             (Image_Handle,
+              Interfaces.Integer_32 (Start.X),
+              Interfaces.Integer_32 (Start.Y),
+              Interfaces.Integer_32 (Finish.X),
+              Interfaces.Integer_32 (Finish.Y),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              Interfaces.Integer_32 (Thickness),
+              To_C_Line_Style (Line_Style));
+      end Draw;
+   begin
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Draw_Line");
+   end Draw_Line;
+
+   procedure Draw_Or_Fill_Rectangle
+     (Image      : in out OpenCV.Core.Mat;
+      Bounds     : OpenCV.Rect;
+      Color      : OpenCV.Scalar;
+      Filled     : Boolean;
+      Thickness  : Drawing_Thickness;
+      Line_Style : Drawing_Line_Style)
+   is
+      Status : Internal.C_API.Status;
+
+      procedure Draw
+        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Draw_Rectangle
+             (Image_Handle,
+              Interfaces.Integer_32 (Bounds.X),
+              Interfaces.Integer_32 (Bounds.Y),
+              Interfaces.Integer_32 (Bounds.Width),
+              Interfaces.Integer_32 (Bounds.Height),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              (if Filled
+               then Internal.C_API.Drawing_Filled
+               else Internal.C_API.Drawing_Outline),
+              Interfaces.Integer_32 (Thickness),
+              To_C_Line_Style (Line_Style));
+      end Draw;
+   begin
+      if Bounds.Width = 0 or else Bounds.Height = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "drawing rectangle width and height must be positive");
+      end if;
+
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Draw_Rectangle");
+   end Draw_Or_Fill_Rectangle;
+
+   procedure Draw_Rectangle
+     (Image      : in out OpenCV.Core.Mat;
+      Bounds     : OpenCV.Rect;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line) is
+   begin
+      Draw_Or_Fill_Rectangle
+        (Image, Bounds, Color, False, Thickness, Line_Style);
+   end Draw_Rectangle;
+
+   procedure Fill_Rectangle
+     (Image      : in out OpenCV.Core.Mat;
+      Bounds     : OpenCV.Rect;
+      Color      : OpenCV.Scalar;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line) is
+   begin
+      Draw_Or_Fill_Rectangle (Image, Bounds, Color, True, 1, Line_Style);
+   end Fill_Rectangle;
+
+   procedure Draw_Or_Fill_Circle
+     (Image      : in out OpenCV.Core.Mat;
+      Center     : OpenCV.Point;
+      Radius     : Drawing_Radius;
+      Color      : OpenCV.Scalar;
+      Filled     : Boolean;
+      Thickness  : Drawing_Thickness;
+      Line_Style : Drawing_Line_Style)
+   is
+      Status : Internal.C_API.Status;
+
+      procedure Draw
+        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Draw_Circle
+             (Image_Handle,
+              Interfaces.Integer_32 (Center.X),
+              Interfaces.Integer_32 (Center.Y),
+              Interfaces.Integer_32 (Radius),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              (if Filled
+               then Internal.C_API.Drawing_Filled
+               else Internal.C_API.Drawing_Outline),
+              Interfaces.Integer_32 (Thickness),
+              To_C_Line_Style (Line_Style));
+      end Draw;
+   begin
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Draw_Circle");
+   end Draw_Or_Fill_Circle;
+
+   procedure Draw_Circle
+     (Image      : in out OpenCV.Core.Mat;
+      Center     : OpenCV.Point;
+      Radius     : Drawing_Radius;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line) is
+   begin
+      Draw_Or_Fill_Circle
+        (Image, Center, Radius, Color, False, Thickness, Line_Style);
+   end Draw_Circle;
+
+   procedure Fill_Circle
+     (Image      : in out OpenCV.Core.Mat;
+      Center     : OpenCV.Point;
+      Radius     : Drawing_Radius;
+      Color      : OpenCV.Scalar;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line) is
+   begin
+      Draw_Or_Fill_Circle (Image, Center, Radius, Color, True, 1, Line_Style);
+   end Fill_Circle;
+
+   procedure Draw_Or_Fill_Ellipse
+     (Image       : in out OpenCV.Core.Mat;
+      Center      : OpenCV.Point;
+      Axes        : OpenCV.Size;
+      Angle       : OpenCV.Float64_Value;
+      Start_Angle : OpenCV.Float64_Value;
+      End_Angle   : OpenCV.Float64_Value;
+      Color       : OpenCV.Scalar;
+      Filled      : Boolean;
+      Thickness   : Drawing_Thickness;
+      Line_Style  : Drawing_Line_Style;
+      Units       : OpenCV.Angle_Unit)
+   is
+      Degrees_Angle : OpenCV.Float64_Value;
+      Degrees_Start : OpenCV.Float64_Value;
+      Degrees_End   : OpenCV.Float64_Value;
+      Status        : Internal.C_API.Status;
+
+      procedure Draw
+        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Draw_Ellipse
+             (Image_Handle,
+              Interfaces.Integer_32 (Center.X),
+              Interfaces.Integer_32 (Center.Y),
+              Interfaces.Integer_32 (Axes.Width),
+              Interfaces.Integer_32 (Axes.Height),
+              Interfaces.C.double (Degrees_Angle),
+              Interfaces.C.double (Degrees_Start),
+              Interfaces.C.double (Degrees_End),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              (if Filled
+               then Internal.C_API.Drawing_Filled
+               else Internal.C_API.Drawing_Outline),
+              Interfaces.Integer_32 (Thickness),
+              To_C_Line_Style (Line_Style));
+      end Draw;
+   begin
+      if Axes.Width = 0 or else Axes.Height = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "drawing ellipse axes must be positive");
+      end if;
+
+      Validate_Drawing_Angles (Angle, Start_Angle, End_Angle);
+      Degrees_Angle := To_Degrees (Angle, Units);
+      Degrees_Start := To_Degrees (Start_Angle, Units);
+      Degrees_End := To_Degrees (End_Angle, Units);
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Draw_Ellipse");
+   end Draw_Or_Fill_Ellipse;
+
+   procedure Draw_Ellipse
+     (Image       : in out OpenCV.Core.Mat;
+      Center      : OpenCV.Point;
+      Axes        : OpenCV.Size;
+      Angle       : OpenCV.Float64_Value;
+      Start_Angle : OpenCV.Float64_Value;
+      End_Angle   : OpenCV.Float64_Value;
+      Color       : OpenCV.Scalar;
+      Thickness   : Drawing_Thickness := 1;
+      Line_Style  : Drawing_Line_Style := Eight_Connected_Line;
+      Units       : OpenCV.Angle_Unit := OpenCV.Degrees) is
+   begin
+      Draw_Or_Fill_Ellipse
+        (Image,
+         Center,
+         Axes,
+         Angle,
+         Start_Angle,
+         End_Angle,
+         Color,
+         False,
+         Thickness,
+         Line_Style,
+         Units);
+   end Draw_Ellipse;
+
+   procedure Fill_Ellipse
+     (Image       : in out OpenCV.Core.Mat;
+      Center      : OpenCV.Point;
+      Axes        : OpenCV.Size;
+      Angle       : OpenCV.Float64_Value;
+      Start_Angle : OpenCV.Float64_Value;
+      End_Angle   : OpenCV.Float64_Value;
+      Color       : OpenCV.Scalar;
+      Line_Style  : Drawing_Line_Style := Eight_Connected_Line;
+      Units       : OpenCV.Angle_Unit := OpenCV.Degrees) is
+   begin
+      Draw_Or_Fill_Ellipse
+        (Image,
+         Center,
+         Axes,
+         Angle,
+         Start_Angle,
+         End_Angle,
+         Color,
+         True,
+         1,
+         Line_Style,
+         Units);
+   end Fill_Ellipse;
+
+   procedure Draw_Polyline
+     (Image      : in out OpenCV.Core.Mat;
+      Points     : OpenCV.Point_Array;
+      Closed     : Boolean := False;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line)
+   is
+      Status : Internal.C_API.Status;
+
+      procedure Draw
+        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         Native : constant Internal.C_API.Point_I32_Array :=
+           To_C_Points (Points);
+      begin
+         Status :=
+           Internal.C_API.Draw_Polyline
+             (Image_Handle,
+              Native (Native'First)'Access,
+              Interfaces.Integer_32 (Native'Length),
+              (if Closed then 1 else 0),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              Interfaces.Integer_32 (Thickness),
+              To_C_Line_Style (Line_Style));
+      end Draw;
+   begin
+      if Points'Length < 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Draw_Polyline requires at least two points");
+      end if;
+
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Draw_Polyline");
+   end Draw_Polyline;
+
+   procedure Fill_Polygon
+     (Image      : in out OpenCV.Core.Mat;
+      Points     : OpenCV.Point_Array;
+      Color      : OpenCV.Scalar;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line)
+   is
+      Status : Internal.C_API.Status;
+
+      procedure Draw
+        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         Native : constant Internal.C_API.Point_I32_Array :=
+           To_C_Points (Points);
+      begin
+         Status :=
+           Internal.C_API.Fill_Polygon
+             (Image_Handle,
+              Native (Native'First)'Access,
+              Interfaces.Integer_32 (Native'Length),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              To_C_Line_Style (Line_Style));
+      end Draw;
+   begin
+      if Points'Length < 3 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Fill_Polygon requires at least three points");
+      end if;
+
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Fill_Polygon");
+   end Fill_Polygon;
 
 end OpenCV.Image_Processing;

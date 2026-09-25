@@ -85,6 +85,13 @@ package OpenCV.Image_Processing is
 
    type Pixel_Connectivity is (Four_Connected, Eight_Connected);
 
+   type Drawing_Line_Style is
+     (Four_Connected_Line, Eight_Connected_Line, Anti_Aliased_Line);
+
+   subtype Drawing_Thickness is Positive range 1 .. 32_767;
+
+   subtype Drawing_Radius is Positive;
+
    type Component_Label is new Natural;
 
    Background_Label : constant Component_Label := 0;
@@ -801,6 +808,101 @@ package OpenCV.Image_Processing is
    function Get_Component
      (Self : Connected_Component_Set; Label : Component_Label)
       return Component_Statistics;
+
+   --  Drawing primitives mutate Image in place. A shallow Mat alias or a
+   --  Region shares that storage, so a drawing made through either header is
+   --  visible through the other. Region coordinates are relative to the
+   --  Region. Pixels outside a Region are not modified. Image must be
+   --  nonempty and two-dimensional, with depth UInt8, UInt16, Int16,
+   --  Float32, or Float64 and 1 through 4 channels. Scalar components are
+   --  written in channel order; unused components are ignored and there is
+   --  or alpha blending. The components used by Image.Channels must be
+   --  finite. Coordinates may lie outside Image; OpenCV clips them. Outline
+   --  operations use a positive Drawing_Thickness. Anti_Aliased_Line is
+   --  accepted only for UInt8 images. Contract violations and OpenCV
+   --  failures raise OpenCV.OpenCV_Error.
+
+   procedure Draw_Line
+     (Image      : in out OpenCV.Core.Mat;
+      Start      : OpenCV.Point;
+      Finish     : OpenCV.Point;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   procedure Draw_Rectangle
+     (Image      : in out OpenCV.Core.Mat;
+      Bounds     : OpenCV.Rect;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   procedure Fill_Rectangle
+     (Image      : in out OpenCV.Core.Mat;
+      Bounds     : OpenCV.Rect;
+      Color      : OpenCV.Scalar;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   procedure Draw_Circle
+     (Image      : in out OpenCV.Core.Mat;
+      Center     : OpenCV.Point;
+      Radius     : Drawing_Radius;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   procedure Fill_Circle
+     (Image      : in out OpenCV.Core.Mat;
+      Center     : OpenCV.Point;
+      Radius     : Drawing_Radius;
+      Color      : OpenCV.Scalar;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   --  Axes are the ellipse semi-axis lengths and must both be positive.
+   --  Angle, Start_Angle, and End_Angle must be finite. Radians are
+   --  converted to degrees in Ada; values are not otherwise normalized.
+   --  Fill_Ellipse fills the elliptic sector for a partial interval and
+   --  the whole ellipse for a full turn.
+   procedure Draw_Ellipse
+     (Image       : in out OpenCV.Core.Mat;
+      Center      : OpenCV.Point;
+      Axes        : OpenCV.Size;
+      Angle       : OpenCV.Float64_Value;
+      Start_Angle : OpenCV.Float64_Value;
+      End_Angle   : OpenCV.Float64_Value;
+      Color       : OpenCV.Scalar;
+      Thickness   : Drawing_Thickness := 1;
+      Line_Style  : Drawing_Line_Style := Eight_Connected_Line;
+      Units       : OpenCV.Angle_Unit := OpenCV.Degrees);
+
+   procedure Fill_Ellipse
+     (Image       : in out OpenCV.Core.Mat;
+      Center      : OpenCV.Point;
+      Axes        : OpenCV.Size;
+      Angle       : OpenCV.Float64_Value;
+      Start_Angle : OpenCV.Float64_Value;
+      End_Angle   : OpenCV.Float64_Value;
+      Color       : OpenCV.Scalar;
+      Line_Style  : Drawing_Line_Style := Eight_Connected_Line;
+      Units       : OpenCV.Angle_Unit := OpenCV.Degrees);
+
+   --  Points may use any Natural index bounds. An open or closed polyline
+   --  requires at least two points.
+   procedure Draw_Polyline
+     (Image      : in out OpenCV.Core.Mat;
+      Points     : OpenCV.Point_Array;
+      Closed     : Boolean := False;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   --  Points may use any Natural index bounds. A polygon requires at least
+   --  three points. Concave polygons are filled by OpenCV fillPoly.
+   procedure Fill_Polygon
+     (Image      : in out OpenCV.Core.Mat;
+      Points     : OpenCV.Point_Array;
+      Color      : OpenCV.Scalar;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
 private
    package Contour_Vectors is new

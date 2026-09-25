@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **254 AUnit tests**
+> **Current registered test baseline:** **264 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -72,6 +72,7 @@ Ada package, and built libraries serve different roles.
 - [CLAHE](#clahe)
 - [Contour extraction](#contour-extraction)
 - [Connected components](#connected-components)
+- [Drawing primitives](#drawing-primitives)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
 - [Architecture](#architecture)
@@ -121,6 +122,9 @@ The current public surface includes:
 - mean and Gaussian adaptive thresholding;
 - global grayscale histogram equalization;
 - contrast limited adaptive histogram equalization (CLAHE);
+- connected-component labeling and statistics;
+- in-place drawing of lines, rectangles, circles, ellipses, polylines,
+  and polygons;
 - contour extraction, hierarchy, and approximation modes.
 
 Computational contour geometry such as area, arc length, and moments is
@@ -207,6 +211,7 @@ The table below summarizes the current public operations.
 | Histogram | `CLAHE` | nonempty 2-D `UInt8`/`UInt16` C1 | local contrast-limited equalization; default clip 40.0 and grid 8x8; same-object in-place supported; other storage-sharing aliases rejected |
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
 | Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
+| Drawing | `Draw_Line`, `Draw_Rectangle`, `Fill_Rectangle`, `Draw_Circle`, `Fill_Circle`, `Draw_Ellipse`, `Fill_Ellipse`, `Draw_Polyline`, `Fill_Polygon` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | in-place; positive geometry; off-image coordinates clipped; antialiasing only for `UInt8`; no alpha blending |
 
 The supported general-purpose Imgproc numeric depths are:
 
@@ -1891,6 +1896,57 @@ subtype Contour is OpenCV.Point_Array;
 
 ---
 
+## Drawing primitives
+
+Drawing operations mutate the supplied `Mat` directly. A normal shallow
+assignment shares storage, and a `Region` is drawn in coordinates relative to
+that view. Pixels outside the region stay unchanged. There is no hidden clone.
+
+```ada
+declare
+   Image : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (64, 64, (OpenCV.Core.UInt8, 3));
+   Outline : constant OpenCV.Scalar :=
+     (Component_0 => 0.0, Component_1 => 255.0, Component_2 => 0.0,
+      others => 0.0);
+begin
+   OpenCV.Core.Set_To (Image, (others => 0.0));
+   OpenCV.Image_Processing.Draw_Rectangle
+     (Image, (X => 8, Y => 8, Width => 20, Height => 12), Outline);
+   OpenCV.Image_Processing.Fill_Circle
+     (Image, (X => 40, Y => 32), 8, Outline);
+end;
+```
+
+`Drawing_Line_Style` is separate from connected-component connectivity:
+
+| Literal | Meaning |
+| --- | --- |
+| `Four_Connected_Line` | 4-connected Bresenham outline |
+| `Eight_Connected_Line` | 8-connected Bresenham outline; the default |
+| `Anti_Aliased_Line` | Gaussian-filtered outline, accepted only for `UInt8` |
+
+`Draw_*` operations take a positive `Drawing_Thickness` from 1 through 32767.
+`Fill_Rectangle`, `Fill_Circle`, `Fill_Ellipse`, and `Fill_Polygon` select
+OpenCV's filled mode internally. Negative thickness is not part of the public
+API. A partial `Fill_Ellipse` interval fills the elliptic sector; a full turn
+fills the ellipse. Angles are finite and default to degrees. Radians are
+converted in Ada and are not otherwise normalized.
+
+The image must be nonempty and two-dimensional, with depth `UInt8`, `UInt16`,
+`Int16`, `Float32`, or `Float64`, and 1 through 4 channels. Scalar components
+are copied in channel order. The binding does not convert grayscale or color
+and does not blend the fourth channel as alpha. Color components used by the
+image must be finite. Points may lie outside the image; OpenCV clips them.
+Rectangle extents, circle radii, and ellipse axes must still be positive.
+Polylines need at least two points and filled polygons at least three. Array
+bounds are arbitrary, so an extracted `Contour` can be passed directly.
+
+This slice does not include text, markers, arrows, `drawContours`, subpixel
+fixed-point shift, alpha blending, or multi-polygon holes.
+
+---
+
 ## Geometry is a separate module
 
 OpenCV 5 moved a substantial set of computational geometry APIs out of Imgproc
@@ -2825,6 +2881,8 @@ opencv_imgproc_ada/
 │       ├── histogram_equalization_tests.*
 │       ├── clahe_tests.*
 │       ├── contour_tests.*
+│       ├── drawing_tests.*
+│       ├── connected_component_tests.*
 │       └── tests.adb
 │
 └── .github/
@@ -2858,7 +2916,10 @@ Notable Imgproc families that are not yet broadly bound include:
 - histogram calculation and comparison;
 - distance transforms;
 - integral images;
-- drawing primitives and text;
+- text rendering and text metrics;
+- markers, arrows, and `drawContours` as its own operation;
+- subpixel fixed-point drawing;
+- alpha blending and multi-polygon holes;
 - additional shape/image analysis that still belongs specifically to Imgproc.
 
 

@@ -121,6 +121,13 @@ package OpenCV.Image_Processing.Internal.C_API is
    Warp_Mapping_Source_To_Destination : constant Interfaces.Integer_32 := 0;
    Warp_Mapping_Destination_To_Source : constant Interfaces.Integer_32 := 1;
 
+   Drawing_Line_4  : constant Interfaces.Integer_32 := 0;
+   Drawing_Line_8  : constant Interfaces.Integer_32 := 1;
+   Drawing_Line_AA : constant Interfaces.Integer_32 := 2;
+
+   Drawing_Outline : constant Interfaces.Integer_32 := 0;
+   Drawing_Filled  : constant Interfaces.Integer_32 := 1;
+
    function Last_Error_Message_Pointer return Interfaces.C.Strings.chars_ptr
    with
      Import,
@@ -496,6 +503,103 @@ package OpenCV.Image_Processing.Internal.C_API is
       Border_Value_2 : Interfaces.C.double;
       Border_Value_3 : Interfaces.C.double) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_remap";
+
+   function Draw_Line
+     (Image      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Start_X    : Interfaces.Integer_32;
+      Start_Y    : Interfaces.Integer_32;
+      Finish_X   : Interfaces.Integer_32;
+      Finish_Y   : Interfaces.Integer_32;
+      Color_0    : Interfaces.C.double;
+      Color_1    : Interfaces.C.double;
+      Color_2    : Interfaces.C.double;
+      Color_3    : Interfaces.C.double;
+      Thickness  : Interfaces.Integer_32;
+      Line_Style : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_draw_line";
+
+   function Draw_Rectangle
+     (Image      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Origin_X   : Interfaces.Integer_32;
+      Origin_Y   : Interfaces.Integer_32;
+      Width      : Interfaces.Integer_32;
+      Height     : Interfaces.Integer_32;
+      Color_0    : Interfaces.C.double;
+      Color_1    : Interfaces.C.double;
+      Color_2    : Interfaces.C.double;
+      Color_3    : Interfaces.C.double;
+      Filled     : Interfaces.Integer_32;
+      Thickness  : Interfaces.Integer_32;
+      Line_Style : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_draw_rectangle";
+
+   function Draw_Circle
+     (Image      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Center_X   : Interfaces.Integer_32;
+      Center_Y   : Interfaces.Integer_32;
+      Radius     : Interfaces.Integer_32;
+      Color_0    : Interfaces.C.double;
+      Color_1    : Interfaces.C.double;
+      Color_2    : Interfaces.C.double;
+      Color_3    : Interfaces.C.double;
+      Filled     : Interfaces.Integer_32;
+      Thickness  : Interfaces.Integer_32;
+      Line_Style : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_draw_circle";
+
+   function Draw_Ellipse
+     (Image       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Center_X    : Interfaces.Integer_32;
+      Center_Y    : Interfaces.Integer_32;
+      Axis_Width  : Interfaces.Integer_32;
+      Axis_Height : Interfaces.Integer_32;
+      Angle       : Interfaces.C.double;
+      Start_Angle : Interfaces.C.double;
+      End_Angle   : Interfaces.C.double;
+      Color_0     : Interfaces.C.double;
+      Color_1     : Interfaces.C.double;
+      Color_2     : Interfaces.C.double;
+      Color_3     : Interfaces.C.double;
+      Filled      : Interfaces.Integer_32;
+      Thickness   : Interfaces.Integer_32;
+      Line_Style  : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_draw_ellipse";
+
+   function Draw_Polyline
+     (Image       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Points      : access constant Point_I32;
+      Point_Count : Interfaces.Integer_32;
+      Closed      : Interfaces.Unsigned_8;
+      Color_0     : Interfaces.C.double;
+      Color_1     : Interfaces.C.double;
+      Color_2     : Interfaces.C.double;
+      Color_3     : Interfaces.C.double;
+      Thickness   : Interfaces.Integer_32;
+      Line_Style  : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_draw_polyline";
+
+   function Fill_Polygon
+     (Image       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Points      : access constant Point_I32;
+      Point_Count : Interfaces.Integer_32;
+      Color_0     : Interfaces.C.double;
+      Color_1     : Interfaces.C.double;
+      Color_2     : Interfaces.C.double;
+      Color_3     : Interfaces.C.double;
+      Line_Style  : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_fill_polygon";
 
    function Last_Error_Message return String;
 

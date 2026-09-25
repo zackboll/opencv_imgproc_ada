@@ -846,6 +846,141 @@ bool float32_map_is_finite(const cv::Mat &matrix) noexcept
     return true;
 }
 
+bool drawing_image(const cv::Mat &image, const char **message) noexcept
+{
+    if (image.dims != 2) {
+        // ABI safety: drawing addresses the image through rows and cols.
+        // A higher-dimensional Mat makes those two sizes not describe the
+        // buffer being written.
+        *message = "drawing image must be two-dimensional";
+        return false;
+    }
+
+    switch (image.depth()) {
+    case CV_8U:
+    case CV_16U:
+    case CV_16S:
+    case CV_32F:
+    case CV_64F:
+        break;
+    default:
+        // ABI safety: scalarToRawData rejects unsupported depths only after
+        // the drawing raster has begun. Restrict the depth before that write.
+        *message = "drawing image depth is not supported";
+        return false;
+    }
+
+    const int channels = image.channels();
+    if (channels < 1 || channels > 4) {
+        // ABI safety: the drawing color buffer is four components. More than
+        // four channels reads past that buffer.
+        *message = "drawing image must have 1 to 4 channels";
+        return false;
+    }
+
+    return true;
+}
+
+bool drawing_color(
+    const cv::Mat &image,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    cv::Scalar &color,
+    const char **message) noexcept
+{
+    const double components[4] = {color_0, color_1, color_2, color_3};
+    const int channels = image.channels();
+
+    for (int index = 0; index < channels; ++index) {
+        if (!std::isfinite(components[index])) {
+            // ABI safety: scalarToRawData saturates nonfinite values into
+            // integer pixels instead of rejecting them, producing a partially
+            // initialized color.
+            *message = "drawing color components in use must be finite";
+            return false;
+        }
+    }
+
+    color = cv::Scalar(color_0, color_1, color_2, color_3);
+    return true;
+}
+
+bool drawing_line_style(
+    int32_t line_style,
+    const cv::Mat &image,
+    int &opencv_line,
+    const char **message) noexcept
+{
+    switch (line_style) {
+    case OPENCV_IMGPROC_LINE_4:
+        opencv_line = cv::LINE_4;
+        return true;
+    case OPENCV_IMGPROC_LINE_8:
+        opencv_line = cv::LINE_8;
+        return true;
+    case OPENCV_IMGPROC_LINE_AA:
+        if (image.depth() != CV_8U) {
+            // ABI safety: OpenCV silently replaces LINE_AA with LINE_8 for
+            // non-8-bit images, so the requested antialiased write does not
+            // occur. Reject it before that substitution.
+            *message = "antialiased drawing requires a UInt8 image";
+            return false;
+        }
+        opencv_line = cv::LINE_AA;
+        return true;
+    default:
+        *message = "unsupported drawing line style";
+        return false;
+    }
+}
+
+bool drawing_thickness(
+    int32_t filled,
+    int32_t thickness,
+    int &opencv_thickness,
+    const char **message) noexcept
+{
+    if (filled == OPENCV_IMGPROC_DRAW_FILLED) {
+        opencv_thickness = cv::FILLED;
+        return true;
+    }
+
+    if (filled != OPENCV_IMGPROC_DRAW_OUTLINE) {
+        *message = "unsupported drawing fill selector";
+        return false;
+    }
+
+    if (thickness <= 0 || thickness > 32767) {
+        // ABI safety: OpenCV drawing uses thickness in signed raster offsets.
+        // A nonpositive or oversized thickness overflows those offsets.
+        *message = "drawing thickness must be from 1 through 32767";
+        return false;
+    }
+
+    opencv_thickness = static_cast<int>(thickness);
+    return true;
+}
+
+bool drawing_angles(
+    double angle,
+    double start_angle,
+    double end_angle,
+    const char **message) noexcept
+{
+    if (!std::isfinite(angle)
+        || !std::isfinite(start_angle)
+        || !std::isfinite(end_angle)) {
+        // ABI safety: ellipse rounding of a nonfinite angle produces an
+        // indeterminate integer before the raster is clipped.
+        *message = "drawing ellipse angles must be finite";
+        return false;
+    }
+
+    return true;
+}
+
 } // namespace
 
 extern "C" {
@@ -3375,6 +3510,451 @@ opencv_imgproc_remap(
                 border_value_2,
                 border_value_3));
 
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_draw_line(
+    const opencv_core_mat_handle *image,
+    int32_t start_x,
+    int32_t start_y,
+    int32_t finish_x,
+    int32_t finish_y,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t thickness,
+    int32_t line_style)
+{
+    clear_error();
+
+    try {
+        cv::Mat *img = nullptr;
+        const opencv_core_status core_status =
+            opencv_core_module_output_mat(
+                const_cast<opencv_core_mat_handle *>(image),
+                &img);
+
+        if (core_status != OPENCV_CORE_OK || img == nullptr) {
+            return invalid_argument("invalid drawing image");
+        }
+
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::Scalar color;
+        if (!drawing_color(
+                *img, color_0, color_1, color_2, color_3, color, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_line = 0;
+        if (!drawing_line_style(line_style, *img, opencv_line, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_thickness = 0;
+        if (!drawing_thickness(
+                OPENCV_IMGPROC_DRAW_OUTLINE,
+                thickness,
+                opencv_thickness,
+                &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::line(
+            *img,
+            cv::Point(static_cast<int>(start_x), static_cast<int>(start_y)),
+            cv::Point(static_cast<int>(finish_x), static_cast<int>(finish_y)),
+            color,
+            opencv_thickness,
+            opencv_line,
+            0);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_draw_rectangle(
+    const opencv_core_mat_handle *image,
+    int32_t origin_x,
+    int32_t origin_y,
+    int32_t width,
+    int32_t height,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t filled,
+    int32_t thickness,
+    int32_t line_style)
+{
+    clear_error();
+
+    try {
+        cv::Mat *img = nullptr;
+        const opencv_core_status core_status =
+            opencv_core_module_output_mat(
+                const_cast<opencv_core_mat_handle *>(image),
+                &img);
+
+        if (core_status != OPENCV_CORE_OK || img == nullptr) {
+            return invalid_argument("invalid drawing image");
+        }
+
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) {
+            return invalid_argument(message);
+        }
+
+        if (width <= 0 || height <= 0) {
+            // ABI safety: a nonpositive Rect is empty and rectangle returns
+            // without drawing, leaving the caller unable to detect the
+            // rejected geometry.
+            return invalid_argument(
+                "drawing rectangle width and height must be positive");
+        }
+
+        cv::Scalar color;
+        if (!drawing_color(
+                *img, color_0, color_1, color_2, color_3, color, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_line = 0;
+        if (!drawing_line_style(line_style, *img, opencv_line, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_thickness = 0;
+        if (!drawing_thickness(filled, thickness, opencv_thickness, &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::rectangle(
+            *img,
+            cv::Rect(
+                static_cast<int>(origin_x),
+                static_cast<int>(origin_y),
+                static_cast<int>(width),
+                static_cast<int>(height)),
+            color,
+            opencv_thickness,
+            opencv_line,
+            0);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_draw_circle(
+    const opencv_core_mat_handle *image,
+    int32_t center_x,
+    int32_t center_y,
+    int32_t radius,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t filled,
+    int32_t thickness,
+    int32_t line_style)
+{
+    clear_error();
+
+    try {
+        cv::Mat *img = nullptr;
+        const opencv_core_status core_status =
+            opencv_core_module_output_mat(
+                const_cast<opencv_core_mat_handle *>(image),
+                &img);
+
+        if (core_status != OPENCV_CORE_OK || img == nullptr) {
+            return invalid_argument("invalid drawing image");
+        }
+
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) {
+            return invalid_argument(message);
+        }
+
+        if (radius <= 0) {
+            // ABI safety: circle accepts a zero radius and draws a degenerate
+            // point. Reject it before that write.
+            return invalid_argument("drawing circle radius must be positive");
+        }
+
+        cv::Scalar color;
+        if (!drawing_color(
+                *img, color_0, color_1, color_2, color_3, color, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_line = 0;
+        if (!drawing_line_style(line_style, *img, opencv_line, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_thickness = 0;
+        if (!drawing_thickness(filled, thickness, opencv_thickness, &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::circle(
+            *img,
+            cv::Point(static_cast<int>(center_x), static_cast<int>(center_y)),
+            static_cast<int>(radius),
+            color,
+            opencv_thickness,
+            opencv_line,
+            0);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_draw_ellipse(
+    const opencv_core_mat_handle *image,
+    int32_t center_x,
+    int32_t center_y,
+    int32_t axis_width,
+    int32_t axis_height,
+    double angle,
+    double start_angle,
+    double end_angle,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t filled,
+    int32_t thickness,
+    int32_t line_style)
+{
+    clear_error();
+
+    try {
+        cv::Mat *img = nullptr;
+        const opencv_core_status core_status =
+            opencv_core_module_output_mat(
+                const_cast<opencv_core_mat_handle *>(image),
+                &img);
+
+        if (core_status != OPENCV_CORE_OK || img == nullptr) {
+            return invalid_argument("invalid drawing image");
+        }
+
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) {
+            return invalid_argument(message);
+        }
+
+        if (axis_width <= 0 || axis_height <= 0) {
+            // ABI safety: a nonpositive ellipse axis is shifted into the
+            // fixed-point raster and can address pixels outside the image.
+            return invalid_argument("drawing ellipse axes must be positive");
+        }
+
+        if (!drawing_angles(angle, start_angle, end_angle, &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::Scalar color;
+        if (!drawing_color(
+                *img, color_0, color_1, color_2, color_3, color, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_line = 0;
+        if (!drawing_line_style(line_style, *img, opencv_line, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_thickness = 0;
+        if (!drawing_thickness(filled, thickness, opencv_thickness, &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::ellipse(
+            *img,
+            cv::Point(static_cast<int>(center_x), static_cast<int>(center_y)),
+            cv::Size(
+                static_cast<int>(axis_width),
+                static_cast<int>(axis_height)),
+            angle,
+            start_angle,
+            end_angle,
+            color,
+            opencv_thickness,
+            opencv_line,
+            0);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_draw_polyline(
+    const opencv_core_mat_handle *image,
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    uint8_t closed,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t thickness,
+    int32_t line_style)
+{
+    clear_error();
+
+    try {
+        cv::Mat *img = nullptr;
+        const opencv_core_status core_status =
+            opencv_core_module_output_mat(
+                const_cast<opencv_core_mat_handle *>(image),
+                &img);
+
+        if (core_status != OPENCV_CORE_OK || img == nullptr) {
+            return invalid_argument("invalid drawing image");
+        }
+
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) {
+            return invalid_argument(message);
+        }
+
+        if (point_count < 2) {
+            // ABI safety: polylines copies point_count elements. A negative
+            // count underflows that copy.
+            return invalid_argument(
+                "drawing polyline requires at least two points");
+        }
+
+        if (points == nullptr) {
+            return invalid_argument("drawing polyline points must not be null");
+        }
+
+        if (closed > 1) {
+            return invalid_argument(
+                "drawing polyline closed flag must be 0 or 1");
+        }
+
+        cv::Scalar color;
+        if (!drawing_color(
+                *img, color_0, color_1, color_2, color_3, color, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_line = 0;
+        if (!drawing_line_style(line_style, *img, opencv_line, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_thickness = 0;
+        if (!drawing_thickness(
+                OPENCV_IMGPROC_DRAW_OUTLINE,
+                thickness,
+                opencv_thickness,
+                &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::Point *native_points = const_cast<cv::Point *>(
+            reinterpret_cast<const cv::Point *>(points));
+        const int native_count = static_cast<int>(point_count);
+        cv::polylines(
+            *img,
+            &native_points,
+            &native_count,
+            1,
+            closed == 1,
+            color,
+            opencv_thickness,
+            opencv_line,
+            0);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_fill_polygon(
+    const opencv_core_mat_handle *image,
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t line_style)
+{
+    clear_error();
+
+    try {
+        cv::Mat *img = nullptr;
+        const opencv_core_status core_status =
+            opencv_core_module_output_mat(
+                const_cast<opencv_core_mat_handle *>(image),
+                &img);
+
+        if (core_status != OPENCV_CORE_OK || img == nullptr) {
+            return invalid_argument("invalid drawing image");
+        }
+
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) {
+            return invalid_argument(message);
+        }
+
+        if (point_count < 3) {
+            // ABI safety: fillPoly copies point_count elements. A negative
+            // count underflows that copy. Fewer than three points also makes
+            // the edge collector read an incomplete polygon.
+            return invalid_argument(
+                "drawing polygon requires at least three points");
+        }
+
+        if (points == nullptr) {
+            return invalid_argument("drawing polygon points must not be null");
+        }
+
+        cv::Scalar color;
+        if (!drawing_color(
+                *img, color_0, color_1, color_2, color_3, color, &message)) {
+            return invalid_argument(message);
+        }
+
+        int opencv_line = 0;
+        if (!drawing_line_style(line_style, *img, opencv_line, &message)) {
+            return invalid_argument(message);
+        }
+
+        const cv::Point *native_points =
+            reinterpret_cast<const cv::Point *>(points);
+        const int native_count = static_cast<int>(point_count);
+        cv::fillPoly(
+            *img,
+            &native_points,
+            &native_count,
+            1,
+            color,
+            opencv_line,
+            0,
+            cv::Point(0, 0));
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();
