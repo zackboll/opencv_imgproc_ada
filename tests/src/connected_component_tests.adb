@@ -5,7 +5,6 @@ with AUnit.Test_Fixtures;
 with Interfaces;
 with OpenCV;
 with OpenCV.Core;
-with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Int32_Access;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.UInt8_Access;
@@ -232,21 +231,30 @@ package body Connected_Component_Tests is
       Assert_Component
         (Components, 1, 0, 0, 4, 3, 12, 1.5, 1.0, "all foreground");
       Clear (Source);
-      Set (Source, 0, 0);
-      Set (Source, 0, 3);
-      Set (Source, 2, 1);
+      --  One 8-connected foreground shape. Coordinates are (column, row):
+      --  (1, 0), (2, 0), (2, 1), (2, 2). Area is 4. The bounding rectangle is
+      --  x = 1, y = 0, width = 2, height = 3. The centroid is the mean of
+      --  those coordinates: X = (1 + 2 + 2 + 2) / 4 = 1.75 and
+      --  Y = (0 + 0 + 1 + 2) / 4 = 0.75.
+      Set (Source, 0, 1);
+      Set (Source, 0, 2);
+      Set (Source, 1, 2);
+      Set (Source, 2, 2);
       OpenCV.Image_Processing.Connected_Components_With_Stats
         (Source, Labels, Components);
+      AUnit.Assertions.Assert
+        (OpenCV.Image_Processing.Component_Count (Components) = 1,
+         "fractional centroid must be one connected component");
       Assert_Component
         (Components,
-         Label_At (Labels, 0, 0),
+         Label_At (Labels, 0, 1),
+         1,
          0,
-         0,
+         2,
+         3,
          4,
-         3,
-         3,
-         4.0 / 3.0,
-         2.0 / 3.0,
+         (1.0 + 2.0 + 2.0 + 2.0) / 4.0,
+         (0.0 + 0.0 + 1.0 + 2.0) / 4.0,
          "fractional centroid");
    end Background_Foreground_And_Centroid;
 
@@ -306,7 +314,7 @@ package body Connected_Component_Tests is
       Labels, Shared, First, Second : OpenCV.Core.Mat;
       Components                    :
         OpenCV.Image_Processing.Connected_Component_Set;
-      Parent                        : OpenCV.Core.Mat :=
+      Parent                        : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (6, 6, (OpenCV.Core.UInt8, 1));
       Empty                         : OpenCV.Core.Mat;
       Three_D                       : constant OpenCV.Core.Mat :=

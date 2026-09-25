@@ -1869,17 +1869,34 @@ opencv_imgproc_clahe(
             }
         }
 
-        // ABI safety: CLAHE computes all LUTs before interpolation, so the
-        // identical Mat object is safe. A distinct overlapping view can be
-        // overwritten while later source pixels are still read by interpolation.
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(
+            clip_limit, cv::Size(tile_grid_width, tile_grid_height));
+
+        // ABI safety: when dimensions are not divisible by the tile grid,
+        // OpenCV 4.1 and 4.10 pad with copyMakeBorder_8u, which copies
+        // width*elemSize bytes per row and ignores a larger row step. A
+        // non-contiguous ROI therefore incorporates parent pixels outside the
+        // view. The tile histogram also advances by the full source step, so
+        // the native read is not confined to the Mat view. A continuous
+        // snapshot gives CLAHE only the pixels in the view. Same-object
+        // operation additionally needs that snapshot because interpolation
+        // reads source rows while writing the destination. The result is
+        // copied back only after native execution succeeds. Distinct
+        // overlapping views are still rejected: copying into one of them can
+        // overwrite unread pixels of the other.
         if (src != dst && equalize_hist_views_overlap(*src, *dst)) {
             return invalid_argument(
                 "CLAHE destination must not share storage with source");
         }
 
-        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(
-            clip_limit, cv::Size(tile_grid_width, tile_grid_height));
-        clahe->apply(*src, *dst);
+        if (src == dst || !src->isContinuous()) {
+            const cv::Mat source_copy = src->clone();
+            cv::Mat result;
+            clahe->apply(source_copy, result);
+            result.copyTo(*dst);
+        } else {
+            clahe->apply(*src, *dst);
+        }
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();
