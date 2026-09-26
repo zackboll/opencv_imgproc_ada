@@ -18,6 +18,7 @@ with Sep_Filter_2D_Tests;
 with Gaussian_Blur_Tests;
 with Gaussian_Kernel_Tests;
 with Derivative_Kernel_Tests;
+with Drawing_Tests;
 with Laplacian_Tests;
 with Median_Blur_Tests;
 with Morphology_Tests;
@@ -72,6 +73,7 @@ begin
    Suite.Add_Test (Connected_Component_Tests.Suite);
 
    Suite.Add_Test (Contour_Tests.Suite);
+   Suite.Add_Test (Drawing_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

@@ -110,6 +110,13 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_WARP_MAPPING_SOURCE_TO_DESTINATION ((int32_t)0)
 #define OPENCV_IMGPROC_WARP_MAPPING_DESTINATION_TO_SOURCE ((int32_t)1)
 
+#define OPENCV_IMGPROC_LINE_4  ((int32_t)0)
+#define OPENCV_IMGPROC_LINE_8  ((int32_t)1)
+#define OPENCV_IMGPROC_LINE_AA ((int32_t)2)
+
+#define OPENCV_IMGPROC_DRAW_OUTLINE ((int32_t)0)
+#define OPENCV_IMGPROC_DRAW_FILLED  ((int32_t)1)
+
 const char *opencv_imgproc_last_error_message(void);
 
 opencv_imgproc_status
@@ -424,6 +431,91 @@ opencv_imgproc_remap(
     double border_value_1,
     double border_value_2,
     double border_value_3);
+
+opencv_imgproc_status
+opencv_imgproc_draw_line(
+    opencv_core_mat_handle *image,
+    int32_t start_x,
+    int32_t start_y,
+    int32_t finish_x,
+    int32_t finish_y,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t thickness,
+    int32_t line_style);
+
+opencv_imgproc_status
+opencv_imgproc_draw_rectangle(
+    opencv_core_mat_handle *image,
+    int32_t origin_x,
+    int32_t origin_y,
+    int32_t width,
+    int32_t height,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t filled,
+    int32_t thickness,
+    int32_t line_style);
+
+opencv_imgproc_status
+opencv_imgproc_draw_circle(
+    opencv_core_mat_handle *image,
+    int32_t center_x,
+    int32_t center_y,
+    int32_t radius,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t filled,
+    int32_t thickness,
+    int32_t line_style);
+
+opencv_imgproc_status
+opencv_imgproc_draw_ellipse(
+    opencv_core_mat_handle *image,
+    int32_t center_x,
+    int32_t center_y,
+    int32_t axis_width,
+    int32_t axis_height,
+    double angle,
+    double start_angle,
+    double end_angle,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t filled,
+    int32_t thickness,
+    int32_t line_style);
+
+opencv_imgproc_status
+opencv_imgproc_draw_polyline(
+    opencv_core_mat_handle *image,
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    uint8_t closed,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t thickness,
+    int32_t line_style);
+
+opencv_imgproc_status
+opencv_imgproc_fill_polygon(
+    opencv_core_mat_handle *image,
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    double color_0,
+    double color_1,
+    double color_2,
+    double color_3,
+    int32_t line_style);
 
 #ifdef __cplusplus
 }
