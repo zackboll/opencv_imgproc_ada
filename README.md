@@ -2515,6 +2515,13 @@ independently rejects:
   `setSize` would otherwise compute a wrapped allocation size);
 - non-finite or empty ranges, and ranges whose bin scaling would push
   `cvFloor` outside `int` for some `UInt8`/`UInt16` sample;
+- unsupported source depths and raw channel indices before inspecting selected
+  pixels;
+- nonfinite selected Float32 samples (NaN or Infinity) and finite samples
+  whose per-dimension uniform-bin coordinate `sample * scale - lower * scale`
+  is outside the native `cvFloor` int range. Ordinary finite samples outside
+  `[lower, upper)` remain legal when this conversion is safe; masked histogram
+  calculation does not inspect masked-out pixels;
 - non-2-D sources and source/mask strides that `histPrepareImages` narrows to
   `int`;
 - comparison of empty, non-Float32, or differently shaped histograms (the
@@ -3032,7 +3039,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **343-test** baseline is:
+The current **344-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3065,8 +3072,8 @@ The current **343-test** baseline is:
 | Drawing | 11 |
 | Hough detection | 24 |
 | Segmentation (flood fill, watershed, GrabCut) | 29 |
-| Histogram analysis (calculation, comparison, back projection) | 25 |
-| **Total** | **343** |
+| Histogram analysis (calculation, comparison, back projection) | 26 |
+| **Total** | **344** |
 
 
 The suite covers more than simple success paths. It includes:

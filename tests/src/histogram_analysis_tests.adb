@@ -687,15 +687,22 @@ package body Histogram_Analysis_Tests is
          "a bin product beyond native int");
       Expect
         (Raw_Calc (Cube, One, 1, Output), "two-dimensional", "an N-D source");
-      Expect_Failure
-        (One_Record (4, 0.0, 256.0, 3),
-         "an unavailable channel is rejected by OpenCV");
-      Expect_Failure
-        (One_Record (4, 0.0, 256.0, -1),
-         "a negative channel is rejected by OpenCV");
-      Expect_Failure
+      Expect (One_Record (4, 0.0, 256.0, 1), "channel", "missing channel");
+      Expect (One_Record (4, 0.0, 256.0, -1), "channel", "negative channel");
+      AUnit.Assertions.Assert
+        (Raw_Calc
+           (Row_C3 (((10, 20, 30), (10, 20, 30))),
+            (1 => Record_Of (4, 0.0, 256.0, 2)),
+            1,
+            Output)
+         = C_API.Success
+         and then F32.Get (Output, 0, 0) = 2.0,
+         "the last valid raw channel succeeds");
+      Output := Marker;
+      Expect
         (Raw_Calc (Filled (2, 2, (OpenCV.Core.Float64, 1)), One, 1, Output),
-         "a Float64 source is rejected by OpenCV");
+         "depth",
+         "a Float64 source is rejected by the raw ABI");
       Expect_Failure
         (Raw_Calc
            (Source,
@@ -1239,12 +1246,6 @@ package body Histogram_Analysis_Tests is
            (Is_Marker (Output), Message & ": output must be unchanged");
       end Expect;
 
-      procedure Expect_Failure (Status : C_API.Status; Message : String) is
-      begin
-         AUnit.Assertions.Assert (Status /= C_API.Success, Message);
-         AUnit.Assertions.Assert
-           (Is_Marker (Output), Message & ": output must be unchanged");
-      end Expect_Failure;
    begin
       Expect
         (Raw_Back_Project
@@ -1299,13 +1300,25 @@ package body Histogram_Analysis_Tests is
            (Source, Hist, One, 1, Interfaces.C.double (Infinity64), Output),
          "scale",
          "an infinite scale is rejected");
-      Expect_Failure
+      Expect
         (Raw_Back_Project
-           (Source, Hist, (1 => Record_Of (4, 0.0, 256.0, 2)), 1, 1.0, Output),
-         "a channel absent from the source is rejected by OpenCV");
-      Expect_Failure
+           (Source, Hist, (1 => Record_Of (4, 0.0, 256.0, 1)), 1, 1.0, Output),
+         "channel",
+         "a missing channel is rejected before scanning");
+      Expect
+        (Raw_Back_Project
+           (Source,
+            Hist,
+            (1 => Record_Of (4, 0.0, 256.0, -1)),
+            1,
+            1.0,
+            Output),
+         "channel",
+         "a negative channel is rejected before scanning");
+      Expect
         (Raw_Back_Project
            (Filled (2, 2, (OpenCV.Core.Int16, 1)), Hist, One, 1, 1.0, Output),
+         "depth",
          "an Int16 source is rejected");
       Assert_Invalid
         (Raw_Back_Project_Null_Output (Source, Hist),
@@ -1317,6 +1330,75 @@ package body Histogram_Analysis_Tests is
          and then Output.Columns = 8,
          "a valid raw back projection succeeds");
    end Raw_Back_Project_Validation;
+
+   procedure Float32_Index_Preflight (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat := Filled (1, 2, (OpenCV.Core.Float32, 1));
+      Mask   : OpenCV.Core.Mat := Filled (1, 2, (OpenCV.Core.UInt8, 1));
+      Hist   : constant OpenCV.Core.Mat :=
+        Filled (2, 1, (OpenCV.Core.Float32, 1), Gray (3.0));
+      Output : OpenCV.Core.Mat := Marker;
+      Axis   : constant C_API.Histogram_Dimension_Records :=
+        (1 => Record_Of (2, 0.0, 1.0));
+      Unsafe : constant array (1 .. 4) of OpenCV.Float32_Value :=
+        (NaN32, Infinity32, -Infinity32, 1.0e30);
+   begin
+      F32.Set (Source, 0, 1, 0.25);
+      U8.Set (Mask, 0, 0, 0);
+      U8.Set (Mask, 0, 1, 255);
+      for Index in Unsafe'Range loop
+         F32.Set (Source, 0, 0, Unsafe (Index));
+         Assert_Invalid
+           (Raw_Calc (Source, Axis, 1, Output),
+            (if Index < 4 then "nonfinite" else "cvFloor int range"),
+            "unsafe Float32 calculation sample is rejected");
+         AUnit.Assertions.Assert
+           (Is_Marker (Output), "rejected calculation preserves output");
+         Assert_Invalid
+           (Raw_Back_Project (Source, Hist, Axis, 1, 1.0, Output),
+            (if Index < 4 then "nonfinite" else "cvFloor int range"),
+            "unsafe Float32 back projection sample is rejected");
+         AUnit.Assertions.Assert
+           (Is_Marker (Output), "rejected back projection preserves output");
+         AUnit.Assertions.Assert
+           (Raw_Calc (Source, Axis, 1, Output, Mask, True) = C_API.Success
+            and then F32.Get (Output, 0, 0) = 1.0
+            and then F32.Get (Output, 1, 0) = 0.0,
+            "masked-out unsafe Float32 sample is ignored");
+         Output := Marker;
+      end loop;
+      F32.Set (Source, 0, 0, 2.0);
+      AUnit.Assertions.Assert
+        (Raw_Calc (Source, Axis, 1, Output) = C_API.Success
+         and then F32.Get (Output, 0, 0) = 1.0,
+         "safe out-of-range sample does not increment a bin");
+      AUnit.Assertions.Assert
+        (Raw_Back_Project (Source, Hist, Axis, 1, 1.0, Output) = C_API.Success
+         and then F32.Get (Output, 0, 0) = 0.0
+         and then F32.Get (Output, 0, 1) = 3.0,
+         "safe out-of-range sample back-projects to zero");
+      declare
+         Repeated : constant C_API.Histogram_Dimension_Records :=
+           (Record_Of (2, 0.0, 1.0), Record_Of (2, 0.0, 1.0e-30));
+         Joint    : constant OpenCV.Core.Mat :=
+           Filled (2, 2, (OpenCV.Core.Float32, 1));
+      begin
+         F32.Set (Source, 0, 0, 0.25);
+         Output := Marker;
+         Assert_Invalid
+           (Raw_Calc (Source, Repeated, 2, Output),
+            "cvFloor int range",
+            "repeated channel is checked with each dimension's scale");
+         AUnit.Assertions.Assert
+           (Is_Marker (Output), "repeated-channel rejection preserves bins");
+         Assert_Invalid
+           (Raw_Back_Project (Source, Joint, Repeated, 2, 1.0, Output),
+            "cvFloor int range",
+            "back projection checks repeated channel per dimension");
+         AUnit.Assertions.Assert
+           (Is_Marker (Output), "repeated-channel rejection preserves output");
+      end;
+   end Float32_Index_Preflight;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
       procedure Add (Name : String; Routine : Caller.Test_Method) is
@@ -1354,6 +1436,8 @@ package body Histogram_Analysis_Tests is
       Add ("Back projection Region", Back_Project_Region'Access);
       Add ("Back projection invalid inputs", Back_Project_Invalid'Access);
       Add ("Back projection raw C ABI", Raw_Back_Project_Validation'Access);
+      Add
+        ("Float32 histogram index preflight", Float32_Index_Preflight'Access);
       return Result'Access;
    end Suite;
 

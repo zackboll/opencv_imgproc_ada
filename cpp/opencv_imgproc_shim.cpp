@@ -1903,6 +1903,12 @@ double histogram_sample_limit(int depth) noexcept
 
 const char *histogram_source_preflight(const cv::Mat &src) noexcept
 {
+    if (src.depth() != CV_8U && src.depth() != CV_16U
+        && src.depth() != CV_32F) {
+        // ABI safety: the sample scanner and OpenCV's histogram dispatch
+        // interpret source storage using only these three typed paths.
+        return "histogram source depth must be UInt8, UInt16, or Float32";
+    }
     if (src.dims != 2) {
         // ABI safety: histPrepareImages takes imsize from size(); an N-D
         // source reports -1 x -1 and its row loop then walks memory the Mat
@@ -1925,8 +1931,6 @@ const char *histogram_source_preflight(const cv::Mat &src) noexcept
 }
 
 // Validates the raw dimension records and builds the native call arrays.
-// Channel indices are left to OpenCV: histPrepareImages asserts c >= 0 and
-// c < channels() before forming any pointer, in every supported release.
 const char *histogram_request(
     const cv::Mat &src,
     const opencv_imgproc_histogram_dimension *dimensions,
@@ -1951,6 +1955,11 @@ const char *histogram_request(
     std::uint64_t total = 1;
     for (int32_t index = 0; index < count; ++index) {
         const opencv_imgproc_histogram_dimension &dimension = dimensions[index];
+        if (dimension.channel < 0 || dimension.channel >= src.channels()) {
+            // ABI safety: the Float32 preflight indexes this selected channel
+            // directly before histPrepareImages can check it.
+            return "invalid histogram channel";
+        }
         if (dimension.bin_count <= 0) {
             // ABI safety: OpenCV 5.0 setSize accepts negative extents, and a
             // zero-bin axis makes 4.10+ clamp bin indices to -1 before the
@@ -1993,6 +2002,52 @@ const char *histogram_request(
     }
     for (const std::array<float, 2> &range : request.range_storage) {
         request.ranges.push_back(range.data());
+    }
+    return nullptr;
+}
+
+// Inspect only samples that the native histogram will evaluate. Each logical
+// dimension has its own transform, even when channels are repeated.
+const char *histogram_float_samples_preflight(
+    const cv::Mat &src, const cv::Mat *mask,
+    const native_histogram_request &request)
+{
+    std::vector<double> scales;
+    std::vector<double> offsets;
+    for (std::size_t i = 0; i < request.sizes.size(); ++i) {
+        const double lower = request.range_storage[i][0];
+        const double upper = request.range_storage[i][1];
+        const double scale = request.sizes[i] / (upper - lower);
+        scales.push_back(scale);
+        offsets.push_back(-scale * lower);
+    }
+    for (int row = 0; row < src.rows; ++row) {
+        const float *pixels = src.ptr<float>(row);
+        const uchar *selected = mask == nullptr ? nullptr : mask->ptr<uchar>(row);
+        for (int col = 0; col < src.cols; ++col) {
+            if (selected != nullptr && selected[col] == 0) {
+                continue;
+            }
+            for (std::size_t i = 0; i < request.sizes.size(); ++i) {
+                const float sample = pixels[static_cast<std::size_t>(col)
+                    * src.channels() + request.channels[i]];
+                if (!std::isfinite(sample)) {
+                    return "nonfinite Float32 histogram sample";
+                }
+                // ABI safety: calcHist_<float> and calcBackProj_<float,float>
+                // evaluate cvFloor(sample * uniranges[2*i] +
+                // uniranges[2*i+1]) before rejecting some out-of-range
+                // samples. cvFloor's float-to-int conversion is undefined
+                // outside the native int domain. Keep a one-unit margin at
+                // both endpoints for conversion and rounding variants.
+                const double coordinate = sample * scales[i] + offsets[i];
+                if (!std::isfinite(coordinate)
+                    || !(coordinate > -native_int_limit
+                         && coordinate < native_int_limit)) {
+                    return "Float32 histogram sample/range transform exceeds native cvFloor int range";
+                }
+            }
+        }
     }
     return nullptr;
 }
@@ -2064,6 +2119,12 @@ const char *histogram_inputs(
             || msk == nullptr)) {
         return "invalid histogram mask";
     }
+    if (msk != nullptr && (msk->type() != CV_8UC1 || msk->dims != 2
+                           || msk->size != src->size)) {
+        // ABI safety: the Float32 scanner reads mask rows as UInt8 C1 at
+        // source coordinates; other layouts could be read out of bounds.
+        return "histogram mask must be matching 2-D UInt8 C1";
+    }
     const char *message =
         histogram_request(*src, dimensions, dimension_count, request);
     if (message == nullptr && msk != nullptr && msk->dims == 2
@@ -2071,6 +2132,9 @@ const char *histogram_inputs(
         // ABI safety: histPrepareImages narrows the UInt8 mask row step into
         // an int pointer delta.
         message = "histogram mask step exceeds native int";
+    }
+    if (message == nullptr && src->depth() == CV_32F) {
+        message = histogram_float_samples_preflight(*src, msk, request);
     }
     return message;
 }
