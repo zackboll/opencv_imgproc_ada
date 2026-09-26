@@ -5,6 +5,47 @@ private with Ada.Containers.Vectors;
 
 package OpenCV.Image_Processing is
 
+   type Distance_Transform_Method is
+     (Manhattan_Distance,
+      Chessboard_Distance,
+      Euclidean_3x3,
+      Euclidean_5x5,
+      Euclidean_Precise);
+   type Labeled_Distance_Metric is
+     (Manhattan_Label_Distance,
+      Euclidean_Label_Distance,
+      Chessboard_Label_Distance);
+   type Distance_Label_Mode is (Nearest_Zero_Component, Nearest_Zero_Pixel);
+   type Labeled_Distance_Transform_Result is record
+      Distances : OpenCV.Core.Mat;
+      Labels    : OpenCV.Core.Mat;
+   end record;
+
+   --  Source is a nonempty 2-D UInt8 C1 image containing at least one zero.
+   --  Every nonzero pixel is foreground. Results are fresh, source-preserving
+   --  Mats of the same geometry; Regions are independent logical images.
+   --  L1 and chessboard distances are exact. Euclidean_3x3 and Euclidean_5x5
+   --  use OpenCV's approximate weights; Euclidean_Precise is exact up to
+   --  Float32 rounding. The result is Float32 C1.
+   function Distance_Transform
+     (Source : OpenCV.Core.Mat;
+      Method : Distance_Transform_Method := Euclidean_Precise)
+      return OpenCV.Core.Mat;
+
+   --  Exact L1 distance, UInt8 C1, saturating at 255.
+   function Manhattan_Distance_Transform_UInt8
+     (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+
+   --  Distances are Float32 C1, Labels Int32 C1. Component mode groups
+   --  8-connected zero pixels; pixel mode assigns row-major positive labels
+   --  to individual zeros. Ties have no specified winner. Euclidean labeled
+   --  distances use the native 5x5 approximation; precise is unavailable.
+   function Distance_Transform_With_Labels
+     (Source : OpenCV.Core.Mat;
+      Metric : Labeled_Distance_Metric := Euclidean_Label_Distance;
+      Labels : Distance_Label_Mode := Nearest_Zero_Component)
+      return Labeled_Distance_Transform_Result;
+
    type Color_Conversion is (BGR_To_Gray);
 
    type Interpolation_Method is

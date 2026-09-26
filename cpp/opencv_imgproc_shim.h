@@ -50,6 +50,18 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_ERROR_UNKNOWN          ((opencv_imgproc_status)3)
 #define OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT ((opencv_imgproc_status)4)
 
+/* Semantic selectors: 0=L1, 1=chessboard, 2=L2 3x3,
+ * 3=L2 5x5, 4=L2 precise; labeled metric 0=L1, 1=L2, 2=C;
+ * label mode 0=8-connected zero components, 1=individual zero pixels. */
+opencv_imgproc_status opencv_imgproc_distance_transform_f32(
+    const opencv_core_mat_handle *source, int32_t method,
+    opencv_core_mat_handle *destination);
+opencv_imgproc_status opencv_imgproc_distance_transform_l1_u8(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination);
+opencv_imgproc_status opencv_imgproc_distance_transform_labeled(
+    const opencv_core_mat_handle *source, int32_t metric, int32_t label_mode,
+    opencv_core_mat_handle *distances, opencv_core_mat_handle *labels);
+
 #define OPENCV_IMGPROC_COLOR_BGR_TO_GRAY ((int32_t)0)
 
 #define OPENCV_IMGPROC_INTER_NEAREST  ((int32_t)0)

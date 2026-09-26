@@ -215,6 +215,7 @@ The table below summarizes the current public operations.
 | Histogram | `CLAHE` | nonempty 2-D `UInt8`/`UInt16` C1 | local contrast-limited equalization; default clip 40.0 and grid 8x8; same-object in-place supported; other storage-sharing aliases rejected |
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
 | Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
+| Analysis | `Distance_Transform`, `Manhattan_Distance_Transform_UInt8`, `Distance_Transform_With_Labels` | nonempty 2-D `UInt8` C1 with at least one zero | fresh Float32 distances, saturating UInt8 L1, or Float32 distances plus Int32 Voronoi labels |
 | Drawing | `Draw_Line`, `Draw_Rectangle`, `Fill_Rectangle`, `Draw_Circle`, `Fill_Circle`, `Draw_Ellipse`, `Fill_Ellipse`, `Draw_Polyline`, `Fill_Polygon` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | in-place; positive geometry; off-image coordinates clipped; antialiasing only for `UInt8`; no alpha blending |
 | Hough | `Find_Hough_Lines`, `Find_Hough_Line_Segments` | nonempty 2-D `UInt8` C1 binary image | classical polar lines (radians) and probabilistic integer segments; Ada-owned arrays; source-preserving snapshot |
 | Hough | `Find_Hough_Circles` | nonempty 2-D `UInt8` C1 grayscale image | classic `HOUGH_GRADIENT`; automatic or explicit maximum radius; Float32 center/radius; source-preserving snapshot |
@@ -3548,7 +3549,60 @@ not source artifacts.
 
 ---
 
+## Distance transforms
+
+`Distance_Transform (Source, Method)` accepts a nonempty 2-D `UInt8` C1
+foreground mask containing at least one zero pixel. Zero means target/background;
+**any** nonzero value means foreground (1 and 255 behave alike). It returns a
+fresh `Float32` C1 Mat with the same dimensions. The default method is
+`Euclidean_Precise`. Choose `Manhattan_Distance` for |dx| + |dy|,
+`Chessboard_Distance` for max(|dx|, |dy|), `Euclidean_3x3` for the fast
+OpenCV-weighted approximation (axis weight about 0.955), `Euclidean_5x5` for
+the more accurate weighted approximation, or `Euclidean_Precise` for precise
+Euclidean distances (subject to Float32 rounding). L1 and chessboard need no
+5x5 selection: it produces the same values. Zero pixels return distance zero.
+`Manhattan_Distance_Transform_UInt8 (Source)` returns `UInt8` C1 L1 distances
+instead, **saturating at 255**. There is no UInt8 Euclidean option.
+
+`Distance_Transform_With_Labels (Source, Metric, Labels)` returns a record with
+fresh owning `Distances : Float32 C1` and `Labels : Int32 C1` Mats. The metric
+is `Manhattan_Label_Distance`, `Euclidean_Label_Distance` (default), or
+`Chessboard_Label_Distance`. `Nearest_Zero_Component` (default) gives each
+8-connected zero component a positive label; `Nearest_Zero_Pixel` gives each
+zero pixel its own positive label in row-major scan order. Other pixels get a
+nearest target's label; equidistant ties are unspecified. OpenCV forces labeled
+transforms through its **5x5 approximate** propagation implementation; precise
+Euclidean and mask-size selection are deliberately unavailable with labels.
+
+All variants leave Source unchanged. An OpenCV.Core `Region` is processed as a
+standalone logical image; pixels outside it do not participate. An all-zero
+image produces zero distances. An all-nonzero image is rejected with
+`OpenCV_Error`, because the target set is empty and native sentinel values
+differ between algorithms/releases. The shim also guards the native signed-int
+step, row-offset, padded-temporary and pixel-count arithmetic. On 4.1-compatible
+precise transforms its signed `i*i` table construction limits each extent to
+46341 pixels (maximum index 46340); `3*rows+1` and `2*columns` must also fit
+signed int. Large/noncontiguous Region parent strides can be rejected even
+when the Region itself is small.
+
+For segmentation, a typical pipeline is a binary foreground mask, then
+`Distance_Transform`, then `Apply_Threshold` on the Float32 distance map to
+select confident peaks, then `Connected_Components_With_Stats` on a UInt8
+peak mask to obtain regions/markers for `Watershed`. Convert the thresholded
+peaks to UInt8 explicitly: the threshold operation preserves Float32 depth.
+This crate does not yet provide a watershed-marker construction helper.
+
+For a discrete Voronoi map:
+
+```ada
+Voronoi : constant Labeled_Distance_Transform_Result :=
+  Distance_Transform_With_Labels
+    (Source, Euclidean_Label_Distance, Nearest_Zero_Pixel);
+--  Voronoi.Distances is Float32 C1; Voronoi.Labels is Int32 C1.
+```
+
 ## Current limitations and roadmap
+
 
 The current implementation has a mature safety/build architecture but is still
 a **focused subset** of OpenCV Imgproc. Version `0.1.0-dev` should be treated as
@@ -3566,12 +3620,12 @@ Notable Imgproc families that are not yet broadly bound include:
   centers-only circle output, and optional accumulator votes;
 - deferred segmentation capabilities: flood fill on `Int32` images,
   combined `GC_INIT_WITH_RECT | GC_INIT_WITH_MASK` initialization, exposing or
-  importing GrabCut models, mean-shift segmentation, and distance-transform
-  based marker generation;
+  importing GrabCut models, mean-shift segmentation, and higher-level
+  distance-transform marker-construction convenience;
 - advanced histogram capabilities: multi-image histograms, nonuniform bin
   boundaries, accumulation/update, `SparseMat` histograms, and EMD (a future
   sparse-histogram abstraction may revisit the dense 10-dimension limit);
-- distance transforms;
+- custom/user-defined distance masks (not part of the portable foundation);
 - integral images;
 - text rendering and text metrics;
 - markers, arrows, and `drawContours` as its own operation;
