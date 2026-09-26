@@ -1014,6 +1014,145 @@ package OpenCV.Image_Processing is
       Maximum_Radius          : OpenCV.Size_Coordinate)
       return Hough_Circle_Array;
 
+   --  Segmentation. Contract violations, native arithmetic limits, and
+   --  OpenCV failures raise OpenCV.OpenCV_Error.
+
+   --  Floating_Range compares each candidate with its already-filled
+   --  neighbour; Fixed_Range compares every candidate with the seed pixel.
+   type Flood_Fill_Range_Mode is (Floating_Range, Fixed_Range);
+
+   subtype Flood_Fill_Mask_Value is OpenCV.UInt8_Value range 1 .. 255;
+
+   --  Pixel_Count is the number of filled pixels. Bounds is the smallest
+   --  rectangle containing them, in the coordinates of the supplied Image.
+   type Flood_Fill_Result is record
+      Pixel_Count : Natural;
+      Bounds      : OpenCV.Rect;
+   end record;
+
+   --  Fills the connected component containing Seed with New_Value in place.
+   --  Image must be a nonempty two-dimensional UInt8 or Float32 Mat with one
+   --  or three channels; Seed (X is the column, Y the row) must lie inside
+   --  it. A neighbour joins the component when every channel lies within
+   --  [reference - Lower_Difference, reference + Upper_Difference], where
+   --  the reference follows Range_Mode. The components used by Image's
+   --  channels must be finite, and the differences nonnegative. A Region is
+   --  filled as its own logical image and mutates its parent's storage;
+   --  shallow aliases observe the mutation.
+   procedure Flood_Fill
+     (Image            : in out OpenCV.Core.Mat;
+      Seed             : OpenCV.Point;
+      New_Value        : OpenCV.Scalar;
+      Result           : out Flood_Fill_Result;
+      Lower_Difference : OpenCV.Scalar := (others => 0.0);
+      Upper_Difference : OpenCV.Scalar := (others => 0.0);
+      Connectivity     : Pixel_Connectivity := Four_Connected;
+      Range_Mode       : Flood_Fill_Range_Mode := Floating_Range);
+
+   --  As Flood_Fill, additionally constrained and recorded by Mask. Mask is
+   --  a UInt8 C1 Mat of (Image.Rows + 2) x (Image.Columns + 2) that must not
+   --  share storage with Image: Image (X, Y) corresponds to Mask (X + 1,
+   --  Y + 1). Filling never crosses a nonzero mask pixel. Every filled pixel
+   --  is set to Mask_Fill_Value in Mask, and OpenCV sets Mask's one-pixel
+   --  outer border to 1. When Mask_Only is True, Image is left unchanged and
+   --  New_Value is ignored; Mask and Result are still updated.
+   procedure Flood_Fill_With_Mask
+     (Image            : in out OpenCV.Core.Mat;
+      Mask             : in out OpenCV.Core.Mat;
+      Seed             : OpenCV.Point;
+      New_Value        : OpenCV.Scalar;
+      Result           : out Flood_Fill_Result;
+      Lower_Difference : OpenCV.Scalar := (others => 0.0);
+      Upper_Difference : OpenCV.Scalar := (others => 0.0);
+      Connectivity     : Pixel_Connectivity := Four_Connected;
+      Range_Mode       : Flood_Fill_Range_Mode := Floating_Range;
+      Mask_Fill_Value  : Flood_Fill_Mask_Value := 1;
+      Mask_Only        : Boolean := False);
+
+   --  Marker-based watershed. Source is a nonempty two-dimensional UInt8 C3
+   --  image and is not modified. Markers is an Int32 C1 Mat of the same
+   --  rows and columns, updated in place: on input 0 means unknown and each
+   --  positive value seeds a region (negative input values are rejected);
+   --  on output unknown pixels carry a propagated region label, and -1 marks
+   --  watershed boundaries, including Markers' one-pixel outer border.
+   --  Markers must not share storage with Source.
+   procedure Watershed
+     (Source : OpenCV.Core.Mat; Markers : in out OpenCV.Core.Mat);
+
+   type GrabCut_Label is
+     (Definite_Background,
+      Definite_Foreground,
+      Probable_Background,
+      Probable_Foreground);
+
+   --  Numeric mask encoding: Definite_Background 0, Definite_Foreground 1,
+   --  Probable_Background 2, Probable_Foreground 3.
+   function GrabCut_Label_Value
+     (Label : GrabCut_Label) return OpenCV.UInt8_Value;
+
+   --  Inverse of GrabCut_Label_Value. Values above 3 raise OpenCV_Error.
+   function To_GrabCut_Label (Value : OpenCV.UInt8_Value) return GrabCut_Label;
+
+   subtype GrabCut_Iterations is Positive range 1 .. 2_147_483_647;
+
+   --  Minimum background and foreground pixel counts required to initialize
+   --  GrabCut portably: OpenCV 4.1 clusters each training set into five
+   --  Gaussian-mixture components with k-means, which needs five samples.
+   GrabCut_Minimum_Training_Pixels : constant := 5;
+
+   --  GrabCut segmentation state: a private label mask plus hidden
+   --  background and foreground colour models. The type is limited, so a
+   --  state cannot be shallow-copied. A default-initialized state is
+   --  uninitialized and is rejected by every operation except Is_Initialized.
+   type GrabCut_State is limited private;
+
+   function Is_Initialized (State : GrabCut_State) return Boolean;
+
+   --  Initializes from Source, a nonempty two-dimensional UInt8 C3 image,
+   --  and Foreground_Region, which must have positive size, lie entirely
+   --  inside Source, and leave at least GrabCut_Minimum_Training_Pixels
+   --  pixels both inside and outside. Pixels outside the region start as
+   --  Definite_Background and inside as Probable_Foreground; Iterations
+   --  rounds of segmentation then run. Source is not modified.
+   function Initialize_GrabCut
+     (Source            : OpenCV.Core.Mat;
+      Foreground_Region : OpenCV.Rect;
+      Iterations        : GrabCut_Iterations := 1) return GrabCut_State;
+
+   --  Initializes from Source and a caller-built label mask. Initial_Mask
+   --  must be a two-dimensional UInt8 C1 Mat with Source's rows and columns
+   --  holding only values 0 .. 3 (see GrabCut_Label_Value), with at least
+   --  GrabCut_Minimum_Training_Pixels background (definite or probable) and
+   --  foreground (definite or probable) pixels. The state owns a deep copy;
+   --  Initial_Mask and Source are not modified.
+   function Initialize_GrabCut
+     (Source       : OpenCV.Core.Mat;
+      Initial_Mask : OpenCV.Core.Mat;
+      Iterations   : GrabCut_Iterations := 1) return GrabCut_State;
+
+   --  Runs Iterations further rounds that relearn the colour models and
+   --  re-segment the probable pixels. Source must be a UInt8 C3 image with
+   --  the state's geometry. Definite labels never change. Source is not
+   --  modified.
+   procedure Refine_GrabCut
+     (Source     : OpenCV.Core.Mat;
+      State      : in out GrabCut_State;
+      Iterations : GrabCut_Iterations := 1);
+
+   --  Re-segments the probable pixels once with the current colour models
+   --  held fixed. Otherwise as Refine_GrabCut.
+   procedure Refine_GrabCut_Frozen_Model
+     (Source : OpenCV.Core.Mat; State : in out GrabCut_State);
+
+   --  Returns an independent deep copy of the UInt8 C1 label mask. Changing
+   --  the returned Mat never affects State.
+   function GrabCut_Mask (State : GrabCut_State) return OpenCV.Core.Mat;
+
+   --  Returns the label at a zero-based Row and Column of the state's mask.
+   function GrabCut_Label_At
+     (State : GrabCut_State; Row : Natural; Column : Natural)
+      return GrabCut_Label;
+
 private
    package Contour_Vectors is new
      Ada.Containers.Indefinite_Vectors
@@ -1037,5 +1176,14 @@ private
 
    type Connected_Component_Set is record
       Components : Component_Vectors.Vector;
+   end record;
+
+   --  The Mats are owned exclusively by the state. Background_Model and
+   --  Foreground_Model hold OpenCV's native Float64 1 x 65 mixture models.
+   type GrabCut_State is limited record
+      Mask             : OpenCV.Core.Mat;
+      Background_Model : OpenCV.Core.Mat;
+      Foreground_Model : OpenCV.Core.Mat;
+      Initialized      : Boolean := False;
    end record;
 end OpenCV.Image_Processing;

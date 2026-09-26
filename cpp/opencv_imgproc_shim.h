@@ -640,6 +640,111 @@ opencv_imgproc_fill_polygon(
     double color_3,
     int32_t line_style);
 
+/* Segmentation. */
+
+/* Four scalar components; channel k uses values[k]. */
+typedef struct {
+    double values[4];
+} opencv_imgproc_scalar4;
+
+/* Axis-aligned integer rectangle. */
+typedef struct {
+    int32_t x;
+    int32_t y;
+    int32_t width;
+    int32_t height;
+} opencv_imgproc_rect_i32;
+
+#define OPENCV_IMGPROC_FLOOD_FILL_FLOATING_RANGE ((int32_t)0)
+#define OPENCV_IMGPROC_FLOOD_FILL_FIXED_RANGE    ((int32_t)1)
+
+/*
+ * Flood fill of a UInt8 or Float32 C1/C3 image in place.
+ * connectivity is 4 or 8; range_mode is one of the FLOOD_FILL constants;
+ * mask_fill_value must be 1..255; mask_only is 0 or 1. On success
+ * pixel_count and bounds receive OpenCV's area and bounding rectangle. On
+ * failure they are zero. The unmasked form lets OpenCV use a private mask.
+ */
+opencv_imgproc_status
+opencv_imgproc_flood_fill(
+    opencv_core_mat_handle *image,
+    int32_t seed_x,
+    int32_t seed_y,
+    const opencv_imgproc_scalar4 *new_value,
+    const opencv_imgproc_scalar4 *lower_difference,
+    const opencv_imgproc_scalar4 *upper_difference,
+    int32_t connectivity,
+    int32_t range_mode,
+    int32_t *pixel_count,
+    opencv_imgproc_rect_i32 *bounds);
+
+/*
+ * As opencv_imgproc_flood_fill with a caller-supplied UInt8 C1 mask of
+ * (rows + 2) x (cols + 2). Image (x, y) corresponds to mask (x + 1, y + 1).
+ * Image and mask storage must not overlap.
+ */
+opencv_imgproc_status
+opencv_imgproc_flood_fill_masked(
+    opencv_core_mat_handle *image,
+    opencv_core_mat_handle *mask,
+    int32_t seed_x,
+    int32_t seed_y,
+    const opencv_imgproc_scalar4 *new_value,
+    const opencv_imgproc_scalar4 *lower_difference,
+    const opencv_imgproc_scalar4 *upper_difference,
+    int32_t connectivity,
+    int32_t range_mode,
+    int32_t mask_fill_value,
+    uint8_t mask_only,
+    int32_t *pixel_count,
+    opencv_imgproc_rect_i32 *bounds);
+
+/* Marker-based watershed. source is UInt8 C3; markers is Int32 C1 of the
+ * same size and is updated in place. Storage must not overlap. */
+opencv_imgproc_status
+opencv_imgproc_watershed(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *markers);
+
+#define OPENCV_IMGPROC_GRABCUT_INIT_WITH_RECT    ((int32_t)0)
+#define OPENCV_IMGPROC_GRABCUT_INIT_WITH_MASK    ((int32_t)1)
+#define OPENCV_IMGPROC_GRABCUT_EVAL              ((int32_t)2)
+#define OPENCV_IMGPROC_GRABCUT_EVAL_FREEZE_MODEL ((int32_t)3)
+
+/* Portable minimum training-set size: OpenCV 4.1 initializes five-component
+ * GMMs with kmeans(K = 5), which requires at least five samples. */
+#define OPENCV_IMGPROC_GRABCUT_MINIMUM_TRAINING_SAMPLES ((int32_t)5)
+
+/*
+ * GrabCut. source is UInt8 C3. mask, background_model, and foreground_model
+ * are distinct, non-overlapping state Mats updated in place. The rectangle
+ * is used only by INIT_WITH_RECT. Initialization modes require at least
+ * five background and five foreground training pixels. Evaluation modes
+ * require Float64 C1 1 x 65 models. iteration_count must be positive, and
+ * exactly 1 for EVAL_FREEZE_MODEL.
+ */
+opencv_imgproc_status
+opencv_imgproc_grabcut(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *mask,
+    opencv_core_mat_handle *background_model,
+    opencv_core_mat_handle *foreground_model,
+    int32_t rect_x,
+    int32_t rect_y,
+    int32_t rect_width,
+    int32_t rect_height,
+    int32_t iteration_count,
+    int32_t mode);
+
+/* Sets *overlap to 1 when any element byte addressed by one Mat is also
+ * addressed by the other, independent of element type or row step, and to 0
+ * otherwise. Empty Mats never overlap. Used by segmentation validation. */
+opencv_imgproc_status
+opencv_imgproc_mat_storage_overlap(
+    const opencv_core_mat_handle *first,
+    const opencv_core_mat_handle *second,
+    uint8_t *overlap);
+
 #ifdef __cplusplus
 }
 #endif

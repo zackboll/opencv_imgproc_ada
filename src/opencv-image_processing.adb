@@ -4,6 +4,7 @@ with Interfaces.C;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Int32_Access;
+with OpenCV.Core.UInt8_Access;
 with OpenCV.Image_Processing.Internal.C_API;
 
 package body OpenCV.Image_Processing is
@@ -4516,5 +4517,615 @@ package body OpenCV.Image_Processing is
            Internal.C_API.Hough_Radius_Explicit,
            Maximum_Radius);
    end Find_Hough_Circles;
+
+   --  Segmentation.
+
+   procedure Segmentation_Error (Message : String) is
+   begin
+      Ada.Exceptions.Raise_Exception (OpenCV.OpenCV_Error'Identity, Message);
+   end Segmentation_Error;
+
+   function To_C_Scalar4 (Value : OpenCV.Scalar) return Internal.C_API.Scalar4
+   is (Values =>
+         (Interfaces.C.double (Value.Component_0),
+          Interfaces.C.double (Value.Component_1),
+          Interfaces.C.double (Value.Component_2),
+          Interfaces.C.double (Value.Component_3)));
+
+   function Scalar_Component
+     (Value : OpenCV.Scalar; Index : Natural) return OpenCV.Float64_Value
+   is (OpenCV.Float64_Value
+         (case Index is
+            when 0      => Value.Component_0,
+            when 1      => Value.Component_1,
+            when 2      => Value.Component_2,
+            when others => Value.Component_3));
+
+   procedure Validate_Flood_Fill
+     (Image            : OpenCV.Core.Mat;
+      Seed             : OpenCV.Point;
+      New_Value        : OpenCV.Scalar;
+      Lower_Difference : OpenCV.Scalar;
+      Upper_Difference : OpenCV.Scalar;
+      Use_New_Value    : Boolean)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Float64_Value;
+   begin
+      if Image.Is_Empty then
+         Segmentation_Error ("Flood_Fill requires a non-empty image");
+      elsif Image.Dimension_Count /= 2 then
+         Segmentation_Error ("Flood_Fill requires a two-dimensional image");
+      elsif Image.Depth /= OpenCV.Core.UInt8
+        and then Image.Depth /= OpenCV.Core.Float32
+      then
+         Segmentation_Error ("Flood_Fill requires a UInt8 or Float32 image");
+      elsif Image.Channels /= 1 and then Image.Channels /= 3 then
+         Segmentation_Error ("Flood_Fill requires one or three channels");
+      elsif Seed.X < 0
+        or else Seed.Y < 0
+        or else Seed.X >= OpenCV.Point_Coordinate (Image.Columns)
+        or else Seed.Y >= OpenCV.Point_Coordinate (Image.Rows)
+      then
+         Segmentation_Error ("Flood_Fill requires Seed inside the image");
+      end if;
+
+      for Index in 0 .. Natural (Image.Channels) - 1 loop
+         declare
+            Value : constant OpenCV.Float64_Value :=
+              Scalar_Component (New_Value, Index);
+            Lower : constant OpenCV.Float64_Value :=
+              Scalar_Component (Lower_Difference, Index);
+            Upper : constant OpenCV.Float64_Value :=
+              Scalar_Component (Upper_Difference, Index);
+         begin
+            if (Use_New_Value and then not Is_Finite (Value))
+              or else not Is_Finite (Lower)
+              or else not Is_Finite (Upper)
+            then
+               Segmentation_Error
+                 ("Flood_Fill requires finite value and difference"
+                  & " components for every channel");
+            elsif Lower < 0.0 or else Upper < 0.0 then
+               Segmentation_Error
+                 ("Flood_Fill requires nonnegative differences");
+            end if;
+         end;
+      end loop;
+   end Validate_Flood_Fill;
+
+   function To_C_Range_Mode
+     (Mode : Flood_Fill_Range_Mode) return Interfaces.Integer_32
+   is (case Mode is
+         when Floating_Range => Internal.C_API.Flood_Fill_Floating_Range,
+         when Fixed_Range    => Internal.C_API.Flood_Fill_Fixed_Range);
+
+   function To_Flood_Fill_Result
+     (Count : Interfaces.Integer_32; Bounds : Internal.C_API.Rect_I32)
+      return Flood_Fill_Result
+   is (Pixel_Count => Natural (Count),
+       Bounds      =>
+         (X      => OpenCV.Point_Coordinate (Bounds.X),
+          Y      => OpenCV.Point_Coordinate (Bounds.Y),
+          Width  => OpenCV.Size_Coordinate (Bounds.Width),
+          Height => OpenCV.Size_Coordinate (Bounds.Height)));
+
+   procedure Flood_Fill
+     (Image            : in out OpenCV.Core.Mat;
+      Seed             : OpenCV.Point;
+      New_Value        : OpenCV.Scalar;
+      Result           : out Flood_Fill_Result;
+      Lower_Difference : OpenCV.Scalar := (others => 0.0);
+      Upper_Difference : OpenCV.Scalar := (others => 0.0);
+      Connectivity     : Pixel_Connectivity := Four_Connected;
+      Range_Mode       : Flood_Fill_Range_Mode := Floating_Range)
+   is
+      C_Value : aliased constant Internal.C_API.Scalar4 :=
+        To_C_Scalar4 (New_Value);
+      C_Lower : aliased constant Internal.C_API.Scalar4 :=
+        To_C_Scalar4 (Lower_Difference);
+      C_Upper : aliased constant Internal.C_API.Scalar4 :=
+        To_C_Scalar4 (Upper_Difference);
+      Count   : aliased Interfaces.Integer_32 := 0;
+      Bounds  : aliased Internal.C_API.Rect_I32 := (0, 0, 0, 0);
+      Status  : Internal.C_API.Status;
+
+      procedure Fill (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Flood_Fill
+             (Handle,
+              Interfaces.Integer_32 (Seed.X),
+              Interfaces.Integer_32 (Seed.Y),
+              C_Value'Access,
+              C_Lower'Access,
+              C_Upper'Access,
+              To_C_Connectivity (Connectivity),
+              To_C_Range_Mode (Range_Mode),
+              Count'Access,
+              Bounds'Access);
+      end Fill;
+   begin
+      Validate_Flood_Fill
+        (Image, Seed, New_Value, Lower_Difference, Upper_Difference, True);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Fill'Access);
+      Raise_On_Error (Status, "Flood_Fill");
+      Result := To_Flood_Fill_Result (Count, Bounds);
+   end Flood_Fill;
+
+   --  Byte-level storage overlap, exact for Mats of different element types
+   --  (for example a flood-fill mask and image carved from one buffer).
+   function Storage_Overlaps
+     (First, Second : OpenCV.Core.Mat; Operation : String) return Boolean
+   is
+      use type Interfaces.Unsigned_8;
+
+      Overlap : aliased Interfaces.Unsigned_8 := 0;
+      Status  : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure First_Input
+        (First_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Second_Input
+           (Second_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Mat_Storage_Overlap
+                (First_Handle, Second_Handle, Overlap'Access);
+         end Second_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Second, Second_Input'Access);
+      end First_Input;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle (First, First_Input'Access);
+      Raise_On_Error (Status, Operation & " storage validation");
+      return Overlap /= 0;
+   end Storage_Overlaps;
+
+   procedure Flood_Fill_With_Mask
+     (Image            : in out OpenCV.Core.Mat;
+      Mask             : in out OpenCV.Core.Mat;
+      Seed             : OpenCV.Point;
+      New_Value        : OpenCV.Scalar;
+      Result           : out Flood_Fill_Result;
+      Lower_Difference : OpenCV.Scalar := (others => 0.0);
+      Upper_Difference : OpenCV.Scalar := (others => 0.0);
+      Connectivity     : Pixel_Connectivity := Four_Connected;
+      Range_Mode       : Flood_Fill_Range_Mode := Floating_Range;
+      Mask_Fill_Value  : Flood_Fill_Mask_Value := 1;
+      Mask_Only        : Boolean := False)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+
+      --  OpenCV ignores New_Value in mask-only mode, so it is neither
+      --  validated nor passed; a neutral value is used instead.
+      Fill_Value : constant OpenCV.Scalar :=
+        (if Mask_Only then (others => 0.0) else New_Value);
+      C_Value    : aliased constant Internal.C_API.Scalar4 :=
+        To_C_Scalar4 (Fill_Value);
+      C_Lower    : aliased constant Internal.C_API.Scalar4 :=
+        To_C_Scalar4 (Lower_Difference);
+      C_Upper    : aliased constant Internal.C_API.Scalar4 :=
+        To_C_Scalar4 (Upper_Difference);
+      Count      : aliased Interfaces.Integer_32 := 0;
+      Bounds     : aliased Internal.C_API.Rect_I32 := (0, 0, 0, 0);
+      Status     : Internal.C_API.Status;
+
+      procedure Fill_Image
+        (Image_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      is
+         procedure Fill_Mask
+           (Mask_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Flood_Fill_Masked
+                (Image_Handle,
+                 Mask_Handle,
+                 Interfaces.Integer_32 (Seed.X),
+                 Interfaces.Integer_32 (Seed.Y),
+                 C_Value'Access,
+                 C_Lower'Access,
+                 C_Upper'Access,
+                 To_C_Connectivity (Connectivity),
+                 To_C_Range_Mode (Range_Mode),
+                 Interfaces.Integer_32 (Mask_Fill_Value),
+                 (if Mask_Only then 1 else 0),
+                 Count'Access,
+                 Bounds'Access);
+         end Fill_Mask;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Mask, Fill_Mask'Access);
+      end Fill_Image;
+   begin
+      Validate_Flood_Fill
+        (Image,
+         Seed,
+         Fill_Value,
+         Lower_Difference,
+         Upper_Difference,
+         not Mask_Only);
+      if Mask.Is_Empty
+        or else Mask.Dimension_Count /= 2
+        or else Mask.Depth /= OpenCV.Core.UInt8
+        or else Mask.Channels /= 1
+      then
+         Segmentation_Error
+           ("Flood_Fill_With_Mask requires a non-empty two-dimensional UInt8"
+            & " C1 mask");
+      elsif Mask.Rows /= Image.Rows + 2
+        or else Mask.Columns /= Image.Columns + 2
+      then
+         Segmentation_Error
+           ("Flood_Fill_With_Mask requires a mask two rows and two columns"
+            & " larger than the image");
+      elsif Storage_Overlaps (Image, Mask, "Flood_Fill_With_Mask") then
+         Segmentation_Error
+           ("Flood_Fill_With_Mask requires Mask not to share storage with"
+            & " Image");
+      end if;
+
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Fill_Image'Access);
+      Raise_On_Error (Status, "Flood_Fill_With_Mask");
+      Result := To_Flood_Fill_Result (Count, Bounds);
+   end Flood_Fill_With_Mask;
+
+   procedure Watershed
+     (Source : OpenCV.Core.Mat; Markers : in out OpenCV.Core.Mat)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+
+      Status : Internal.C_API.Status;
+
+      procedure Segment_Source
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Segment_Markers
+           (Markers_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status := Internal.C_API.Watershed (Source_Handle, Markers_Handle);
+         end Segment_Markers;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Markers, Segment_Markers'Access);
+      end Segment_Source;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth /= OpenCV.Core.UInt8
+        or else Source.Channels /= 3
+      then
+         Segmentation_Error
+           ("Watershed requires a non-empty two-dimensional UInt8 C3 source");
+      elsif Markers.Is_Empty
+        or else Markers.Dimension_Count /= 2
+        or else Markers.Depth /= OpenCV.Core.Int32
+        or else Markers.Channels /= 1
+      then
+         Segmentation_Error
+           ("Watershed requires non-empty two-dimensional Int32 C1 markers");
+      elsif Markers.Rows /= Source.Rows
+        or else Markers.Columns /= Source.Columns
+      then
+         Segmentation_Error
+           ("Watershed requires markers with the source rows and columns");
+      elsif OpenCV.Core.Min_Max_Loc (Markers).Minimum < 0.0 then
+         Segmentation_Error ("Watershed requires nonnegative input markers");
+      elsif Storage_Overlaps (Source, Markers, "Watershed") then
+         Segmentation_Error
+           ("Watershed requires Markers not to share storage with Source");
+      end if;
+
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Segment_Source'Access);
+      Raise_On_Error (Status, "Watershed");
+   end Watershed;
+
+   function GrabCut_Label_Value
+     (Label : GrabCut_Label) return OpenCV.UInt8_Value
+   is (OpenCV.UInt8_Value (GrabCut_Label'Pos (Label)));
+
+   function To_GrabCut_Label (Value : OpenCV.UInt8_Value) return GrabCut_Label
+   is
+      use type OpenCV.UInt8_Value;
+   begin
+      if Value > 3 then
+         Segmentation_Error ("GrabCut labels are the values 0 .. 3");
+      end if;
+      return GrabCut_Label'Val (Natural (Value));
+   end To_GrabCut_Label;
+
+   function Is_Initialized (State : GrabCut_State) return Boolean
+   is (State.Initialized);
+
+   procedure Validate_GrabCut_Source
+     (Source : OpenCV.Core.Mat; Operation : String)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth /= OpenCV.Core.UInt8
+        or else Source.Channels /= 3
+      then
+         Segmentation_Error
+           (Operation
+            & " requires a non-empty two-dimensional UInt8 C3 source");
+      end if;
+   end Validate_GrabCut_Source;
+
+   --  Runs native GrabCut on the given state Mats, which must be private to
+   --  the caller and distinct from each other and from Source.
+   procedure Run_GrabCut
+     (Source     : OpenCV.Core.Mat;
+      Mask       : in out OpenCV.Core.Mat;
+      Background : in out OpenCV.Core.Mat;
+      Foreground : in out OpenCV.Core.Mat;
+      Region     : OpenCV.Rect;
+      Iterations : GrabCut_Iterations;
+      Mode       : Interfaces.Integer_32)
+   is
+      Status : Internal.C_API.Status;
+
+      procedure With_Source
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure With_Mask
+           (Mask_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            procedure With_Background
+              (Background_Handle :
+                 OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               procedure With_Foreground
+                 (Foreground_Handle :
+                    OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.GrabCut
+                      (Source_Handle,
+                       Mask_Handle,
+                       Background_Handle,
+                       Foreground_Handle,
+                       Interfaces.Integer_32 (Region.X),
+                       Interfaces.Integer_32 (Region.Y),
+                       Interfaces.Integer_32 (Region.Width),
+                       Interfaces.Integer_32 (Region.Height),
+                       Interfaces.Integer_32 (Iterations),
+                       Mode);
+               end With_Foreground;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Foreground, With_Foreground'Access);
+            end With_Background;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Background, With_Background'Access);
+         end With_Mask;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Mask, With_Mask'Access);
+      end With_Source;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, With_Source'Access);
+      Raise_On_Error (Status, "GrabCut");
+   end Run_GrabCut;
+
+   procedure Validate_GrabCut_Region
+     (Rows, Columns, X, Y, Width, Height : Long_Long_Integer) is
+   begin
+      if Width = 0
+        or else Height = 0
+        or else X < 0
+        or else Y < 0
+        or else X + Width > Columns
+        or else Y + Height > Rows
+      then
+         Segmentation_Error
+           ("Initialize_GrabCut requires a non-empty Foreground_Region"
+            & " inside Source");
+      elsif Width * Height < GrabCut_Minimum_Training_Pixels
+        or else Rows * Columns - Width * Height
+                < GrabCut_Minimum_Training_Pixels
+      then
+         Segmentation_Error
+           ("Initialize_GrabCut requires at least five pixels inside and"
+            & " five outside Foreground_Region");
+      end if;
+   end Validate_GrabCut_Region;
+
+   function Initialize_GrabCut
+     (Source            : OpenCV.Core.Mat;
+      Foreground_Region : OpenCV.Rect;
+      Iterations        : GrabCut_Iterations := 1) return GrabCut_State
+   is
+      X      : constant Long_Long_Integer :=
+        Long_Long_Integer (Foreground_Region.X);
+      Y      : constant Long_Long_Integer :=
+        Long_Long_Integer (Foreground_Region.Y);
+      Width  : constant Long_Long_Integer :=
+        Long_Long_Integer (Foreground_Region.Width);
+      Height : constant Long_Long_Integer :=
+        Long_Long_Integer (Foreground_Region.Height);
+   begin
+      Validate_GrabCut_Source (Source, "Initialize_GrabCut");
+      declare
+         Rows    : constant Long_Long_Integer :=
+           Long_Long_Integer (Source.Rows);
+         Columns : constant Long_Long_Integer :=
+           Long_Long_Integer (Source.Columns);
+      begin
+         Validate_GrabCut_Region (Rows, Columns, X, Y, Width, Height);
+      end;
+
+      return State : GrabCut_State do
+         Run_GrabCut
+           (Source,
+            State.Mask,
+            State.Background_Model,
+            State.Foreground_Model,
+            Foreground_Region,
+            Iterations,
+            Internal.C_API.GrabCut_Init_With_Rect);
+         State.Initialized := True;
+      end return;
+   end Initialize_GrabCut;
+
+   --  The rectangle argument OpenCV ignores outside GC_INIT_WITH_RECT.
+   No_Region : constant OpenCV.Rect :=
+     (X => 0, Y => 0, Width => 0, Height => 0);
+
+   --  Number of Mask elements whose value lies in Low .. High.
+   function Count_Labels
+     (Mask : OpenCV.Core.Mat; Low, High : Long_Float) return Long_Long_Integer
+   is (Long_Long_Integer
+         (OpenCV.Core.Count_Non_Zero
+            (OpenCV.Core.In_Range
+               (Mask,
+                (Component_0 => Low, others => 0.0),
+                (Component_0 => High, others => 0.0)))));
+
+   function Initialize_GrabCut
+     (Source       : OpenCV.Core.Mat;
+      Initial_Mask : OpenCV.Core.Mat;
+      Iterations   : GrabCut_Iterations := 1) return GrabCut_State
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      Validate_GrabCut_Source (Source, "Initialize_GrabCut");
+      if Initial_Mask.Is_Empty
+        or else Initial_Mask.Dimension_Count /= 2
+        or else Initial_Mask.Depth /= OpenCV.Core.UInt8
+        or else Initial_Mask.Channels /= 1
+      then
+         Segmentation_Error
+           ("Initialize_GrabCut requires a two-dimensional UInt8 C1"
+            & " Initial_Mask");
+      elsif Initial_Mask.Rows /= Source.Rows
+        or else Initial_Mask.Columns /= Source.Columns
+      then
+         Segmentation_Error
+           ("Initialize_GrabCut requires Initial_Mask with the source rows"
+            & " and columns");
+      elsif Count_Labels (Initial_Mask, 4.0, 255.0) /= 0 then
+         Segmentation_Error
+           ("Initialize_GrabCut requires Initial_Mask values in 0 .. 3");
+      end if;
+
+      declare
+         --  Background is GC_BGD (0) or GC_PR_BGD (2); foreground is
+         --  GC_FGD (1) or GC_PR_FGD (3).
+         Background : constant Long_Long_Integer :=
+           Count_Labels (Initial_Mask, 0.0, 0.0)
+           + Count_Labels (Initial_Mask, 2.0, 2.0);
+         Foreground : constant Long_Long_Integer :=
+           Count_Labels (Initial_Mask, 1.0, 1.0)
+           + Count_Labels (Initial_Mask, 3.0, 3.0);
+      begin
+         if Background < GrabCut_Minimum_Training_Pixels
+           or else Foreground < GrabCut_Minimum_Training_Pixels
+         then
+            Segmentation_Error
+              ("Initialize_GrabCut requires at least five background and"
+               & " five foreground pixels in Initial_Mask");
+         end if;
+      end;
+
+      return State : GrabCut_State do
+         --  The deep copy keeps the caller's mask unchanged and gives the
+         --  state exclusive ownership of the storage OpenCV mutates.
+         State.Mask := Initial_Mask.Clone;
+         Run_GrabCut
+           (Source,
+            State.Mask,
+            State.Background_Model,
+            State.Foreground_Model,
+            No_Region,
+            Iterations,
+            Internal.C_API.GrabCut_Init_With_Mask);
+         State.Initialized := True;
+      end return;
+   end Initialize_GrabCut;
+
+   procedure Validate_GrabCut_Refinement
+     (Source : OpenCV.Core.Mat; State : GrabCut_State; Operation : String) is
+   begin
+      if not State.Initialized then
+         Segmentation_Error (Operation & " requires an initialized state");
+      end if;
+      Validate_GrabCut_Source (Source, Operation);
+      if Source.Rows /= State.Mask.Rows
+        or else Source.Columns /= State.Mask.Columns
+      then
+         Segmentation_Error
+           (Operation & " requires Source with the state's rows and columns");
+      end if;
+   end Validate_GrabCut_Refinement;
+
+   --  Refines private copies and commits them only after native success, so
+   --  a failed refinement leaves State unchanged.
+   procedure Refine
+     (Source     : OpenCV.Core.Mat;
+      State      : in out GrabCut_State;
+      Iterations : GrabCut_Iterations;
+      Mode       : Interfaces.Integer_32)
+   is
+      Mask       : OpenCV.Core.Mat := State.Mask.Clone;
+      Background : OpenCV.Core.Mat := State.Background_Model.Clone;
+      Foreground : OpenCV.Core.Mat := State.Foreground_Model.Clone;
+   begin
+      Run_GrabCut
+        (Source, Mask, Background, Foreground, No_Region, Iterations, Mode);
+      State.Mask := Mask;
+      State.Background_Model := Background;
+      State.Foreground_Model := Foreground;
+   end Refine;
+
+   procedure Refine_GrabCut
+     (Source     : OpenCV.Core.Mat;
+      State      : in out GrabCut_State;
+      Iterations : GrabCut_Iterations := 1) is
+   begin
+      Validate_GrabCut_Refinement (Source, State, "Refine_GrabCut");
+      Refine (Source, State, Iterations, Internal.C_API.GrabCut_Eval);
+   end Refine_GrabCut;
+
+   procedure Refine_GrabCut_Frozen_Model
+     (Source : OpenCV.Core.Mat; State : in out GrabCut_State) is
+   begin
+      Validate_GrabCut_Refinement
+        (Source, State, "Refine_GrabCut_Frozen_Model");
+      Refine (Source, State, 1, Internal.C_API.GrabCut_Eval_Freeze_Model);
+   end Refine_GrabCut_Frozen_Model;
+
+   function GrabCut_Mask (State : GrabCut_State) return OpenCV.Core.Mat is
+   begin
+      if not State.Initialized then
+         Segmentation_Error ("GrabCut_Mask requires an initialized state");
+      end if;
+      return State.Mask.Clone;
+   end GrabCut_Mask;
+
+   function GrabCut_Label_At
+     (State : GrabCut_State; Row : Natural; Column : Natural)
+      return GrabCut_Label is
+   begin
+      if not State.Initialized then
+         Segmentation_Error ("GrabCut_Label_At requires an initialized state");
+      elsif Row >= State.Mask.Rows or else Column >= State.Mask.Columns then
+         Segmentation_Error
+           ("GrabCut_Label_At requires Row and Column inside the mask");
+      end if;
+      return
+        To_GrabCut_Label
+          (OpenCV.Core.UInt8_Access.Get (State.Mask, Row, Column));
+   end GrabCut_Label_At;
 
 end OpenCV.Image_Processing;
