@@ -16,6 +16,18 @@ struct opencv_imgproc_contours_handle {
     std::vector<cv::Vec4i> hierarchy;
 };
 
+struct opencv_imgproc_hough_lines_handle {
+    std::vector<cv::Vec2f> lines;
+};
+
+struct opencv_imgproc_hough_segments_handle {
+    std::vector<cv::Vec4i> segments;
+};
+
+struct opencv_imgproc_hough_circles_handle {
+    std::vector<cv::Vec3f> circles;
+};
+
 namespace {
 
 constexpr std::size_t error_message_capacity = 1024;
@@ -1012,6 +1024,285 @@ std::vector<cv::Point> native_drawing_points(
             static_cast<int>(points[index].y));
     }
     return native;
+}
+
+// Hough preflight. OpenCV 4.1, 4.10, and 5.0 hough.cpp derive accumulator
+// geometry with signed int arithmetic and cvRound/cvFloor/cvCeil before any
+// validation. Each guard mirrors a concrete native expression so a raw C ABI
+// caller cannot cause signed overflow, an unrepresentable floating-to-integer
+// or double-to-float conversion, or a wrapped/negative buffer size.
+
+constexpr std::int64_t hough_int_max = std::numeric_limits<int>::max();
+
+bool representable_binary32(double value) noexcept
+{
+    return std::isfinite(value)
+        && std::fabs(value) <= static_cast<double>(
+               std::numeric_limits<float>::max());
+}
+
+// ABI safety: rows and cols are -1 for N-D Mats and would feed the native
+// signed geometry arithmetic. HoughLinesStandard indexes image[i * step + j],
+// HoughLinesProbabilistic indexes mdata0[i * width + j], and the circle
+// accumulator multiplies cols by a row count, all in int on a continuous
+// snapshot, so rows * cols must fit int.
+bool hough_source_geometry(
+    const cv::Mat &src, std::int64_t &rows, std::int64_t &cols,
+    const char **message) noexcept
+{
+    if (src.rows < 0 || src.cols < 0) {
+        *message = "Hough source must be two-dimensional";
+        return false;
+    }
+    rows = src.rows;
+    cols = src.cols;
+    if (rows * cols > hough_int_max) {
+        *message = "Hough source pixel count exceeds native int range";
+        return false;
+    }
+    return true;
+}
+
+// ABI safety: both line transforms narrow rho to float, form irho = 1 / rho,
+// evaluate (width + height) * 2 + 1 in int, and allocate
+// numrho = cvRound(that / rho) (+2) accumulator columns. numrho is computed
+// here exactly as the native float expression computes it.
+bool hough_numrho(
+    std::int64_t rows, std::int64_t cols, double rho,
+    std::int64_t &numrho, const char **message) noexcept
+{
+    const std::int64_t span = (rows + cols) * 2 + 1;
+    if (span > hough_int_max) {
+        *message = "Hough source rows + columns exceed native int range";
+        return false;
+    }
+    if (!representable_binary32(rho)) {
+        *message = "Hough distance resolution must be a finite binary32";
+        return false;
+    }
+    const float native_rho = static_cast<float>(rho);
+    if (!(native_rho > 0.0f) || !std::isfinite(1.0f / native_rho)) {
+        *message = "Hough distance resolution must be positive in binary32";
+        return false;
+    }
+    const float quotient =
+        static_cast<float>(static_cast<int>(span)) / native_rho;
+    // 2147483520 is the largest binary32 value below 2^31; cvRound of any
+    // larger quotient is not representable, and numrho + 2 must still fit.
+    if (!(quotient <= 2147483520.0f)) {
+        *message = "Hough distance resolution yields too many rho bins";
+        return false;
+    }
+    numrho = static_cast<std::int64_t>(
+        std::nearbyint(static_cast<double>(quotient)));
+    return true;
+}
+
+// ABI safety: each nonzero pixel (j, i) votes into accumulator column
+// cvRound(j * tabCos[n] + i * tabSin[n]) + (numrho - 1) / 2, where the tables
+// hold cos/sin scaled by irho. That column is not clamped. The magnitude of
+// the rounded term is at most hypot(cols - 1, rows - 1) * irho, widened here
+// by a relative margin for binary32 rounding. HoughLinesStandard pads each
+// row by one column (low_slack = high_slack = 1); HoughLinesProbabilistic has
+// no padding, so an overshoot there writes outside its accumulator, and
+// numrho == 0 leaves the accumulator empty.
+bool hough_vote_columns_fit(
+    std::int64_t rows, std::int64_t cols, double rho, std::int64_t numrho,
+    std::int64_t slack, const char **message) noexcept
+{
+    if (rows == 0 || cols == 0) {
+        return true;
+    }
+    const float irho = 1.0f / static_cast<float>(rho);
+    const double extent = std::hypot(
+        static_cast<double>(cols - 1), static_cast<double>(rows - 1));
+    const double magnitude = extent * static_cast<double>(irho);
+    const std::int64_t reach = static_cast<std::int64_t>(
+        std::floor(magnitude * (1.0 + 1.0e-6) + 0.5));
+    const std::int64_t offset = (numrho - 1) / 2;
+    if (offset - reach < -slack || offset + reach > numrho - 1 + slack) {
+        *message =
+            "Hough distance resolution is too coarse for the accumulator";
+        return false;
+    }
+    return true;
+}
+
+// ABI safety: theta is narrowed to float. OpenCV 4.1 uses
+// numangle = cvRound(range / theta); 4.10 and 5.0 use
+// cvFloor(range / theta) + 1; both then allocate numangle + 2 rows. The
+// returned numangle bounds every version.
+bool hough_numangle(
+    double range, double theta, std::int64_t &numangle,
+    const char **message) noexcept
+{
+    if (!representable_binary32(theta)) {
+        *message = "Hough angle resolution must be a finite binary32";
+        return false;
+    }
+    const float native_theta = static_cast<float>(theta);
+    if (!(native_theta > 0.0f)) {
+        *message = "Hough angle resolution must be positive in binary32";
+        return false;
+    }
+    const double quotient =
+        std::max(range, 0.0) / static_cast<double>(native_theta);
+    if (!(quotient <= static_cast<double>(hough_int_max - 4))) {
+        *message = "Hough angle resolution yields too many angle bins";
+        return false;
+    }
+    numangle = static_cast<std::int64_t>(std::floor(quotient)) + 2;
+    return true;
+}
+
+bool hough_lines_preflight(
+    const cv::Mat &src, double rho, double theta,
+    double min_theta, double max_theta, const char **message) noexcept
+{
+    std::int64_t rows = 0;
+    std::int64_t cols = 0;
+    std::int64_t numrho = 0;
+    std::int64_t numangle = 0;
+    if (!hough_source_geometry(src, rows, cols, message)
+        || !hough_numrho(rows, cols, rho, numrho, message)) {
+        return false;
+    }
+    // ABI safety: min_theta is narrowed to float for the trig table and the
+    // angle difference feeds cvRound/cvFloor.
+    if (!representable_binary32(min_theta)
+        || !representable_binary32(max_theta)) {
+        *message = "Hough angle bounds must be finite binary32 values";
+        return false;
+    }
+    if (!hough_numangle(max_theta - min_theta, theta, numangle, message)
+        || !hough_vote_columns_fit(rows, cols, rho, numrho, 1, message)) {
+        return false;
+    }
+    // ABI safety: HoughLinesStandard allocates (numangle + 2) x (numrho + 2)
+    // ints and indexes it with int (n + 1) * (numrho + 2) + r + 1.
+    if (numangle + 2 > hough_int_max / (numrho + 2)) {
+        *message = "Hough line accumulator exceeds native int indexing";
+        return false;
+    }
+    return true;
+}
+
+bool hough_segments_preflight(
+    const cv::Mat &src, double rho, double theta, int32_t threshold,
+    const char **message) noexcept
+{
+    std::int64_t rows = 0;
+    std::int64_t cols = 0;
+    std::int64_t numrho = 0;
+    std::int64_t numangle = 0;
+    if (!hough_source_geometry(src, rows, cols, message)
+        || !hough_numrho(rows, cols, rho, numrho, message)
+        || !hough_numangle(CV_PI, theta, numangle, message)
+        || !hough_vote_columns_fit(rows, cols, rho, numrho, 0, message)) {
+        return false;
+    }
+    // ABI safety: HoughLinesProbabilistic sizes trigtab(numangle * 2) and
+    // walks an accumulator with adata += numrho for each of numangle rows;
+    // its IPP branch also computes numangle * numrho in int.
+    if (numangle > hough_int_max / 2
+        || (numrho > 0 && numangle > hough_int_max / numrho)) {
+        *message = "Hough segment accumulator exceeds native int sizing";
+        return false;
+    }
+    // ABI safety: OpenCV 4.1 and 4.10 walk segments in int 16.16 fixed point,
+    // (coordinate << 16) + (1 << 15), stepping one pixel past the border.
+    if ((std::max(rows, cols) + 2) * 65536 > hough_int_max) {
+        *message =
+            "Hough segment source dimension exceeds native fixed-point range";
+        return false;
+    }
+    // ABI safety: the native vote loop starts from max_val = threshold - 1.
+    if (threshold == std::numeric_limits<int32_t>::min()) {
+        *message = "Hough segment threshold underflows native arithmetic";
+        return false;
+    }
+    return true;
+}
+
+bool hough_circles_preflight(
+    const cv::Mat &src, double dp, double min_dist, int32_t radius_mode,
+    int32_t min_radius, int32_t max_radius, const char **message) noexcept
+{
+    std::int64_t rows = 0;
+    std::int64_t cols = 0;
+    if (!hough_source_geometry(src, rows, cols, message)) {
+        return false;
+    }
+    // ABI safety: dp is narrowed to float and 1 / dp drives cvCeil/cvRound of
+    // the accumulator geometry. NaN passes OpenCV's dp <= 0 check. Requiring
+    // dp >= 1 makes the geometry below identical to the native geometry,
+    // since OpenCV clamps smaller values to 1.
+    if (!representable_binary32(dp) || !(dp >= 1.0)) {
+        *message = "Hough accumulator scale must be finite and at least 1";
+        return false;
+    }
+    // ABI safety: minDist is narrowed to float and squared; NaN passes
+    // OpenCV's minDist <= 0 check.
+    if (!representable_binary32(min_dist)
+        || !(static_cast<float>(min_dist) > 0.0f)) {
+        *message = "Hough minimum center distance must be positive and finite";
+        return false;
+    }
+    // ABI safety: a negative native maxRadius selects centers-only output
+    // (a different result layout), and maxRadius <= minRadius is rewritten
+    // to minRadius + 2, which overflows at INT_MAX.
+    if (min_radius < 0) {
+        *message = "Hough minimum radius must be nonnegative";
+        return false;
+    }
+    std::int64_t effective_max = 0;
+    if (radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC) {
+        if (max_radius != 0) {
+            *message = "automatic Hough radius mode requires max_radius 0";
+            return false;
+        }
+        effective_max = std::max(rows, cols);
+    } else if (radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_EXPLICIT) {
+        if (max_radius <= min_radius) {
+            *message = "explicit Hough max_radius must exceed min_radius";
+            return false;
+        }
+        effective_max = max_radius;
+    } else {
+        *message = "unsupported Hough radius mode";
+        return false;
+    }
+    // ABI safety: HoughCirclesGradient evaluates maxRadius * maxRadius in int
+    // and filterCircles evaluates maxRadius + 1.
+    if (effective_max > 46340) {
+        *message = "Hough maximum radius exceeds native int arithmetic";
+        return false;
+    }
+    // ABI safety: the accumulator invoker forms x0 = cvRound(x / dp * 1024)
+    // and then x0 + minRadius * sx (|sx| <= 1024) in int before its first
+    // bounds check, then advances one step past the accumulator border.
+    if ((std::max(rows, cols) + static_cast<std::int64_t>(min_radius) + 2)
+            * 1024 > hough_int_max) {
+        *message = "Hough circle geometry exceeds native fixed-point range";
+        return false;
+    }
+    // ABI safety: radius estimation allocates AutoBuffer<int>(nBins) with
+    // nBins = cvRound((maxRadius - minRadius) / dp * 10) and then writes
+    // bins[max(0, min(nBins - 1, ...))]; nBins < 1 writes out of bounds.
+    const float native_dp = std::max(static_cast<float>(dp), 1.0f);
+    const float bins =
+        static_cast<float>(static_cast<int>(effective_max - min_radius))
+        / native_dp * 10;
+    if (cvRound(bins) < 1) {
+        *message = "Hough radius range is empty at this accumulator scale";
+        return false;
+    }
+    return true;
+}
+
+bool fits_capacity(int32_t capacity, std::size_t count) noexcept
+{
+    return capacity >= 0 && static_cast<std::size_t>(capacity) >= count;
 }
 
 } // namespace
@@ -3982,6 +4273,324 @@ opencv_imgproc_fill_polygon(
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_lines(
+    const opencv_core_mat_handle *source,
+    double rho,
+    double theta,
+    int32_t threshold,
+    double min_theta,
+    double max_theta,
+    opencv_imgproc_hough_lines_handle **out_result)
+{
+    clear_error();
+
+    if (out_result == nullptr) {
+        return invalid_argument("null Hough lines output pointer");
+    }
+    *out_result = nullptr;
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        const char *message = nullptr;
+        if (!hough_lines_preflight(
+                *src, rho, theta, min_theta, max_theta, &message)) {
+            return invalid_argument(message);
+        }
+
+        // Continuous snapshot: HoughLines documents that it may modify its
+        // input, and a view must be processed as its own logical image.
+        cv::Mat snapshot = src->clone();
+        auto *result = new opencv_imgproc_hough_lines_handle;
+        try {
+            // Classical call: srn = stn = 0 and no OpenCV 5 use_edgeval.
+            // A vector<Vec2f> requests (rho, theta) without votes.
+            cv::HoughLines(
+                snapshot, result->lines, rho, theta, threshold,
+                0.0, 0.0, min_theta, max_theta);
+            if (!fits_int32(result->lines.size())) {
+                delete result;
+                return invalid_argument("Hough line count exceeds C ABI range");
+            }
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        } catch (...) {
+            delete result;
+            throw;
+        }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+void
+opencv_imgproc_hough_lines_destroy(opencv_imgproc_hough_lines_handle *result)
+{
+    delete result;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_lines_count(
+    const opencv_imgproc_hough_lines_handle *result,
+    int32_t *out_count)
+{
+    clear_error();
+    if (result == nullptr || out_count == nullptr) {
+        return invalid_argument("invalid Hough line count arguments");
+    }
+    if (!fits_int32(result->lines.size())) {
+        return invalid_argument("Hough line count exceeds C ABI range");
+    }
+    *out_count = static_cast<int32_t>(result->lines.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_lines_copy(
+    const opencv_imgproc_hough_lines_handle *result,
+    opencv_imgproc_hough_line *lines,
+    int32_t capacity)
+{
+    clear_error();
+    if (result == nullptr) {
+        return invalid_argument("invalid Hough line result");
+    }
+    const std::size_t count = result->lines.size();
+    if (!fits_capacity(capacity, count)) {
+        return invalid_argument("invalid Hough line buffer capacity");
+    }
+    if (count > 0 && lines == nullptr) {
+        return invalid_argument("null Hough line buffer");
+    }
+    for (std::size_t index = 0; index < count; ++index) {
+        const cv::Vec2f &line = result->lines[index];
+        lines[index].rho = line[0];
+        lines[index].theta = line[1];
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_segments(
+    const opencv_core_mat_handle *source,
+    double rho,
+    double theta,
+    int32_t threshold,
+    int32_t min_line_length,
+    int32_t max_line_gap,
+    opencv_imgproc_hough_segments_handle **out_result)
+{
+    clear_error();
+
+    if (out_result == nullptr) {
+        return invalid_argument("null Hough segments output pointer");
+    }
+    *out_result = nullptr;
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        const char *message = nullptr;
+        if (!hough_segments_preflight(*src, rho, theta, threshold, &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::Mat snapshot = src->clone();
+        auto *result = new opencv_imgproc_hough_segments_handle;
+        try {
+            // Integer length and gap are exact after OpenCV's cvRound.
+            cv::HoughLinesP(
+                snapshot, result->segments, rho, theta, threshold,
+                static_cast<double>(min_line_length),
+                static_cast<double>(max_line_gap));
+            if (!fits_int32(result->segments.size())) {
+                delete result;
+                return invalid_argument(
+                    "Hough segment count exceeds C ABI range");
+            }
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        } catch (...) {
+            delete result;
+            throw;
+        }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+void
+opencv_imgproc_hough_segments_destroy(
+    opencv_imgproc_hough_segments_handle *result)
+{
+    delete result;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_segments_count(
+    const opencv_imgproc_hough_segments_handle *result,
+    int32_t *out_count)
+{
+    clear_error();
+    if (result == nullptr || out_count == nullptr) {
+        return invalid_argument("invalid Hough segment count arguments");
+    }
+    if (!fits_int32(result->segments.size())) {
+        return invalid_argument("Hough segment count exceeds C ABI range");
+    }
+    *out_count = static_cast<int32_t>(result->segments.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_segments_copy(
+    const opencv_imgproc_hough_segments_handle *result,
+    opencv_imgproc_hough_segment *segments,
+    int32_t capacity)
+{
+    clear_error();
+    if (result == nullptr) {
+        return invalid_argument("invalid Hough segment result");
+    }
+    const std::size_t count = result->segments.size();
+    if (!fits_capacity(capacity, count)) {
+        return invalid_argument("invalid Hough segment buffer capacity");
+    }
+    if (count > 0 && segments == nullptr) {
+        return invalid_argument("null Hough segment buffer");
+    }
+    for (std::size_t index = 0; index < count; ++index) {
+        const cv::Vec4i &segment = result->segments[index];
+        segments[index].x1 = segment[0];
+        segments[index].y1 = segment[1];
+        segments[index].x2 = segment[2];
+        segments[index].y2 = segment[3];
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_circles(
+    const opencv_core_mat_handle *source,
+    double dp,
+    double min_dist,
+    int32_t canny_threshold,
+    int32_t accumulator_threshold,
+    int32_t radius_mode,
+    int32_t min_radius,
+    int32_t max_radius,
+    opencv_imgproc_hough_circles_handle **out_result)
+{
+    clear_error();
+
+    if (out_result == nullptr) {
+        return invalid_argument("null Hough circles output pointer");
+    }
+    *out_result = nullptr;
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        const char *message = nullptr;
+        if (!hough_circles_preflight(
+                *src, dp, min_dist, radius_mode, min_radius, max_radius,
+                &message)) {
+            return invalid_argument(message);
+        }
+
+        // Continuous snapshot so a view is filtered as its own image rather
+        // than acquiring parent pixels through Sobel border handling.
+        cv::Mat snapshot = src->clone();
+        const int native_max_radius =
+            radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC
+                ? 0
+                : static_cast<int>(max_radius);
+        auto *result = new opencv_imgproc_hough_circles_handle;
+        try {
+            // A vector<Vec3f> requests (x, y, radius) without votes.
+            cv::HoughCircles(
+                snapshot, result->circles, cv::HOUGH_GRADIENT, dp, min_dist,
+                static_cast<double>(canny_threshold),
+                static_cast<double>(accumulator_threshold),
+                static_cast<int>(min_radius), native_max_radius);
+            if (!fits_int32(result->circles.size())) {
+                delete result;
+                return invalid_argument(
+                    "Hough circle count exceeds C ABI range");
+            }
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        } catch (...) {
+            delete result;
+            throw;
+        }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+void
+opencv_imgproc_hough_circles_destroy(
+    opencv_imgproc_hough_circles_handle *result)
+{
+    delete result;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_circles_count(
+    const opencv_imgproc_hough_circles_handle *result,
+    int32_t *out_count)
+{
+    clear_error();
+    if (result == nullptr || out_count == nullptr) {
+        return invalid_argument("invalid Hough circle count arguments");
+    }
+    if (!fits_int32(result->circles.size())) {
+        return invalid_argument("Hough circle count exceeds C ABI range");
+    }
+    *out_count = static_cast<int32_t>(result->circles.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_circles_copy(
+    const opencv_imgproc_hough_circles_handle *result,
+    opencv_imgproc_hough_circle *circles,
+    int32_t capacity)
+{
+    clear_error();
+    if (result == nullptr) {
+        return invalid_argument("invalid Hough circle result");
+    }
+    const std::size_t count = result->circles.size();
+    if (!fits_capacity(capacity, count)) {
+        return invalid_argument("invalid Hough circle buffer capacity");
+    }
+    if (count > 0 && circles == nullptr) {
+        return invalid_argument("null Hough circle buffer");
+    }
+    for (std::size_t index = 0; index < count; ++index) {
+        const cv::Vec3f &circle = result->circles[index];
+        circles[index].x = circle[0];
+        circles[index].y = circle[1];
+        circles[index].radius = circle[2];
+    }
+    return OPENCV_IMGPROC_OK;
 }
 
 } // extern "C"

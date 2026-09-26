@@ -9,11 +9,38 @@ extern "C" {
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
 typedef struct opencv_imgproc_contours_handle opencv_imgproc_contours_handle;
+typedef struct opencv_imgproc_hough_lines_handle
+    opencv_imgproc_hough_lines_handle;
+typedef struct opencv_imgproc_hough_segments_handle
+    opencv_imgproc_hough_segments_handle;
+typedef struct opencv_imgproc_hough_circles_handle
+    opencv_imgproc_hough_circles_handle;
 
 typedef struct {
     int32_t x;
     int32_t y;
 } opencv_imgproc_point_i32;
+
+/* Polar standard-Hough line: rho in pixels, theta in radians. */
+typedef struct {
+    float rho;
+    float theta;
+} opencv_imgproc_hough_line;
+
+/* Probabilistic-Hough segment endpoints (x1, y1) and (x2, y2). */
+typedef struct {
+    int32_t x1;
+    int32_t y1;
+    int32_t x2;
+    int32_t y2;
+} opencv_imgproc_hough_segment;
+
+/* Gradient-Hough circle center and radius in pixels. */
+typedef struct {
+    float x;
+    float y;
+    float radius;
+} opencv_imgproc_hough_circle;
 
 typedef int32_t opencv_imgproc_status;
 
@@ -338,6 +365,102 @@ opencv_imgproc_contour_hierarchy(
     int32_t *previous,
     int32_t *first_child,
     int32_t *parent);
+
+/*
+ * Hough detection. Each detector snapshots (clones) the borrowed source
+ * before invoking OpenCV, so caller pixels are never passed to an
+ * implementation documented as allowed to modify them, and a Mat view is
+ * processed as its own logical image. *out_result is null on failure. A
+ * successful result is owned by the caller and must be released with the
+ * matching destroy function, which accepts null. Copy functions require a
+ * nonnegative capacity of at least the result count and write nothing on
+ * failure.
+ */
+
+#define OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC ((int32_t)0)
+#define OPENCV_IMGPROC_HOUGH_RADIUS_EXPLICIT  ((int32_t)1)
+
+opencv_imgproc_status
+opencv_imgproc_hough_lines(
+    const opencv_core_mat_handle *source,
+    double rho,
+    double theta,
+    int32_t threshold,
+    double min_theta,
+    double max_theta,
+    opencv_imgproc_hough_lines_handle **out_result);
+
+void
+opencv_imgproc_hough_lines_destroy(opencv_imgproc_hough_lines_handle *result);
+
+opencv_imgproc_status
+opencv_imgproc_hough_lines_count(
+    const opencv_imgproc_hough_lines_handle *result,
+    int32_t *out_count);
+
+opencv_imgproc_status
+opencv_imgproc_hough_lines_copy(
+    const opencv_imgproc_hough_lines_handle *result,
+    opencv_imgproc_hough_line *lines,
+    int32_t capacity);
+
+opencv_imgproc_status
+opencv_imgproc_hough_segments(
+    const opencv_core_mat_handle *source,
+    double rho,
+    double theta,
+    int32_t threshold,
+    int32_t min_line_length,
+    int32_t max_line_gap,
+    opencv_imgproc_hough_segments_handle **out_result);
+
+void
+opencv_imgproc_hough_segments_destroy(
+    opencv_imgproc_hough_segments_handle *result);
+
+opencv_imgproc_status
+opencv_imgproc_hough_segments_count(
+    const opencv_imgproc_hough_segments_handle *result,
+    int32_t *out_count);
+
+opencv_imgproc_status
+opencv_imgproc_hough_segments_copy(
+    const opencv_imgproc_hough_segments_handle *result,
+    opencv_imgproc_hough_segment *segments,
+    int32_t capacity);
+
+/*
+ * radius_mode OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC requires max_radius == 0
+ * and lets OpenCV use max(rows, cols). OPENCV_IMGPROC_HOUGH_RADIUS_EXPLICIT
+ * requires max_radius > min_radius. OpenCV's negative centers-only sentinel
+ * is not reachable through this ABI.
+ */
+opencv_imgproc_status
+opencv_imgproc_hough_circles(
+    const opencv_core_mat_handle *source,
+    double dp,
+    double min_dist,
+    int32_t canny_threshold,
+    int32_t accumulator_threshold,
+    int32_t radius_mode,
+    int32_t min_radius,
+    int32_t max_radius,
+    opencv_imgproc_hough_circles_handle **out_result);
+
+void
+opencv_imgproc_hough_circles_destroy(
+    opencv_imgproc_hough_circles_handle *result);
+
+opencv_imgproc_status
+opencv_imgproc_hough_circles_count(
+    const opencv_imgproc_hough_circles_handle *result,
+    int32_t *out_count);
+
+opencv_imgproc_status
+opencv_imgproc_hough_circles_copy(
+    const opencv_imgproc_hough_circles_handle *result,
+    opencv_imgproc_hough_circle *circles,
+    int32_t capacity);
 
 opencv_imgproc_status
 opencv_imgproc_sobel(

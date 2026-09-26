@@ -14,6 +14,7 @@ with Contour_Tests;
 with Color_Conversion_Tests;
 with Filter_2D_Tests;
 with Histogram_Equalization_Tests;
+with Hough_Detection_Tests;
 with Sep_Filter_2D_Tests;
 with Gaussian_Blur_Tests;
 with Gaussian_Kernel_Tests;
@@ -74,6 +75,7 @@ begin
 
    Suite.Add_Test (Contour_Tests.Suite);
    Suite.Add_Test (Drawing_Tests.Suite);
+   Suite.Add_Test (Hough_Detection_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;
