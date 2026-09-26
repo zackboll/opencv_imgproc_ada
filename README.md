@@ -21,10 +21,11 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **265 AUnit tests**
+> **Current registered test baseline:** **289 AUnit tests**
 
 >
-> **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
+> **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
+> macOS, and Windows x86_64/MSYS2 on `main` pushes and manual dispatch
 >
 > **OpenCV generations exercised by CI:** OpenCV 4.x and OpenCV 5.x
 
@@ -73,6 +74,7 @@ Ada package, and built libraries serve different roles.
 - [Contour extraction](#contour-extraction)
 - [Connected components](#connected-components)
 - [Drawing primitives](#drawing-primitives)
+- [Hough detection](#hough-detection)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
 - [Architecture](#architecture)
@@ -212,6 +214,8 @@ The table below summarizes the current public operations.
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
 | Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
 | Drawing | `Draw_Line`, `Draw_Rectangle`, `Fill_Rectangle`, `Draw_Circle`, `Fill_Circle`, `Draw_Ellipse`, `Fill_Ellipse`, `Draw_Polyline`, `Fill_Polygon` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | in-place; positive geometry; off-image coordinates clipped; antialiasing only for `UInt8`; no alpha blending |
+| Hough | `Find_Hough_Lines`, `Find_Hough_Line_Segments` | nonempty 2-D `UInt8` C1 binary image | classical polar lines (radians) and probabilistic integer segments; Ada-owned arrays; source-preserving snapshot |
+| Hough | `Find_Hough_Circles` | nonempty 2-D `UInt8` C1 grayscale image | classic `HOUGH_GRADIENT`; automatic or explicit maximum radius; Float32 center/radius; source-preserving snapshot |
 
 The supported general-purpose Imgproc numeric depths are:
 
@@ -1947,6 +1951,237 @@ fixed-point shift, alpha blending, or multi-polygon holes.
 
 ---
 
+## Hough detection
+
+Three Hough detectors return Ada-owned value arrays:
+
+```ada
+subtype Hough_Vote_Threshold   is Positive range 1 .. 2_147_483_647;
+subtype Hough_Circle_Threshold is Positive range 1 .. 2_147_483_647;
+
+type Hough_Line is record
+   Rho           : OpenCV.Float32_Value;
+   Angle_Radians : OpenCV.Float32_Value;
+end record;
+
+type Hough_Line_Segment is record
+   Start_Point : OpenCV.Point;
+   End_Point   : OpenCV.Point;
+end record;
+
+type Hough_Circle is record
+   Center : OpenCV.Float32_Point;
+   Radius : OpenCV.Float32_Value;
+end record;
+
+--  Hough_Line_Array, Hough_Line_Segment_Array, Hough_Circle_Array:
+--  array (Natural range <>) of the record above.
+```
+
+Nonempty results are zero-based. Empty results use the null range `1 .. 0`.
+Every element is copied into Ada storage, so results do not depend on the
+source `Mat` or on any native object.
+
+### Standard polar lines
+
+```ada
+function Find_Hough_Lines
+  (Source                   : OpenCV.Core.Mat;
+   Distance_Resolution      : OpenCV.Float64_Value;
+   Angle_Resolution_Radians : OpenCV.Float64_Value;
+   Vote_Threshold           : Hough_Vote_Threshold;
+   Minimum_Angle_Radians    : OpenCV.Float64_Value := 0.0;
+   Maximum_Angle_Radians    : OpenCV.Float64_Value := Ada.Numerics.Pi)
+   return Hough_Line_Array;
+```
+
+This is the classical standard Hough transform. `Source` must be a nonempty
+2-D `UInt8` C1 **binary** image: zero is background and **every nonzero value**
+is a candidate pixel (not only 255). Both resolutions must be positive and
+finite, and the angle bounds must satisfy
+`0 <= Minimum_Angle_Radians < Maximum_Angle_Radians <= Pi`.
+
+A result describes the points satisfying
+`X * cos (Angle_Radians) + Y * sin (Angle_Radians) = Rho`, with coordinates
+relative to the source origin. `Rho` is in pixels and may be negative.
+`Angle_Radians` is always radians. A horizontal line at row `r` appears near
+`(Rho => r, Angle_Radians => Pi / 2)`; a vertical line at column `c` appears
+near `(c, 0)`, or equivalently `(-c, Pi)`.
+
+Each result is an accumulator bin, so values are quantized by the requested
+resolutions; expect agreement with exact geometry to within about one bin.
+OpenCV 5.0 reconstructs `Rho` with integer arithmetic where OpenCV 4.x uses a
+half-bin offset, so the reported `Rho` can differ by up to half a distance bin
+between generations.
+
+### Probabilistic line segments
+
+```ada
+function Find_Hough_Line_Segments
+  (Source                   : OpenCV.Core.Mat;
+   Distance_Resolution      : OpenCV.Float64_Value;
+   Angle_Resolution_Radians : OpenCV.Float64_Value;
+   Vote_Threshold           : Hough_Vote_Threshold;
+   Minimum_Line_Length      : OpenCV.Size_Coordinate := 0;
+   Maximum_Line_Gap         : OpenCV.Size_Coordinate := 0)
+   return Hough_Line_Segment_Array;
+```
+
+The source contract is the same binary `UInt8` C1 image. Length and gap are
+integer pixel counts, because OpenCV rounds them to integers internally. A
+segment is kept when its X **or** Y extent reaches `Minimum_Line_Length`; up to
+`Maximum_Line_Gap` missing pixels may be bridged along a line.
+
+Endpoint order is **not** specified: `(A, B)` and `(B, A)` describe the same
+segment. The reference implementation uses a fixed internal random seed, but
+endpoints may still differ by a pixel or two across OpenCV builds, so compare
+them with a small tolerance.
+
+### Gradient circles
+
+```ada
+--  Automatic maximum radius (OpenCV uses the larger source dimension).
+function Find_Hough_Circles
+  (Source                  : OpenCV.Core.Mat;
+   Accumulator_Scale       : OpenCV.Float64_Value;
+   Minimum_Center_Distance : OpenCV.Float64_Value;
+   Canny_Threshold         : Hough_Circle_Threshold;
+   Accumulator_Threshold   : Hough_Circle_Threshold;
+   Minimum_Radius          : OpenCV.Size_Coordinate := 0)
+   return Hough_Circle_Array;
+
+--  Explicit radius interval; Maximum_Radius must exceed Minimum_Radius.
+function Find_Hough_Circles
+  (Source                  : OpenCV.Core.Mat;
+   Accumulator_Scale       : OpenCV.Float64_Value;
+   Minimum_Center_Distance : OpenCV.Float64_Value;
+   Canny_Threshold         : Hough_Circle_Threshold;
+   Accumulator_Threshold   : Hough_Circle_Threshold;
+   Minimum_Radius          : OpenCV.Size_Coordinate := 0;
+   Maximum_Radius          : OpenCV.Size_Coordinate)
+   return Hough_Circle_Array;
+```
+
+Only the portable classic `HOUGH_GRADIENT` method is used. `Source` is a
+nonempty 2-D `UInt8` C1 **grayscale** image; the detector computes its own
+Sobel gradients and Canny edges (upper threshold `Canny_Threshold`, lower
+threshold half of it). Blurring the input first usually improves results.
+
+- `Accumulator_Scale` must be finite and at least `1.0`. OpenCV silently
+  clamps smaller values to 1; the Ada API rejects them instead.
+- `Minimum_Center_Distance` must be positive and finite.
+- `Canny_Threshold` and `Accumulator_Threshold` are positive integers because
+  OpenCV rounds them to integers.
+- The public API has no zero or negative maximum-radius sentinel. The first
+  overload selects OpenCV's automatic maximum privately. The explicit overload
+  requires `Maximum_Radius > Minimum_Radius` and never reproduces OpenCV's
+  silent widening of an invalid maximum to `Minimum_Radius + 2`.
+
+`Center` and `Radius` are native binary32 pixel values. Centers are quantized
+to accumulator cells and radii are histogram estimates, so compare them with a
+tolerance of a pixel or two rather than exactly.
+
+### Source preservation and views
+
+OpenCV documents that the line transforms may modify their input. Every Hough
+operation therefore runs on a private continuous native **snapshot** (clone)
+of `Source`:
+
+1. caller-visible pixels are never modified;
+2. a non-contiguous `Region` is analysed as its own logical image: pixels and
+   borders outside the view never contribute, and result coordinates are
+   relative to the view origin.
+
+The snapshot costs one copy of the source per call and is never exposed.
+
+### Result ordering and omitted outputs
+
+Result order is unspecified for all three detectors. In the inspected OpenCV
+implementations, standard lines and circles are ordered by accumulator
+support, while probabilistic segments appear in the order produced by the
+randomized point walk and are not sorted. Search results by geometry rather
+than relying on an index. The optional accumulator-vote components (`Vec3f`
+lines and `Vec4f` circles) are not requested, so vote semantics are not part
+of this pre-1.0 API.
+
+### Validation and native safety
+
+Public contract violations raise `OpenCV.OpenCV_Error` before native code
+runs; out-of-range subtype values raise `Constraint_Error`. The C ABI also
+rejects combinations that would overflow OpenCV's native signed `int`
+accumulator arithmetic, for example an extremely small `rho` or `theta` on a
+large image, a nonzero-pixel count times angle-bin count that overflows the
+standard-Hough IPP line estimate, or a radius whose square overflows `int`.
+Those also raise `OpenCV.OpenCV_Error`. There is no arbitrary resolution
+floor; the limits come from the native arithmetic itself. The raw C ABI
+independently rejects malformed sources (empty, N-D, non-`UInt8`, or
+multi-channel), nonpositive thresholds, and negative segment length or gap.
+
+### Examples
+
+Draw a synthetic shape, extract edges, then detect lines and segments:
+
+```ada
+Canvas : OpenCV.Core.Mat :=
+  OpenCV.Core.Create (100, 100, (OpenCV.Core.UInt8, 1));
+Edges  : OpenCV.Core.Mat;
+...
+OpenCV.Core.Set_To (Canvas, (others => 0.0));
+OpenCV.Image_Processing.Fill_Rectangle
+  (Canvas,
+   (X => 20, Y => 30, Width => 60, Height => 40),
+   (Component_0 => 255.0, others => 0.0));
+OpenCV.Image_Processing.Canny_Edges (Canvas, Edges, 50.0, 150.0);
+
+declare
+   Lines    : constant OpenCV.Image_Processing.Hough_Line_Array :=
+     OpenCV.Image_Processing.Find_Hough_Lines
+       (Edges, 1.0, Ada.Numerics.Pi / 180.0, 30);
+   Segments : constant OpenCV.Image_Processing.Hough_Line_Segment_Array :=
+     OpenCV.Image_Processing.Find_Hough_Line_Segments
+       (Edges, 1.0, Ada.Numerics.Pi / 180.0, 30,
+        Minimum_Line_Length => 20, Maximum_Line_Gap => 3);
+begin
+   --  Lines holds the rectangle sides as (Rho, Angle_Radians) values;
+   --  Segments holds their endpoints in either order. OpenCV keeps only
+   --  bins with strictly more than Vote_Threshold votes, so the threshold
+   --  must be below the shortest side (40 pixels) to report all four.
+   null;
+end;
+```
+
+Detect a blurred synthetic disc:
+
+```ada
+Disc    : OpenCV.Core.Mat :=
+  OpenCV.Core.Create (100, 100, (OpenCV.Core.UInt8, 1));
+Blurred : OpenCV.Core.Mat;
+...
+OpenCV.Core.Set_To (Disc, (others => 0.0));
+OpenCV.Image_Processing.Fill_Circle
+  (Disc, (X => 50, Y => 50), 25, (Component_0 => 255.0, others => 0.0));
+OpenCV.Image_Processing.Gaussian_Blur
+  (Disc, Blurred, (Width => 5, Height => 5), Sigma => 1.5);
+
+declare
+   Circles : constant OpenCV.Image_Processing.Hough_Circle_Array :=
+     OpenCV.Image_Processing.Find_Hough_Circles
+       (Blurred, 1.0, 40.0, 100, 20,
+        Minimum_Radius => 15, Maximum_Radius => 35);
+begin
+   --  Expect a circle near Center (50, 50) with Radius near 25.
+   null;
+end;
+```
+
+### Deferred
+
+Multiscale `srn`/`stn`, OpenCV 5 weighted Hough (`use_edgeval`),
+`HoughLinesPointSet`, `HOUGH_GRADIENT_ALT`, centers-only circle output, and
+accumulator votes are intentionally not part of this slice.
+
+---
+
 ## Geometry is a separate module
 
 OpenCV 5 moved a substantial set of computational geometry APIs out of Imgproc
@@ -2177,8 +2412,18 @@ The public Ada API is not selected by OpenCV version.
 | macOS ARM64 | Homebrew OpenCV 5.x | Apple `clang++` / `libc++` | relocatable dylib |
 | Windows x86_64/MSYS2 | MSYS2 OpenCV 5.x | MSYS2 MinGW64 `g++` | external DLL/import library |
 
-The current cross-platform workflow builds and runs the full Imgproc test suite
-on all three targets.
+The cross-platform workflow builds and runs the full Imgproc test suite. Which
+targets run depends on the event:
+
+| Event | Linux | macOS | Windows/MSYS2 |
+| --- | --- | --- | --- |
+| pull request opened or updated | runs | runs | skipped |
+| push to `main` (after merge) | runs | runs | runs |
+| `workflow_dispatch` (manual) | runs | runs | runs |
+
+Pushes to feature branches do not trigger a separate run; review uses the
+pull-request run. Windows is therefore not a pull-request gate and is verified
+after merge, or on demand through manual dispatch.
 
 ### macOS runtime isolation
 
@@ -2393,7 +2638,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **265-test** baseline is:
+The current **289-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -2424,7 +2669,8 @@ The current **265-test** baseline is:
 | Contours | 7 |
 | Connected components | 6 |
 | Drawing | 11 |
-| **Total** | **265** |
+| Hough detection | 24 |
+| **Total** | **289** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -2443,7 +2689,8 @@ The suite covers more than simple success paths. It includes:
 - contour hierarchy and signed offsets;
 - contour source preservation and empty results.
 
-GitHub Actions runs the test crate on Linux, macOS, and Windows.
+GitHub Actions runs the test crate on Linux and macOS for pull requests, and
+additionally on Windows for `main` pushes and manual dispatch.
 
 ---
 
@@ -2911,7 +3158,9 @@ Notable Imgproc families that are not yet broadly bound include:
 - additional map encodings and `Convert_Maps`;
 - polar transforms;
 - Laplacian pyramids and `buildPyramid`;
-- Hough line and circle transforms;
+- deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
+  (`use_edgeval`) Hough, `HoughLinesPointSet`, `HOUGH_GRADIENT_ALT`,
+  centers-only circle output, and optional accumulator votes;
 - watershed, flood fill, and GrabCut;
 - histogram calculation and comparison;
 - distance transforms;

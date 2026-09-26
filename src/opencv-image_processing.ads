@@ -1,3 +1,4 @@
+with Ada.Numerics;
 with OpenCV.Core;
 private with Ada.Containers.Indefinite_Vectors;
 private with Ada.Containers.Vectors;
@@ -91,6 +92,45 @@ package OpenCV.Image_Processing is
    subtype Drawing_Thickness is Positive range 1 .. 32_767;
 
    subtype Drawing_Radius is Positive;
+
+   --  Minimum accumulator votes required for a Hough line or segment.
+   subtype Hough_Vote_Threshold is Positive range 1 .. 2_147_483_647;
+
+   --  Integer Canny and accumulator thresholds for gradient Hough circles.
+   subtype Hough_Circle_Threshold is Positive range 1 .. 2_147_483_647;
+
+   --  A standard-Hough line in polar form: the points (X, Y) satisfying
+   --  X * cos (Angle_Radians) + Y * sin (Angle_Radians) = Rho. Rho is in
+   --  pixels relative to the Source origin and may be negative.
+   --  Angle_Radians is always in radians.
+   type Hough_Line is record
+      Rho           : OpenCV.Float32_Value;
+      Angle_Radians : OpenCV.Float32_Value;
+   end record;
+
+   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   type Hough_Line_Array is array (Natural range <>) of Hough_Line;
+
+   --  A probabilistic-Hough segment. Endpoint order is unspecified:
+   --  (A, B) and (B, A) describe the same segment.
+   type Hough_Line_Segment is record
+      Start_Point : OpenCV.Point;
+      End_Point   : OpenCV.Point;
+   end record;
+
+   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   type Hough_Line_Segment_Array is
+     array (Natural range <>) of Hough_Line_Segment;
+
+   --  A gradient-Hough circle. Center and Radius are native binary32
+   --  pixel values quantized by the accumulator scale.
+   type Hough_Circle is record
+      Center : OpenCV.Float32_Point;
+      Radius : OpenCV.Float32_Value;
+   end record;
+
+   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   type Hough_Circle_Array is array (Natural range <>) of Hough_Circle;
 
    type Component_Label is new Natural;
 
@@ -903,6 +943,76 @@ package OpenCV.Image_Processing is
       Points     : OpenCV.Point_Array;
       Color      : OpenCV.Scalar;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   --  Hough detection. Every operation takes a private continuous snapshot
+   --  of Source before calling OpenCV, so Source pixels are never modified
+   --  and a Region is analysed as its own logical image with its own
+   --  borders. Results are Ada-owned copies. Result order is not part of
+   --  the contract. Contract violations, native arithmetic limits, and
+   --  OpenCV failures raise OpenCV.OpenCV_Error.
+
+   --  Find_Hough_Lines runs the classical standard Hough transform on a
+   --  nonempty two-dimensional UInt8 C1 binary Source: zero pixels are
+   --  background and every nonzero pixel is a candidate. Distance_Resolution
+   --  (pixels) and Angle_Resolution_Radians must be positive and finite.
+   --  The angle bounds must be finite with
+   --  0 <= Minimum_Angle_Radians < Maximum_Angle_Radians <= Pi. Each result
+   --  is an accumulator bin, so Rho and Angle_Radians are quantized by the
+   --  requested resolutions. Multiscale srn/stn, OpenCV 5 edge-value
+   --  weighting, and accumulator votes are not exposed.
+   function Find_Hough_Lines
+     (Source                   : OpenCV.Core.Mat;
+      Distance_Resolution      : OpenCV.Float64_Value;
+      Angle_Resolution_Radians : OpenCV.Float64_Value;
+      Vote_Threshold           : Hough_Vote_Threshold;
+      Minimum_Angle_Radians    : OpenCV.Float64_Value := 0.0;
+      Maximum_Angle_Radians    : OpenCV.Float64_Value := Ada.Numerics.Pi)
+      return Hough_Line_Array;
+
+   --  Find_Hough_Line_Segments runs the probabilistic Hough transform on the
+   --  same binary Source contract as Find_Hough_Lines. Minimum_Line_Length
+   --  and Maximum_Line_Gap are integer pixel counts. A segment is kept when
+   --  its X or Y extent reaches Minimum_Line_Length; up to Maximum_Line_Gap
+   --  missing pixels may be bridged along a line.
+   function Find_Hough_Line_Segments
+     (Source                   : OpenCV.Core.Mat;
+      Distance_Resolution      : OpenCV.Float64_Value;
+      Angle_Resolution_Radians : OpenCV.Float64_Value;
+      Vote_Threshold           : Hough_Vote_Threshold;
+      Minimum_Line_Length      : OpenCV.Size_Coordinate := 0;
+      Maximum_Line_Gap         : OpenCV.Size_Coordinate := 0)
+      return Hough_Line_Segment_Array;
+
+   --  Find_Hough_Circles runs OpenCV's classic gradient Hough circle
+   --  detector (HOUGH_GRADIENT) on a nonempty two-dimensional UInt8 C1
+   --  grayscale Source; it computes its own Sobel/Canny edges.
+   --  Accumulator_Scale is the inverse accumulator resolution and must be
+   --  finite and at least 1.0. Minimum_Center_Distance must be positive and
+   --  finite. Canny_Threshold is the upper Canny threshold (the lower one is
+   --  half of it). Accumulator_Threshold is the center-vote threshold.
+   --
+   --  This overload searches radii from Minimum_Radius up to an automatic
+   --  maximum chosen by OpenCV (the larger Source dimension).
+   function Find_Hough_Circles
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate := 0)
+      return Hough_Circle_Array;
+
+   --  This overload searches the explicit radius interval. Maximum_Radius
+   --  must exceed Minimum_Radius; it is never silently widened.
+   function Find_Hough_Circles
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate := 0;
+      Maximum_Radius          : OpenCV.Size_Coordinate)
+      return Hough_Circle_Array;
 
 private
    package Contour_Vectors is new

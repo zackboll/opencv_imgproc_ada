@@ -80,6 +80,54 @@ package OpenCV.Image_Processing.Internal.C_API is
    type Point_I32_Array is array (Natural range <>) of aliased Point_I32
    with Convention => C;
 
+   type Hough_Lines_Handle is new System.Address;
+   Null_Hough_Lines_Handle : constant Hough_Lines_Handle :=
+     Hough_Lines_Handle (System.Null_Address);
+
+   type Hough_Segments_Handle is new System.Address;
+   Null_Hough_Segments_Handle : constant Hough_Segments_Handle :=
+     Hough_Segments_Handle (System.Null_Address);
+
+   type Hough_Circles_Handle is new System.Address;
+   Null_Hough_Circles_Handle : constant Hough_Circles_Handle :=
+     Hough_Circles_Handle (System.Null_Address);
+
+   Hough_Radius_Automatic : constant Interfaces.Integer_32 := 0;
+   Hough_Radius_Explicit  : constant Interfaces.Integer_32 := 1;
+
+   type Hough_Line_Record is record
+      Rho   : Interfaces.C.C_float;
+      Theta : Interfaces.C.C_float;
+   end record
+   with Convention => C;
+
+   type Hough_Line_Record_Array is
+     array (Natural range <>) of aliased Hough_Line_Record
+   with Convention => C;
+
+   type Hough_Segment_Record is record
+      X1 : Interfaces.Integer_32;
+      Y1 : Interfaces.Integer_32;
+      X2 : Interfaces.Integer_32;
+      Y2 : Interfaces.Integer_32;
+   end record
+   with Convention => C;
+
+   type Hough_Segment_Record_Array is
+     array (Natural range <>) of aliased Hough_Segment_Record
+   with Convention => C;
+
+   type Hough_Circle_Record is record
+      X      : Interfaces.C.C_float;
+      Y      : Interfaces.C.C_float;
+      Radius : Interfaces.C.C_float;
+   end record
+   with Convention => C;
+
+   type Hough_Circle_Record_Array is
+     array (Natural range <>) of aliased Hough_Circle_Record
+   with Convention => C;
+
    Derivative_Same_Depth : constant Interfaces.Integer_32 := 0;
    Derivative_Int16      : constant Interfaces.Integer_32 := 1;
    Derivative_Float32    : constant Interfaces.Integer_32 := 2;
@@ -404,6 +452,113 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_contour_hierarchy";
+
+   function Hough_Lines
+     (Source    : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Rho       : Interfaces.C.double;
+      Theta     : Interfaces.C.double;
+      Threshold : Interfaces.Integer_32;
+      Min_Theta : Interfaces.C.double;
+      Max_Theta : Interfaces.C.double;
+      Result    : access Hough_Lines_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_hough_lines";
+
+   procedure Hough_Lines_Destroy (Result : Hough_Lines_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_lines_destroy";
+
+   function Hough_Lines_Count
+     (Result : Hough_Lines_Handle; Count : access Interfaces.Integer_32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_lines_count";
+
+   function Hough_Lines_Copy
+     (Result   : Hough_Lines_Handle;
+      Lines    : access Hough_Line_Record;
+      Capacity : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_lines_copy";
+
+   function Hough_Segments
+     (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Rho             : Interfaces.C.double;
+      Theta           : Interfaces.C.double;
+      Threshold       : Interfaces.Integer_32;
+      Min_Line_Length : Interfaces.Integer_32;
+      Max_Line_Gap    : Interfaces.Integer_32;
+      Result          : access Hough_Segments_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_segments";
+
+   procedure Hough_Segments_Destroy (Result : Hough_Segments_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_segments_destroy";
+
+   function Hough_Segments_Count
+     (Result : Hough_Segments_Handle; Count : access Interfaces.Integer_32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_segments_count";
+
+   function Hough_Segments_Copy
+     (Result   : Hough_Segments_Handle;
+      Segments : access Hough_Segment_Record;
+      Capacity : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_segments_copy";
+
+   function Hough_Circles
+     (Source                : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Accumulator_Scale     : Interfaces.C.double;
+      Min_Distance          : Interfaces.C.double;
+      Canny_Threshold       : Interfaces.Integer_32;
+      Accumulator_Threshold : Interfaces.Integer_32;
+      Radius_Mode           : Interfaces.Integer_32;
+      Min_Radius            : Interfaces.Integer_32;
+      Max_Radius            : Interfaces.Integer_32;
+      Result                : access Hough_Circles_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_circles";
+
+   procedure Hough_Circles_Destroy (Result : Hough_Circles_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_circles_destroy";
+
+   function Hough_Circles_Count
+     (Result : Hough_Circles_Handle; Count : access Interfaces.Integer_32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_circles_count";
+
+   function Hough_Circles_Copy
+     (Result   : Hough_Circles_Handle;
+      Circles  : access Hough_Circle_Record;
+      Capacity : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_circles_copy";
 
    function Sobel
      (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
