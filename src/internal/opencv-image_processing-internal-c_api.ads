@@ -8,6 +8,33 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Status is new Interfaces.Integer_32;
 
+   function Integral_Sum
+     (Source    : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Sum_Depth : Interfaces.Integer_32;
+      Sum       : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_integral_sum";
+   function Integral_Sum_Squares
+     (Source                   : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Sum_Depth, Squared_Depth : Interfaces.Integer_32;
+      Sum, Squared             : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_integral_sum_squares";
+   function Integral_Complete
+     (Source                   : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Sum_Depth, Squared_Depth : Interfaces.Integer_32;
+      Sum, Squared, Tilted     : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_integral_complete";
+
    Success                : constant Status := 0;
    Error_OpenCV           : constant Status := 1;
    Error_Standard_CPP     : constant Status := 2;
