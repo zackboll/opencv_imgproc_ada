@@ -36,6 +36,22 @@ void clear_error() noexcept;
 opencv_imgproc_status invalid_argument(const char *message) noexcept;
 opencv_imgproc_status translate_current_exception() noexcept;
 
+// OpenCV 4.1/4.10/5.0 ipp_integral declines C2+ and tilted before casting
+// strides. These are precisely the documented public combinations reaching
+// its IPP calls; other supported combinations use HAL/SIMD/scalar fallback.
+bool integral_may_use_ipp(int source_depth, int channels, bool squares,
+                          bool tilted, int sum_depth, int square_depth) noexcept
+{
+    if (channels != 1 || tilted)
+        return false;
+    if (squares)
+        return source_depth == CV_8U && square_depth == CV_64F &&
+               (sum_depth == CV_32S || sum_depth == CV_32F);
+    return (source_depth == CV_8U &&
+            (sum_depth == CV_32S || sum_depth == CV_32F)) ||
+           (source_depth == CV_32F && sum_depth == CV_32F);
+}
+
 // These checks precede cv::integral's signed Size construction and scalar
 // width/step/index arithmetic (4.1, 4.10 and 5.0 sumpixels implementations).
 opencv_imgproc_status integral_preflight(const cv::Mat &src, int sum_selector,
@@ -78,6 +94,27 @@ opencv_imgproc_status integral_preflight(const cv::Mat &src, int sum_selector,
         return invalid_argument("Integral source stride overflows int");
     // ABI safety: continuous output row strides are scalar_width elements;
     // tilted accesses previous row with x +/- cn. All fit int above.
+    if (integral_may_use_ipp(src.depth(), src.channels(), squares, tilted,
+                             sum_depth, square_depth)) {
+        // ABI safety: ipp_integral narrows the original source byte stride
+        // directly with (int)srcstep before calling IPP (including Regions).
+        if (src.step[0] > limit)
+            return invalid_argument("Integral IPP source byte stride overflows int");
+        const uint64_t sum_element_size = sum_depth == CV_64F
+            ? sizeof(double) : sum_depth == CV_32F ? sizeof(float) : sizeof(int32_t);
+        // ABI safety: ipp_integral casts sumstep, expressed in bytes,
+        // directly to int. Check before native output allocation.
+        if (scalar_width > limit / sum_element_size)
+            return invalid_argument("Integral IPP sum byte stride overflows int");
+        if (squares) {
+            const uint64_t square_element_size = square_depth == CV_32F
+                ? sizeof(float) : sizeof(double);
+            // ABI safety: ipp_integral casts sqsumstep, expressed in bytes,
+            // directly to int. Check before native output allocation.
+            if (scalar_width > limit / square_element_size)
+                return invalid_argument("Integral IPP squared byte stride overflows int");
+        }
+    }
     if (sum_selector == 0 && src.depth() == CV_8U) {
         // ABI safety: signed Int32 scalar accumulation otherwise overflows.
         // Saturate at INT_MAX+1 without overflowing the widened counters.

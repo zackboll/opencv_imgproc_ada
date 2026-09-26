@@ -3588,8 +3588,14 @@ Source is unchanged. A non-contiguous `Region` is its own logical image: no
 pixels outside the view participate. Public invalid source/depth combinations
 raise `OpenCV.OpenCV_Error`. The native boundary additionally guards signed
 `rows+1`, `cols+1`, channel-expanded width and tilted scratch indexing, and
-source/output element strides before calling OpenCV. All outputs are computed
-locally and their Core Mat headers rebound only after complete success.
+source/output element strides before calling OpenCV. Scalar integral code
+narrows element strides to `int`. Some optional C1 IPP paths additionally cast
+the original source and output **byte** strides directly to `int`; the binding
+checks the real source row step and derived Sum/Squared_Sum byte strides only
+for configurations that can reach those IPP branches. Multi-channel and
+tilted paths bypass native IPP and retain the broader scalar-safe bounds.
+IPP is not required. All outputs are computed locally and their Core Mat
+headers rebound only after complete success.
 
 For a C1 Float64 integral result, an axis-aligned rectangle `[x1,x2) x
 [y1,y2)` takes four reads (zero-based matrix row, column):

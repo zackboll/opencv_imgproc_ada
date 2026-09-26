@@ -170,6 +170,17 @@ package body Integral_Image_Tests is
                      3)
                   = 91.0,
          "depth mapping");
+      declare
+         Pair : constant IP.Integral_Sum_And_Squares_Result :=
+           IP.Integral_Sum_And_Squares (S, IP.Float32_Integral);
+      begin
+         AUnit.Assertions.Assert
+           (Pair.Sum.Depth = OpenCV.Core.Float32
+            and then Pair.Squared_Sum.Depth = OpenCV.Core.Float64
+            and then OpenCV.Core.Float32_Access.Get (Pair.Sum, 2, 3) = 21.0
+            and then Pixel (Pair.Squared_Sum, 2, 3) = 91.0,
+            "UInt8 Float32 sum with Float64 squares");
+      end;
       OpenCV.Core.Set_To (Parent, (others => 100.0));
       OpenCV.Core.UInt8_Access.Set (Parent, 1, 1, 1);
       OpenCV.Core.UInt8_Access.Set (Parent, 1, 2, 2);
