@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <exception>
 #include <limits>
+#include <vector>
 
 struct opencv_imgproc_contours_handle {
     std::vector<std::vector<cv::Point>> contours;
@@ -979,6 +980,38 @@ bool drawing_angles(
     }
 
     return true;
+}
+
+// Inclusive far corner of a positive-extent rectangle, saturated to the
+// signed OpenCV point domain. OpenCV 4.1's Rect overload computes
+// br() as (x + width, y + height) with signed int arithmetic before
+// clipping, so an off-image origin plus a large positive extent overflows.
+// The two-point rectangle overload receives already-saturated endpoints.
+int saturated_rectangle_far(int32_t origin, int32_t extent) noexcept
+{
+    const int64_t far =
+        static_cast<int64_t>(origin) + static_cast<int64_t>(extent) - 1;
+    if (far > static_cast<int64_t>(std::numeric_limits<int>::max())) {
+        return std::numeric_limits<int>::max();
+    }
+    if (far < static_cast<int64_t>(std::numeric_limits<int>::min())) {
+        return std::numeric_limits<int>::min();
+    }
+    return static_cast<int>(far);
+}
+
+std::vector<cv::Point> native_drawing_points(
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count)
+{
+    std::vector<cv::Point> native;
+    native.reserve(static_cast<std::size_t>(point_count));
+    for (int32_t index = 0; index < point_count; ++index) {
+        native.emplace_back(
+            static_cast<int>(points[index].x),
+            static_cast<int>(points[index].y));
+    }
+    return native;
 }
 
 } // namespace
@@ -3518,7 +3551,7 @@ opencv_imgproc_remap(
 
 opencv_imgproc_status
 opencv_imgproc_draw_line(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     int32_t start_x,
     int32_t start_y,
     int32_t finish_x,
@@ -3535,9 +3568,7 @@ opencv_imgproc_draw_line(
     try {
         cv::Mat *img = nullptr;
         const opencv_core_status core_status =
-            opencv_core_module_output_mat(
-                const_cast<opencv_core_mat_handle *>(image),
-                &img);
+            opencv_core_module_output_mat(image, &img);
 
         if (core_status != OPENCV_CORE_OK || img == nullptr) {
             return invalid_argument("invalid drawing image");
@@ -3584,7 +3615,7 @@ opencv_imgproc_draw_line(
 
 opencv_imgproc_status
 opencv_imgproc_draw_rectangle(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     int32_t origin_x,
     int32_t origin_y,
     int32_t width,
@@ -3602,9 +3633,7 @@ opencv_imgproc_draw_rectangle(
     try {
         cv::Mat *img = nullptr;
         const opencv_core_status core_status =
-            opencv_core_module_output_mat(
-                const_cast<opencv_core_mat_handle *>(image),
-                &img);
+            opencv_core_module_output_mat(image, &img);
 
         if (core_status != OPENCV_CORE_OK || img == nullptr) {
             return invalid_argument("invalid drawing image");
@@ -3641,11 +3670,10 @@ opencv_imgproc_draw_rectangle(
 
         cv::rectangle(
             *img,
-            cv::Rect(
-                static_cast<int>(origin_x),
-                static_cast<int>(origin_y),
-                static_cast<int>(width),
-                static_cast<int>(height)),
+            cv::Point(static_cast<int>(origin_x), static_cast<int>(origin_y)),
+            cv::Point(
+                saturated_rectangle_far(origin_x, width),
+                saturated_rectangle_far(origin_y, height)),
             color,
             opencv_thickness,
             opencv_line,
@@ -3658,7 +3686,7 @@ opencv_imgproc_draw_rectangle(
 
 opencv_imgproc_status
 opencv_imgproc_draw_circle(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     int32_t center_x,
     int32_t center_y,
     int32_t radius,
@@ -3675,9 +3703,7 @@ opencv_imgproc_draw_circle(
     try {
         cv::Mat *img = nullptr;
         const opencv_core_status core_status =
-            opencv_core_module_output_mat(
-                const_cast<opencv_core_mat_handle *>(image),
-                &img);
+            opencv_core_module_output_mat(image, &img);
 
         if (core_status != OPENCV_CORE_OK || img == nullptr) {
             return invalid_argument("invalid drawing image");
@@ -3726,7 +3752,7 @@ opencv_imgproc_draw_circle(
 
 opencv_imgproc_status
 opencv_imgproc_draw_ellipse(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     int32_t center_x,
     int32_t center_y,
     int32_t axis_width,
@@ -3747,9 +3773,7 @@ opencv_imgproc_draw_ellipse(
     try {
         cv::Mat *img = nullptr;
         const opencv_core_status core_status =
-            opencv_core_module_output_mat(
-                const_cast<opencv_core_mat_handle *>(image),
-                &img);
+            opencv_core_module_output_mat(image, &img);
 
         if (core_status != OPENCV_CORE_OK || img == nullptr) {
             return invalid_argument("invalid drawing image");
@@ -3807,7 +3831,7 @@ opencv_imgproc_draw_ellipse(
 
 opencv_imgproc_status
 opencv_imgproc_draw_polyline(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     const opencv_imgproc_point_i32 *points,
     int32_t point_count,
     uint8_t closed,
@@ -3823,9 +3847,7 @@ opencv_imgproc_draw_polyline(
     try {
         cv::Mat *img = nullptr;
         const opencv_core_status core_status =
-            opencv_core_module_output_mat(
-                const_cast<opencv_core_mat_handle *>(image),
-                &img);
+            opencv_core_module_output_mat(image, &img);
 
         if (core_status != OPENCV_CORE_OK || img == nullptr) {
             return invalid_argument("invalid drawing image");
@@ -3872,12 +3894,13 @@ opencv_imgproc_draw_polyline(
             return invalid_argument(message);
         }
 
-        cv::Point *native_points = const_cast<cv::Point *>(
-            reinterpret_cast<const cv::Point *>(points));
+        const std::vector<cv::Point> native_points =
+            native_drawing_points(points, point_count);
+        const cv::Point *native_data = native_points.data();
         const int native_count = static_cast<int>(point_count);
         cv::polylines(
             *img,
-            &native_points,
+            &native_data,
             &native_count,
             1,
             closed == 1,
@@ -3893,7 +3916,7 @@ opencv_imgproc_draw_polyline(
 
 opencv_imgproc_status
 opencv_imgproc_fill_polygon(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     const opencv_imgproc_point_i32 *points,
     int32_t point_count,
     double color_0,
@@ -3907,9 +3930,7 @@ opencv_imgproc_fill_polygon(
     try {
         cv::Mat *img = nullptr;
         const opencv_core_status core_status =
-            opencv_core_module_output_mat(
-                const_cast<opencv_core_mat_handle *>(image),
-                &img);
+            opencv_core_module_output_mat(image, &img);
 
         if (core_status != OPENCV_CORE_OK || img == nullptr) {
             return invalid_argument("invalid drawing image");
@@ -3943,12 +3964,13 @@ opencv_imgproc_fill_polygon(
             return invalid_argument(message);
         }
 
-        const cv::Point *native_points =
-            reinterpret_cast<const cv::Point *>(points);
+        const std::vector<cv::Point> native_points =
+            native_drawing_points(points, point_count);
+        const cv::Point *native_data = native_points.data();
         const int native_count = static_cast<int>(point_count);
         cv::fillPoly(
             *img,
-            &native_points,
+            &native_data,
             &native_count,
             1,
             color,

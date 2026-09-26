@@ -3810,7 +3810,7 @@ package body OpenCV.Image_Processing is
       Status : Internal.C_API.Status;
 
       procedure Draw
-        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+        (Image_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
       begin
          Status :=
            Internal.C_API.Draw_Line
@@ -3829,7 +3829,7 @@ package body OpenCV.Image_Processing is
    begin
       Validate_Drawing_Image (Image, Line_Style);
       Validate_Drawing_Color (Image, Color);
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
       Raise_On_Error (Status, "Draw_Line");
    end Draw_Line;
 
@@ -3839,12 +3839,13 @@ package body OpenCV.Image_Processing is
       Color      : OpenCV.Scalar;
       Filled     : Boolean;
       Thickness  : Drawing_Thickness;
-      Line_Style : Drawing_Line_Style)
+      Line_Style : Drawing_Line_Style;
+      Operation  : String)
    is
       Status : Internal.C_API.Status;
 
       procedure Draw
-        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+        (Image_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
       begin
          Status :=
            Internal.C_API.Draw_Rectangle
@@ -3872,8 +3873,8 @@ package body OpenCV.Image_Processing is
 
       Validate_Drawing_Image (Image, Line_Style);
       Validate_Drawing_Color (Image, Color);
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
-      Raise_On_Error (Status, "Draw_Rectangle");
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, Operation);
    end Draw_Or_Fill_Rectangle;
 
    procedure Draw_Rectangle
@@ -3884,7 +3885,7 @@ package body OpenCV.Image_Processing is
       Line_Style : Drawing_Line_Style := Eight_Connected_Line) is
    begin
       Draw_Or_Fill_Rectangle
-        (Image, Bounds, Color, False, Thickness, Line_Style);
+        (Image, Bounds, Color, False, Thickness, Line_Style, "Draw_Rectangle");
    end Draw_Rectangle;
 
    procedure Fill_Rectangle
@@ -3893,7 +3894,8 @@ package body OpenCV.Image_Processing is
       Color      : OpenCV.Scalar;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line) is
    begin
-      Draw_Or_Fill_Rectangle (Image, Bounds, Color, True, 1, Line_Style);
+      Draw_Or_Fill_Rectangle
+        (Image, Bounds, Color, True, 1, Line_Style, "Fill_Rectangle");
    end Fill_Rectangle;
 
    procedure Draw_Or_Fill_Circle
@@ -3903,12 +3905,13 @@ package body OpenCV.Image_Processing is
       Color      : OpenCV.Scalar;
       Filled     : Boolean;
       Thickness  : Drawing_Thickness;
-      Line_Style : Drawing_Line_Style)
+      Line_Style : Drawing_Line_Style;
+      Operation  : String)
    is
       Status : Internal.C_API.Status;
 
       procedure Draw
-        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+        (Image_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
       begin
          Status :=
            Internal.C_API.Draw_Circle
@@ -3929,8 +3932,8 @@ package body OpenCV.Image_Processing is
    begin
       Validate_Drawing_Image (Image, Line_Style);
       Validate_Drawing_Color (Image, Color);
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
-      Raise_On_Error (Status, "Draw_Circle");
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, Operation);
    end Draw_Or_Fill_Circle;
 
    procedure Draw_Circle
@@ -3942,7 +3945,14 @@ package body OpenCV.Image_Processing is
       Line_Style : Drawing_Line_Style := Eight_Connected_Line) is
    begin
       Draw_Or_Fill_Circle
-        (Image, Center, Radius, Color, False, Thickness, Line_Style);
+        (Image,
+         Center,
+         Radius,
+         Color,
+         False,
+         Thickness,
+         Line_Style,
+         "Draw_Circle");
    end Draw_Circle;
 
    procedure Fill_Circle
@@ -3952,7 +3962,8 @@ package body OpenCV.Image_Processing is
       Color      : OpenCV.Scalar;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line) is
    begin
-      Draw_Or_Fill_Circle (Image, Center, Radius, Color, True, 1, Line_Style);
+      Draw_Or_Fill_Circle
+        (Image, Center, Radius, Color, True, 1, Line_Style, "Fill_Circle");
    end Fill_Circle;
 
    procedure Draw_Or_Fill_Ellipse
@@ -3966,7 +3977,8 @@ package body OpenCV.Image_Processing is
       Filled      : Boolean;
       Thickness   : Drawing_Thickness;
       Line_Style  : Drawing_Line_Style;
-      Units       : OpenCV.Angle_Unit)
+      Units       : OpenCV.Angle_Unit;
+      Operation   : String)
    is
       Degrees_Angle : OpenCV.Float64_Value;
       Degrees_Start : OpenCV.Float64_Value;
@@ -3974,7 +3986,7 @@ package body OpenCV.Image_Processing is
       Status        : Internal.C_API.Status;
 
       procedure Draw
-        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+        (Image_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
       begin
          Status :=
            Internal.C_API.Draw_Ellipse
@@ -4009,8 +4021,8 @@ package body OpenCV.Image_Processing is
       Degrees_End := To_Degrees (End_Angle, Units);
       Validate_Drawing_Image (Image, Line_Style);
       Validate_Drawing_Color (Image, Color);
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
-      Raise_On_Error (Status, "Draw_Ellipse");
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, Operation);
    end Draw_Or_Fill_Ellipse;
 
    procedure Draw_Ellipse
@@ -4036,7 +4048,8 @@ package body OpenCV.Image_Processing is
          False,
          Thickness,
          Line_Style,
-         Units);
+         Units,
+         "Draw_Ellipse");
    end Draw_Ellipse;
 
    procedure Fill_Ellipse
@@ -4061,7 +4074,8 @@ package body OpenCV.Image_Processing is
          True,
          1,
          Line_Style,
-         Units);
+         Units,
+         "Fill_Ellipse");
    end Fill_Ellipse;
 
    procedure Draw_Polyline
@@ -4075,7 +4089,7 @@ package body OpenCV.Image_Processing is
       Status : Internal.C_API.Status;
 
       procedure Draw
-        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+        (Image_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
       is
          Native : constant Internal.C_API.Point_I32_Array :=
            To_C_Points (Points);
@@ -4102,7 +4116,7 @@ package body OpenCV.Image_Processing is
 
       Validate_Drawing_Image (Image, Line_Style);
       Validate_Drawing_Color (Image, Color);
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
       Raise_On_Error (Status, "Draw_Polyline");
    end Draw_Polyline;
 
@@ -4115,7 +4129,7 @@ package body OpenCV.Image_Processing is
       Status : Internal.C_API.Status;
 
       procedure Draw
-        (Image_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+        (Image_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
       is
          Native : constant Internal.C_API.Point_I32_Array :=
            To_C_Points (Points);
@@ -4140,7 +4154,7 @@ package body OpenCV.Image_Processing is
 
       Validate_Drawing_Image (Image, Line_Style);
       Validate_Drawing_Color (Image, Color);
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Draw'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
       Raise_On_Error (Status, "Fill_Polygon");
    end Fill_Polygon;
 

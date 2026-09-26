@@ -223,6 +223,68 @@ package body Drawing_Tests is
         (Zero_Width'Access, "a zero-width rectangle must be rejected");
    end Rectangles;
 
+   procedure Rectangle_Extreme_Clipping (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 8, (OpenCV.Core.UInt8, 1));
+   begin
+      --  X + Width exceeds Integer_32'Last; OpenCV 4.1's Rect overload would
+      --  overflow before clipping.
+      OpenCV.Core.Set_To (Image, (others => 0.0));
+      OpenCV.Image_Processing.Fill_Rectangle
+        (Image,
+         (X => 2, Y => 1, Width => OpenCV.Size_Coordinate'Last, Height => 2),
+         White);
+      AUnit.Assertions.Assert
+        (Pixel (Image, 1, 2) = 255
+         and then Pixel (Image, 2, 7) = 255
+         and then Pixel (Image, 1, 1) = 0
+         and then Pixel (Image, 3, 7) = 0,
+         "a fill whose far corner exceeds Integer_32'Last must be clipped");
+
+      OpenCV.Core.Set_To (Image, (others => 0.0));
+      OpenCV.Image_Processing.Draw_Rectangle
+        (Image,
+         (X      => 1,
+          Y      => 3,
+          Width  => OpenCV.Size_Coordinate'Last,
+          Height => OpenCV.Size_Coordinate'Last),
+         White);
+      AUnit.Assertions.Assert
+        (Pixel (Image, 3, 1) = 255
+         and then Pixel (Image, 3, 7) = 255
+         and then Pixel (Image, 7, 1) = 255
+         and then Pixel (Image, 5, 4) = 0
+         and then Pixel (Image, 2, 1) = 0,
+         "an outline with both far edges beyond Integer_32'Last must draw"
+         & " only its visible near edges");
+
+      OpenCV.Core.Set_To (Image, (others => 0.0));
+      OpenCV.Image_Processing.Draw_Rectangle
+        (Image,
+         (X => -3, Y => -3, Width => OpenCV.Size_Coordinate'Last, Height => 6),
+         White);
+      AUnit.Assertions.Assert
+        (Pixel (Image, 2, 0) = 255
+         and then Pixel (Image, 2, 7) = 255
+         and then Pixel (Image, 1, 1) = 0
+         and then Pixel (Image, 3, 3) = 0,
+         "a negative origin with a huge extent must draw its clipped bottom"
+         & " edge only");
+
+      OpenCV.Core.Set_To (Image, (others => 0.0));
+      OpenCV.Image_Processing.Fill_Rectangle
+        (Image,
+         (X      => OpenCV.Point_Coordinate'First,
+          Y      => OpenCV.Point_Coordinate'First,
+          Width  => OpenCV.Size_Coordinate'Last,
+          Height => OpenCV.Size_Coordinate'Last),
+         White);
+      AUnit.Assertions.Assert
+        (Pixel (Image, 0, 0) = 0 and then Pixel (Image, 7, 7) = 0,
+         "a rectangle ending at -2 must be entirely clipped");
+   end Rectangle_Extreme_Clipping;
+
    procedure Circles (Test : in out Fixture) is
       pragma Unreferenced (Test);
       Image : OpenCV.Core.Mat :=
@@ -600,14 +662,14 @@ package body Drawing_Tests is
       Status : C_API.Status;
 
       procedure Bad_Style
-        (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+        (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
       begin
          Status :=
            C_API.Draw_Line (Handle, 0, 0, 3, 3, 1.0, 0.0, 0.0, 0.0, 1, 99);
       end Bad_Style;
 
       procedure Bad_Radius
-        (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+        (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
       begin
          Status :=
            C_API.Draw_Circle
@@ -625,14 +687,14 @@ package body Drawing_Tests is
       end Bad_Radius;
 
       procedure Bad_Points
-        (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+        (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
       begin
          Status :=
            C_API.Fill_Polygon
              (Handle, null, 3, 1.0, 0.0, 0.0, 0.0, C_API.Drawing_Line_8);
       end Bad_Points;
 
-      procedure Recover (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      procedure Recover (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
       is
       begin
          Status :=
@@ -658,26 +720,26 @@ package body Drawing_Tests is
          and then Ada.Strings.Fixed.Index (C_API.Last_Error_Message, "image")
                   /= 0,
          "a null drawing image must be rejected with a diagnostic");
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Bad_Style'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Bad_Style'Access);
       AUnit.Assertions.Assert
         (Status = C_API.Error_Invalid_Argument
          and then Ada.Strings.Fixed.Index (C_API.Last_Error_Message, "style")
                   /= 0,
          "a bad line-style selector must be rejected with a diagnostic");
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Bad_Radius'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Bad_Radius'Access);
       AUnit.Assertions.Assert
         (Status = C_API.Error_Invalid_Argument
          and then Ada.Strings.Fixed.Index (C_API.Last_Error_Message, "radius")
                   /= 0,
          "a nonpositive raw radius must be rejected with a diagnostic");
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Bad_Points'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Bad_Points'Access);
       AUnit.Assertions.Assert
         (Status = C_API.Error_Invalid_Argument
          and then Ada.Strings.Fixed.Index (C_API.Last_Error_Message, "points")
                   /= 0,
          "a null point array must be rejected with a diagnostic");
       OpenCV.Core.Set_To (Image, (others => 0.0));
-      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Recover'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Recover'Access);
       AUnit.Assertions.Assert
         (Status = C_API.Success and then Pixel (Image, 1, 2) = 9,
          "a valid drawing must succeed after a prior ABI failure");
@@ -690,6 +752,10 @@ package body Drawing_Tests is
         (Caller.Create ("Drawing antialiasing", Antialiasing'Access));
       Result.Add_Test
         (Caller.Create ("Drawing rectangles", Rectangles'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Drawing rectangle extreme clipping",
+            Rectangle_Extreme_Clipping'Access));
       Result.Add_Test (Caller.Create ("Drawing circles", Circles'Access));
       Result.Add_Test (Caller.Create ("Drawing ellipses", Ellipses'Access));
       Result.Add_Test (Caller.Create ("Drawing polylines", Polylines'Access));

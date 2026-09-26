@@ -816,7 +816,7 @@ package OpenCV.Image_Processing is
    --  nonempty and two-dimensional, with depth UInt8, UInt16, Int16,
    --  Float32, or Float64 and 1 through 4 channels. Scalar components are
    --  written in channel order; unused components are ignored and there is
-   --  or alpha blending. The components used by Image.Channels must be
+   --  no alpha blending. The components used by Image.Channels must be
    --  finite. Coordinates may lie outside Image; OpenCV clips them. Outline
    --  operations use a positive Drawing_Thickness. Anti_Aliased_Line is
    --  accepted only for UInt8 images. Contract violations and OpenCV

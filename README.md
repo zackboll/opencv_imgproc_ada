@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **264 AUnit tests**
+> **Current registered test baseline:** **265 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -2393,8 +2393,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **239-test** baseline is:
-
+The current **265-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -2409,7 +2408,6 @@ The current **239-test** baseline is:
 | Perspective warping | 13 |
 | Remapping | 13 |
 | Median blur | 10 |
-
 | Box blur | 11 |
 | Bilateral filter | 10 |
 | Filter 2D | 12 |
@@ -2424,7 +2422,9 @@ The current **239-test** baseline is:
 | Histogram equalization | 12 |
 | CLAHE | 9 |
 | Contours | 7 |
-| **Total** | **248** |
+| Connected components | 6 |
+| Drawing | 11 |
+| **Total** | **265** |
 
 
 The suite covers more than simple success paths. It includes:

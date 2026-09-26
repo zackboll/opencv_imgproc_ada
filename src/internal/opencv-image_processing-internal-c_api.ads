@@ -505,7 +505,7 @@ package OpenCV.Image_Processing.Internal.C_API is
    with Import, Convention => C, External_Name => "opencv_imgproc_remap";
 
    function Draw_Line
-     (Image      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+     (Image      : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Start_X    : Interfaces.Integer_32;
       Start_Y    : Interfaces.Integer_32;
       Finish_X   : Interfaces.Integer_32;
@@ -519,7 +519,7 @@ package OpenCV.Image_Processing.Internal.C_API is
    with Import, Convention => C, External_Name => "opencv_imgproc_draw_line";
 
    function Draw_Rectangle
-     (Image      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+     (Image      : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Origin_X   : Interfaces.Integer_32;
       Origin_Y   : Interfaces.Integer_32;
       Width      : Interfaces.Integer_32;
@@ -537,7 +537,7 @@ package OpenCV.Image_Processing.Internal.C_API is
      External_Name => "opencv_imgproc_draw_rectangle";
 
    function Draw_Circle
-     (Image      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+     (Image      : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Center_X   : Interfaces.Integer_32;
       Center_Y   : Interfaces.Integer_32;
       Radius     : Interfaces.Integer_32;
@@ -551,7 +551,7 @@ package OpenCV.Image_Processing.Internal.C_API is
    with Import, Convention => C, External_Name => "opencv_imgproc_draw_circle";
 
    function Draw_Ellipse
-     (Image       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+     (Image       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Center_X    : Interfaces.Integer_32;
       Center_Y    : Interfaces.Integer_32;
       Axis_Width  : Interfaces.Integer_32;
@@ -572,7 +572,7 @@ package OpenCV.Image_Processing.Internal.C_API is
      External_Name => "opencv_imgproc_draw_ellipse";
 
    function Draw_Polyline
-     (Image       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+     (Image       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Points      : access constant Point_I32;
       Point_Count : Interfaces.Integer_32;
       Closed      : Interfaces.Unsigned_8;
@@ -588,7 +588,7 @@ package OpenCV.Image_Processing.Internal.C_API is
      External_Name => "opencv_imgproc_draw_polyline";
 
    function Fill_Polygon
-     (Image       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+     (Image       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Points      : access constant Point_I32;
       Point_Count : Interfaces.Integer_32;
       Color_0     : Interfaces.C.double;

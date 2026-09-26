@@ -434,7 +434,7 @@ opencv_imgproc_remap(
 
 opencv_imgproc_status
 opencv_imgproc_draw_line(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     int32_t start_x,
     int32_t start_y,
     int32_t finish_x,
@@ -448,7 +448,7 @@ opencv_imgproc_draw_line(
 
 opencv_imgproc_status
 opencv_imgproc_draw_rectangle(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     int32_t origin_x,
     int32_t origin_y,
     int32_t width,
@@ -463,7 +463,7 @@ opencv_imgproc_draw_rectangle(
 
 opencv_imgproc_status
 opencv_imgproc_draw_circle(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     int32_t center_x,
     int32_t center_y,
     int32_t radius,
@@ -477,7 +477,7 @@ opencv_imgproc_draw_circle(
 
 opencv_imgproc_status
 opencv_imgproc_draw_ellipse(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     int32_t center_x,
     int32_t center_y,
     int32_t axis_width,
@@ -495,7 +495,7 @@ opencv_imgproc_draw_ellipse(
 
 opencv_imgproc_status
 opencv_imgproc_draw_polyline(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     const opencv_imgproc_point_i32 *points,
     int32_t point_count,
     uint8_t closed,
@@ -508,7 +508,7 @@ opencv_imgproc_draw_polyline(
 
 opencv_imgproc_status
 opencv_imgproc_fill_polygon(
-    const opencv_core_mat_handle *image,
+    opencv_core_mat_handle *image,
     const opencv_imgproc_point_i32 *points,
     int32_t point_count,
     double color_0,
