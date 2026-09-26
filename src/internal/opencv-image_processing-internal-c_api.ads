@@ -756,6 +756,97 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_fill_polygon";
 
+   --  Segmentation.
+
+   type Scalar4_Values is array (0 .. 3) of Interfaces.C.double
+   with Convention => C;
+
+   type Scalar4 is record
+      Values : Scalar4_Values;
+   end record
+   with Convention => C;
+
+   type Rect_I32 is record
+      X      : Interfaces.Integer_32;
+      Y      : Interfaces.Integer_32;
+      Width  : Interfaces.Integer_32;
+      Height : Interfaces.Integer_32;
+   end record
+   with Convention => C;
+
+   Flood_Fill_Floating_Range : constant Interfaces.Integer_32 := 0;
+   Flood_Fill_Fixed_Range    : constant Interfaces.Integer_32 := 1;
+
+   function Flood_Fill
+     (Image            : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Seed_X           : Interfaces.Integer_32;
+      Seed_Y           : Interfaces.Integer_32;
+      New_Value        : access constant Scalar4;
+      Lower_Difference : access constant Scalar4;
+      Upper_Difference : access constant Scalar4;
+      Connectivity     : Interfaces.Integer_32;
+      Range_Mode       : Interfaces.Integer_32;
+      Pixel_Count      : access Interfaces.Integer_32;
+      Bounds           : access Rect_I32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_flood_fill";
+
+   function Flood_Fill_Masked
+     (Image            : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Mask             : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Seed_X           : Interfaces.Integer_32;
+      Seed_Y           : Interfaces.Integer_32;
+      New_Value        : access constant Scalar4;
+      Lower_Difference : access constant Scalar4;
+      Upper_Difference : access constant Scalar4;
+      Connectivity     : Interfaces.Integer_32;
+      Range_Mode       : Interfaces.Integer_32;
+      Mask_Fill_Value  : Interfaces.Integer_32;
+      Mask_Only        : Interfaces.Unsigned_8;
+      Pixel_Count      : access Interfaces.Integer_32;
+      Bounds           : access Rect_I32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_flood_fill_masked";
+
+   function Watershed
+     (Source  : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Markers : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_watershed";
+
+   GrabCut_Init_With_Rect    : constant Interfaces.Integer_32 := 0;
+   GrabCut_Init_With_Mask    : constant Interfaces.Integer_32 := 1;
+   GrabCut_Eval              : constant Interfaces.Integer_32 := 2;
+   GrabCut_Eval_Freeze_Model : constant Interfaces.Integer_32 := 3;
+
+   --  OpenCV 4.1 initializes five-component GMMs with kmeans (K => 5).
+   GrabCut_Minimum_Training_Samples : constant := 5;
+
+   --  Native GMM storage: five components of 13 Float64 values each.
+   GrabCut_Model_Columns : constant := 65;
+
+   function GrabCut
+     (Source           : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Mask             : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Background_Model : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Foreground_Model : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Rect_X           : Interfaces.Integer_32;
+      Rect_Y           : Interfaces.Integer_32;
+      Rect_Width       : Interfaces.Integer_32;
+      Rect_Height      : Interfaces.Integer_32;
+      Iteration_Count  : Interfaces.Integer_32;
+      Mode             : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_grabcut";
+
+   function Mat_Storage_Overlap
+     (First   : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Second  : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Overlap : access Interfaces.Unsigned_8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_mat_storage_overlap";
+
    function Last_Error_Message return String;
 
 end OpenCV.Image_Processing.Internal.C_API;

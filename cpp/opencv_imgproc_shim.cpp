@@ -1369,6 +1369,507 @@ bool fits_capacity(int32_t capacity, std::size_t count) noexcept
     return capacity >= 0 && static_cast<std::size_t>(capacity) >= count;
 }
 
+// Segmentation helpers.
+
+constexpr std::uint64_t native_int_max =
+    static_cast<std::uint64_t>(std::numeric_limits<int>::max());
+
+// Reports whether any element byte addressed by one Mat is also addressed by
+// the other. Unlike equalize_hist_views_overlap this compares raw byte
+// intervals row by row, so it is exact even for views of one buffer that
+// were reinterpreted with different element types or row steps.
+bool mat_storage_overlaps(const cv::Mat &first, const cv::Mat &second) noexcept
+{
+    if (first.empty() || second.empty() || first.data == nullptr
+        || second.data == nullptr) {
+        return false;
+    }
+
+    if (first.dims != 2 || second.dims != 2) {
+        // Conservative for N-dimensional views: compare the addressed spans.
+        return first.data < second.dataend && second.data < first.dataend;
+    }
+
+    const std::uintptr_t a_start = reinterpret_cast<std::uintptr_t>(first.data);
+    const std::uintptr_t b_start = reinterpret_cast<std::uintptr_t>(second.data);
+    const std::uint64_t a_length =
+        static_cast<std::uint64_t>(first.cols) * first.elemSize();
+    const std::uint64_t b_length =
+        static_cast<std::uint64_t>(second.cols) * second.elemSize();
+    const std::uint64_t a_step = first.rows > 1 ? first.step[0] : a_length;
+    const std::uint64_t b_step = second.rows > 1 ? second.step[0] : b_length;
+    const std::uint64_t b_rows = static_cast<std::uint64_t>(second.rows);
+    const std::uintptr_t b_end = b_start + (b_rows - 1) * b_step + b_length;
+
+    for (int row = 0; row < first.rows; ++row) {
+        const std::uintptr_t start =
+            a_start + static_cast<std::uint64_t>(row) * a_step;
+        const std::uintptr_t end = start + a_length;
+        if (start >= b_end) {
+            break;
+        }
+        if (end <= b_start) {
+            continue;
+        }
+        // First row k of second whose byte interval ends after start.
+        std::uint64_t k = 0;
+        if (start >= b_start + b_length) {
+            k = (start - b_start - b_length) / b_step + 1;
+        }
+        if (k < b_rows && b_start + k * b_step < end) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool product_fits_int(std::uint64_t left, std::uint64_t right) noexcept
+{
+    return left == 0 || right <= native_int_max / left;
+}
+
+bool flood_fill_components(
+    const cv::Mat &image,
+    const opencv_imgproc_scalar4 &new_value,
+    const opencv_imgproc_scalar4 &lower,
+    const opencv_imgproc_scalar4 &upper,
+    const char **message) noexcept
+{
+    const int channels = std::min(image.channels(), 4);
+    const double float_max =
+        static_cast<double>(std::numeric_limits<float>::max());
+
+    for (int index = 0; index < channels; ++index) {
+        const double value = new_value.values[index];
+        const double low = lower.values[index];
+        const double high = upper.values[index];
+        if (!std::isfinite(value) || !std::isfinite(low)
+            || !std::isfinite(high)) {
+            // ABI safety: a NaN difference passes OpenCV's "< 0" check and
+            // is then narrowed by cvFloor, and scalarToRawData converts
+            // nonfinite fill values; both are undefined conversions.
+            *message = "flood-fill value and difference components in use "
+                       "must be finite";
+            return false;
+        }
+        if (image.depth() == CV_32F
+            && (std::fabs(value) > float_max || std::fabs(low) > float_max
+                || std::fabs(high) > float_max)) {
+            // ABI safety: OpenCV converts these doubles to float with a
+            // plain cast; an out-of-range double-to-float cast is undefined.
+            *message = "flood-fill components must be representable in "
+                       "binary32 for Float32 images";
+            return false;
+        }
+        if (image.depth() != CV_32F
+            && (std::fabs(value) > static_cast<double>(native_int_max)
+                || std::fabs(low) > static_cast<double>(native_int_max)
+                || std::fabs(high) > static_cast<double>(native_int_max))) {
+            // ABI safety: for integer images OpenCV rounds the fill value
+            // (cvRound) and floors the differences (cvFloor) to int before
+            // saturating; larger magnitudes overflow those conversions.
+            *message = "flood-fill components exceed the native int range";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool grabcut_mode(int32_t mode, int &opencv_mode) noexcept
+{
+    switch (mode) {
+    case OPENCV_IMGPROC_GRABCUT_INIT_WITH_RECT:
+        opencv_mode = cv::GC_INIT_WITH_RECT;
+        return true;
+    case OPENCV_IMGPROC_GRABCUT_INIT_WITH_MASK:
+        opencv_mode = cv::GC_INIT_WITH_MASK;
+        return true;
+    case OPENCV_IMGPROC_GRABCUT_EVAL:
+        opencv_mode = cv::GC_EVAL;
+        return true;
+    case OPENCV_IMGPROC_GRABCUT_EVAL_FREEZE_MODEL:
+        opencv_mode = cv::GC_EVAL_FREEZE_MODEL;
+        return true;
+    default:
+        return false;
+    }
+}
+
+// Counts background (GC_BGD/GC_PR_BGD) and foreground (GC_FGD/GC_PR_FGD)
+// mask pixels exactly as OpenCV's initGMMs partitions them. Returns false
+// when any label is outside 0..3.
+bool grabcut_mask_counts(
+    const cv::Mat &mask,
+    std::int64_t &background,
+    std::int64_t &foreground) noexcept
+{
+    background = 0;
+    foreground = 0;
+    for (int row = 0; row < mask.rows; ++row) {
+        const std::uint8_t *labels = mask.ptr<std::uint8_t>(row);
+        for (int col = 0; col < mask.cols; ++col) {
+            switch (labels[col]) {
+            case cv::GC_BGD:
+            case cv::GC_PR_BGD:
+                ++background;
+                break;
+            case cv::GC_FGD:
+            case cv::GC_PR_FGD:
+                ++foreground;
+                break;
+            default:
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool grabcut_model_valid(const cv::Mat &model) noexcept
+{
+    return model.dims == 2 && model.type() == CV_64FC1 && model.rows == 1
+        && model.cols == 65;
+}
+
+// Validates flood-fill selectors and geometry. Returns nullptr when the
+// request is safe to pass to OpenCV, otherwise a diagnostic.
+const char *flood_fill_preflight(
+    const cv::Mat &img,
+    const cv::Mat *msk,
+    int32_t connectivity,
+    int32_t range_mode,
+    int32_t mask_fill_value,
+    uint8_t mask_only) noexcept
+{
+    // ABI safety: the shim itself packs these selectors into OpenCV's
+    // flags word (connectivity | value << 8 | mode bits); any other value
+    // would set unrelated flag bits or overflow into the mode bits.
+    if (connectivity != 4 && connectivity != 8) {
+        return "flood-fill connectivity must be 4 or 8";
+    }
+    if (range_mode != OPENCV_IMGPROC_FLOOD_FILL_FLOATING_RANGE
+        && range_mode != OPENCV_IMGPROC_FLOOD_FILL_FIXED_RANGE) {
+        return "invalid flood-fill range mode";
+    }
+    if (mask_only > 1) {
+        return "flood-fill mask-only selector must be 0 or 1";
+    }
+    if (mask_fill_value < 1 || mask_fill_value > 255) {
+        return "flood-fill mask value must be in 1 .. 255";
+    }
+    if (img.dims > 2) {
+        // ABI safety: N-dimensional Mats report rows == cols == -1, which
+        // the step and pixel-count arithmetic below cannot represent.
+        return "flood-fill image must be two-dimensional";
+    }
+    const std::uint64_t rows = static_cast<std::uint64_t>(img.rows);
+    const std::uint64_t cols = static_cast<std::uint64_t>(img.cols);
+    if (rows > 65535 || cols > 65535) {
+        // ABI safety: OpenCV 4.1-5.0 FFillSegment stores the queued y, l, r,
+        // prevl and prevr coordinates as ushort; larger images truncate them
+        // and the fill revisits the wrong rows and columns.
+        return "flood-fill image dimensions exceed the native 65535 segment "
+               "coordinate limit";
+    }
+    if (!product_fits_int(rows, cols)) {
+        // ABI safety: OpenCV accumulates the filled area in int.
+        return "flood-fill pixel count exceeds the native int area";
+    }
+    if (!product_fits_int(img.step[0], rows + 1)) {
+        // ABI safety: OpenCV 4.1 narrows image.step to int and forms
+        // step * y row offsets in int.
+        return "flood-fill image step arithmetic exceeds native int";
+    }
+    if (msk == nullptr) {
+        if (!product_fits_int(rows + 3, cols + 2)) {
+            // ABI safety: the private (rows + 2) x (cols + 2) mask uses the
+            // same narrowed int step arithmetic.
+            return "flood-fill mask geometry exceeds native int";
+        }
+        return nullptr;
+    }
+    if (msk->empty()) {
+        // ABI safety: OpenCV 4.1 ignores an empty mask and fills a private
+        // one, whereas 4.10/5.0 create() it and rebind the caller's mask
+        // header; the observable result would depend on the version.
+        return "flood-fill mask must be nonempty";
+    }
+    if (msk->dims > 2
+        || !product_fits_int(
+            msk->step[0], static_cast<std::uint64_t>(msk->rows) + 1)) {
+        // ABI safety: OpenCV 4.1 narrows mask.step to int and forms
+        // maskStep * y row offsets in int.
+        return "flood-fill mask step arithmetic exceeds native int";
+    }
+    if (mat_storage_overlaps(img, *msk)) {
+        // ABI safety: the fill compares image pixels while writing the
+        // mask; shared storage corrupts unread comparison data.
+        return "flood-fill mask must not share storage with image";
+    }
+    return nullptr;
+}
+
+opencv_imgproc_status opencv_imgproc_flood_fill_masked_impl(
+    opencv_core_mat_handle *image,
+    opencv_core_mat_handle *mask,
+    bool masked,
+    int32_t seed_x,
+    int32_t seed_y,
+    const opencv_imgproc_scalar4 *new_value,
+    const opencv_imgproc_scalar4 *lower_difference,
+    const opencv_imgproc_scalar4 *upper_difference,
+    int32_t connectivity,
+    int32_t range_mode,
+    int32_t mask_fill_value,
+    uint8_t mask_only,
+    int32_t *pixel_count,
+    opencv_imgproc_rect_i32 *bounds) noexcept
+{
+    clear_error();
+    if (pixel_count == nullptr || bounds == nullptr) {
+        return invalid_argument("flood-fill result output is null");
+    }
+    *pixel_count = 0;
+    *bounds = opencv_imgproc_rect_i32{0, 0, 0, 0};
+
+    try {
+        cv::Mat *img = nullptr;
+        if (opencv_core_module_output_mat(image, &img) != OPENCV_CORE_OK
+            || img == nullptr) {
+            return invalid_argument("invalid flood-fill image");
+        }
+        cv::Mat *msk = nullptr;
+        if (masked
+            && (opencv_core_module_output_mat(mask, &msk) != OPENCV_CORE_OK
+                || msk == nullptr)) {
+            return invalid_argument("invalid flood-fill mask");
+        }
+        if (new_value == nullptr || lower_difference == nullptr
+            || upper_difference == nullptr) {
+            return invalid_argument("flood-fill scalar input is null");
+        }
+        const char *message = flood_fill_preflight(
+            *img, msk, connectivity, range_mode, mask_fill_value, mask_only);
+        if (message != nullptr) {
+            return invalid_argument(message);
+        }
+        if (!flood_fill_components(
+                *img, *new_value, *lower_difference, *upper_difference,
+                &message)) {
+            return invalid_argument(message);
+        }
+
+        int flags = static_cast<int>(connectivity)
+            | (static_cast<int>(mask_fill_value) << 8);
+        if (range_mode == OPENCV_IMGPROC_FLOOD_FILL_FIXED_RANGE) {
+            flags |= cv::FLOODFILL_FIXED_RANGE;
+        }
+        if (mask_only != 0) {
+            flags |= cv::FLOODFILL_MASK_ONLY;
+        }
+
+        const double *v = new_value->values;
+        const double *lo = lower_difference->values;
+        const double *hi = upper_difference->values;
+        const cv::Scalar fill(v[0], v[1], v[2], v[3]);
+        const cv::Scalar low(lo[0], lo[1], lo[2], lo[3]);
+        const cv::Scalar high(hi[0], hi[1], hi[2], hi[3]);
+        const cv::Point seed(static_cast<int>(seed_x), static_cast<int>(seed_y));
+        cv::Rect rect;
+        int area = 0;
+        if (masked) {
+            area = cv::floodFill(*img, *msk, seed, fill, &rect, low, high, flags);
+        } else {
+            area = cv::floodFill(*img, seed, fill, &rect, low, high, flags);
+        }
+
+        *pixel_count = static_cast<int32_t>(area);
+        *bounds = opencv_imgproc_rect_i32{
+            static_cast<int32_t>(rect.x), static_cast<int32_t>(rect.y),
+            static_cast<int32_t>(rect.width),
+            static_cast<int32_t>(rect.height)};
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        *pixel_count = 0;
+        *bounds = opencv_imgproc_rect_i32{0, 0, 0, 0};
+        return translate_current_exception();
+    }
+}
+
+// Watershed preflight. OpenCV 4.1, 4.10 and 5.0 segmentation.cpp validate
+// only type and size, then compute in int: istep = int(src.step),
+// mstep = int(markers.step / 4), queue offsets i * mstep + j and
+// i * istep + j * 3, and node-pool growth sz * 3 / 2 where the pool holds at
+// most one node per pixel.
+const char *watershed_preflight(const cv::Mat &src, const cv::Mat &markers) noexcept
+{
+    if (src.empty() || markers.empty()) {
+        // ABI safety: a zero-row Mat may keep a positive column count, and
+        // watershed then writes mask[j + mstep * (rows - 1)] through a null
+        // data pointer before discovering there is no pixel to process.
+        return "watershed source and markers must be nonempty";
+    }
+    if (src.dims > 2 || markers.dims > 2) {
+        // ABI safety: N-dimensional Mats report rows == cols == -1, so
+        // their size() compares equal while the offset arithmetic below is
+        // meaningless.
+        return "watershed source and markers must be two-dimensional";
+    }
+    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
+    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
+    if (!product_fits_int(src.step[0], rows + 1)) {
+        // ABI safety: istep is narrowed to int and i * istep row offsets are
+        // stored in int queue nodes.
+        return "watershed source step arithmetic exceeds native int";
+    }
+    if (!product_fits_int(markers.step[0] / sizeof(int), rows + 1)) {
+        // ABI safety: mstep is narrowed to int and i * mstep marker offsets
+        // are stored in int queue nodes.
+        return "watershed marker step arithmetic exceeds native int";
+    }
+    if (!product_fits_int(rows * cols, 5)) {
+        // ABI safety: allocWSNodes grows the node pool with int sz * 3 / 2;
+        // the pool reaches about 1.5 nodes per pixel.
+        return "watershed pixel count exceeds the native node-pool range";
+    }
+    if (mat_storage_overlaps(src, markers)) {
+        // ABI safety: watershed reads source colors while writing markers;
+        // shared storage corrupts unread source pixels.
+        return "watershed markers must not share storage with source";
+    }
+    return nullptr;
+}
+
+// GrabCut preflight shared by every mode. OpenCV 4.1, 4.10 and 5.0
+// grabcut.cpp compute vtxCount = cols * rows,
+// edgeCount = 2 * (4 * cols * rows - 3 * (cols + rows) + 2), calcBeta's
+// 4 * cols * rows and vertex index p.y * mask.cols + p.x, all in int.
+const char *grabcut_state_preflight(
+    const cv::Mat *src,
+    const cv::Mat *mask,
+    const cv::Mat *background,
+    const cv::Mat *foreground) noexcept
+{
+    if (src->dims > 2) {
+        // ABI safety: N-dimensional Mats report rows == cols == -1, which the
+        // graph-size arithmetic below cannot represent.
+        return "GrabCut source must be two-dimensional";
+    }
+    const std::uint64_t pixels = static_cast<std::uint64_t>(src->rows)
+        * static_cast<std::uint64_t>(src->cols);
+    if (!product_fits_int(pixels, 8)) {
+        // ABI safety: edgeCount = 2 * (4 * cols * rows ...) overflows int.
+        return "GrabCut pixel count exceeds the native graph-size range";
+    }
+    if (src == mask || src == background || src == foreground
+        || mask == background || mask == foreground
+        || background == foreground) {
+        // ABI safety: GrabCut rebinds mask and empty models via create();
+        // one header passed twice would alias state that OpenCV treats as
+        // independent.
+        return "GrabCut source, mask and models must be distinct Mats";
+    }
+    const cv::Mat *state[3] = {mask, background, foreground};
+    for (int first = 0; first < 3; ++first) {
+        if (mat_storage_overlaps(*src, *state[first])) {
+            // ABI safety: GrabCut reads source colors while writing state.
+            return "GrabCut state must not share storage with source";
+        }
+        for (int second = first + 1; second < 3; ++second) {
+            if (mat_storage_overlaps(*state[first], *state[second])) {
+                // ABI safety: mask and model writes would corrupt each other.
+                return "GrabCut mask and models must not share storage";
+            }
+        }
+    }
+    return nullptr;
+}
+
+// Pixels OpenCV's initMaskWithRect (identical in 4.1, 4.10 and 5.0) marks as
+// probable foreground: it clamps only the origin to zero and then limits
+// width and height to the remaining extent.
+std::int64_t grabcut_rect_inside_count(
+    const cv::Mat &src,
+    int32_t rect_x,
+    int32_t rect_y,
+    int32_t rect_width,
+    int32_t rect_height) noexcept
+{
+    const std::int64_t x = std::max<std::int64_t>(0, rect_x);
+    const std::int64_t y = std::max<std::int64_t>(0, rect_y);
+    const std::int64_t width = std::min<std::int64_t>(rect_width, src.cols - x);
+    const std::int64_t height =
+        std::min<std::int64_t>(rect_height, src.rows - y);
+    if (width <= 0 || height <= 0) {
+        return 0;
+    }
+    return width * height;
+}
+
+// Mode-specific GrabCut preconditions. The common preflight has already
+// accepted the geometry and aliasing.
+const char *grabcut_mode_preflight(
+    int32_t mode,
+    const cv::Mat &src,
+    const cv::Mat &labels,
+    const cv::Mat &background,
+    const cv::Mat &foreground,
+    int32_t rect_x,
+    int32_t rect_y,
+    int32_t rect_width,
+    int32_t rect_height) noexcept
+{
+    const std::int64_t pixels =
+        static_cast<std::int64_t>(src.rows) * static_cast<std::int64_t>(src.cols);
+    const std::int64_t minimum =
+        OPENCV_IMGPROC_GRABCUT_MINIMUM_TRAINING_SAMPLES;
+
+    if (mode == OPENCV_IMGPROC_GRABCUT_INIT_WITH_RECT) {
+        const std::int64_t inside = grabcut_rect_inside_count(
+            src, rect_x, rect_y, rect_width, rect_height);
+        if (inside < minimum || pixels - inside < minimum) {
+            // ABI safety: OpenCV 4.1 runs kmeans(K = 5) on each training set
+            // and asserts N >= K (for an empty set it first forms a Mat from
+            // &samples[0] of an empty vector), whereas 4.10/5.0 shrink K.
+            return "GrabCut rectangle must leave at least five pixels inside "
+                   "and five outside";
+        }
+        return nullptr;
+    }
+
+    if (mode == OPENCV_IMGPROC_GRABCUT_INIT_WITH_MASK) {
+        if (labels.dims != 2 || labels.type() != CV_8UC1
+            || labels.rows != src.rows || labels.cols != src.cols) {
+            // ABI safety: the shim scans the mask below and must not index
+            // outside it.
+            return "GrabCut mask must be UInt8 C1 with the source geometry";
+        }
+        std::int64_t bgd = 0;
+        std::int64_t fgd = 0;
+        if (!grabcut_mask_counts(labels, bgd, fgd)) {
+            // ABI safety: the shim's own training-set count (which guards
+            // the OpenCV 4.1 kmeans precondition) is defined only for the
+            // four labels; OpenCV would reject others only after that scan.
+            return "GrabCut mask labels must be in 0 .. 3";
+        }
+        if (bgd < minimum || fgd < minimum) {
+            // ABI safety: same OpenCV 4.1 kmeans(K = 5) precondition as
+            // rectangle initialization.
+            return "GrabCut mask needs at least five background and five "
+                   "foreground pixels";
+        }
+        return nullptr;
+    }
+
+    if (!grabcut_model_valid(background) || !grabcut_model_valid(foreground)) {
+        // ABI safety: in evaluation modes OpenCV silently create()s an empty
+        // model with all-zero weights (rebinding the caller's header), and the
+        // frozen-model graph then receives -log(0) = infinite capacities.
+        return "GrabCut models must be Float64 C1 1 x 65";
+    }
+    return nullptr;
+}
+
 } // namespace
 
 extern "C" {
@@ -4672,6 +5173,186 @@ opencv_imgproc_hough_circles_copy(
         circles[index].radius = circle[2];
     }
     return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_flood_fill(
+    opencv_core_mat_handle *image,
+    int32_t seed_x,
+    int32_t seed_y,
+    const opencv_imgproc_scalar4 *new_value,
+    const opencv_imgproc_scalar4 *lower_difference,
+    const opencv_imgproc_scalar4 *upper_difference,
+    int32_t connectivity,
+    int32_t range_mode,
+    int32_t *pixel_count,
+    opencv_imgproc_rect_i32 *bounds)
+{
+    return opencv_imgproc_flood_fill_masked_impl(
+        image, nullptr, false, seed_x, seed_y, new_value, lower_difference,
+        upper_difference, connectivity, range_mode, 1, 0, pixel_count,
+        bounds);
+}
+
+opencv_imgproc_status
+opencv_imgproc_flood_fill_masked(
+    opencv_core_mat_handle *image,
+    opencv_core_mat_handle *mask,
+    int32_t seed_x,
+    int32_t seed_y,
+    const opencv_imgproc_scalar4 *new_value,
+    const opencv_imgproc_scalar4 *lower_difference,
+    const opencv_imgproc_scalar4 *upper_difference,
+    int32_t connectivity,
+    int32_t range_mode,
+    int32_t mask_fill_value,
+    uint8_t mask_only,
+    int32_t *pixel_count,
+    opencv_imgproc_rect_i32 *bounds)
+{
+    return opencv_imgproc_flood_fill_masked_impl(
+        image, mask, true, seed_x, seed_y, new_value, lower_difference,
+        upper_difference, connectivity, range_mode, mask_fill_value,
+        mask_only, pixel_count, bounds);
+}
+
+opencv_imgproc_status
+opencv_imgproc_mat_storage_overlap(
+    const opencv_core_mat_handle *first,
+    const opencv_core_mat_handle *second,
+    uint8_t *overlap)
+{
+    clear_error();
+
+    if (overlap == nullptr) {
+        return invalid_argument("overlap output is null");
+    }
+    *overlap = 0;
+
+    try {
+        const cv::Mat *first_mat = nullptr;
+        const cv::Mat *second_mat = nullptr;
+        if (opencv_core_module_input_mat(first, &first_mat) != OPENCV_CORE_OK
+            || first_mat == nullptr) {
+            return invalid_argument("invalid first Mat");
+        }
+        if (opencv_core_module_input_mat(second, &second_mat) != OPENCV_CORE_OK
+            || second_mat == nullptr) {
+            return invalid_argument("invalid second Mat");
+        }
+        *overlap = mat_storage_overlaps(*first_mat, *second_mat) ? 1 : 0;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_watershed(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *markers)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid watershed source");
+        }
+        cv::Mat *labels = nullptr;
+        if (opencv_core_module_output_mat(markers, &labels) != OPENCV_CORE_OK
+            || labels == nullptr) {
+            return invalid_argument("invalid watershed markers");
+        }
+        const char *message = watershed_preflight(*src, *labels);
+        if (message != nullptr) {
+            return invalid_argument(message);
+        }
+        cv::watershed(*src, *labels);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_grabcut(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *mask,
+    opencv_core_mat_handle *background_model,
+    opencv_core_mat_handle *foreground_model,
+    int32_t rect_x,
+    int32_t rect_y,
+    int32_t rect_width,
+    int32_t rect_height,
+    int32_t iteration_count,
+    int32_t mode)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid GrabCut source");
+        }
+        cv::Mat *labels = nullptr;
+        if (opencv_core_module_output_mat(mask, &labels) != OPENCV_CORE_OK
+            || labels == nullptr) {
+            return invalid_argument("invalid GrabCut mask");
+        }
+        cv::Mat *background = nullptr;
+        cv::Mat *foreground = nullptr;
+        if (opencv_core_module_output_mat(background_model, &background)
+                != OPENCV_CORE_OK
+            || background == nullptr
+            || opencv_core_module_output_mat(foreground_model, &foreground)
+                != OPENCV_CORE_OK
+            || foreground == nullptr) {
+            return invalid_argument("invalid GrabCut model");
+        }
+
+        int opencv_mode = 0;
+        if (!grabcut_mode(mode, opencv_mode)) {
+            return invalid_argument("invalid GrabCut mode");
+        }
+        if (iteration_count <= 0) {
+            // ABI safety: with iterCount <= 0 OpenCV returns right after
+            // initGMMs, publishing a mask and models that were never
+            // segmented (a partially initialized state) as success.
+            return invalid_argument("GrabCut iteration count must be positive");
+        }
+        if (mode == OPENCV_IMGPROC_GRABCUT_EVAL_FREEZE_MODEL
+            && iteration_count != 1) {
+            // ABI safety: OpenCV silently rewrites iterCount to 1 in this
+            // mode, so any other count would report success for work that
+            // was never performed.
+            return invalid_argument(
+                "frozen-model GrabCut performs exactly one iteration");
+        }
+
+        const char *message =
+            grabcut_state_preflight(src, labels, background, foreground);
+        if (message == nullptr) {
+            message = grabcut_mode_preflight(
+                mode, *src, *labels, *background, *foreground, rect_x, rect_y,
+                rect_width, rect_height);
+        }
+        if (message != nullptr) {
+            return invalid_argument(message);
+        }
+
+        const cv::Rect rect(
+            static_cast<int>(rect_x), static_cast<int>(rect_y),
+            static_cast<int>(rect_width), static_cast<int>(rect_height));
+        cv::grabCut(
+            *src, *labels, rect, *background, *foreground,
+            static_cast<int>(iteration_count), opencv_mode);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
 }
 
 } // extern "C"

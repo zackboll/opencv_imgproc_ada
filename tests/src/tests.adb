@@ -25,6 +25,7 @@ with Median_Blur_Tests;
 with Morphology_Tests;
 with Pyramid_Tests;
 with Resize_Tests;
+with Segmentation_Tests;
 with Spatial_Derivative_Tests;
 with Template_Matching_Tests;
 with Threshold_Tests;
@@ -76,6 +77,7 @@ begin
    Suite.Add_Test (Contour_Tests.Suite);
    Suite.Add_Test (Drawing_Tests.Suite);
    Suite.Add_Test (Hough_Detection_Tests.Suite);
+   Suite.Add_Test (Segmentation_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

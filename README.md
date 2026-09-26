@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **289 AUnit tests**
+> **Current registered test baseline:** **318 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -75,6 +75,7 @@ Ada package, and built libraries serve different roles.
 - [Connected components](#connected-components)
 - [Drawing primitives](#drawing-primitives)
 - [Hough detection](#hough-detection)
+- [Segmentation](#segmentation)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
 - [Architecture](#architecture)
@@ -216,6 +217,9 @@ The table below summarizes the current public operations.
 | Drawing | `Draw_Line`, `Draw_Rectangle`, `Fill_Rectangle`, `Draw_Circle`, `Fill_Circle`, `Draw_Ellipse`, `Fill_Ellipse`, `Draw_Polyline`, `Fill_Polygon` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | in-place; positive geometry; off-image coordinates clipped; antialiasing only for `UInt8`; no alpha blending |
 | Hough | `Find_Hough_Lines`, `Find_Hough_Line_Segments` | nonempty 2-D `UInt8` C1 binary image | classical polar lines (radians) and probabilistic integer segments; Ada-owned arrays; source-preserving snapshot |
 | Hough | `Find_Hough_Circles` | nonempty 2-D `UInt8` C1 grayscale image | classic `HOUGH_GRADIENT`; automatic or explicit maximum radius; Float32 center/radius; source-preserving snapshot |
+| Segmentation | `Flood_Fill`, `Flood_Fill_With_Mask` | nonempty 2-D `UInt8`/`Float32`, C1/C3; mask `UInt8` C1 `(rows + 2) x (cols + 2)` | in place; floating/fixed range; 4/8 connectivity; area and bounds; mask fill value and mask-only mode |
+| Segmentation | `Watershed` | `UInt8` C3 source; `Int32` C1 markers of the same size | markers mutated in place (`-1` boundaries); source preserved; nonnegative input markers; overlap rejected |
+| Segmentation | `Initialize_GrabCut`, `Refine_GrabCut`, `Refine_GrabCut_Frozen_Model` | `UInt8` C3 source; rectangle or 0..3 label mask with at least 5 background and 5 foreground pixels | limited private `GrabCut_State` with hidden models; `GrabCut_Mask` returns a clone; `GrabCut_Label` values |
 
 The supported general-purpose Imgproc numeric depths are:
 
@@ -2182,6 +2186,172 @@ accumulator votes are intentionally not part of this slice.
 
 ---
 
+## Segmentation
+
+Three segmentation tools share one contract style: in-place mutation is
+explicit, sources are never modified, storage overlap between an input and a
+mutated Mat is rejected, and every contract violation raises
+`OpenCV.OpenCV_Error`. The API was checked against OpenCV 4.1.0, 4.10.0, and
+5.0.0 `floodfill.cpp`, `segmentation.cpp`, and `grabcut.cpp`.
+
+### Flood fill
+
+```ada
+type Flood_Fill_Range_Mode is (Floating_Range, Fixed_Range);
+subtype Flood_Fill_Mask_Value is OpenCV.UInt8_Value range 1 .. 255;
+
+type Flood_Fill_Result is record
+   Pixel_Count : Natural;      --  filled pixels
+   Bounds      : OpenCV.Rect;  --  smallest rectangle containing them
+end record;
+```
+
+- **Image:** nonempty 2-D `UInt8` or `Float32`, one or three channels. This
+  is OpenCV's documented portable contract; the undocumented `Int32` paths are
+  not exposed.
+- **Seed:** `X` is the column and `Y` the row, and it must be inside the
+  image.
+- **Ranges:** a neighbour joins when every channel is within
+  `[reference - Lower_Difference, reference + Upper_Difference]`.
+  `Floating_Range` compares it with the adjacent filled pixel, so the fill can
+  follow a gradual ramp. `Fixed_Range` compares it with the seed pixel. The
+  components used by the image's channels must be finite, and the differences
+  nonnegative.
+- **Connectivity:** reuses `Pixel_Connectivity` (`Four_Connected` default,
+  `Eight_Connected`).
+- **In place:** `Image` is modified. A `Region` is filled as its own logical
+  image in view coordinates and mutates its parent's storage. Shallow aliases
+  observe the change.
+
+`Flood_Fill_With_Mask` adds a caller-owned mask:
+
+- `Mask` is `UInt8` C1 with **`Image.Rows + 2` rows and `Image.Columns + 2`
+  columns**. `Image (X, Y)` corresponds to `Mask (X + 1, Y + 1)`.
+- The fill never crosses a nonzero mask pixel. Filled pixels are set to
+  `Mask_Fill_Value` in the mask, and OpenCV sets the mask's one-pixel outer
+  border to `1`.
+- `Mask_Only => True` leaves `Image` unchanged and ignores `New_Value` (it is
+  not even validated). `Mask` and `Result` are still updated.
+- `Mask` must not share storage with `Image`.
+
+```ada
+declare
+   Image  : OpenCV.Core.Mat := ...;   --  UInt8 C1, 100 x 120
+   Mask   : OpenCV.Core.Mat := OpenCV.Core.Create (102, 122, (OpenCV.Core.UInt8, 1));
+   Result : OpenCV.Image_Processing.Flood_Fill_Result;
+begin
+   OpenCV.Core.Set_To (Mask, (others => 0.0));
+   OpenCV.Image_Processing.Flood_Fill_With_Mask
+     (Image, Mask, (X => 10, Y => 20), (others => 0.0), Result,
+      Upper_Difference => (Component_0 => 4.0, others => 0.0),
+      Mask_Fill_Value  => 255,
+      Mask_Only        => True);
+   --  Mask (Y + 1, X + 1) = 255 for every pixel in the component.
+end;
+```
+
+The native flag word (connectivity, `FLOODFILL_FIXED_RANGE`,
+`FLOODFILL_MASK_ONLY`, mask value in bits 8..15) is built privately.
+
+### Watershed
+
+```ada
+procedure Watershed
+  (Source : OpenCV.Core.Mat; Markers : in out OpenCV.Core.Mat);
+```
+
+- `Source`: nonempty 2-D `UInt8` C3. It is never modified.
+- `Markers`: `Int32` C1 with the same rows and columns, updated in place.
+  - On input, `0` means unknown and each positive value seeds a region.
+    Negative input values are rejected.
+  - On output, unknown pixels carry a propagated label, and `-1` marks
+    watershed boundaries, including the one-pixel outer border of `Markers`.
+- `Markers` must not share storage with `Source`. It is mutated directly, never
+  cloned. A `Markers` Region writes through to its parent.
+
+```ada
+declare
+   Markers : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (Image.Rows, Image.Columns, (OpenCV.Core.Int32, 1));
+begin
+   OpenCV.Core.Set_To (Markers, (others => 0.0));
+   --  Seed label 1 in the background and 2 inside the object, then:
+   OpenCV.Image_Processing.Watershed (Image, Markers);
+end;
+```
+
+### GrabCut
+
+```ada
+type GrabCut_Label is
+  (Definite_Background,   --  0
+   Definite_Foreground,   --  1
+   Probable_Background,   --  2
+   Probable_Foreground);  --  3
+
+subtype GrabCut_Iterations is Positive range 1 .. 2_147_483_647;
+GrabCut_Minimum_Training_Pixels : constant := 5;
+
+type GrabCut_State is limited private;
+```
+
+`GrabCut_State` privately owns the label mask and OpenCV's background and
+foreground Gaussian-mixture models. The native models (Float64 `1 x 65`, five
+components of 13 values) are an implementation detail and are never exposed.
+The state is **limited**, so it cannot be assigned or shallow-copied. Two states
+can never share mutable algorithm storage, and its Mats are released through
+normal `OpenCV.Core.Mat` finalization. A default-declared state is
+uninitialized (`Is_Initialized` returns `False`), and every other operation
+rejects it.
+
+| Operation | Behavior |
+| --- | --- |
+| `Initialize_GrabCut (Source, Foreground_Region, Iterations)` | Outside the region is `Definite_Background`, inside starts as `Probable_Foreground`, then `Iterations` rounds run |
+| `Initialize_GrabCut (Source, Initial_Mask, Iterations)` | Deep-copies a caller label mask (UInt8 C1, same geometry, values 0..3). The caller's mask is unchanged |
+| `Refine_GrabCut (Source, State, Iterations)` | Relearns the models and re-segments the probable pixels (`GC_EVAL`) |
+| `Refine_GrabCut_Frozen_Model (Source, State)` | One pass with the models held fixed (`GC_EVAL_FREEZE_MODEL`, always one iteration) |
+| `GrabCut_Mask (State)` | Returns a **deep clone**. Changing it never affects `State` |
+| `GrabCut_Label_At (State, Row, Column)` | Returns the label at one bounds-checked position |
+| `GrabCut_Label_Value` / `To_GrabCut_Label` | Explicit 0..3 conversion. `To_GrabCut_Label` rejects other values |
+
+`Source` is always a nonempty 2-D `UInt8` C3 image and is never modified.
+Refinement requires `Source` to match the state's geometry. Definite labels
+never change. A failed refinement leaves the state unchanged because the work
+is done on private copies that are committed only after success.
+
+**Portability rule.** OpenCV 4.1 always clusters each training set into five
+GMM components with `kmeans (K => 5)`, which asserts `N >= K`. OpenCV 4.10 and
+5.0 silently reduce `K` for small sets. For one contract across the supported
+range, initialization requires at least **five background** (definite or
+probable) and **five foreground** (definite or probable) pixels:
+
+- rectangle initialization requires a positive-size rectangle entirely inside
+  `Source`, with at least five pixels inside it and five outside it;
+- mask initialization requires at least five pixels of each class.
+
+```ada
+declare
+   State : OpenCV.Image_Processing.GrabCut_State :=
+     OpenCV.Image_Processing.Initialize_GrabCut
+       (Photo, (X => 40, Y => 30, Width => 120, Height => 90), Iterations => 3);
+begin
+   OpenCV.Image_Processing.Refine_GrabCut (Photo, State);
+   if OpenCV.Image_Processing.GrabCut_Label_At (State, 75, 100)
+        in OpenCV.Image_Processing.Probable_Foreground
+         | OpenCV.Image_Processing.Definite_Foreground
+   then
+      null;  --  (row 75, column 100) is part of the object.
+   end if;
+end;
+```
+
+Exact boundary pixels differ between OpenCV generations, because 4.1 and
+newer releases initialize the mixtures differently. The tests therefore check
+stable properties: the label domain, geometry, obvious background, and
+obvious foreground.
+
+---
+
 ## Geometry is a separate module
 
 OpenCV 5 moved a substantial set of computational geometry APIs out of Imgproc
@@ -2638,7 +2808,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **289-test** baseline is:
+The current **318-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -2670,7 +2840,8 @@ The current **289-test** baseline is:
 | Connected components | 6 |
 | Drawing | 11 |
 | Hough detection | 24 |
-| **Total** | **289** |
+| Segmentation (flood fill, watershed, GrabCut) | 29 |
+| **Total** | **318** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -3161,7 +3332,10 @@ Notable Imgproc families that are not yet broadly bound include:
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
   (`use_edgeval`) Hough, `HoughLinesPointSet`, `HOUGH_GRADIENT_ALT`,
   centers-only circle output, and optional accumulator votes;
-- watershed, flood fill, and GrabCut;
+- deferred segmentation capabilities: flood fill on `Int32` images,
+  combined `GC_INIT_WITH_RECT | GC_INIT_WITH_MASK` initialization, exposing or
+  importing GrabCut models, mean-shift segmentation, and distance-transform
+  based marker generation;
 - histogram calculation and comparison;
 - distance transforms;
 - integral images;
