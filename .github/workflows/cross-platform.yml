@@ -2,6 +2,8 @@ name: Cross-Platform Bridge CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
 
@@ -202,8 +204,13 @@ jobs:
       - name: Run Imgproc tests
         run: alr -n -C tests run
 
+  # Windows/MSYS2 is expensive, so it runs after merge on main and on
+  # manual dispatch, but is skipped for pull-request review iterations.
   windows-x86_64-msys2:
     name: Windows x86_64 (MSYS2)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-latest
     defaults:
       run:

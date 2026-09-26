@@ -24,7 +24,8 @@ translation of `opencv2/imgproc.hpp`.
 > **Current registered test baseline:** **289 AUnit tests**
 
 >
-> **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
+> **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
+> macOS, and Windows x86_64/MSYS2 on `main` pushes and manual dispatch
 >
 > **OpenCV generations exercised by CI:** OpenCV 4.x and OpenCV 5.x
 
@@ -2411,8 +2412,18 @@ The public Ada API is not selected by OpenCV version.
 | macOS ARM64 | Homebrew OpenCV 5.x | Apple `clang++` / `libc++` | relocatable dylib |
 | Windows x86_64/MSYS2 | MSYS2 OpenCV 5.x | MSYS2 MinGW64 `g++` | external DLL/import library |
 
-The current cross-platform workflow builds and runs the full Imgproc test suite
-on all three targets.
+The cross-platform workflow builds and runs the full Imgproc test suite. Which
+targets run depends on the event:
+
+| Event | Linux | macOS | Windows/MSYS2 |
+| --- | --- | --- | --- |
+| pull request opened or updated | runs | runs | skipped |
+| push to `main` (after merge) | runs | runs | runs |
+| `workflow_dispatch` (manual) | runs | runs | runs |
+
+Pushes to feature branches do not trigger a separate run; review uses the
+pull-request run. Windows is therefore not a pull-request gate and is verified
+after merge, or on demand through manual dispatch.
 
 ### macOS runtime isolation
 
@@ -2678,7 +2689,8 @@ The suite covers more than simple success paths. It includes:
 - contour hierarchy and signed offsets;
 - contour source preservation and empty results.
 
-GitHub Actions runs the test crate on Linux, macOS, and Windows.
+GitHub Actions runs the test crate on Linux and macOS for pull requests, and
+additionally on Windows for `main` pushes and manual dispatch.
 
 ---
 
