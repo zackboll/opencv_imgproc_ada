@@ -3645,9 +3645,10 @@ opencv_imgproc_draw_rectangle(
         }
 
         if (width <= 0 || height <= 0) {
-            // ABI safety: a nonpositive Rect is empty and rectangle returns
-            // without drawing, leaving the caller unable to detect the
-            // rejected geometry.
+            // ABI safety: saturated_rectangle_far assumes a positive extent.
+            // A nonpositive one yields a far corner before the origin, which
+            // the two-point rectangle overload normalizes and then paints
+            // pixels outside the requested geometry.
             return invalid_argument(
                 "drawing rectangle width and height must be positive");
         }
