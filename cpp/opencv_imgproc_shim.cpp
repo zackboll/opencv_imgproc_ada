@@ -2222,6 +2222,13 @@ cv::Mat back_project_histogram(
     return scaled;
 }
 
+// OpenCV 4.x exposes DistanceTypes from imgproc.hpp, while OpenCV 5
+// moved that enum to Geometry. distanceTransform still accepts the
+// same integer selectors, so keep Imgproc independent of Geometry.
+constexpr int native_distance_l1 = 1;
+constexpr int native_distance_l2 = 2;
+constexpr int native_distance_c = 3;
+
 // ABI safety: 4.1's approximate passes narrow row strides to int and
 // multiply row indices by those strides; the padded temporary uses int
 // indices with +/-2 neighbors. The precise path builds rows*3+1,
@@ -2297,11 +2304,11 @@ opencv_imgproc_status opencv_imgproc_distance_transform_f32(
             return invalid_argument("invalid distance Mat handle");
         int metric, mask;
         switch (method) {
-        case 0: metric = cv::DIST_L1; mask = cv::DIST_MASK_3; break;
-        case 1: metric = cv::DIST_C; mask = cv::DIST_MASK_3; break;
-        case 2: metric = cv::DIST_L2; mask = cv::DIST_MASK_3; break;
-        case 3: metric = cv::DIST_L2; mask = cv::DIST_MASK_5; break;
-        case 4: metric = cv::DIST_L2; mask = cv::DIST_MASK_PRECISE; break;
+        case 0: metric = native_distance_l1; mask = cv::DIST_MASK_3; break;
+        case 1: metric = native_distance_c; mask = cv::DIST_MASK_3; break;
+        case 2: metric = native_distance_l2; mask = cv::DIST_MASK_3; break;
+        case 3: metric = native_distance_l2; mask = cv::DIST_MASK_5; break;
+        case 4: metric = native_distance_l2; mask = cv::DIST_MASK_PRECISE; break;
         default: return invalid_argument("invalid distance method");
         }
         const char *error = distance_preflight(
@@ -2329,7 +2336,7 @@ opencv_imgproc_status opencv_imgproc_distance_transform_l1_u8(
         const char *error = distance_preflight(*src, 0, false);
         if (error) return invalid_argument(error);
         cv::Mat result;
-        cv::distanceTransform(*src, result, cv::DIST_L1, cv::DIST_MASK_3, CV_8U);
+        cv::distanceTransform(*src, result, native_distance_l1, cv::DIST_MASK_3, CV_8U);
         *dst = result;
         return OPENCV_IMGPROC_OK;
     } catch (...) { return translate_current_exception(); }
@@ -2353,9 +2360,9 @@ opencv_imgproc_status opencv_imgproc_distance_transform_labeled(
             return invalid_argument("invalid labeled distance Mat handle");
         int native_metric;
         switch (metric) {
-        case 0: native_metric = cv::DIST_L1; break;
-        case 1: native_metric = cv::DIST_L2; break;
-        case 2: native_metric = cv::DIST_C; break;
+        case 0: native_metric = native_distance_l1; break;
+        case 1: native_metric = native_distance_l2; break;
+        case 2: native_metric = native_distance_c; break;
         default: return invalid_argument("invalid labeled distance metric");
         }
         if (label_mode != 0 && label_mode != 1)

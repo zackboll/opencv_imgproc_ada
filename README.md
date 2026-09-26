@@ -3585,6 +3585,11 @@ precise transforms its signed `i*i` table construction limits each extent to
 signed int. Large/noncontiguous Region parent strides can be rejected even
 when the Region itself is small.
 
+OpenCV 5 moved the general `DistanceTypes` enum to Geometry, but Imgproc's
+`distanceTransform` retains the same integer metric selectors. The shim keeps
+private L1/L2/C selector constants so `opencv_imgproc` remains independent of
+the Geometry module.
+
 For segmentation, a typical pipeline is a binary foreground mask, then
 `Distance_Transform`, then `Apply_Threshold` on the Float32 distance map to
 select confident peaks, then `Connected_Components_With_Stats` on a UInt8

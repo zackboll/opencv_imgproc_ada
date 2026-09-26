@@ -229,6 +229,40 @@ package body Distance_Transform_Tests is
       Near (F (IP.Distance_Transform (S), 4, 5), 0.0, 0.0);
    end Labels_And_Zeros;
 
+   procedure Labeled_Metric_Discrimination (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      S : OpenCV.Core.Mat := OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.Set_To (S, (others => 255.0));
+      Set (S, 2, 2);
+      for Metric in IP.Labeled_Distance_Metric loop
+         declare
+            R : constant IP.Labeled_Distance_Transform_Result :=
+              IP.Distance_Transform_With_Labels
+                (S, Metric, IP.Nearest_Zero_Pixel);
+         begin
+            AUnit.Assertions.Assert
+              (L (R.Labels, 2, 2) = 1
+               and then L (R.Labels, 4, 4) = L (R.Labels, 2, 2),
+               "offset pixel receives the isolated zero's label");
+            case Metric is
+               when IP.Manhattan_Label_Distance  =>
+                  Near (F (R.Distances, 4, 4), 4.0, 0.0);
+
+               when IP.Chessboard_Label_Distance =>
+                  Near (F (R.Distances, 4, 4), 2.0, 0.0);
+
+               when IP.Euclidean_Label_Distance  =>
+                  Near
+                    (F (R.Distances, 4, 4),
+                     OpenCV.Float32_Value
+                       (Ada.Numerics.Elementary_Functions.Sqrt (8.0)),
+                     0.05);
+            end case;
+         end;
+      end loop;
+   end Labeled_Metric_Discrimination;
+
    procedure Public_Invalid (Test : in out Fixture) is
       pragma Unreferenced (Test);
       Empty   : OpenCV.Core.Mat;
@@ -394,6 +428,10 @@ package body Distance_Transform_Tests is
         (Caller.Create ("UInt8 saturation and Region", U8_And_Region'Access));
       Result.Add_Test
         (Caller.Create ("Voronoi labels and zeros", Labels_And_Zeros'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Labeled metrics discriminate non-axis offsets",
+            Labeled_Metric_Discrimination'Access));
       Result.Add_Test
         (Caller.Create ("Invalid distance sources", Public_Invalid'Access));
       Result.Add_Test
