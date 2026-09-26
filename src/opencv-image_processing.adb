@@ -13,6 +13,143 @@ package body OpenCV.Image_Processing is
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
 
+   procedure Validate_Integral
+     (Source        : OpenCV.Core.Mat;
+      Sum_Depth     : Integral_Sum_Depth;
+      Squared_Depth : Integral_Squared_Depth;
+      Squares       : Boolean)
+   is
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth
+                not in OpenCV.Core.UInt8
+                     | OpenCV.Core.Float32
+                     | OpenCV.Core.Float64
+        or else (Source.Depth = OpenCV.Core.Float32
+                 and then Sum_Depth = Int32_Integral)
+        or else (Source.Depth = OpenCV.Core.Float64
+                 and then Sum_Depth /= Float64_Integral)
+        or else (Squares
+                 and then Sum_Depth = Float64_Integral
+                 and then Squared_Depth = Float32_Squared_Integral)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Invalid integral source or accumulator depths");
+      end if;
+   end Validate_Integral;
+
+   function Integral_Sum
+     (Source    : OpenCV.Core.Mat;
+      Sum_Depth : Integral_Sum_Depth := Float64_Integral)
+      return OpenCV.Core.Mat
+   is
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status;
+      procedure Input (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output
+           (Target : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Integral_Sum
+                (Handle, Integral_Sum_Depth'Pos (Sum_Depth), Target);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle (Result, Output'Access);
+      end Input;
+   begin
+      Validate_Integral (Source, Sum_Depth, Float64_Squared_Integral, False);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Integral_Sum");
+      return Result;
+   end Integral_Sum;
+
+   function Integral_Sum_And_Squares
+     (Source        : OpenCV.Core.Mat;
+      Sum_Depth     : Integral_Sum_Depth := Float64_Integral;
+      Squared_Depth : Integral_Squared_Depth := Float64_Squared_Integral)
+      return Integral_Sum_And_Squares_Result
+   is
+      Result : Integral_Sum_And_Squares_Result;
+      Status : Internal.C_API.Status;
+      procedure Input (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Sum_Output
+           (Sum : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            procedure Square_Output
+              (Squared : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Integral_Sum_Squares
+                   (Handle,
+                    Integral_Sum_Depth'Pos (Sum_Depth),
+                    Integral_Squared_Depth'Pos (Squared_Depth),
+                    Sum,
+                    Squared);
+            end Square_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Result.Squared_Sum, Square_Output'Access);
+         end Sum_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Result.Sum, Sum_Output'Access);
+      end Input;
+   begin
+      Validate_Integral (Source, Sum_Depth, Squared_Depth, True);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Integral_Sum_And_Squares");
+      return Result;
+   end Integral_Sum_And_Squares;
+
+   function Integral_Images
+     (Source        : OpenCV.Core.Mat;
+      Sum_Depth     : Integral_Sum_Depth := Float64_Integral;
+      Squared_Depth : Integral_Squared_Depth := Float64_Squared_Integral)
+      return Integral_Images_Result
+   is
+      Result : Integral_Images_Result;
+      Status : Internal.C_API.Status;
+      procedure Input (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Sum_Output
+           (Sum : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            procedure Square_Output
+              (Squared : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               procedure Tilt_Output
+                 (Tilted : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Integral_Complete
+                      (Handle,
+                       Integral_Sum_Depth'Pos (Sum_Depth),
+                       Integral_Squared_Depth'Pos (Squared_Depth),
+                       Sum,
+                       Squared,
+                       Tilted);
+               end Tilt_Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Result.Tilted_Sum, Tilt_Output'Access);
+            end Square_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Result.Squared_Sum, Square_Output'Access);
+         end Sum_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Result.Sum, Sum_Output'Access);
+      end Input;
+   begin
+      Validate_Integral (Source, Sum_Depth, Squared_Depth, True);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Integral_Images");
+      return Result;
+   end Integral_Images;
+
    procedure Validate_Distance_Source (Source : OpenCV.Core.Mat) is
       use type OpenCV.Core.Depth_Type;
       use type OpenCV.Core.Channel_Count;

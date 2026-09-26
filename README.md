@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **343 AUnit tests**
+> **Current registered test baseline:** **357 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -49,6 +49,7 @@ Ada package, and built libraries serve different roles.
 - [Scope](#scope)
 - [Design goals](#design-goals)
 - [Current feature set](#current-feature-set)
+- [Integral images](#integral-images)
 - [Color conversion](#color-conversion)
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
@@ -216,6 +217,7 @@ The table below summarizes the current public operations.
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
 | Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
 | Analysis | `Distance_Transform`, `Manhattan_Distance_Transform_UInt8`, `Distance_Transform_With_Labels` | nonempty 2-D `UInt8` C1 with at least one zero | fresh Float32 distances, saturating UInt8 L1, or Float32 distances plus Int32 Voronoi labels |
+| Analysis | `Integral_Sum`, `Integral_Sum_And_Squares`, `Integral_Images` | nonempty 2-D `UInt8`, `Float32`, `Float64`; arbitrary valid channel count | fresh, independent-channel `(rows+1) x (cols+1)` integral Mats; Float64 accumulator defaults |
 | Drawing | `Draw_Line`, `Draw_Rectangle`, `Fill_Rectangle`, `Draw_Circle`, `Fill_Circle`, `Draw_Ellipse`, `Fill_Ellipse`, `Draw_Polyline`, `Fill_Polygon` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | in-place; positive geometry; off-image coordinates clipped; antialiasing only for `UInt8`; no alpha blending |
 | Hough | `Find_Hough_Lines`, `Find_Hough_Line_Segments` | nonempty 2-D `UInt8` C1 binary image | classical polar lines (radians) and probabilistic integer segments; Ada-owned arrays; source-preserving snapshot |
 | Hough | `Find_Hough_Circles` | nonempty 2-D `UInt8` C1 grayscale image | classic `HOUGH_GRADIENT`; automatic or explicit maximum radius; Float32 center/radius; source-preserving snapshot |
@@ -3549,6 +3551,65 @@ not source artifacts.
 
 ---
 
+## Integral images
+
+`Integral_Sum (Source, Sum_Depth)` returns a fresh `OpenCV.Core.Mat` containing
+the summed-area table. `Integral_Sum_And_Squares (Source, Sum_Depth,
+Squared_Depth)` returns `Integral_Sum_And_Squares_Result` with owning `Sum` and
+`Squared_Sum` Mats; `Integral_Images` returns `Integral_Images_Result` with
+`Sum`, `Squared_Sum`, and `Tilted_Sum`. All results preserve Source's channel
+count, accumulate **each channel independently**, and have `(Rows + 1) x
+(Columns + 1)` geometry. Row zero and column zero of Sum and Squared_Sum are
+zero. `Sum(X,Y)` adds source pixels at `x < X, y < Y`; `Squared_Sum(X,Y)` adds
+`source(x,y) * source(x,y)`. The tilted sum follows OpenCV's 45-degree rule:
+`Tilted_Sum(X,Y)` adds pixels with `y < Y` and
+`abs(x - X + 1) <= Y - y - 1`. Tilted has the same depth as Sum.
+
+Supported sources: `UInt8`, `Float32`, `Float64` (not the undocumented native
+`UInt16`/`Int16` dispatch cases). Supported selections:
+
+| Source | Sum alone | Sum + Squared_Sum pairs |
+| --- | --- | --- |
+| UInt8 | Int32, Float32, Float64 | Int32/Float32, Int32/Float64, Float32/Float32, Float32/Float64, Float64/Float64 |
+| Float32 | Float32, Float64 | Float32/Float32, Float32/Float64, Float64/Float64 |
+| Float64 | Float64 | Float64/Float64 |
+
+Use the Ada selectors `Int32_Integral`, `Float32_Integral`,
+`Float64_Integral`, `Float32_Squared_Integral`, and
+`Float64_Squared_Integral`. All three calls default to Float64 Sum (and
+Float64 Squared_Sum where present), unlike OpenCV's raw default which chooses
+Int32 for UInt8. This predictable default avoids signed accumulator overflow
+for large UInt8 images. Explicit UInt8 -> Int32 is rejected if the **actual
+total of any channel** exceeds INT_MAX, including Regions. Floating results
+follow the selected accumulator's precision and normal IEEE rounding,
+Infinity, overflow, and NaN propagation; there is no finite-value scan.
+
+Source is unchanged. A non-contiguous `Region` is its own logical image: no
+pixels outside the view participate. Public invalid source/depth combinations
+raise `OpenCV.OpenCV_Error`. The native boundary additionally guards signed
+`rows+1`, `cols+1`, channel-expanded width and tilted scratch indexing, and
+source/output element strides before calling OpenCV. All outputs are computed
+locally and their Core Mat headers rebound only after complete success.
+
+For a C1 Float64 integral result, an axis-aligned rectangle `[x1,x2) x
+[y1,y2)` takes four reads (zero-based matrix row, column):
+
+```ada
+declare
+   Sum : constant OpenCV.Core.Mat := Integral_Sum (Source);
+   function S (X, Y : Natural) return OpenCV.Float64_Value is
+     (OpenCV.Core.Float64_Access.Get (Sum, Y, X));
+   Rectangle_Total : constant OpenCV.Float64_Value :=
+     S (X2, Y2) - S (X1, Y2) - S (X2, Y1) + S (X1, Y1);
+begin
+   --  Use Rectangle_Total.
+   null;
+end;
+```
+
+The example assumes `Source`, `X1`, `X2`, `Y1`, and `Y2` are declared and
+`with OpenCV.Core.Float64_Access;` is present. No rectangle helper is added.
+
 ## Distance transforms
 
 `Distance_Transform (Source, Method)` accepts a nonempty 2-D `UInt8` C1
@@ -3631,7 +3692,6 @@ Notable Imgproc families that are not yet broadly bound include:
   boundaries, accumulation/update, `SparseMat` histograms, and EMD (a future
   sparse-histogram abstraction may revisit the dense 10-dimension limit);
 - custom/user-defined distance masks (not part of the portable foundation);
-- integral images;
 - text rendering and text metrics;
 - markers, arrows, and `drawContours` as its own operation;
 - subpixel fixed-point drawing;

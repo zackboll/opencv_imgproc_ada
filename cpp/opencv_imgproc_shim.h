@@ -50,6 +50,20 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_ERROR_UNKNOWN          ((opencv_imgproc_status)3)
 #define OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT ((opencv_imgproc_status)4)
 
+/* Semantic depths: sum 0=Int32, 1=Float32, 2=Float64;
+ * square 0=Float32, 1=Float64. Outputs are borrowed Core Mat headers. */
+opencv_imgproc_status opencv_imgproc_integral_sum(
+    const opencv_core_mat_handle *source, int32_t sum_depth,
+    opencv_core_mat_handle *sum);
+opencv_imgproc_status opencv_imgproc_integral_sum_squares(
+    const opencv_core_mat_handle *source, int32_t sum_depth,
+    int32_t squared_depth, opencv_core_mat_handle *sum,
+    opencv_core_mat_handle *squared);
+opencv_imgproc_status opencv_imgproc_integral_complete(
+    const opencv_core_mat_handle *source, int32_t sum_depth,
+    int32_t squared_depth, opencv_core_mat_handle *sum,
+    opencv_core_mat_handle *squared, opencv_core_mat_handle *tilted);
+
 /* Semantic selectors: 0=L1, 1=chessboard, 2=L2 3x3,
  * 3=L2 5x5, 4=L2 precise; labeled metric 0=L1, 1=L2, 2=C;
  * label mode 0=8-connected zero components, 1=individual zero pixels. */

@@ -5,6 +5,39 @@ private with Ada.Containers.Vectors;
 
 package OpenCV.Image_Processing is
 
+   type Integral_Sum_Depth is
+     (Int32_Integral, Float32_Integral, Float64_Integral);
+   type Integral_Squared_Depth is
+     (Float32_Squared_Integral, Float64_Squared_Integral);
+   type Integral_Sum_And_Squares_Result is record
+      Sum         : OpenCV.Core.Mat;
+      Squared_Sum : OpenCV.Core.Mat;
+   end record;
+   type Integral_Images_Result is record
+      Sum         : OpenCV.Core.Mat;
+      Squared_Sum : OpenCV.Core.Mat;
+      Tilted_Sum  : OpenCV.Core.Mat;
+   end record;
+
+   --  Nonempty 2-D UInt8, Float32 or Float64 source. Each channel is
+   --  independent; results are fresh (Rows+1, Columns+1) Mats with a zero
+   --  top row and left column. A Region is its own logical image.
+   --  UInt8/Int32 is rejected if any actual channel total exceeds INT_MAX.
+   function Integral_Sum
+     (Source    : OpenCV.Core.Mat;
+      Sum_Depth : Integral_Sum_Depth := Float64_Integral)
+      return OpenCV.Core.Mat;
+   function Integral_Sum_And_Squares
+     (Source        : OpenCV.Core.Mat;
+      Sum_Depth     : Integral_Sum_Depth := Float64_Integral;
+      Squared_Depth : Integral_Squared_Depth := Float64_Squared_Integral)
+      return Integral_Sum_And_Squares_Result;
+   function Integral_Images
+     (Source        : OpenCV.Core.Mat;
+      Sum_Depth     : Integral_Sum_Depth := Float64_Integral;
+      Squared_Depth : Integral_Squared_Depth := Float64_Squared_Integral)
+      return Integral_Images_Result;
+
    type Distance_Transform_Method is
      (Manhattan_Distance,
       Chessboard_Distance,

@@ -32,6 +32,104 @@ struct opencv_imgproc_hough_circles_handle {
 
 namespace {
 
+void clear_error() noexcept;
+opencv_imgproc_status invalid_argument(const char *message) noexcept;
+opencv_imgproc_status translate_current_exception() noexcept;
+
+// These checks precede cv::integral's signed Size construction and scalar
+// width/step/index arithmetic (4.1, 4.10 and 5.0 sumpixels implementations).
+opencv_imgproc_status integral_preflight(const cv::Mat &src, int sum_selector,
+                                          int square_selector, bool squares,
+                                          bool tilted, int &sum_depth,
+                                          int &square_depth)
+{
+    // ABI safety: integral assumes a nonempty 2-D image and accesses its rows.
+    if (src.empty() || src.dims != 2 || src.channels() < 1 ||
+        (src.depth() != CV_8U && src.depth() != CV_32F && src.depth() != CV_64F))
+        return invalid_argument("Integral source must be nonempty 2-D UInt8, Float32 or Float64");
+    if (sum_selector < 0 || sum_selector > 2 ||
+        (squares && (square_selector < 0 || square_selector > 1)))
+        return invalid_argument("Invalid integral depth selector");
+    sum_depth = sum_selector == 0 ? CV_32S : sum_selector == 1 ? CV_32F : CV_64F;
+    square_depth = square_selector == 0 ? CV_32F : CV_64F;
+    // ABI safety: rejecting unsupported dispatch before native allocation
+    // prevents partially initialized multi-output results on failure.
+    if ((src.depth() == CV_32F && sum_selector == 0) ||
+        (src.depth() == CV_64F && sum_selector != 2) ||
+        (squares && square_selector == 0 && sum_selector == 2) ||
+        (squares && src.depth() == CV_64F && square_selector != 1))
+        return invalid_argument("Unsupported integral source/output depth pairing");
+
+    const uint64_t limit = static_cast<uint64_t>(std::numeric_limits<int>::max());
+    const uint64_t cols = static_cast<uint64_t>(src.cols);
+    const uint64_t cn = static_cast<uint64_t>(src.channels());
+    // ABI safety: cv::integral builds Size(cols+1, rows+1) using signed int.
+    if (src.rows >= std::numeric_limits<int>::max() || cols >= limit)
+        return invalid_argument("Integral output dimension overflows int");
+    // ABI safety: integral_ uses int width *= cn, width+cn scratch,
+    // and x +/- cn; output element stride is (cols+1)*cn.
+    const uint64_t scalar_width = (cols + 1) * cn;
+    // ABI safety: tilted[x - tiltedstep - cn] may negate step+cn
+    // in a signed int intermediate even when each operand fits separately.
+    if (scalar_width > limit || (tilted && scalar_width > limit - cn))
+        return invalid_argument("Integral channel-expanded width overflows int");
+    // ABI safety: integral_ narrows source.step / sizeof(T) to signed int.
+    if (src.step[0] / src.elemSize1() > limit)
+        return invalid_argument("Integral source stride overflows int");
+    // ABI safety: continuous output row strides are scalar_width elements;
+    // tilted accesses previous row with x +/- cn. All fit int above.
+    if (sum_selector == 0 && src.depth() == CV_8U) {
+        // ABI safety: signed Int32 scalar accumulation otherwise overflows.
+        // Saturate at INT_MAX+1 without overflowing the widened counters.
+        std::vector<uint64_t> totals(static_cast<size_t>(cn), 0);
+        for (int y = 0; y < src.rows; ++y) {
+            const uint8_t *row = src.ptr<uint8_t>(y);
+            for (uint64_t x = 0; x < cols; ++x)
+                for (uint64_t c = 0; c < cn; ++c) {
+                    uint64_t &total = totals[static_cast<size_t>(c)];
+                    total += row[x * cn + c];
+                    if (total > limit)
+                        return invalid_argument("Integral Int32 channel total exceeds INT_MAX");
+                }
+        }
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status integral_execute(const opencv_core_mat_handle *source,
+    int32_t sum_selector, int32_t square_selector, opencv_core_mat_handle *sum,
+    opencv_core_mat_handle *squared, opencv_core_mat_handle *tilted)
+{
+    clear_error();
+    if (!source || !sum || (squared && squared == sum) ||
+        (tilted && (tilted == sum || tilted == squared)))
+        return invalid_argument("Invalid or duplicate integral handle");
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst_sum = nullptr, *dst_sq = nullptr, *dst_tilt = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK ||
+            opencv_core_module_output_mat(sum, &dst_sum) != OPENCV_CORE_OK ||
+            (squared && opencv_core_module_output_mat(squared, &dst_sq) != OPENCV_CORE_OK) ||
+            (tilted && opencv_core_module_output_mat(tilted, &dst_tilt) != OPENCV_CORE_OK))
+            return invalid_argument("Invalid integral Mat handle");
+        int sd = 0, qd = 0;
+        opencv_imgproc_status status = integral_preflight(*src, sum_selector,
+            square_selector, squared != nullptr, tilted != nullptr, sd, qd);
+        if (status != OPENCV_IMGPROC_OK) return status;
+        cv::Mat local_sum, local_sq, local_tilt;
+        if (tilted)
+            cv::integral(*src, local_sum, local_sq, local_tilt, sd, qd);
+        else if (squared)
+            cv::integral(*src, local_sum, local_sq, sd, qd);
+        else
+            cv::integral(*src, local_sum, sd);
+        *dst_sum = std::move(local_sum);
+        if (squared) *dst_sq = std::move(local_sq);
+        if (tilted) *dst_tilt = std::move(local_tilt);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 constexpr std::size_t error_message_capacity = 1024;
 thread_local char last_error_message[error_message_capacity] = "";
 
@@ -2287,6 +2385,30 @@ const char *distance_preflight(const cv::Mat &src, int border, bool precise)
 }
 
 } // namespace
+
+extern "C" opencv_imgproc_status opencv_imgproc_integral_sum(
+    const opencv_core_mat_handle *source, int32_t sum_depth,
+    opencv_core_mat_handle *sum)
+{
+    return integral_execute(source, sum_depth, 1, sum, nullptr, nullptr);
+}
+
+extern "C" opencv_imgproc_status opencv_imgproc_integral_sum_squares(
+    const opencv_core_mat_handle *source, int32_t sum_depth, int32_t squared_depth,
+    opencv_core_mat_handle *sum, opencv_core_mat_handle *squared)
+{
+    if (!squared) { clear_error(); return invalid_argument("Null squared output"); }
+    return integral_execute(source, sum_depth, squared_depth, sum, squared, nullptr);
+}
+
+extern "C" opencv_imgproc_status opencv_imgproc_integral_complete(
+    const opencv_core_mat_handle *source, int32_t sum_depth, int32_t squared_depth,
+    opencv_core_mat_handle *sum, opencv_core_mat_handle *squared,
+    opencv_core_mat_handle *tilted)
+{
+    if (!squared || !tilted) { clear_error(); return invalid_argument("Null integral output"); }
+    return integral_execute(source, sum_depth, squared_depth, sum, squared, tilted);
+}
 
 extern "C" {
 
