@@ -1153,6 +1153,106 @@ package OpenCV.Image_Processing is
      (State : GrabCut_State; Row : Natural; Column : Natural)
       return GrabCut_Label;
 
+   --  Histogram analysis ---------------------------------------------------
+
+   --  Maximum histogram dimensionality guaranteed on every supported OpenCV
+   --  generation. OpenCV 4.x allows dense Mats of up to CV_MAX_DIM (32)
+   --  dimensions, but OpenCV 5.0 limits Mat to MatShape::MAX_DIMS (10), and
+   --  a dense histogram is stored in one N-dimensional Mat.
+   Maximum_Histogram_Dimensions : constant Positive := 10;
+
+   subtype Histogram_Bin_Count is Positive range 1 .. 2_147_483_647;
+
+   --  One uniform histogram axis. Channel is zero-based relative to the
+   --  Source Mat. Bin_Count equal-width bins cover the half-open range
+   --  [Lower_Bound, Upper_Bound); samples below Lower_Bound or at or above
+   --  Upper_Bound are not counted. Both bounds must be finite with
+   --  Lower_Bound < Upper_Bound.
+   type Histogram_Dimension is record
+      Channel     : Natural;
+      Bin_Count   : Histogram_Bin_Count;
+      Lower_Bound : OpenCV.Float32_Value;
+      Upper_Bound : OpenCV.Float32_Value;
+   end record;
+
+   --  Dimension order is iteration order; any index lower bound is accepted.
+   type Histogram_Dimension_Array is
+     array (Positive range <>) of Histogram_Dimension;
+
+   --  A dense uniform histogram of Float32 bin counts together with the
+   --  dimension metadata it was calculated with. A Histogram is immutable:
+   --  copies are independent values and no operation exposes its storage.
+   --  A default-initialized Histogram is empty (zero dimensions) and is
+   --  rejected by Compare_Histograms and Back_Project.
+   type Histogram is private;
+
+   function Histogram_Dimension_Count (Value : Histogram) return Natural;
+
+   --  Index is 1 .. Histogram_Dimension_Count; others raise OpenCV_Error.
+   function Get_Histogram_Dimension
+     (Value : Histogram; Index : Positive) return Histogram_Dimension;
+
+   --  Returns an independent deep copy of the Float32 C1 bin counts. A
+   --  one-dimensional histogram is a Bin_Count x 1 Mat, a two-dimensional
+   --  one is Bin_Count (1) x Bin_Count (2), and higher dimensionality is an
+   --  N-dimensional Mat with one extent per dimension, in dimension order.
+   --  The metadata, not the Mat shape, defines the logical dimensionality.
+   function Histogram_Values (Value : Histogram) return OpenCV.Core.Mat;
+
+   --  Counts Source samples into a new dense histogram (no accumulation, no
+   --  normalization). Source must be a nonempty two-dimensional UInt8,
+   --  UInt16 or Float32 Mat, every Channel must be below Source.Channels,
+   --  and Dimensions'Length must be 1 .. Maximum_Histogram_Dimensions. A
+   --  Region is treated as the whole image. Source is not modified.
+   function Calculate_Histogram
+     (Source : OpenCV.Core.Mat; Dimensions : Histogram_Dimension_Array)
+      return Histogram;
+
+   --  As above, counting only pixels whose Mask value is nonzero. Mask must
+   --  be a nonempty two-dimensional UInt8 C1 Mat with Source's rows and
+   --  columns; it may share storage with Source. Mask is not modified.
+   function Calculate_Histogram
+     (Source     : OpenCV.Core.Mat;
+      Mask       : OpenCV.Core.Mat;
+      Dimensions : Histogram_Dimension_Array) return Histogram;
+
+   --  OpenCV comparison metrics. None is a normalized similarity score.
+   --  Correlation: larger is more similar; identical histograms give 1.
+   --  Chi_Square: smaller is closer; asymmetric (Left is the denominator).
+   --  Intersection: sum of bin minima; larger is more similar and the scale
+   --  depends on the histogram totals.
+   --  Hellinger_Distance: OpenCV HISTCMP_BHATTACHARYYA, which computes the
+   --  Hellinger distance; smaller is closer and identical gives 0.
+   --  Alternative_Chi_Square: symmetric chi-square; smaller is closer.
+   --  Kullback_Leibler_Divergence: smaller is closer; asymmetric.
+   type Histogram_Comparison_Method is
+     (Correlation,
+      Chi_Square,
+      Intersection,
+      Hellinger_Distance,
+      Alternative_Chi_Square,
+      Kullback_Leibler_Divergence);
+
+   --  Left and Right must have the same dimension count and, per dimension,
+   --  the same Bin_Count, Lower_Bound and Upper_Bound. Channels may differ.
+   function Compare_Histograms
+     (Left   : Histogram;
+      Right  : Histogram;
+      Method : Histogram_Comparison_Method) return OpenCV.Float64_Value;
+
+   --  Returns a new Mat with Source's rows and columns and depth and one
+   --  channel, holding for each pixel the Distribution bin value of its
+   --  selected channels multiplied by Scale (saturated for UInt8 and
+   --  UInt16), or 0 when a sample lies outside a range. The channels and
+   --  ranges stored in Distribution are used. Source must be a nonempty
+   --  two-dimensional UInt8, UInt16 or Float32 Mat containing every stored
+   --  channel; Scale must be finite. A Region is back-projected in view
+   --  coordinates. Source and Distribution are not modified.
+   function Back_Project
+     (Source       : OpenCV.Core.Mat;
+      Distribution : Histogram;
+      Scale        : OpenCV.Float64_Value := 1.0) return OpenCV.Core.Mat;
+
 private
    package Contour_Vectors is new
      Ada.Containers.Indefinite_Vectors
@@ -1185,5 +1285,19 @@ private
       Background_Model : OpenCV.Core.Mat;
       Foreground_Model : OpenCV.Core.Mat;
       Initialized      : Boolean := False;
+   end record;
+
+   package Histogram_Dimension_Vectors is new
+     Ada.Containers.Vectors
+       (Index_Type   => Positive,
+        Element_Type => Histogram_Dimension);
+
+   --  Values is the dense Float32 histogram produced by this package and
+   --  referenced by no other header; Mat assignment is shallow, but no
+   --  operation mutates or exposes it, so sharing between copies is never
+   --  observable. Dimensions is the authoritative Ada-owned metadata.
+   type Histogram is record
+      Values     : OpenCV.Core.Mat;
+      Dimensions : Histogram_Dimension_Vectors.Vector;
    end record;
 end OpenCV.Image_Processing;

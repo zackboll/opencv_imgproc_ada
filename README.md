@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **318 AUnit tests**
+> **Current registered test baseline:** **343 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -76,6 +76,7 @@ Ada package, and built libraries serve different roles.
 - [Drawing primitives](#drawing-primitives)
 - [Hough detection](#hough-detection)
 - [Segmentation](#segmentation)
+- [Histogram analysis](#histogram-analysis)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
 - [Architecture](#architecture)
@@ -220,6 +221,9 @@ The table below summarizes the current public operations.
 | Segmentation | `Flood_Fill`, `Flood_Fill_With_Mask` | nonempty 2-D `UInt8`/`Float32`, C1/C3; mask `UInt8` C1 `(rows + 2) x (cols + 2)` | in place; floating/fixed range; 4/8 connectivity; area and bounds; mask fill value and mask-only mode |
 | Segmentation | `Watershed` | `UInt8` C3 source; `Int32` C1 markers of the same size | markers mutated in place (`-1` boundaries); source preserved; nonnegative input markers; overlap rejected |
 | Segmentation | `Initialize_GrabCut`, `Refine_GrabCut`, `Refine_GrabCut_Frozen_Model` | `UInt8` C3 source; rectangle or 0..3 label mask with at least 5 background and 5 foreground pixels | limited private `GrabCut_State` with hidden models; `GrabCut_Mask` returns a clone; `GrabCut_Label` values |
+| Histogram analysis | `Calculate_Histogram` | nonempty 2-D `UInt8`/`UInt16`/`Float32`; selected channels; optional `UInt8` C1 mask | dense uniform 1..10-D Float32 counts; `[lower, upper)` ranges; private `Histogram` owns metadata; `Histogram_Values` returns a clone |
+| Histogram analysis | `Compare_Histograms` | two histograms with identical bin counts and ranges | six OpenCV metrics; channels may differ |
+| Histogram analysis | `Back_Project` | nonempty 2-D `UInt8`/`UInt16`/`Float32` containing the stored channels | fresh C1 Mat of source size and depth; finite scale; uses the histogram's own metadata |
 
 The supported general-purpose Imgproc numeric depths are:
 
@@ -2190,8 +2194,11 @@ accumulator votes are intentionally not part of this slice.
 
 Three segmentation tools share one contract style: in-place mutation is
 explicit, sources are never modified, storage overlap between an input and a
-mutated Mat is rejected, and every contract violation raises
-`OpenCV.OpenCV_Error`. The API was checked against OpenCV 4.1.0, 4.10.0, and
+mutated Mat is rejected, and semantic contract violations detected by the
+binding raise `OpenCV.OpenCV_Error`. Values outside a constrained Ada subtype
+such as `GrabCut_Iterations` or `Flood_Fill_Mask_Value` fail the ordinary Ada
+range check and raise `Constraint_Error` before the operation runs. The API
+was checked against OpenCV 4.1.0, 4.10.0, and
 5.0.0 `floodfill.cpp`, `segmentation.cpp`, and `grabcut.cpp`.
 
 ### Flood fill
@@ -2349,6 +2356,223 @@ Exact boundary pixels differ between OpenCV generations, because 4.1 and
 newer releases initialize the mixtures differently. The tests therefore check
 stable properties: the label domain, geometry, obvious background, and
 obvious foreground.
+
+---
+
+## Histogram analysis
+
+Dense, uniform, single-source histograms, their comparison, and histogram
+back projection. The design was checked against OpenCV 4.1.0, 4.10.0, and
+5.0.0 `imgproc.hpp` and `histogram.cpp` (`calcHist`, `calcBackProject`,
+`compareHist`, `histPrepareImages`, `calcHist_8u`, `calcHist_<T>`,
+`calcHistLookupTables_8u`, `calcBackProj_`). All three releases share the
+low-level `calcHist(const Mat*, int, const int*, ...)` signature, which the
+shim calls with `nimages = 1`, `uniform = true`, and `accumulate = false`.
+
+### Dimensions and ranges
+
+```ada
+Maximum_Histogram_Dimensions : constant Positive := 10;
+
+subtype Histogram_Bin_Count is Positive range 1 .. 2_147_483_647;
+
+type Histogram_Dimension is record
+   Channel     : Natural;               --  zero-based channel of Source
+   Bin_Count   : Histogram_Bin_Count;
+   Lower_Bound : OpenCV.Float32_Value;
+   Upper_Bound : OpenCV.Float32_Value;
+end record;
+
+type Histogram_Dimension_Array is
+  array (Positive range <>) of Histogram_Dimension;
+```
+
+Each dimension selects one source channel and divides the half-open range
+`[Lower_Bound, Upper_Bound)` into `Bin_Count` equal-width bins. Samples below
+`Lower_Bound` or at/above `Upper_Bound` are not counted. Bounds must be finite
+with `Lower_Bound < Upper_Bound`. A multidimensional histogram counts joint
+occurrences: a pixel is counted once, in the bin addressed by all of its
+selected channel values, and only when every one is in range. The same
+channel may appear in several dimensions. The array may start at any index;
+dimension order is iteration order.
+
+**Why at most 10 dimensions.** OpenCV 4.x supports dense Mat dimensionality up
+to `CV_MAX_DIM` (32), but OpenCV 5.0 introduced `MatShape::MAX_DIMS = 10`, and
+its `Mat::setSize` asserts `_dims <= MatShape::MAX_DIMS`. Because dense
+`calcHist` stores its result in an N-dimensional Mat, this binding guarantees
+up to 10 histogram dimensions on every supported OpenCV generation. This is a
+deliberate portable contract, not an arbitrary restriction. The product of all
+bin counts must also fit in `2_147_483_647`.
+
+### Calculation
+
+```ada
+type Histogram is private;
+
+function Calculate_Histogram
+  (Source : OpenCV.Core.Mat; Dimensions : Histogram_Dimension_Array)
+   return Histogram;
+
+function Calculate_Histogram
+  (Source     : OpenCV.Core.Mat;
+   Mask       : OpenCV.Core.Mat;
+   Dimensions : Histogram_Dimension_Array) return Histogram;
+```
+
+`Source` must be a nonempty two-dimensional `UInt8`, `UInt16`, or `Float32`
+Mat, and every `Channel` must be below `Source.Channels`. The optional `Mask`
+must be a nonempty two-dimensional `UInt8` C1 Mat with the source rows and
+columns; a pixel is counted where the mask is nonzero. Source and mask are only
+read, so they may share storage. A Region is treated as the whole image.
+
+The result holds dense `Float32` counts. It is **not** normalized and never
+accumulates into an earlier histogram.
+
+### The Histogram type
+
+```ada
+function Histogram_Dimension_Count (Value : Histogram) return Natural;
+function Get_Histogram_Dimension
+  (Value : Histogram; Index : Positive) return Histogram_Dimension;
+function Histogram_Values (Value : Histogram) return OpenCV.Core.Mat;
+```
+
+A `Histogram` owns its dense Float32 Mat and an Ada copy of the dimension
+metadata it was calculated with. The native Mat carries no channel or range
+information, so the metadata is authoritative: comparison and back projection
+use it, and callers cannot substitute different metadata. The type is
+immutable; copies are independent values and no operation exposes the private
+Mat. `Histogram_Values` always returns a **deep clone**, so modifying the
+returned Mat never changes the histogram. Its shape is `Bin_Count x 1` for one
+dimension, `Bin_Count (1) x Bin_Count (2)` for two, and an N-dimensional Mat
+with one extent per dimension otherwise. (OpenCV 5.0 natively produces a
+genuine 1-D Mat where 4.x produces `N x 1`; the shim publishes `N x 1` on
+every release.) A default-initialized `Histogram` has zero dimensions and is
+rejected by comparison and back projection.
+
+### Comparison
+
+```ada
+type Histogram_Comparison_Method is
+  (Correlation,
+   Chi_Square,
+   Intersection,
+   Hellinger_Distance,
+   Alternative_Chi_Square,
+   Kullback_Leibler_Divergence);
+
+function Compare_Histograms
+  (Left   : Histogram;
+   Right  : Histogram;
+   Method : Histogram_Comparison_Method) return OpenCV.Float64_Value;
+```
+
+| Method | OpenCV selector | Better match | Notes |
+| --- | --- | --- | --- |
+| `Correlation` | `HISTCMP_CORREL` | larger | identical histograms give 1; range -1 .. 1 |
+| `Chi_Square` | `HISTCMP_CHISQR` | smaller | asymmetric: `Left` is the denominator |
+| `Intersection` | `HISTCMP_INTERSECT` | larger | sum of bin minima; scale depends on histogram totals |
+| `Hellinger_Distance` | `HISTCMP_BHATTACHARYYA` | smaller | OpenCV's "Bhattacharyya" computes the Hellinger distance; identical gives 0 |
+| `Alternative_Chi_Square` | `HISTCMP_CHISQR_ALT` | smaller | symmetric chi-square variant |
+| `Kullback_Leibler_Divergence` | `HISTCMP_KL_DIV` | smaller | asymmetric; empty `Right` bins use OpenCV's `1e-10` substitute |
+
+None of these values is a normalized similarity score. Both histograms must
+have the same number of dimensions and, per dimension, the same bin count and
+lower and upper bounds; a mismatch raises `OpenCV.OpenCV_Error`. Channel
+numbers need not match, so distributions from different channels or images
+can be compared. Neither histogram is modified.
+
+### Back projection
+
+```ada
+function Back_Project
+  (Source       : OpenCV.Core.Mat;
+   Distribution : Histogram;
+   Scale        : OpenCV.Float64_Value := 1.0) return OpenCV.Core.Mat;
+```
+
+Each output pixel receives `Scale` times the histogram bin addressed by the
+pixel's selected channels, or 0 when any selected value is outside its range.
+Channels and ranges come from `Distribution`. The result is a fresh
+single-channel Mat with the source rows, columns, and depth; `UInt8` and
+`UInt16` results saturate, `Float32` results do not. `Scale` may be any finite
+value within the Float32 range (OpenCV narrows it to `float`), including
+negative values. A Region is back-projected in view coordinates and produces a
+Region-sized output. Source and histogram are unchanged; no in-place form is
+offered.
+
+### Validation and native safety
+
+Ada validates the public contract and raises `OpenCV.OpenCV_Error`; values
+outside `Histogram_Bin_Count` raise `Constraint_Error`. The private C ABI
+passes a pointer to fixed-layout `{int32 channel, int32 bin_count, float lower,
+float upper}` records plus a count; the native channel, size, and range-pointer
+arrays exist only for one call. Before any native arithmetic the shim
+independently rejects:
+
+- dimension counts outside 1 .. 10 and null dimension pointers;
+- non-positive bin counts and bin products beyond native `int` (OpenCV 5.0
+  `setSize` would otherwise compute a wrapped allocation size);
+- non-finite or empty ranges, and ranges whose bin scaling would push
+  `cvFloor` outside `int` for some `UInt8`/`UInt16` sample;
+- non-2-D sources and source/mask strides that `histPrepareImages` narrows to
+  `int`;
+- comparison of empty, non-Float32, or differently shaped histograms (the
+  native loop would over-read the second one);
+- back projection through a histogram whose shape differs from the dimension
+  records, or with a non-finite scale.
+
+Integer-depth back projection pre-scales and clamps the histogram so
+`saturate_cast` never converts a value outside `int`. OpenCV treats every 2-D
+histogram with a unit axis as 1-D during back projection; the shim adds a
+trailing one-bin axis in that case so both channels are still honored.
+Results are published only after the native call succeeds.
+
+### Examples
+
+Compare the distribution of one channel in two BGR images:
+
+```ada
+declare
+   Green     : constant Histogram_Dimension :=
+     (Channel => 1, Bin_Count => 32, Lower_Bound => 0.0, Upper_Bound => 256.0);
+   Reference : constant Histogram :=
+     Calculate_Histogram (Reference_BGR, (1 => Green));
+   Candidate : constant Histogram :=
+     Calculate_Histogram (Candidate_BGR, (1 => Green));
+begin
+   Put_Line (Compare_Histograms (Reference, Candidate, Correlation)'Image);
+end;
+```
+
+Or compare brightness after `Convert_Color`:
+
+```ada
+Convert_Color (Reference_BGR, Reference_Gray, BGR_To_Gray);
+Convert_Color (Candidate_BGR, Candidate_Gray, BGR_To_Gray);
+Distance :=
+  Compare_Histograms
+    (Calculate_Histogram (Reference_Gray, (1 => (0, 32, 0.0, 256.0))),
+     Calculate_Histogram (Candidate_Gray, (1 => (0, 32, 0.0, 256.0))),
+     Hellinger_Distance);
+```
+
+Locate regions that resemble a reference patch:
+
+```ada
+declare
+   Model      : constant Histogram :=
+     Calculate_Histogram
+       (Reference_Patch, ((0, 16, 0.0, 256.0), (1, 16, 0.0, 256.0)));
+   Likelihood : constant OpenCV.Core.Mat := Back_Project (Scene, Model, 8.0);
+   Binary     : OpenCV.Core.Mat;
+   Labels     : OpenCV.Core.Mat;
+   Blobs      : Connected_Component_Set;
+begin
+   Apply_Threshold (Likelihood, Binary, 32.0);
+   Connected_Components_With_Stats (Binary, Labels, Blobs);
+end;
+```
 
 ---
 
@@ -2808,7 +3032,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **318-test** baseline is:
+The current **343-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -2841,7 +3065,8 @@ The current **318-test** baseline is:
 | Drawing | 11 |
 | Hough detection | 24 |
 | Segmentation (flood fill, watershed, GrabCut) | 29 |
-| **Total** | **318** |
+| Histogram analysis (calculation, comparison, back projection) | 25 |
+| **Total** | **343** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -3336,7 +3561,9 @@ Notable Imgproc families that are not yet broadly bound include:
   combined `GC_INIT_WITH_RECT | GC_INIT_WITH_MASK` initialization, exposing or
   importing GrabCut models, mean-shift segmentation, and distance-transform
   based marker generation;
-- histogram calculation and comparison;
+- advanced histogram capabilities: multi-image histograms, nonuniform bin
+  boundaries, accumulation/update, `SparseMat` histograms, and EMD (a future
+  sparse-histogram abstraction may revisit the dense 10-dimension limit);
 - distance transforms;
 - integral images;
 - text rendering and text metrics;

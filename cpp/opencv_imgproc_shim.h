@@ -745,6 +745,75 @@ opencv_imgproc_mat_storage_overlap(
     const opencv_core_mat_handle *second,
     uint8_t *overlap);
 
+/* One uniform histogram dimension: zero-based source channel, positive bin
+ * count, and the half-open range [lower_bound, upper_bound). */
+typedef struct {
+    int32_t channel;
+    int32_t bin_count;
+    float lower_bound;
+    float upper_bound;
+} opencv_imgproc_histogram_dimension;
+
+/* Portable dense-histogram dimensionality: OpenCV 4.x allows CV_MAX_DIM
+ * (32) Mat dimensions, but OpenCV 5.0 limits Mat to MatShape::MAX_DIMS
+ * (10). */
+#define OPENCV_IMGPROC_HISTOGRAM_MAX_DIMENSIONS ((int32_t)10)
+
+#define OPENCV_IMGPROC_HISTCMP_CORREL     ((int32_t)0)
+#define OPENCV_IMGPROC_HISTCMP_CHISQR     ((int32_t)1)
+#define OPENCV_IMGPROC_HISTCMP_INTERSECT  ((int32_t)2)
+#define OPENCV_IMGPROC_HISTCMP_HELLINGER  ((int32_t)3)
+#define OPENCV_IMGPROC_HISTCMP_CHISQR_ALT ((int32_t)4)
+#define OPENCV_IMGPROC_HISTCMP_KL_DIV     ((int32_t)5)
+
+/*
+ * Dense uniform histogram of one 2-D UInt8, UInt16 or Float32 source.
+ * dimension_count is 1 .. OPENCV_IMGPROC_HISTOGRAM_MAX_DIMENSIONS. The
+ * Float32 C1 result replaces *histogram only on success. A one-dimensional
+ * histogram is always published as bin_count x 1; a two-dimensional one as
+ * bins0 x bins1; higher dimensionality as an N-dimensional Mat.
+ */
+opencv_imgproc_status
+opencv_imgproc_calc_hist(
+    const opencv_core_mat_handle *source,
+    const opencv_imgproc_histogram_dimension *dimensions,
+    int32_t dimension_count,
+    opencv_core_mat_handle *histogram);
+
+/* As opencv_imgproc_calc_hist, counting only pixels whose UInt8 C1 mask
+ * value (same rows and columns as source) is nonzero. */
+opencv_imgproc_status
+opencv_imgproc_calc_hist_masked(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *mask,
+    const opencv_imgproc_histogram_dimension *dimensions,
+    int32_t dimension_count,
+    opencv_core_mat_handle *histogram);
+
+/* cv::compareHist on two dense Float32 histograms. *result is 0 on
+ * failure. */
+opencv_imgproc_status
+opencv_imgproc_compare_hist(
+    const opencv_core_mat_handle *left,
+    const opencv_core_mat_handle *right,
+    int32_t method,
+    double *result);
+
+/*
+ * Back projection of source through a histogram shaped exactly as
+ * opencv_imgproc_calc_hist publishes it for the same dimension records.
+ * The result (source rows x columns, source depth, C1) replaces
+ * *destination only on success.
+ */
+opencv_imgproc_status
+opencv_imgproc_calc_back_project(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *histogram,
+    const opencv_imgproc_histogram_dimension *dimensions,
+    int32_t dimension_count,
+    double scale,
+    opencv_core_mat_handle *destination);
+
 #ifdef __cplusplus
 }
 #endif

@@ -847,6 +847,71 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_mat_storage_overlap";
 
+   --  Mirrors opencv_imgproc_histogram_dimension.
+   type Histogram_Dimension_Record is record
+      Channel     : Interfaces.Integer_32;
+      Bin_Count   : Interfaces.Integer_32;
+      Lower_Bound : Interfaces.C.C_float;
+      Upper_Bound : Interfaces.C.C_float;
+   end record
+   with Convention => C;
+
+   type Histogram_Dimension_Records is
+     array (Positive range <>) of aliased Histogram_Dimension_Record
+   with Convention => C;
+
+   Histogram_Maximum_Dimensions : constant := 10;
+
+   Histogram_Compare_Correlation    : constant Interfaces.Integer_32 := 0;
+   Histogram_Compare_Chi_Square     : constant Interfaces.Integer_32 := 1;
+   Histogram_Compare_Intersection   : constant Interfaces.Integer_32 := 2;
+   Histogram_Compare_Hellinger      : constant Interfaces.Integer_32 := 3;
+   Histogram_Compare_Chi_Square_Alt : constant Interfaces.Integer_32 := 4;
+   Histogram_Compare_KL_Divergence  : constant Interfaces.Integer_32 := 5;
+
+   function Calc_Hist
+     (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Dimensions      : access constant Histogram_Dimension_Record;
+      Dimension_Count : Interfaces.Integer_32;
+      Histogram       : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_calc_hist";
+
+   function Calc_Hist_Masked
+     (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Mask            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Dimensions      : access constant Histogram_Dimension_Record;
+      Dimension_Count : Interfaces.Integer_32;
+      Histogram       : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_calc_hist_masked";
+
+   function Compare_Hist
+     (Left   : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Right  : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Method : Interfaces.Integer_32;
+      Result : access Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_compare_hist";
+
+   function Calc_Back_Project
+     (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Histogram       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Dimensions      : access constant Histogram_Dimension_Record;
+      Dimension_Count : Interfaces.Integer_32;
+      Scale           : Interfaces.C.double;
+      Destination     : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_calc_back_project";
+
    function Last_Error_Message return String;
 
 end OpenCV.Image_Processing.Internal.C_API;
