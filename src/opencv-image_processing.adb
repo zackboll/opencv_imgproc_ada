@@ -10,6 +10,130 @@ with OpenCV.Image_Processing.Internal.C_API;
 
 package body OpenCV.Image_Processing is
 
+   procedure Raise_On_Error
+     (Status : Internal.C_API.Status; Operation : String);
+
+   procedure Validate_Distance_Source (Source : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type Interfaces.Unsigned_8;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth /= OpenCV.Core.UInt8
+        or else Source.Channels /= 1
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Distance transform requires a nonempty 2-D UInt8 C1 source");
+      end if;
+      for Row in 0 .. Source.Rows - 1 loop
+         for Column in 0 .. Source.Columns - 1 loop
+            if OpenCV.Core.UInt8_Access.Get (Source, Row, Column) = 0 then
+               return;
+            end if;
+         end loop;
+      end loop;
+      Ada.Exceptions.Raise_Exception
+        (OpenCV.OpenCV_Error'Identity,
+         "Distance transform requires at least one zero pixel");
+   end Validate_Distance_Source;
+
+   function Distance_Transform
+     (Source : OpenCV.Core.Mat;
+      Method : Distance_Transform_Method := Euclidean_Precise)
+      return OpenCV.Core.Mat
+   is
+      Output : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure With_Source
+        (Input : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure With_Output
+           (Target : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Distance_Transform_F32
+                (Input, Distance_Transform_Method'Pos (Method), Target);
+         end With_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Output, With_Output'Access);
+      end With_Source;
+   begin
+      Validate_Distance_Source (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, With_Source'Access);
+      Raise_On_Error (Status, "Distance_Transform");
+      return Output;
+   end Distance_Transform;
+
+   function Manhattan_Distance_Transform_UInt8
+     (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+      Output : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure With_Source
+        (Input : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure With_Output
+           (Target : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status := Internal.C_API.Distance_Transform_L1_U8 (Input, Target);
+         end With_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Output, With_Output'Access);
+      end With_Source;
+   begin
+      Validate_Distance_Source (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, With_Source'Access);
+      Raise_On_Error (Status, "Manhattan_Distance_Transform_UInt8");
+      return Output;
+   end Manhattan_Distance_Transform_UInt8;
+
+   function Distance_Transform_With_Labels
+     (Source : OpenCV.Core.Mat;
+      Metric : Labeled_Distance_Metric := Euclidean_Label_Distance;
+      Labels : Distance_Label_Mode := Nearest_Zero_Component)
+      return Labeled_Distance_Transform_Result
+   is
+      Output : Labeled_Distance_Transform_Result;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure With_Source
+        (Input : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure With_Distances
+           (Target : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            procedure With_Labels
+              (Label_Target : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Distance_Transform_Labeled
+                   (Input,
+                    Labeled_Distance_Metric'Pos (Metric),
+                    Distance_Label_Mode'Pos (Labels),
+                    Target,
+                    Label_Target);
+            end With_Labels;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Output.Labels, With_Labels'Access);
+         end With_Distances;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Output.Distances, With_Distances'Access);
+      end With_Source;
+   begin
+      Validate_Distance_Source (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, With_Source'Access);
+      Raise_On_Error (Status, "Distance_Transform_With_Labels");
+      return Output;
+   end Distance_Transform_With_Labels;
+
    function To_C_Contour_Retrieval
      (Retrieval : Contour_Retrieval_Mode) return Interfaces.Integer_32 is
    begin

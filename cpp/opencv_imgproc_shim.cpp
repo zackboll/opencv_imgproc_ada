@@ -2222,9 +2222,162 @@ cv::Mat back_project_histogram(
     return scaled;
 }
 
+// OpenCV 4.x exposes DistanceTypes from imgproc.hpp, while OpenCV 5
+// moved that enum to Geometry. distanceTransform still accepts the
+// same integer selectors, so keep Imgproc independent of Geometry.
+constexpr int native_distance_l1 = 1;
+constexpr int native_distance_l2 = 2;
+constexpr int native_distance_c = 3;
+
+// ABI safety: 4.1's approximate passes narrow row strides to int and
+// multiply row indices by those strides; the padded temporary uses int
+// indices with +/-2 neighbors. The precise path builds rows*3+1,
+// columns*2 and i*i lookup entries using signed int.
+const char *distance_preflight(const cv::Mat &src, int border, bool precise)
+{
+    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
+    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
+    // ABI safety: all three native implementations reinterpret pixels as
+    // uchar and index two-dimensional rows; empty/N-D/wrong-type raw inputs
+    // can produce invalid row pointers or incorrectly sized pixel reads.
+    if (src.empty() || src.dims != 2 || src.type() != CV_8UC1)
+        return "distance source must be nonempty 2-D UInt8 C1";
+    if (src.step[0] > native_int_max || cols >= native_int_max / rows
+        || rows * cols >= native_int_max)
+        // ABI safety: 4.1 IPP takes int pixel counts and CV_32S component
+        // labeling and pixel k++ require a representable final index.
+        return "distance source step or pixel count exceeds native int";
+    if (precise) {
+        // ABI safety: OpenCV 4.1 trueDistTrans computes i*i in signed int,
+        // with i ranging up to max(rows,cols)-1; it also computes 3*rows+1.
+        if (rows > (native_int_max - 1) / 3 || cols > native_int_max / 4
+            || rows > 46341 || cols > 46341
+            || (rows - 1) > native_int_max / (cols * 4))
+            return "precise distance dimensions exceed OpenCV 4.1 int limits";
+    } else if (border != 0) {
+        const std::uint64_t padded_rows = rows + 2 * border;
+        const std::uint64_t padded_cols = cols + 2 * border;
+        // ABI safety: the 4.1 passes form (i+border)*step and
+        // (i+border+/-2)*step as signed int offsets; label and destination
+        // passes similarly form i*cols and i*source_step.
+        if (padded_rows > native_int_max || padded_cols > native_int_max
+            || padded_cols > native_int_max / 4
+            || (padded_rows - 1) > native_int_max / padded_cols
+            || cols > native_int_max / 4
+            || (rows - 1) > native_int_max / (cols * 4)
+            || (rows - 1) > native_int_max / src.step[0])
+            return "distance row offsets or padded temporary exceed native int";
+    } else if ((rows - 1) > native_int_max / src.step[0]
+               || (rows - 1) > native_int_max / cols) {
+        // ABI safety: UInt8 L1 narrows source and destination step to int
+        // and uses int row offsets.
+        return "UInt8 distance row offsets exceed native int";
+    }
+    // ABI safety: the portable raw contract must not publish an undefined
+    // nearest-target result (notably labels) when no target exists.
+    // The 4.1/4.10/5.0 paths differ in their sentinel outputs with no
+    // target (notably precise vs approximate and labeled propagation).
+    // Reject before allocation for a portable raw and public contract.
+    for (int y = 0; y < src.rows; ++y) {
+        const unsigned char *row = src.ptr<unsigned char>(y);
+        for (int x = 0; x < src.cols; ++x)
+            if (row[x] == 0) return nullptr;
+    }
+    return "distance source must contain a zero pixel";
+}
+
 } // namespace
 
 extern "C" {
+
+opencv_imgproc_status opencv_imgproc_distance_transform_f32(
+    const opencv_core_mat_handle *source, int32_t method,
+    opencv_core_mat_handle *destination)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr || opencv_core_module_output_mat(destination, &dst)
+                != OPENCV_CORE_OK || dst == nullptr)
+            return invalid_argument("invalid distance Mat handle");
+        int metric, mask;
+        switch (method) {
+        case 0: metric = native_distance_l1; mask = cv::DIST_MASK_3; break;
+        case 1: metric = native_distance_c; mask = cv::DIST_MASK_3; break;
+        case 2: metric = native_distance_l2; mask = cv::DIST_MASK_3; break;
+        case 3: metric = native_distance_l2; mask = cv::DIST_MASK_5; break;
+        case 4: metric = native_distance_l2; mask = cv::DIST_MASK_PRECISE; break;
+        default: return invalid_argument("invalid distance method");
+        }
+        const char *error = distance_preflight(
+            *src, mask == cv::DIST_MASK_PRECISE ? 0 :
+                mask == cv::DIST_MASK_3 ? 1 : 2, method == 4);
+        if (error) return invalid_argument(error);
+        cv::Mat result;
+        cv::distanceTransform(*src, result, metric, mask, CV_32F);
+        *dst = result;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status opencv_imgproc_distance_transform_l1_u8(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr || opencv_core_module_output_mat(destination, &dst)
+                != OPENCV_CORE_OK || dst == nullptr)
+            return invalid_argument("invalid distance Mat handle");
+        const char *error = distance_preflight(*src, 0, false);
+        if (error) return invalid_argument(error);
+        cv::Mat result;
+        cv::distanceTransform(*src, result, native_distance_l1, cv::DIST_MASK_3, CV_8U);
+        *dst = result;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status opencv_imgproc_distance_transform_labeled(
+    const opencv_core_mat_handle *source, int32_t metric, int32_t label_mode,
+    opencv_core_mat_handle *distances, opencv_core_mat_handle *labels)
+{
+    clear_error();
+    try {
+        if (distances == labels)
+            return invalid_argument("distance and label outputs must differ");
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr, *lbl = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr || opencv_core_module_output_mat(distances, &dst)
+                != OPENCV_CORE_OK || dst == nullptr
+            || opencv_core_module_output_mat(labels, &lbl) != OPENCV_CORE_OK
+            || lbl == nullptr || dst == lbl)
+            return invalid_argument("invalid labeled distance Mat handle");
+        int native_metric;
+        switch (metric) {
+        case 0: native_metric = native_distance_l1; break;
+        case 1: native_metric = native_distance_l2; break;
+        case 2: native_metric = native_distance_c; break;
+        default: return invalid_argument("invalid labeled distance metric");
+        }
+        if (label_mode != 0 && label_mode != 1)
+            return invalid_argument("invalid distance label mode");
+        const char *error = distance_preflight(*src, 2, false);
+        if (error) return invalid_argument(error);
+        cv::Mat result, label_result;
+        cv::distanceTransform(*src, result, label_result, native_metric,
+            cv::DIST_MASK_5, label_mode == 0 ? cv::DIST_LABEL_CCOMP
+                                            : cv::DIST_LABEL_PIXEL);
+        *dst = result;
+        *lbl = label_result;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
 
 const char *opencv_imgproc_last_error_message(void)
 {

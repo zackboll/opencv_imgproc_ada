@@ -14,6 +14,31 @@ package OpenCV.Image_Processing.Internal.C_API is
    Error_Unknown          : constant Status := 3;
    Error_Invalid_Argument : constant Status := 4;
 
+   function Distance_Transform_F32
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Method      : Interfaces.Integer_32;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_distance_transform_f32";
+   function Distance_Transform_L1_U8
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_distance_transform_l1_u8";
+   function Distance_Transform_Labeled
+     (Source             : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Metric, Label_Mode : Interfaces.Integer_32;
+      Distances, Labels  : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_distance_transform_labeled";
+
    BGR_To_Gray : constant Interfaces.Integer_32 := 0;
 
    Interpolation_Nearest_Neighbor : constant Interfaces.Integer_32 := 0;

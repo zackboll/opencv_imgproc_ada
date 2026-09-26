@@ -21,6 +21,7 @@ with Gaussian_Blur_Tests;
 with Gaussian_Kernel_Tests;
 with Derivative_Kernel_Tests;
 with Drawing_Tests;
+with Distance_Transform_Tests;
 with Laplacian_Tests;
 with Median_Blur_Tests;
 with Morphology_Tests;
@@ -80,6 +81,7 @@ begin
    Suite.Add_Test (Hough_Detection_Tests.Suite);
    Suite.Add_Test (Segmentation_Tests.Suite);
    Suite.Add_Test (Histogram_Analysis_Tests.Suite);
+   Suite.Add_Test (Distance_Transform_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;
