@@ -998,13 +998,20 @@ package body Hough_Detection_Tests is
         C_API.Null_Hough_Lines_Handle;
       Status                           : C_API.Status;
       Rho, Theta, Min_Theta, Max_Theta : Interfaces.C.double;
+      Threshold                        : Interfaces.Integer_32 := 10;
 
       procedure Detect (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle)
       is
       begin
          Status :=
            C_API.Hough_Lines
-             (Source, Rho, Theta, 10, Min_Theta, Max_Theta, Handle'Access);
+             (Source,
+              Rho,
+              Theta,
+              Threshold,
+              Min_Theta,
+              Max_Theta,
+              Handle'Access);
       end Detect;
 
       procedure Expect (Fragment, Message : String) is
@@ -1019,13 +1026,21 @@ package body Hough_Detection_Tests is
          Theta := Degree;
          Min_Theta := 0.0;
          Max_Theta := Pi;
+         Threshold := 10;
       end Expect;
    begin
       IP.Draw_Line (Image, (X => 5, Y => 40), (X => 94, Y => 40), White);
-      Rho := 1.0e-30;
+      Rho := 1.0;
       Theta := Degree;
       Min_Theta := 0.0;
       Max_Theta := Pi;
+      --  The IPP branch divides by threshold; nonpositive values are
+      --  rejected before OpenCV runs.
+      Threshold := 0;
+      Expect ("threshold must be positive", "a zero line threshold");
+      Threshold := -1;
+      Expect ("threshold must be positive", "a negative line threshold");
+      Rho := 1.0e-30;
       Expect ("rho bins", "a tiny rho must not overflow numrho");
       Rho := 1.0e40;
       Expect ("binary32", "a rho beyond binary32 must be rejected");
@@ -1070,13 +1085,15 @@ package body Hough_Detection_Tests is
       Status     : C_API.Status;
       Rho, Theta : Interfaces.C.double;
       Threshold  : Interfaces.Integer_32;
+      Length     : Interfaces.Integer_32 := 10;
+      Gap        : Interfaces.Integer_32 := 2;
 
       procedure Detect (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle)
       is
       begin
          Status :=
            C_API.Hough_Segments
-             (Source, Rho, Theta, Threshold, 10, 2, Handle'Access);
+             (Source, Rho, Theta, Threshold, Length, Gap, Handle'Access);
       end Detect;
 
       procedure Expect (Fragment, Message : String) is
@@ -1090,12 +1107,24 @@ package body Hough_Detection_Tests is
          Rho := 1.0;
          Theta := Degree;
          Threshold := 10;
+         Length := 10;
+         Gap := 2;
       end Expect;
    begin
       IP.Draw_Line (Image, (X => 5, Y => 40), (X => 94, Y => 40), White);
-      Rho := 1.0e-30;
+      Rho := 1.0;
       Theta := Degree;
-      Threshold := 10;
+      Threshold := 0;
+      Expect ("threshold must be positive", "a zero segment threshold");
+      Threshold := -1;
+      Expect ("threshold must be positive", "a negative segment threshold");
+      Threshold := Interfaces.Integer_32'First;
+      Expect ("threshold must be positive", "an INT_MIN segment threshold");
+      Length := -1;
+      Expect ("nonnegative", "a negative minimum line length");
+      Gap := -1;
+      Expect ("nonnegative", "a negative maximum line gap");
+      Rho := 1.0e-30;
       Expect ("rho bins", "a tiny rho must not overflow numrho");
       Theta := 1.0e-12;
       Expect ("angle bins", "a tiny theta must not overflow numangle");
@@ -1106,8 +1135,6 @@ package body Hough_Detection_Tests is
       --  of bounds by the first vote.
       Rho := 1000.0;
       Expect ("too coarse", "a rho yielding no usable bins is rejected");
-      Threshold := Interfaces.Integer_32'First;
-      Expect ("threshold", "an INT_MIN threshold must not underflow");
    end Raw_Segments_Geometry;
 
    procedure Raw_Circles_Geometry (Test : in out Fixture) is
@@ -1119,6 +1146,7 @@ package body Hough_Detection_Tests is
       Status                 : C_API.Status;
       Scale, Distance        : Interfaces.C.double;
       Mode, Minimum, Maximum : Interfaces.Integer_32;
+      Canny, Votes           : Interfaces.Integer_32;
 
       procedure Detect (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle)
       is
@@ -1128,8 +1156,8 @@ package body Hough_Detection_Tests is
              (Source,
               Scale,
               Distance,
-              100,
-              20,
+              Canny,
+              Votes,
               Mode,
               Minimum,
               Maximum,
@@ -1143,6 +1171,8 @@ package body Hough_Detection_Tests is
          Mode := C_API.Hough_Radius_Explicit;
          Minimum := 15;
          Maximum := 35;
+         Canny := 100;
+         Votes := 20;
       end Reset;
 
       procedure Expect (Fragment, Message : String) is
@@ -1157,6 +1187,19 @@ package body Hough_Detection_Tests is
       end Expect;
    begin
       Reset;
+      Canny := 0;
+      Expect ("Canny threshold must be positive", "a zero Canny threshold");
+      Canny := -5;
+      Expect
+        ("Canny threshold must be positive", "a negative Canny threshold");
+      Votes := 0;
+      Expect
+        ("accumulator threshold must be positive",
+         "a zero accumulator threshold");
+      Votes := -5;
+      Expect
+        ("accumulator threshold must be positive",
+         "a negative accumulator threshold");
       Scale := 0.5;
       Expect ("at least 1", "a raw dp below 1 must be rejected");
       Scale := Interfaces.C.double (Non_Finite (NaN_Bits));
@@ -1229,6 +1272,128 @@ package body Hough_Detection_Tests is
            (Status, "fixed-point", "a very wide source must be rejected");
       end;
    end Raw_Circles_Geometry;
+
+   --  OpenCV's standard-Hough IPP branch evaluates countNonZero * numangle in
+   --  signed int. A dense 100 x 100 image has 10_000 nonzero pixels, and
+   --  theta = Pi / 500_000 gives about 500_000 angle bins, so the product is
+   --  about 5.0e9 > INT_MAX. A coarse rho = 10 keeps numrho at 40, so the
+   --  padded accumulator (about 500_004 x 42 ints) and the vote columns pass
+   --  the ordinary checks. The diagnostic proves the IPP guard is what
+   --  rejects it, independently of whether this OpenCV build enables IPP.
+   procedure Raw_Lines_Nonzero_Product (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Dense  : OpenCV.Core.Mat := Blank (100, 100);
+      Handle : aliased C_API.Hough_Lines_Handle :=
+        C_API.Null_Hough_Lines_Handle;
+      Status : C_API.Status;
+      Theta  : Interfaces.C.double;
+
+      procedure Detect (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+      begin
+         Status :=
+           C_API.Hough_Lines (Source, 10.0, Theta, 50, 0.0, Pi, Handle'Access);
+      end Detect;
+   begin
+      OpenCV.Core.Set_To (Dense, White);
+      Theta := Pi / 500_000.0;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Dense, Detect'Access);
+      Assert_Invalid
+        (Status,
+         "nonzero pixel count",
+         "countNonZero * numangle beyond INT_MAX must be rejected");
+      AUnit.Assertions.Assert
+        (Handle = C_API.Null_Hough_Lines_Handle,
+         "the output handle must stay null for the rejected product");
+
+      --  The same dense image with an ordinary angle resolution is safe.
+      Theta := Degree;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Dense, Detect'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Success
+         and then Handle /= C_API.Null_Hough_Lines_Handle,
+         "a dense image with a bounded product must be accepted");
+      C_API.Hough_Lines_Destroy (Handle);
+   end Raw_Lines_Nonzero_Product;
+
+   --  Every raw detector rejects malformed sources before cloning, counting
+   --  nonzero pixels, or evaluating source-dependent arithmetic.
+   procedure Raw_Source_Validation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Empty    : OpenCV.Core.Mat;
+      Three_D  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (OpenCV.Core.Dimension_Array'(1 => 4, 2 => 4, 3 => 2),
+           (OpenCV.Core.UInt8, 1));
+      Wide     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 8, (OpenCV.Core.UInt16, 1));
+      Color    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 8, (OpenCV.Core.UInt8, 3));
+      Lines    : aliased C_API.Hough_Lines_Handle;
+      Segments : aliased C_API.Hough_Segments_Handle;
+      Circles  : aliased C_API.Hough_Circles_Handle;
+      Status   : C_API.Status;
+
+      procedure Detect_Lines
+        (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           C_API.Hough_Lines (Source, 1.0, Degree, 5, 0.0, Pi, Lines'Access);
+      end Detect_Lines;
+
+      procedure Detect_Segments
+        (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           C_API.Hough_Segments
+             (Source, 1.0, Degree, 5, 0, 0, Segments'Access);
+      end Detect_Segments;
+
+      procedure Detect_Circles
+        (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           C_API.Hough_Circles
+             (Source,
+              1.0,
+              5.0,
+              100,
+              20,
+              C_API.Hough_Radius_Automatic,
+              0,
+              0,
+              Circles'Access);
+      end Detect_Circles;
+
+      procedure Check (Source : OpenCV.Core.Mat; Fragment, Name : String) is
+      begin
+         Lines := C_API.Null_Hough_Lines_Handle;
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source, Detect_Lines'Access);
+         Assert_Invalid (Status, Fragment, "lines: " & Name);
+         AUnit.Assertions.Assert
+           (Lines = C_API.Null_Hough_Lines_Handle, "lines: " & Name);
+
+         Segments := C_API.Null_Hough_Segments_Handle;
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source, Detect_Segments'Access);
+         Assert_Invalid (Status, Fragment, "segments: " & Name);
+         AUnit.Assertions.Assert
+           (Segments = C_API.Null_Hough_Segments_Handle, "segments: " & Name);
+
+         Circles := C_API.Null_Hough_Circles_Handle;
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source, Detect_Circles'Access);
+         Assert_Invalid (Status, Fragment, "circles: " & Name);
+         AUnit.Assertions.Assert
+           (Circles = C_API.Null_Hough_Circles_Handle, "circles: " & Name);
+      end Check;
+   begin
+      Check (Empty, "nonempty", "an empty source must be rejected");
+      Check (Three_D, "two-dimensional", "a 3-D source must be rejected");
+      Check (Wide, "UInt8", "a UInt16 source must be rejected");
+      Check (Color, "one channel", "a three-channel source must be rejected");
+   end Raw_Source_Validation;
 
    procedure Raw_Result_Handles (Test : in out Fixture) is
       pragma Unreferenced (Test);
@@ -1356,10 +1521,12 @@ package body Hough_Detection_Tests is
       Add ("Hough raw C ABI line geometry", Raw_Lines_Geometry'Access);
       Add ("Hough raw C ABI segment geometry", Raw_Segments_Geometry'Access);
       Add ("Hough raw C ABI circle geometry", Raw_Circles_Geometry'Access);
+      Add
+        ("Hough raw C ABI nonzero times angle bins",
+         Raw_Lines_Nonzero_Product'Access);
+      Add ("Hough raw C ABI source validation", Raw_Source_Validation'Access);
       Add ("Hough raw C ABI result handles", Raw_Result_Handles'Access);
       return Result'Access;
    end Suite;
-
-   --  @@TESTS@@
 
 end Hough_Detection_Tests;

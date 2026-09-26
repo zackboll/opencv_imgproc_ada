@@ -1041,17 +1041,33 @@ bool representable_binary32(double value) noexcept
                std::numeric_limits<float>::max());
 }
 
-// ABI safety: rows and cols are -1 for N-D Mats and would feed the native
-// signed geometry arithmetic. HoughLinesStandard indexes image[i * step + j],
-// HoughLinesProbabilistic indexes mdata0[i * width + j], and the circle
-// accumulator multiplies cols by a row count, all in int on a continuous
-// snapshot, so rows * cols must fit int.
-bool hough_source_geometry(
+// ABI safety: shared raw Hough source validation, run before cloning,
+// cv::countNonZero, and every geometry preflight below. rows and cols are -1
+// for N-D Mats and would feed the native signed geometry arithmetic; the
+// line transforms read the snapshot as raw uchar rows and HoughCircles runs
+// Sobel on it, so the element type must be exactly CV_8UC1 for that
+// arithmetic to model the native code. HoughLinesStandard indexes
+// image[i * step + j], HoughLinesProbabilistic indexes mdata0[i * width + j],
+// and the circle accumulator multiplies cols by a row count, all in int on a
+// continuous snapshot, so rows * cols must fit int.
+bool hough_source_valid(
     const cv::Mat &src, std::int64_t &rows, std::int64_t &cols,
     const char **message) noexcept
 {
-    if (src.rows < 0 || src.cols < 0) {
+    if (src.empty()) {
+        *message = "Hough source must be nonempty";
+        return false;
+    }
+    if (src.dims != 2 || src.rows <= 0 || src.cols <= 0) {
         *message = "Hough source must be two-dimensional";
+        return false;
+    }
+    if (src.depth() != CV_8U) {
+        *message = "Hough source must have UInt8 depth";
+        return false;
+    }
+    if (src.channels() != 1) {
+        *message = "Hough source must have exactly one channel";
         return false;
     }
     rows = src.rows;
@@ -1155,16 +1171,23 @@ bool hough_numangle(
     return true;
 }
 
+// rows and cols come from hough_source_valid; nonzero_count is
+// cv::countNonZero of the continuous snapshot that OpenCV will receive.
 bool hough_lines_preflight(
-    const cv::Mat &src, double rho, double theta,
+    std::int64_t rows, std::int64_t cols, std::int64_t nonzero_count,
+    double rho, double theta, int32_t threshold,
     double min_theta, double max_theta, const char **message) noexcept
 {
-    std::int64_t rows = 0;
-    std::int64_t cols = 0;
     std::int64_t numrho = 0;
     std::int64_t numangle = 0;
-    if (!hough_source_geometry(src, rows, cols, message)
-        || !hough_numrho(rows, cols, rho, numrho, message)) {
+    // ABI safety: the standard-Hough IPP branch divides by threshold
+    // (nz * numangle / threshold), so zero would divide by zero whenever
+    // OpenCV is built with IPP Hough enabled.
+    if (threshold <= 0) {
+        *message = "Hough line threshold must be positive";
+        return false;
+    }
+    if (!hough_numrho(rows, cols, rho, numrho, message)) {
         return false;
     }
     // ABI safety: min_theta is narrowed to float for the trig table and the
@@ -1184,19 +1207,46 @@ bool hough_lines_preflight(
         *message = "Hough line accumulator exceeds native int indexing";
         return false;
     }
+    // ABI safety: OpenCV 4.1.0, 4.10.0, and 5.0.0 HoughLinesStandard IPP
+    // branch evaluates
+    //     int nz = countNonZero(img);
+    //     int ipp_linesMax = std::min(linesMax, nz*numangle/threshold);
+    // with nz * numangle in signed int. The accumulator checks above do not
+    // bound that product. numangle here is an upper bound of the native
+    // cvRound / computeNumangle value in every version, so rejecting
+    // nonzero_count > INT_MAX / numangle covers all of them without ever
+    // forming the product. The guard is applied whether or not this OpenCV
+    // build enables IPP, so safety does not depend on optional acceleration.
+    if (nonzero_count > hough_int_max / numangle) {
+        *message =
+            "Hough nonzero pixel count times angle bins exceeds native int";
+        return false;
+    }
     return true;
 }
 
 bool hough_segments_preflight(
-    const cv::Mat &src, double rho, double theta, int32_t threshold,
+    std::int64_t rows, std::int64_t cols, double rho, double theta,
+    int32_t threshold, int32_t min_line_length, int32_t max_line_gap,
     const char **message) noexcept
 {
-    std::int64_t rows = 0;
-    std::int64_t cols = 0;
     std::int64_t numrho = 0;
     std::int64_t numangle = 0;
-    if (!hough_source_geometry(src, rows, cols, message)
-        || !hough_numrho(rows, cols, rho, numrho, message)
+    // ABI safety: the native vote loop starts from max_val = threshold - 1,
+    // which overflows at INT_MIN; the public contract requires a positive
+    // threshold, so every nonpositive value is rejected here.
+    if (threshold <= 0) {
+        *message = "Hough segment threshold must be positive";
+        return false;
+    }
+    // ABI safety: HoughLinesP passes these to cvRound and compares segment
+    // extents and gap counters against them in int; negative values have no
+    // defined meaning in the modelled walk.
+    if (min_line_length < 0 || max_line_gap < 0) {
+        *message = "Hough segment length and gap must be nonnegative";
+        return false;
+    }
+    if (!hough_numrho(rows, cols, rho, numrho, message)
         || !hough_numangle(CV_PI, theta, numangle, message)
         || !hough_vote_columns_fit(rows, cols, rho, numrho, 0, message)) {
         return false;
@@ -1216,21 +1266,35 @@ bool hough_segments_preflight(
             "Hough segment source dimension exceeds native fixed-point range";
         return false;
     }
-    // ABI safety: the native vote loop starts from max_val = threshold - 1.
-    if (threshold == std::numeric_limits<int32_t>::min()) {
-        *message = "Hough segment threshold underflows native arithmetic";
-        return false;
-    }
     return true;
 }
 
 bool hough_circles_preflight(
-    const cv::Mat &src, double dp, double min_dist, int32_t radius_mode,
-    int32_t min_radius, int32_t max_radius, const char **message) noexcept
+    std::int64_t rows, std::int64_t cols, double dp, double min_dist,
+    int32_t canny_threshold, int32_t accumulator_threshold,
+    int32_t radius_mode, int32_t min_radius, int32_t max_radius,
+    const char **message) noexcept
 {
-    std::int64_t rows = 0;
-    std::int64_t cols = 0;
-    if (!hough_source_geometry(src, rows, cols, message)) {
+    // ABI safety: the raw ABI takes integer thresholds that OpenCV converts
+    // with cvRound(param1/param2) and uses as Canny(max(1, t / 2), t) and as
+    // the center/radius vote threshold. The public contract requires both
+    // to be positive, and raw callers must not reach those conversions with
+    // values the modelled arithmetic does not cover.
+    if (canny_threshold <= 0) {
+        *message = "Hough Canny threshold must be positive";
+        return false;
+    }
+    if (accumulator_threshold <= 0) {
+        *message = "Hough accumulator threshold must be positive";
+        return false;
+    }
+    // ABI safety: HoughCirclesAccumInvoker allocates (arows + 2) x
+    // (acols + 2) ints with arows <= rows and acols <= cols for dp >= 1, then
+    // indexes it with int y2 * astep + x2, and HoughCirclesFindCentersInvoker
+    // uses int base = y * acols + x and base +/- acols. rows * cols fitting
+    // int does not bound that padded product (for example 46340 x 46340).
+    if ((rows + 2) > hough_int_max / (cols + 2)) {
+        *message = "Hough circle accumulator exceeds native int indexing";
         return false;
     }
     // ABI safety: dp is narrowed to float and 1 / dp drives cvCeil/cvRound of
@@ -4300,14 +4364,22 @@ opencv_imgproc_hough_lines(
         }
 
         const char *message = nullptr;
-        if (!hough_lines_preflight(
-                *src, rho, theta, min_theta, max_theta, &message)) {
+        std::int64_t rows = 0;
+        std::int64_t cols = 0;
+        if (!hough_source_valid(*src, rows, cols, &message)) {
             return invalid_argument(message);
         }
 
         // Continuous snapshot: HoughLines documents that it may modify its
         // input, and a view must be processed as its own logical image.
         cv::Mat snapshot = src->clone();
+        const std::int64_t nonzero_count = cv::countNonZero(snapshot);
+        if (!hough_lines_preflight(
+                rows, cols, nonzero_count, rho, theta, threshold, min_theta,
+                max_theta, &message)) {
+            return invalid_argument(message);
+        }
+
         auto *result = new opencv_imgproc_hough_lines_handle;
         try {
             // Classical call: srn = stn = 0 and no OpenCV 5 use_edgeval.
@@ -4402,7 +4474,12 @@ opencv_imgproc_hough_segments(
         }
 
         const char *message = nullptr;
-        if (!hough_segments_preflight(*src, rho, theta, threshold, &message)) {
+        std::int64_t rows = 0;
+        std::int64_t cols = 0;
+        if (!hough_source_valid(*src, rows, cols, &message)
+            || !hough_segments_preflight(
+                rows, cols, rho, theta, threshold, min_line_length,
+                max_line_gap, &message)) {
             return invalid_argument(message);
         }
 
@@ -4507,8 +4584,12 @@ opencv_imgproc_hough_circles(
         }
 
         const char *message = nullptr;
-        if (!hough_circles_preflight(
-                *src, dp, min_dist, radius_mode, min_radius, max_radius,
+        std::int64_t rows = 0;
+        std::int64_t cols = 0;
+        if (!hough_source_valid(*src, rows, cols, &message)
+            || !hough_circles_preflight(
+                rows, cols, dp, min_dist, canny_threshold,
+                accumulator_threshold, radius_mode, min_radius, max_radius,
                 &message)) {
             return invalid_argument(message);
         }

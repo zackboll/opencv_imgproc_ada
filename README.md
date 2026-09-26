@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **287 AUnit tests**
+> **Current registered test baseline:** **289 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64, macOS ARM64, and Windows x86_64/MSYS2
@@ -2095,11 +2095,13 @@ The snapshot costs one copy of the source per call and is never exposed.
 
 ### Result ordering and omitted outputs
 
-Result order is not part of the contract. Current OpenCV sorts by accumulator
-support, but callers should search results by geometry rather than rely on an
-index. The optional accumulator-vote components (`Vec3f` lines and `Vec4f`
-circles) are not requested, so vote semantics are not part of this pre-1.0
-API.
+Result order is unspecified for all three detectors. In the inspected OpenCV
+implementations, standard lines and circles are ordered by accumulator
+support, while probabilistic segments appear in the order produced by the
+randomized point walk and are not sorted. Search results by geometry rather
+than relying on an index. The optional accumulator-vote components (`Vec3f`
+lines and `Vec4f` circles) are not requested, so vote semantics are not part
+of this pre-1.0 API.
 
 ### Validation and native safety
 
@@ -2107,9 +2109,12 @@ Public contract violations raise `OpenCV.OpenCV_Error` before native code
 runs; out-of-range subtype values raise `Constraint_Error`. The C ABI also
 rejects combinations that would overflow OpenCV's native signed `int`
 accumulator arithmetic, for example an extremely small `rho` or `theta` on a
-large image, or a radius whose square overflows `int`. Those also raise
-`OpenCV.OpenCV_Error`. There is no arbitrary resolution floor; the limits come
-from the native arithmetic itself.
+large image, a nonzero-pixel count times angle-bin count that overflows the
+standard-Hough IPP line estimate, or a radius whose square overflows `int`.
+Those also raise `OpenCV.OpenCV_Error`. There is no arbitrary resolution
+floor; the limits come from the native arithmetic itself. The raw C ABI
+independently rejects malformed sources (empty, N-D, non-`UInt8`, or
+multi-channel), nonpositive thresholds, and negative segment length or gap.
 
 ### Examples
 
@@ -2622,7 +2627,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **287-test** baseline is:
+The current **289-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -2653,8 +2658,8 @@ The current **287-test** baseline is:
 | Contours | 7 |
 | Connected components | 6 |
 | Drawing | 11 |
-| Hough detection | 22 |
-| **Total** | **287** |
+| Hough detection | 24 |
+| **Total** | **289** |
 
 
 The suite covers more than simple success paths. It includes:
