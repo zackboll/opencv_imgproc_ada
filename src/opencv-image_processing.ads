@@ -277,6 +277,8 @@ package OpenCV.Image_Processing is
    type Morphology_Border_Value is private;
    Default_Morphology_Border : constant Morphology_Border_Value;
    --  The all-DBL_MAX scalar is reserved by OpenCV for its neutral default.
+   --  Used explicit Constant_Border components for integer sources must be
+   --  finite and within signed-int range before OpenCV saturates the result.
    function Explicit_Morphology_Border
      (Value : OpenCV.Scalar) return Morphology_Border_Value;
 

@@ -1636,6 +1636,16 @@ bool mat_storage_overlaps(const cv::Mat &first, const cv::Mat &second) noexcept
     return false;
 }
 
+// ABI safety: scalarToRawData converts integer morphology border components
+// through saturate_cast<uchar/ushort/short>(double), whose reviewed
+// implementations call cvRound before narrow-type saturation. Keep the
+// double inside signed-int range before native conversion.
+bool morphology_integer_border_component_safe(double value) noexcept
+{
+    return value >= static_cast<double>(std::numeric_limits<int>::min()) &&
+           value <= static_cast<double>(std::numeric_limits<int>::max());
+}
+
 // Shared raw preflight for generated and borrowed custom masks.
 opencv_imgproc_status morphology_request_impl(
     const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
@@ -1733,9 +1743,13 @@ opencv_imgproc_status morphology_request_impl(
                 return invalid_argument("null morphology border value");
             if (border == OPENCV_IMGPROC_BORDER_CONSTANT) {
                 const double max_float = std::numeric_limits<float>::max();
+                const bool integer_source = src->depth() == CV_8U ||
+                    src->depth() == CV_16U || src->depth() == CV_16S;
                 for (int i = 0; i < std::min(src->channels(), 4); ++i)
                     if (!std::isfinite(border_components[i]) ||
-                        (src->depth() == CV_32F && std::abs(border_components[i]) > max_float))
+                        (src->depth() == CV_32F && std::abs(border_components[i]) > max_float) ||
+                        (integer_source &&
+                         !morphology_integer_border_component_safe(border_components[i])))
                         return invalid_argument("invalid explicit morphology border component");
                 if (src->channels() > 4 &&
                     (border_components[0] != border_components[1] ||

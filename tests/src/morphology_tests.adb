@@ -7,6 +7,7 @@ with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Module_Interop;
+with OpenCV.Core.UInt16_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
@@ -16,6 +17,7 @@ with OpenCV.Image_Processing.Internal.C_API;
 package body Morphology_Tests is
 
    use type Interfaces.Unsigned_8;
+   use type Interfaces.Unsigned_16;
    use type Interfaces.Integer_32;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
@@ -1114,8 +1116,130 @@ package body Morphology_Tests is
          "C3 explicit border maps components independently");
    end Multichannel_Explicit_Border;
 
+   procedure Integer_Border_Rounding_Preflight (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Wide        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt16, 1));
+      Destination : OpenCV.Core.Mat;
+
+      procedure Positive_Huge is
+      begin
+         Erode
+           (Source,
+            Destination,
+            (3, 3),
+            Border       => OpenCV.Constant_Border,
+            Border_Value =>
+              Explicit_Morphology_Border
+                ((Component_0 => 1.0E100, others => 0.0)));
+      end Positive_Huge;
+
+      procedure Negative_Huge is
+      begin
+         Dilate
+           (Source,
+            Destination,
+            (3, 3),
+            Border       => OpenCV.Constant_Border,
+            Border_Value =>
+              Explicit_Morphology_Border
+                ((Component_0 => -1.0E100, others => 0.0)));
+      end Negative_Huge;
+   begin
+      OpenCV.Core.Set_To (Source, (100.0, others => 0.0));
+      OpenCV.Core.Set_To (Wide, (100.0, others => 0.0));
+      Assert_Raises_OpenCV_Error
+        (Positive_Huge'Access, "positive finite integer border exceeds int");
+      Assert_Raises_OpenCV_Error
+        (Negative_Huge'Access, "negative finite integer border exceeds int");
+
+      Dilate
+        (Source,
+         Destination,
+         (3, 3),
+         Border_Value =>
+           Explicit_Morphology_Border ((Component_0 => 300.0, others => 0.0)));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Destination, 0, 0) = 255,
+         "UInt8 300 must still saturate to 255");
+      Dilate
+        (Wide,
+         Destination,
+         (3, 3),
+         Border_Value =>
+           Explicit_Morphology_Border
+             ((Component_0 => 70_000.0, others => 0.0)));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Destination, 0, 0) = 65_535,
+         "UInt16 70000 must still saturate to 65535");
+   end Integer_Border_Rounding_Preflight;
+
+   procedure Raw_Integer_Border_Rounding_Preflight (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Components  : aliased constant C_API.Morphology_Scalar :=
+        (1.0E100, 0.0, 0.0, 0.0);
+      Status      : C_API.Status := C_API.Success;
+
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              C_API.Morphology_Request
+                (Source_Handle,
+                 Destination_Handle,
+                 Operation         => 1,
+                 Kernel_Source     => 0,
+                 Kernel            => Source_Handle,
+                 Kernel_Width      => 3,
+                 Kernel_Height     => 3,
+                 Shape             => 0,
+                 Explicit_Anchor   => 0,
+                 Anchor_X          => 0,
+                 Anchor_Y          => 0,
+                 Iterations        => 1,
+                 Border            => C_API.Border_Constant,
+                 Explicit_Border   => 1,
+                 Border_Components => Components'Access);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      OpenCV.Core.Set_To (Destination, (42.0, others => 0.0));
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Error_Invalid_Argument,
+         "raw huge finite integer border must return invalid argument");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Destination, 0, 0) = 42,
+         "raw rejection must not modify destination pixels");
+      AUnit.Assertions.Assert
+        (Destination.Rows = 2 and then Destination.Columns = 2,
+         "raw rejection must not rebind destination");
+   end Raw_Integer_Border_Rounding_Preflight;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("integer morphology border rounding preflight",
+            Integer_Border_Rounding_Preflight'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("raw integer morphology border rounding preflight",
+            Raw_Integer_Border_Rounding_Preflight'Access));
       Result.Add_Test
         (Caller.Create
            ("custom masks and anchors", Custom_Masks_And_Anchors'Access));

@@ -1525,10 +1525,15 @@ it is ignored unless `Border = Constant_Border`. For C1..C4, scalar components
 0..channels-1 map to the corresponding channels. For more than four channels,
 explicit borders must have all four components equal (uniform value); the
 default remains valid. Used components must be finite, and Float32 sources
-also require used values within the finite Float32 range. Integer values use
-OpenCV's saturating conversion, not wraparound. The scalar with all four
-components equal to `Float64_Value'Last` (native `DBL_MAX`) is reserved by
-OpenCV as the default sentinel and cannot be selected explicitly.
+also require used values within the finite Float32 range. Integer explicit
+borders retain OpenCV's saturating behavior (for example, UInt8 300 becomes
+255), not wraparound, but each used component must first lie within the
+signed-int range [-2_147_483_648, 2_147_483_647] used by OpenCV's
+`scalarToRawData` rounding step. Huge finite values outside that range are
+rejected even though they would eventually saturate to the pixel range. The
+scalar with all four components equal to `Float64_Value'Last` (native
+`DBL_MAX`) is reserved by OpenCV as the default sentinel and cannot be
+selected explicitly.
 
 For safety, kernel area, source width times channels, and kernel width times
 channels must fit signed 32-bit int. Fully nonzero masks with multiple

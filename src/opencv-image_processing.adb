@@ -2196,6 +2196,14 @@ package body OpenCV.Image_Processing is
                           and then abs V
                                    > OpenCV.Float64_Value
                                        (OpenCV.Float32_Value'Last))
+                 or else (Source.Depth
+                          in OpenCV.Core.UInt8
+                           | OpenCV.Core.UInt16
+                           | OpenCV.Core.Int16
+                          and then (V < OpenCV.Float64_Value (-2_147_483_648.0)
+                                    or else V
+                                            > OpenCV.Float64_Value
+                                                (2_147_483_647.0)))
                then
                   Ada.Exceptions.Raise_Exception
                     (OpenCV.OpenCV_Error'Identity,
