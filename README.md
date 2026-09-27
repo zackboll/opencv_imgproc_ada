@@ -1486,6 +1486,65 @@ Behavior:
   Region's geometry and type; in-place operation changes only the Region's
   pixels, not the rest of its parent.
 
+The same `Erode`, `Dilate`, and `Apply_Morphology` procedures also accept a
+custom `Kernel : OpenCV.Core.Mat` in place of `Kernel_Size`. Custom kernels
+must be nonempty 2-D `UInt8` C1 masks, including even-sized, non-square and
+non-contiguous Region views. Zero excludes a pixel; **any nonzero value**
+(including 255) includes it, without weighting. All-zero kernels are rejected.
+The logical kernel Region alone participates. Kernel and Destination must not
+address overlapping bytes; Source and Destination may be the same Mat, even a
+parent-backed Region. All paths isolate the Source Region from its parent.
+
+Both generated and custom overloads accept an optional **explicit-anchor
+overload** with `Anchor : OpenCV.Point`, following `Shape` for generated
+kernels and `Kernel` for custom kernels. The centered overload remains the
+default. An explicit anchor must lie inside the kernel (including (0,0) or
+the bottom-right pixel). Rectangle and Ellipse mask geometry does not depend
+on the anchor; a generated **Cross mask does**: its intersection is placed at
+the explicit anchor, which is also passed to morphology.
+
+```ada
+Erode (Source, Destination, Kernel_Size => (3, 3));
+Dilate (Source, Destination, (3, 3), Cross, (X => 0, Y => 1));
+--  Fill a UInt8 C1 Mat Mask with zeros, then set only included positions.
+OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
+OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
+OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 1);
+Erode (Source, Destination, Kernel => Mask);
+Dilate
+  (Source, Destination, Kernel => Mask,
+   Border_Value => Explicit_Morphology_Border
+     ((Component_0 => 255.0, Component_1 => 0.0,
+       Component_2 => 0.0, Component_3 => 0.0)));
+```
+
+`Border_Value` defaults to `Default_Morphology_Border`, OpenCV's special
+neutral border (maximum for erosion, minimum for dilation), **not zero**.
+`Explicit_Morphology_Border (Scalar)` selects an ordinary constant border;
+it is ignored unless `Border = Constant_Border`. For C1..C4, scalar components
+0..channels-1 map to the corresponding channels. For more than four channels,
+explicit borders must have all four components equal (uniform value); the
+default remains valid. Used components must be finite, and Float32 sources
+also require used values within the finite Float32 range. Integer explicit
+borders retain OpenCV's saturating behavior (for example, UInt8 300 becomes
+255), not wraparound, but each used component must first lie within the
+signed-int range [-2_147_483_648, 2_147_483_647] used by OpenCV's
+`scalarToRawData` rounding step. Huge finite values outside that range are
+rejected even though they would eventually saturate to the pixel range. The
+scalar with all four components equal to `Float64_Value'Last` (native
+`DBL_MAX`) is reserved by OpenCV as the default sentinel and cannot be
+selected explicitly.
+
+For safety, kernel area, source width times channels, and kernel width times
+channels must fit signed 32-bit int. Fully nonzero masks with multiple
+iterations must also fit OpenCV's expanded rectangle and anchor arithmetic;
+sparse masks retain the full positive iteration domain. A 1x1 mask follows
+OpenCV's early copy/no-op even for very large iteration counts. An Ellipse's
+generated height is limited to 92681 by OpenCV's signed radius arithmetic.
+Opening with two iterations runs two erosions followed by two dilations, not
+two alternating erode/dilate pairs. Hit-or-Miss and OpenCV 5-only Diamond are
+deferred.
+
 ---
 
 ## Canny edge detection
@@ -3781,7 +3840,7 @@ Notable Imgproc families that are not yet broadly bound include:
 - deferred color layouts: packed BGR565/BGR555, subsampled/packed YUV and
   two-plane conversion, Bayer/demosaicing, FULL hue variants, linear-light
   Lab/Luv variants, and premultiplied alpha;
-- custom morphology kernels, anchors, and arbitrary constant border values;
+- deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;
 - relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
   calibration/undistortion map generation in the appropriate module;
 - polar transforms;

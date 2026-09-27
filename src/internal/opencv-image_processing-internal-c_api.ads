@@ -417,6 +417,31 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_morphology_ex";
 
+   type Morphology_Scalar is array (0 .. 3) of aliased Interfaces.C.double
+   with Convention => C;
+
+   function Morphology_Request
+     (Source                                                  :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination                                             :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Operation                                               :
+        Interfaces.Integer_32;
+      Kernel_Source                                           :
+        Interfaces.Integer_32;
+      Kernel                                                  :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Kernel_Width, Kernel_Height, Shape, Explicit_Anchor     :
+        Interfaces.Integer_32;
+      Anchor_X, Anchor_Y, Iterations, Border, Explicit_Border :
+        Interfaces.Integer_32;
+      Border_Components                                       :
+        access constant Morphology_Scalar) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_morphology_request";
+
    function Canny
      (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination     : OpenCV.Core.Module_Interop.Output_Mat_Handle;
