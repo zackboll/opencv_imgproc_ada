@@ -79,7 +79,55 @@ package OpenCV.Image_Processing is
       Labels : Distance_Label_Mode := Nearest_Zero_Component)
       return Labeled_Distance_Transform_Result;
 
-   type Color_Conversion is (BGR_To_Gray);
+   type Color_Conversion is
+     (BGR_To_Gray,
+      RGB_To_Gray,
+      BGRA_To_Gray,
+      RGBA_To_Gray,
+      Gray_To_BGR,
+      Gray_To_RGB,
+      Gray_To_BGRA,
+      Gray_To_RGBA,
+      BGR_To_RGB,
+      RGB_To_BGR,
+      BGR_To_BGRA,
+      RGB_To_RGBA,
+      BGR_To_RGBA,
+      RGB_To_BGRA,
+      BGRA_To_BGR,
+      RGBA_To_RGB,
+      RGBA_To_BGR,
+      BGRA_To_RGB,
+      BGRA_To_RGBA,
+      RGBA_To_BGRA,
+      BGR_To_XYZ,
+      RGB_To_XYZ,
+      XYZ_To_BGR,
+      XYZ_To_RGB,
+      BGR_To_YCrCb,
+      RGB_To_YCrCb,
+      YCrCb_To_BGR,
+      YCrCb_To_RGB,
+      BGR_To_YUV,
+      RGB_To_YUV,
+      YUV_To_BGR,
+      YUV_To_RGB,
+      BGR_To_HSV,
+      RGB_To_HSV,
+      HSV_To_BGR,
+      HSV_To_RGB,
+      BGR_To_HLS,
+      RGB_To_HLS,
+      HLS_To_BGR,
+      HLS_To_RGB,
+      BGR_To_Lab,
+      RGB_To_Lab,
+      Lab_To_BGR,
+      Lab_To_RGB,
+      BGR_To_Luv,
+      RGB_To_Luv,
+      Luv_To_BGR,
+      Luv_To_RGB);
 
    type Interpolation_Method is
      (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4);
@@ -239,13 +287,11 @@ package OpenCV.Image_Processing is
 
    subtype Affine_Mapping_Direction is Warp_Mapping_Direction;
 
-   --  BGR_To_Gray converts a non-empty, two-dimensional, three-channel BGR
-   --  Source whose depth is UInt8, UInt16, or Float32. Destination is replaced
-   --  with a Mat having Source's rows, columns, and depth, and exactly one
-   --  channel. Source remains valid and is not modified. Empty Sources and
-   --  unsupported Source dimensions, channel counts, or depths raise
-   --  OpenCV.OpenCV_Error before the imgproc shim is called. Failures reported
-   --  by OpenCV also raise OpenCV.OpenCV_Error.
+   --  Nonempty 2-D Source, with exactly the channels named by Conversion.
+   --  Layout, Gray, XYZ, YCrCb and YUV accept UInt8/UInt16/Float32;
+   --  HSV, HLS, Lab and Luv accept UInt8/Float32. Destination retains
+   --  Source geometry/depth; its channel count is fixed by Conversion.
+   --  Destination is rebound only on success; Regions are logical images.
    procedure Convert_Color
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;

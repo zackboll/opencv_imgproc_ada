@@ -312,8 +312,149 @@ package body OpenCV.Image_Processing is
      (Conversion : Color_Conversion) return Interfaces.Integer_32 is
    begin
       case Conversion is
-         when BGR_To_Gray =>
+         when BGR_To_Gray  =>
             return Internal.C_API.BGR_To_Gray;
+
+         when RGB_To_Gray  =>
+            return Internal.C_API.RGB_To_Gray;
+
+         when BGRA_To_Gray =>
+            return Internal.C_API.BGRA_To_Gray;
+
+         when RGBA_To_Gray =>
+            return Internal.C_API.RGBA_To_Gray;
+
+         when Gray_To_BGR  =>
+            return Internal.C_API.Gray_To_BGR;
+
+         when Gray_To_RGB  =>
+            return Internal.C_API.Gray_To_RGB;
+
+         when Gray_To_BGRA =>
+            return Internal.C_API.Gray_To_BGRA;
+
+         when Gray_To_RGBA =>
+            return Internal.C_API.Gray_To_RGBA;
+
+         when BGR_To_RGB   =>
+            return Internal.C_API.BGR_To_RGB;
+
+         when RGB_To_BGR   =>
+            return Internal.C_API.RGB_To_BGR;
+
+         when BGR_To_BGRA  =>
+            return Internal.C_API.BGR_To_BGRA;
+
+         when RGB_To_RGBA  =>
+            return Internal.C_API.RGB_To_RGBA;
+
+         when BGR_To_RGBA  =>
+            return Internal.C_API.BGR_To_RGBA;
+
+         when RGB_To_BGRA  =>
+            return Internal.C_API.RGB_To_BGRA;
+
+         when BGRA_To_BGR  =>
+            return Internal.C_API.BGRA_To_BGR;
+
+         when RGBA_To_RGB  =>
+            return Internal.C_API.RGBA_To_RGB;
+
+         when RGBA_To_BGR  =>
+            return Internal.C_API.RGBA_To_BGR;
+
+         when BGRA_To_RGB  =>
+            return Internal.C_API.BGRA_To_RGB;
+
+         when BGRA_To_RGBA =>
+            return Internal.C_API.BGRA_To_RGBA;
+
+         when RGBA_To_BGRA =>
+            return Internal.C_API.RGBA_To_BGRA;
+
+         when BGR_To_XYZ   =>
+            return Internal.C_API.BGR_To_XYZ;
+
+         when RGB_To_XYZ   =>
+            return Internal.C_API.RGB_To_XYZ;
+
+         when XYZ_To_BGR   =>
+            return Internal.C_API.XYZ_To_BGR;
+
+         when XYZ_To_RGB   =>
+            return Internal.C_API.XYZ_To_RGB;
+
+         when BGR_To_YCrCb =>
+            return Internal.C_API.BGR_To_YCrCb;
+
+         when RGB_To_YCrCb =>
+            return Internal.C_API.RGB_To_YCrCb;
+
+         when YCrCb_To_BGR =>
+            return Internal.C_API.YCrCb_To_BGR;
+
+         when YCrCb_To_RGB =>
+            return Internal.C_API.YCrCb_To_RGB;
+
+         when BGR_To_YUV   =>
+            return Internal.C_API.BGR_To_YUV;
+
+         when RGB_To_YUV   =>
+            return Internal.C_API.RGB_To_YUV;
+
+         when YUV_To_BGR   =>
+            return Internal.C_API.YUV_To_BGR;
+
+         when YUV_To_RGB   =>
+            return Internal.C_API.YUV_To_RGB;
+
+         when BGR_To_HSV   =>
+            return Internal.C_API.BGR_To_HSV;
+
+         when RGB_To_HSV   =>
+            return Internal.C_API.RGB_To_HSV;
+
+         when HSV_To_BGR   =>
+            return Internal.C_API.HSV_To_BGR;
+
+         when HSV_To_RGB   =>
+            return Internal.C_API.HSV_To_RGB;
+
+         when BGR_To_HLS   =>
+            return Internal.C_API.BGR_To_HLS;
+
+         when RGB_To_HLS   =>
+            return Internal.C_API.RGB_To_HLS;
+
+         when HLS_To_BGR   =>
+            return Internal.C_API.HLS_To_BGR;
+
+         when HLS_To_RGB   =>
+            return Internal.C_API.HLS_To_RGB;
+
+         when BGR_To_Lab   =>
+            return Internal.C_API.BGR_To_Lab;
+
+         when RGB_To_Lab   =>
+            return Internal.C_API.RGB_To_Lab;
+
+         when Lab_To_BGR   =>
+            return Internal.C_API.Lab_To_BGR;
+
+         when Lab_To_RGB   =>
+            return Internal.C_API.Lab_To_RGB;
+
+         when BGR_To_Luv   =>
+            return Internal.C_API.BGR_To_Luv;
+
+         when RGB_To_Luv   =>
+            return Internal.C_API.RGB_To_Luv;
+
+         when Luv_To_BGR   =>
+            return Internal.C_API.Luv_To_BGR;
+
+         when Luv_To_RGB   =>
+            return Internal.C_API.Luv_To_RGB;
       end case;
    end To_C_Conversion;
 
@@ -715,45 +856,75 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Morphology_Operation;
 
-   procedure Validate_BGR_To_Gray (Source : OpenCV.Core.Mat) is
-      use type OpenCV.Core.Channel_Count;
-   begin
-      if Source.Is_Empty then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV.OpenCV_Error'Identity,
-            "BGR_To_Gray requires a non-empty source Mat");
-      end if;
-
-      if Source.Dimension_Count /= 2 then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV.OpenCV_Error'Identity,
-            "BGR_To_Gray requires a two-dimensional source Mat");
-      end if;
-
-      if Source.Channels /= 3 then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV.OpenCV_Error'Identity,
-            "BGR_To_Gray requires a source Mat with exactly 3 channels");
-      end if;
-
-      case Source.Depth is
-         when OpenCV.Core.UInt8 | OpenCV.Core.UInt16 | OpenCV.Core.Float32 =>
-            null;
-
-         when others                                                       =>
-            Ada.Exceptions.Raise_Exception
-              (OpenCV.OpenCV_Error'Identity,
-               "BGR_To_Gray requires a UInt8, UInt16, or Float32 source Mat");
-      end case;
-   end Validate_BGR_To_Gray;
-
-   procedure Validate_Conversion
-     (Source : OpenCV.Core.Mat; Conversion : Color_Conversion) is
+   function Required_Color_Channels
+     (Conversion : Color_Conversion) return Positive is
    begin
       case Conversion is
-         when BGR_To_Gray =>
-            Validate_BGR_To_Gray (Source);
+         when Gray_To_BGR | Gray_To_RGB | Gray_To_BGRA | Gray_To_RGBA =>
+            return 1;
+
+         when BGRA_To_Gray
+            | RGBA_To_Gray
+            | BGRA_To_BGR
+            | RGBA_To_RGB
+            | RGBA_To_BGR
+            | BGRA_To_RGB
+            | BGRA_To_RGBA
+            | RGBA_To_BGRA                                            =>
+            return 4;
+
+         when others                                                  =>
+            return 3;
       end case;
+   end Required_Color_Channels;
+
+   function Nonlinear_Color (Conversion : Color_Conversion) return Boolean is
+   begin
+      case Conversion is
+         when BGR_To_HSV
+            | RGB_To_HSV
+            | HSV_To_BGR
+            | HSV_To_RGB
+            | BGR_To_HLS
+            | RGB_To_HLS
+            | HLS_To_BGR
+            | HLS_To_RGB
+            | BGR_To_Lab
+            | RGB_To_Lab
+            | Lab_To_BGR
+            | Lab_To_RGB
+            | BGR_To_Luv
+            | RGB_To_Luv
+            | Luv_To_BGR
+            | Luv_To_RGB =>
+            return True;
+
+         when others     =>
+            return False;
+      end case;
+   end Nonlinear_Color;
+
+   procedure Validate_Conversion
+     (Source : OpenCV.Core.Mat; Conversion : Color_Conversion)
+   is
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Natural (Source.Channels)
+                /= Required_Color_Channels (Conversion)
+        or else Source.Depth
+                not in OpenCV.Core.UInt8
+                     | OpenCV.Core.UInt16
+                     | OpenCV.Core.Float32
+        or else (Nonlinear_Color (Conversion)
+                 and then Source.Depth = OpenCV.Core.UInt16)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Color conversion requires a nonempty 2-D source with matching"
+            & " channels and a supported depth");
+      end if;
    end Validate_Conversion;
 
    procedure Validate_Resize

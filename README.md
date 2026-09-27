@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **357 AUnit tests**
+> **Current registered test baseline:** **364 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -187,7 +187,7 @@ The table below summarizes the current public operations.
 
 | Area | Public API | Main input requirements | Important behavior |
 | --- | --- | --- | --- |
-| Color | `Convert_Color` | nonempty 2-D BGR C3; `UInt8`, `UInt16`, or `Float32` | currently `BGR_To_Gray` only |
+| Color | `Convert_Color` | nonempty 2-D C1/C3/C4 according to selector; `UInt8`/`UInt16`/`Float32` for linear, `UInt8`/`Float32` for nonlinear | common layout, Gray, XYZ, YCrCb, YUV, HSV, HLS, Lab, Luv conversions |
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
 | Filtering | `Get_Gaussian_Kernel` | odd positive size | automatic or explicit sigma; Float32/Float64 `N x 1` C1 kernel; usable with `Sep_Filter_2D` |
@@ -244,13 +244,8 @@ Individual operations may intentionally support a narrower set.
 
 ## Color conversion
 
-The current color conversion enum is:
-
-```ada
-type Color_Conversion is (BGR_To_Gray);
-```
-
-API:
+`Color_Conversion` names the source and destination layouts explicitly. OpenCV
+defaults to **BGR** ordering, not RGB. The public operation remains:
 
 ```ada
 procedure Convert_Color
@@ -259,17 +254,40 @@ procedure Convert_Color
    Conversion  : Color_Conversion);
 ```
 
-`BGR_To_Gray` requires:
+| Group | Public conversions | Input / output channels | Source depths |
+| --- | --- | --- | --- |
+| Layout / Gray | `BGR_To_Gray`, `RGB_To_Gray`, `BGRA_To_Gray`, `RGBA_To_Gray`; `Gray_To_BGR`, `Gray_To_RGB`, `Gray_To_BGRA`, `Gray_To_RGBA`; `BGR_To_RGB`, `RGB_To_BGR`; `BGR_To_BGRA`, `RGB_To_RGBA`, `BGR_To_RGBA`, `RGB_To_BGRA`; `BGRA_To_BGR`, `RGBA_To_RGB`, `RGBA_To_BGR`, `BGRA_To_RGB`, `BGRA_To_RGBA`, `RGBA_To_BGRA` | Gray C1, BGR/RGB C3, BGRA/RGBA C4 | UInt8, UInt16, Float32 |
+| XYZ | `BGR_To_XYZ`, `RGB_To_XYZ`, `XYZ_To_BGR`, `XYZ_To_RGB` | C3 / C3 | UInt8, UInt16, Float32 |
+| YCrCb | `BGR_To_YCrCb`, `RGB_To_YCrCb`, `YCrCb_To_BGR`, `YCrCb_To_RGB` | C3 / C3 | UInt8, UInt16, Float32 |
+| 3-channel YUV | `BGR_To_YUV`, `RGB_To_YUV`, `YUV_To_BGR`, `YUV_To_RGB` | C3 / C3 | UInt8, UInt16, Float32 |
+| HSV | `BGR_To_HSV`, `RGB_To_HSV`, `HSV_To_BGR`, `HSV_To_RGB` | C3 / C3 | UInt8, Float32 |
+| HLS | `BGR_To_HLS`, `RGB_To_HLS`, `HLS_To_BGR`, `HLS_To_RGB` | C3 / C3 | UInt8, Float32 |
+| Lab | `BGR_To_Lab`, `RGB_To_Lab`, `Lab_To_BGR`, `Lab_To_RGB` | C3 / C3 | UInt8, Float32 |
+| Luv | `BGR_To_Luv`, `RGB_To_Luv`, `Luv_To_BGR`, `Luv_To_RGB` | C3 / C3 | UInt8, Float32 |
 
-- a nonempty source;
-- exactly two dimensions;
-- exactly three channels;
-- depth `UInt8`, `UInt16`, or `Float32`.
+Source must be nonempty and 2-D with *exactly* the channels implied by its
+name. Every result retains the source rows, columns and depth. When alpha is
+added, OpenCV writes 255 (`UInt8`), 65535 (`UInt16`), or 1.0 (`Float32`);
+removing alpha discards it, while BGRA/RGBA swaps preserve it. Float32 BGR/RGB
+is normally scaled to 0..1; **normalize before Float32 Lab/Luv** for meaningful
+sRGB-oriented results. No value sanitizer rejects out-of-range finite values.
+The ordinary sRGB Lab/Luv variants are used, not linear-light LBGR/LRGB.
+Standard (not FULL) UInt8 HSV/HLS hue uses 0..180 for the 0..360 degree
+circle, with HSV saturation/value in 0..255; Float32 hue uses native degrees.
 
-The destination is rebound/replaced with a one-channel `Mat` having the same
-rows, columns, and depth as the source.
+Regions are logical standalone images: no parent pixels outside the Region
+participate. Source remains unchanged for distinct Destination; same-object
+conversion is supported. Destination is rebound only after successful native
+conversion. The raw bridge also checks actual source byte stride and derived
+output byte stride for reachable optional IPP paths which narrow them to int.
 
-The source remains valid and unchanged.
+```ada
+Convert_Color (BGR_Image, Gray_Image, BGR_To_Gray);
+Convert_Color (BGR_Image, HSV_Image, BGR_To_HSV);
+--  Normalized_Bgr is Float32 C3 with B,G,R in the usual 0..1 range.
+Convert_Color (Normalized_Bgr, Lab_Image, BGR_To_Lab);
+Convert_Color (Lab_Image, Restored_Bgr, Lab_To_BGR);
+```
 
 ---
 
@@ -3682,7 +3700,9 @@ pre-1.0.
 
 Notable Imgproc families that are not yet broadly bound include:
 
-- the larger OpenCV color-conversion matrix beyond `BGR_To_Gray`;
+- deferred color layouts: packed BGR565/BGR555, subsampled/packed YUV and
+  two-plane conversion, Bayer/demosaicing, FULL hue variants, linear-light
+  Lab/Luv variants, and premultiplied alpha;
 - custom morphology kernels, anchors, and arbitrary constant border values;
 - additional map encodings and `Convert_Maps`;
 - polar transforms;
