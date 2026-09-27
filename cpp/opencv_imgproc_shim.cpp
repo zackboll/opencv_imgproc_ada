@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <exception>
 #include <limits>
+#include <utility>
 #include <vector>
 
 struct opencv_imgproc_contours_handle {
@@ -1053,7 +1054,11 @@ bool to_opencv_remap_border(int32_t border, int &opencv_border) noexcept
     }
 }
 
-bool float32_map_is_finite(const cv::Mat &matrix) noexcept
+// ABI safety: RemapInvoker rounds unscaled Float32 coordinates for nearest
+// interpolation, and rounds coordinates multiplied in Float32 by 32 for
+// interpolated modes. Keep either operand strictly inside the signed-int
+// domain before cvRound, saturate_cast<short>, or SIMD v_round can see it.
+bool float32_map_coordinates_safe(const cv::Mat &matrix, bool nearest) noexcept
 {
     const int rows = matrix.rows;
     const int cols = matrix.cols;
@@ -1061,12 +1066,42 @@ bool float32_map_is_finite(const cv::Mat &matrix) noexcept
     for (int row = 0; row < rows; ++row) {
         const float *const coordinates = matrix.ptr<float>(row);
         for (int col = 0; col < cols; ++col) {
-            if (!std::isfinite(coordinates[col])) {
+            const float value = coordinates[col];
+            if (!std::isfinite(value)) {
+                return false;
+            }
+            const float rounded_operand = nearest ? value : value * 32.0f;
+            // +/-2^31 is exactly representable in Float32; exclude both
+            // endpoints, allowing room for the platform rounding operation.
+            if (!std::isfinite(rounded_operand)
+                || !(rounded_operand > -2147483648.0f
+                     && rounded_operand < 2147483648.0f)) {
                 return false;
             }
         }
     }
     return true;
+}
+
+// In OpenCV 4.1/4.10 these are exactly the separate-map, interpolation,
+// border and source types dispatched through IPPRemapInvoker. OpenCV 5.0
+// has no such IPP remap invoker, but retaining the portable guard is safe.
+bool remap_may_use_ipp(int type, int interpolation, int border) noexcept
+{
+    if (border != cv::BORDER_CONSTANT ||
+        (interpolation != cv::INTER_NEAREST &&
+         interpolation != cv::INTER_LINEAR &&
+         interpolation != cv::INTER_CUBIC))
+        return false;
+
+    switch (type) {
+    case CV_8UC1: case CV_8UC3: case CV_8UC4:
+    case CV_16UC1: case CV_16UC3: case CV_16UC4:
+    case CV_32FC1: case CV_32FC3: case CV_32FC4:
+        return true;
+    default:
+        return false;
+    }
 }
 
 bool drawing_image(const cv::Mat &image, const char **message) noexcept
@@ -5108,24 +5143,22 @@ opencv_imgproc_remap(
                 "remap map dimensions must be less than 32767");
         }
 
-        // ABI safety: remap converts map coordinates into source indices.
-        // NaN or infinity produce undefined index arithmetic rather than
-        // a documented rejection. Validate after geometry so ptr<float>
-        // walks only Float32 C1 storage.
-        if (!float32_map_is_finite(*mx)) {
-            return invalid_argument(
-                "remap map_x must contain only finite values");
-        }
-
-        if (!float32_map_is_finite(*my)) {
-            return invalid_argument(
-                "remap map_y must contain only finite values");
-        }
-
         int opencv_interpolation = 0;
         if (!to_opencv_remap_interpolation(
                 interpolation, opencv_interpolation)) {
             return invalid_argument("unsupported remap interpolation");
+        }
+
+        // ABI safety: validate before OpenCV rounds Float32 source coordinates
+        // to int (including the Float32 multiplication by INTER_TAB_SIZE).
+        if (!float32_map_coordinates_safe(*mx, opencv_interpolation == cv::INTER_NEAREST)) {
+            return invalid_argument(
+                "remap map_x must contain only finite, safely roundable values");
+        }
+
+        if (!float32_map_coordinates_safe(*my, opencv_interpolation == cv::INTER_NEAREST)) {
+            return invalid_argument(
+                "remap map_y must contain only finite, safely roundable values");
         }
 
         int opencv_border = 0;
@@ -5145,9 +5178,29 @@ opencv_imgproc_remap(
                 "remap destination must not share storage with source or maps");
         }
 
+        if (remap_may_use_ipp(src->type(), opencv_interpolation, opencv_border)) {
+            const uint64_t limit = static_cast<uint64_t>(std::numeric_limits<int>::max());
+            // ABI safety: IPPRemapInvoker casts src.step directly to int.
+            if (src->step[0] > limit)
+                return invalid_argument("remap IPP source byte stride overflows int");
+            // ABI safety: IPPRemapInvoker casts map1.step directly to int.
+            if (mx->step[0] > limit)
+                return invalid_argument("remap IPP map_x byte stride overflows int");
+            // ABI safety: IPPRemapInvoker casts map2.step directly to int.
+            if (my->step[0] > limit)
+                return invalid_argument("remap IPP map_y byte stride overflows int");
+            // ABI safety: IPPRemapInvoker casts dst.step directly to int.
+            // The local result is newly allocated and has a packed row stride.
+            const uint64_t output_row_bytes =
+                static_cast<uint64_t>(mx->cols) * static_cast<uint64_t>(src->elemSize());
+            if (output_row_bytes > limit)
+                return invalid_argument("remap IPP destination byte stride overflows int");
+        }
+
+        cv::Mat result;
         cv::remap(
             *src,
-            *dst,
+            result,
             *mx,
             *my,
             opencv_interpolation,
@@ -5157,6 +5210,8 @@ opencv_imgproc_remap(
                 border_value_1,
                 border_value_2,
                 border_value_3));
+
+        *dst = std::move(result);
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {

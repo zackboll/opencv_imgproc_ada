@@ -48,8 +48,8 @@ package body Remap_Tests is
    end Assert_Raises_OpenCV_Error;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Float32_Value;
-      Tolerance   : OpenCV.Float32_Value) return Boolean is
+     (Left, Right : OpenCV.Float32_Value; Tolerance : OpenCV.Float32_Value)
+      return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
@@ -59,8 +59,9 @@ package body Remap_Tests is
        (Source => Interfaces.Unsigned_32,
         Target => OpenCV.Float32_Value);
 
-   NaN_Bits_32 : constant Interfaces.Unsigned_32 := 16#7FC0_0000#;
-   Inf_Bits_32 : constant Interfaces.Unsigned_32 := 16#7F80_0000#;
+   NaN_Bits_32     : constant Interfaces.Unsigned_32 := 16#7FC0_0000#;
+   Inf_Bits_32     : constant Interfaces.Unsigned_32 := 16#7F80_0000#;
+   Neg_Inf_Bits_32 : constant Interfaces.Unsigned_32 := 16#FF80_0000#;
 
    procedure Fill_Unique_UInt8 (Source : in out OpenCV.Core.Mat) is
    begin
@@ -348,8 +349,7 @@ package body Remap_Tests is
       Map_Y  : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
 
-      function Sample
-        (Kind : OpenCV.Border_Kind) return Interfaces.Unsigned_8
+      function Sample (Kind : OpenCV.Border_Kind) return Interfaces.Unsigned_8
       is
          Destination : OpenCV.Core.Mat;
       begin
@@ -585,6 +585,132 @@ package body Remap_Tests is
       Assert_Raises_OpenCV_Error
         (Oversize'Access, "Remap must reject a 32767 dimension");
    end Rejects_Area_Nonfinite_Maps_And_Size_Limit;
+
+   procedure Float_Coordinate_Range_And_Atomicity (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Map_X       : OpenCV.Core.Mat := Identity_Map (1, 1);
+      Map_Y       : OpenCV.Core.Mat := Identity_Map_Y (1, 1);
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+
+      procedure Reject_Huge_Nearest is
+      begin
+         OpenCV.Image_Processing.Remap
+           (Source,
+            Map_X,
+            Map_Y,
+            Destination,
+            OpenCV.Image_Processing.Nearest_Neighbor);
+      end Reject_Huge_Nearest;
+
+      procedure Reject_Huge_Linear is
+      begin
+         OpenCV.Image_Processing.Remap
+           (Source, Map_X, Map_Y, Destination, OpenCV.Image_Processing.Linear);
+      end Reject_Huge_Linear;
+
+      function Raw_Remap
+        (Interpolation : Interfaces.Integer_32) return C_API.Status
+      is
+         Status : C_API.Status := C_API.Error_Unknown;
+
+         procedure Source_Input
+           (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Map_X_Input
+              (X_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure Map_Y_Input
+                 (Y_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+               is
+                  procedure Output
+                    (Destination_Handle :
+                       OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+                  begin
+                     Status :=
+                       C_API.Remap
+                         (Source_Handle,
+                          X_Handle,
+                          Y_Handle,
+                          Destination_Handle,
+                          Interpolation,
+                          C_API.Border_Constant,
+                          29.0,
+                          0.0,
+                          0.0,
+                          0.0);
+                  end Output;
+               begin
+                  OpenCV.Core.Module_Interop.With_Output_Handle
+                    (Destination, Output'Access);
+               end Map_Y_Input;
+            begin
+               OpenCV.Core.Module_Interop.With_Input_Handle
+                 (Map_Y, Map_Y_Input'Access);
+            end Map_X_Input;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Map_X, Map_X_Input'Access);
+         end Source_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source, Source_Input'Access);
+         return Status;
+      end Raw_Remap;
+
+      procedure Check_Nonfinite (Bits : Interfaces.Unsigned_32) is
+         pragma Suppress (Validity_Check);
+         Value : OpenCV.Float32_Value;
+      begin
+         Value := Bits_To_Float32 (Bits);
+         OpenCV.Core.Float32_Access.Set (Map_Y, 0, 0, Value);
+         Assert_Raises_OpenCV_Error
+           (Reject_Huge_Nearest'Access,
+            "nonfinite Y must be rejected before nearest remap");
+         Assert_Raises_OpenCV_Error
+           (Reject_Huge_Linear'Access,
+            "nonfinite Y must be rejected before linear remap");
+         AUnit.Assertions.Assert
+           (Raw_Remap (C_API.Interpolation_Nearest_Neighbor)
+            = C_API.Error_Invalid_Argument
+            and then OpenCV.Core.UInt8_Access.Get (Destination, 0, 0) = 73,
+            "raw nonfinite rejection must preserve destination");
+      end Check_Nonfinite;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Destination, 0, 0, 73);
+      OpenCV.Core.Float32_Access.Set (Map_X, 0, 0, 1.0E30);
+      Assert_Raises_OpenCV_Error
+        (Reject_Huge_Nearest'Access, "nearest must reject huge finite X");
+      Assert_Raises_OpenCV_Error
+        (Reject_Huge_Linear'Access, "linear must reject huge finite X");
+      AUnit.Assertions.Assert
+        (Raw_Remap (C_API.Interpolation_Nearest_Neighbor)
+         = C_API.Error_Invalid_Argument
+         and then OpenCV.Core.UInt8_Access.Get (Destination, 0, 0) = 73,
+         "raw huge finite rejection must preserve the destination");
+      AUnit.Assertions.Assert
+        (Raw_Remap (C_API.Interpolation_Linear) = C_API.Error_Invalid_Argument
+         and then OpenCV.Core.UInt8_Access.Get (Destination, 0, 0) = 73,
+         "raw scaled huge coordinate rejection must preserve destination");
+      OpenCV.Core.Float32_Access.Set (Map_X, 0, 0, -1.0);
+      Check_Nonfinite (NaN_Bits_32);
+      Check_Nonfinite (Inf_Bits_32);
+      Check_Nonfinite (Neg_Inf_Bits_32);
+      OpenCV.Core.Float32_Access.Set (Map_Y, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Map_X, 0, 0, 1.0E8);
+      Assert_Raises_OpenCV_Error
+        (Reject_Huge_Linear'Access,
+         "linear must reject scaled coordinates outside int range");
+      OpenCV.Core.Float32_Access.Set (Map_X, 0, 0, -1.0);
+      AUnit.Assertions.Assert
+        (Raw_Remap (C_API.Interpolation_Nearest_Neighbor) = C_API.Success,
+         "a valid raw Remap must succeed after rejected calls");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Destination, 0, 0) = 29,
+         "ordinary out-of-source coordinates must use the border");
+   end Float_Coordinate_Range_And_Atomicity;
 
    procedure Rejects_Destination_Aliases (Test : in out Fixture) is
       pragma Unreferenced (Test);
@@ -834,6 +960,10 @@ package body Remap_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Remap rejects huge Float32 coordinates atomically",
+            Float_Coordinate_Range_And_Atomicity'Access));
       Result.Add_Test
         (Caller.Create
            ("Remap identity Nearest rebinds Destination",
