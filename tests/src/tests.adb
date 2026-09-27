@@ -11,6 +11,7 @@ with Canny_Edge_Tests;
 with CLAHE_Tests;
 with Connected_Component_Tests;
 with Contour_Tests;
+with Draw_Contour_Tests;
 with Color_Conversion_Tests;
 with Filter_2D_Tests;
 with Histogram_Analysis_Tests;
@@ -79,6 +80,7 @@ begin
    Suite.Add_Test (Connected_Component_Tests.Suite);
 
    Suite.Add_Test (Contour_Tests.Suite);
+   Suite.Add_Test (Draw_Contour_Tests.Suite);
    Suite.Add_Test (Drawing_Tests.Suite);
    Suite.Add_Test (Drawing_Annotation_Tests.Suite);
    Suite.Add_Test (Hough_Detection_Tests.Suite);

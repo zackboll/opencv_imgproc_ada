@@ -1,5 +1,6 @@
 with Ada.Containers;
 with Ada.Exceptions;
+with Ada.Unchecked_Deallocation;
 with Interfaces;
 with Interfaces.C;
 with OpenCV.Core.Module_Interop;
@@ -4810,6 +4811,268 @@ package body OpenCV.Image_Processing is
             return Internal.C_API.Drawing_Line_AA;
       end case;
    end To_C_Line_Style;
+
+   package Selected_Contour_Vectors is new
+     Ada.Containers.Vectors
+       (Index_Type   => Natural,
+        Element_Type => Contour_Index);
+
+   procedure Render_Contours
+     (Image             : in out OpenCV.Core.Mat;
+      Contours          : Contour_Set;
+      Color             : OpenCV.Scalar;
+      Filled            : Boolean;
+      Thickness         : Drawing_Thickness;
+      Line_Style        : Drawing_Line_Style;
+      Offset            : OpenCV.Point;
+      Selected_Root     : Boolean;
+      Root              : Contour_Index;
+      Descendant_Levels : Natural)
+   is
+      use type Ada.Containers.Count_Type;
+      use type Interfaces.Integer_64;
+
+      Selected : Selected_Contour_Vectors.Vector;
+      Total    : Interfaces.Integer_64 := 0;
+      Count    : Interfaces.Integer_64 := 0;
+      Limit    : constant Interfaces.Integer_64 :=
+        Interfaces.Integer_64 (Interfaces.Integer_32'Last);
+
+      procedure Bad_Hierarchy is
+      begin
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "inconsistent contour hierarchy");
+      end Bad_Hierarchy;
+
+      procedure Visit (Index : Contour_Index; Levels : Natural) is
+         Node : Contour_Hierarchy_Entry;
+      begin
+         if Ada.Containers.Count_Type (Index) >= Contours.Contours.Length
+           or else Ada.Containers.Count_Type (Index)
+                   >= Contours.Hierarchy.Length
+         then
+            Bad_Hierarchy;
+         end if;
+         for Existing of Selected loop
+            if Existing = Index then
+               Bad_Hierarchy;
+            end if;
+         end loop;
+         Selected.Append (Index);
+         if Levels = 0 then
+            return;
+         end if;
+         Node := Contours.Hierarchy.Element (Natural (Index));
+         declare
+            Child : Optional_Contour_Index := Node.First_Child;
+         begin
+            while Child.Present loop
+               if Ada.Containers.Count_Type (Child.Index)
+                 >= Contours.Hierarchy.Length
+                 or else Ada.Containers.Count_Type (Child.Index)
+                         >= Contours.Contours.Length
+               then
+                  Bad_Hierarchy;
+               end if;
+               declare
+                  Child_Entry : constant Contour_Hierarchy_Entry :=
+                    Contours.Hierarchy.Element (Natural (Child.Index));
+               begin
+                  if not Child_Entry.Parent.Present
+                    or else Child_Entry.Parent.Index /= Index
+                  then
+                     Bad_Hierarchy;
+                  end if;
+                  Visit (Child.Index, Levels - 1);
+                  Child := Child_Entry.Next;
+               end;
+            end loop;
+         end;
+      end Visit;
+
+      type Point_Buffer is access Internal.C_API.Point_I32_Array;
+      type Span_Buffer is access Internal.C_API.Contour_Span_Array;
+      procedure Free is new
+        Ada.Unchecked_Deallocation
+          (Internal.C_API.Point_I32_Array,
+           Point_Buffer);
+      procedure Free is new
+        Ada.Unchecked_Deallocation
+          (Internal.C_API.Contour_Span_Array,
+           Span_Buffer);
+      Points : Point_Buffer := null;
+      Spans  : Span_Buffer := null;
+      Status : Internal.C_API.Status;
+
+      procedure Invoke (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      is
+      begin
+         Status :=
+           Internal.C_API.Draw_Contours
+             (Handle,
+              Points (0)'Access,
+              Interfaces.Integer_32 (Total),
+              Spans (0)'Access,
+              Interfaces.Integer_32 (Count),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              (if Filled then 1 else 0),
+              Interfaces.Integer_32 (Thickness),
+              To_C_Line_Style (Line_Style),
+              Interfaces.Integer_32 (Offset.X),
+              Interfaces.Integer_32 (Offset.Y));
+      end Invoke;
+   begin
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      if Selected_Root then
+         Validate_Contour_Index (Contours, Root, "Draw_Contours");
+         Visit (Root, Descendant_Levels);
+      else
+         if not Contours.Contours.Is_Empty then
+            for Index in 0 .. Natural (Contours.Contours.Length) - 1 loop
+               Selected.Append (Contour_Index (Index));
+            end loop;
+         end if;
+      end if;
+
+      for Index of Selected loop
+         declare
+            Length : constant Interfaces.Integer_64 :=
+              Interfaces.Integer_64
+                (Contours.Contours.Element (Natural (Index))'Length);
+         begin
+            if Length > 0 then
+               if Count >= Limit or else Length > Limit - Total then
+                  Ada.Exceptions.Raise_Exception
+                    (OpenCV.OpenCV_Error'Identity,
+                     "contour point or contour count exceeds signed int");
+               end if;
+               Total := Total + Length;
+               Count := Count + 1;
+            end if;
+         end;
+      end loop;
+      if Count = 0 then
+         return;
+      end if;
+
+      Points := new Internal.C_API.Point_I32_Array (0 .. Natural (Total) - 1);
+      Spans :=
+        new Internal.C_API.Contour_Span_Array (0 .. Natural (Count) - 1);
+      declare
+         Position : Natural := 0;
+         Span     : Natural := 0;
+      begin
+         for Index of Selected loop
+            declare
+               Shape : constant Contour :=
+                 Contours.Contours.Element (Natural (Index));
+            begin
+               if Shape'Length > 0 then
+                  Spans (Span) :=
+                    (Interfaces.Integer_32 (Position),
+                     Interfaces.Integer_32 (Shape'Length));
+                  Span := Span + 1;
+                  for Item of Shape loop
+                     Points (Position) :=
+                       (Interfaces.Integer_32 (Item.X),
+                        Interfaces.Integer_32 (Item.Y));
+                     Position := Position + 1;
+                  end loop;
+               end if;
+            end;
+         end loop;
+      end;
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Invoke'Access);
+      Raise_On_Error (Status, "Draw_Contours");
+      Free (Points);
+      Free (Spans);
+   exception
+      when others =>
+         Free (Points);
+         Free (Spans);
+         raise;
+   end Render_Contours;
+
+   procedure Draw_Contours
+     (Image      : in out OpenCV.Core.Mat;
+      Contours   : Contour_Set;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line;
+      Offset     : OpenCV.Point := (X => 0, Y => 0)) is
+   begin
+      Render_Contours
+        (Image,
+         Contours,
+         Color,
+         False,
+         Thickness,
+         Line_Style,
+         Offset,
+         False,
+         0,
+         0);
+   end Draw_Contours;
+
+   procedure Draw_Contours
+     (Image             : in out OpenCV.Core.Mat;
+      Contours          : Contour_Set;
+      Root              : Contour_Index;
+      Color             : OpenCV.Scalar;
+      Descendant_Levels : Natural := 0;
+      Thickness         : Drawing_Thickness := 1;
+      Line_Style        : Drawing_Line_Style := Eight_Connected_Line;
+      Offset            : OpenCV.Point := (X => 0, Y => 0)) is
+   begin
+      Render_Contours
+        (Image,
+         Contours,
+         Color,
+         False,
+         Thickness,
+         Line_Style,
+         Offset,
+         True,
+         Root,
+         Descendant_Levels);
+   end Draw_Contours;
+
+   procedure Fill_Contours
+     (Image      : in out OpenCV.Core.Mat;
+      Contours   : Contour_Set;
+      Color      : OpenCV.Scalar;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line;
+      Offset     : OpenCV.Point := (X => 0, Y => 0)) is
+   begin
+      Render_Contours
+        (Image, Contours, Color, True, 1, Line_Style, Offset, False, 0, 0);
+   end Fill_Contours;
+
+   procedure Fill_Contours
+     (Image             : in out OpenCV.Core.Mat;
+      Contours          : Contour_Set;
+      Root              : Contour_Index;
+      Color             : OpenCV.Scalar;
+      Descendant_Levels : Natural := 0;
+      Line_Style        : Drawing_Line_Style := Eight_Connected_Line;
+      Offset            : OpenCV.Point := (X => 0, Y => 0)) is
+   begin
+      Render_Contours
+        (Image,
+         Contours,
+         Color,
+         True,
+         1,
+         Line_Style,
+         Offset,
+         True,
+         Root,
+         Descendant_Levels);
+   end Fill_Contours;
 
    function To_Degrees
      (Angle : OpenCV.Float64_Value; Units : OpenCV.Angle_Unit)

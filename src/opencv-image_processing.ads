@@ -1293,6 +1293,47 @@ package OpenCV.Image_Processing is
       Color      : OpenCV.Scalar;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
+   --  Select contours in Ada, independently of the linked OpenCV version.
+   --  All-overloads use every stored contour; Root overloads include Root and
+   --  up to Descendant_Levels generations of children (zero means Root only).
+   --  Filled contours use even-odd parity: holes remain empty and islands are
+   --  filled again. Offset shifts points in image/Region-local coordinates.
+   --  Image and Color obey the ordinary drawing contract above. Structural
+   --  errors leave Image unchanged; native drawing errors need not roll back.
+   procedure Draw_Contours
+     (Image      : in out OpenCV.Core.Mat;
+      Contours   : Contour_Set;
+      Color      : OpenCV.Scalar;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line;
+      Offset     : OpenCV.Point := (X => 0, Y => 0));
+
+   procedure Draw_Contours
+     (Image             : in out OpenCV.Core.Mat;
+      Contours          : Contour_Set;
+      Root              : Contour_Index;
+      Color             : OpenCV.Scalar;
+      Descendant_Levels : Natural := 0;
+      Thickness         : Drawing_Thickness := 1;
+      Line_Style        : Drawing_Line_Style := Eight_Connected_Line;
+      Offset            : OpenCV.Point := (X => 0, Y => 0));
+
+   procedure Fill_Contours
+     (Image      : in out OpenCV.Core.Mat;
+      Contours   : Contour_Set;
+      Color      : OpenCV.Scalar;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line;
+      Offset     : OpenCV.Point := (X => 0, Y => 0));
+
+   procedure Fill_Contours
+     (Image             : in out OpenCV.Core.Mat;
+      Contours          : Contour_Set;
+      Root              : Contour_Index;
+      Color             : OpenCV.Scalar;
+      Descendant_Levels : Natural := 0;
+      Line_Style        : Drawing_Line_Style := Eight_Connected_Line;
+      Offset            : OpenCV.Point := (X => 0, Y => 0));
+
    --  Hough detection. Every operation takes a private continuous snapshot
    --  of Source before calling OpenCV, so Source pixels are never modified
    --  and a Region is analysed as its own logical image with its own
