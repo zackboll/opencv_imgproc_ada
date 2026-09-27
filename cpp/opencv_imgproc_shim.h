@@ -337,6 +337,17 @@ opencv_imgproc_morphology_ex(
     int32_t iterations,
     int32_t border);
 
+/* operation 0=erode, 1=dilate, 2..6=open/close/gradient/top-hat/black-hat.
+ * kernel_source 0=generated, 1=custom; explicit_anchor 0=centered, 1=given;
+ * explicit_border 0=morphology default, 1=scalar. Scalar is borrowed. */
+opencv_imgproc_status opencv_imgproc_morphology_request(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t operation, int32_t kernel_source,
+    const opencv_core_mat_handle *kernel, int32_t kernel_width,
+    int32_t kernel_height, int32_t shape, int32_t explicit_anchor,
+    int32_t anchor_x, int32_t anchor_y, int32_t iterations, int32_t border,
+    int32_t explicit_border, const double *border_components);
+
 opencv_imgproc_status
 opencv_imgproc_canny(
     const opencv_core_mat_handle *source,

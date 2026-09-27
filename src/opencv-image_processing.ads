@@ -274,6 +274,12 @@ package OpenCV.Image_Processing is
 
    subtype Morphology_Iterations is Positive range 1 .. 2_147_483_647;
 
+   type Morphology_Border_Value is private;
+   Default_Morphology_Border : constant Morphology_Border_Value;
+   --  The all-DBL_MAX scalar is reserved by OpenCV for its neutral default.
+   function Explicit_Morphology_Border
+     (Value : OpenCV.Scalar) return Morphology_Border_Value;
+
    type Template_Matching_Method is
      (Squared_Difference,
       Normalized_Squared_Difference,
@@ -767,12 +773,13 @@ package OpenCV.Image_Processing is
    --  in its parent outside the view do not participate. Contract violations
    --  and OpenCV failures raise OpenCV.OpenCV_Error.
    procedure Erode
-     (Source      : OpenCV.Core.Mat;
-      Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Size;
-      Shape       : Morphology_Shape := Rectangle;
-      Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape := Rectangle;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
 
    --  Dilate replaces Destination with the neighborhood maximum selected by a
    --  temporary structuring element of Kernel_Size and Shape. It has the same
@@ -783,12 +790,13 @@ package OpenCV.Image_Processing is
    --  Contract violations and OpenCV failures raise
    --  OpenCV.OpenCV_Error.
    procedure Dilate
-     (Source      : OpenCV.Core.Mat;
-      Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Size;
-      Shape       : Morphology_Shape := Rectangle;
-      Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape := Rectangle;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
 
    --  Apply_Morphology performs Opening, Closing, Gradient, Top_Hat, or
    --  Black_Hat with a temporary structuring element of Kernel_Size and Shape.
@@ -804,13 +812,96 @@ package OpenCV.Image_Processing is
    --  Contract violations and OpenCV failures raise
    --  OpenCV.OpenCV_Error.
    procedure Apply_Morphology
-     (Source      : OpenCV.Core.Mat;
-      Destination : in out OpenCV.Core.Mat;
-      Operation   : Morphology_Operation;
-      Kernel_Size : OpenCV.Size;
-      Shape       : Morphology_Shape := Rectangle;
-      Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Operation    : Morphology_Operation;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape := Rectangle;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   --  Custom kernels are nonempty 2-D UInt8 C1 binary masks: zero excludes,
+   --  every nonzero value includes. All-zero masks are rejected. Kernel and
+   --  Destination must not overlap. Source/Destination in-place is supported.
+   --  Regions use only their logical views, including parent-backed in-place.
+   --  An explicit Cross anchor also changes the generated mask geometry.
+   procedure Erode
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+   procedure Dilate
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+   procedure Apply_Morphology
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Operation    : Morphology_Operation;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   procedure Erode
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel       : OpenCV.Core.Mat;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+   procedure Dilate
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel       : OpenCV.Core.Mat;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+   procedure Apply_Morphology
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Operation    : Morphology_Operation;
+      Kernel       : OpenCV.Core.Mat;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+   procedure Erode
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel       : OpenCV.Core.Mat;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+   procedure Dilate
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel       : OpenCV.Core.Mat;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+   procedure Apply_Morphology
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Operation    : Morphology_Operation;
+      Kernel       : OpenCV.Core.Mat;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border);
 
    --  Canny_Edges finds edges in a non-empty two-dimensional UInt8 C1 Source.
    --  Lower_Threshold and Upper_Threshold must be finite, nonnegative, and
@@ -1433,6 +1524,12 @@ package OpenCV.Image_Processing is
       Scale        : OpenCV.Float64_Value := 1.0) return OpenCV.Core.Mat;
 
 private
+   type Morphology_Border_Value is record
+      Use_Default : Boolean := True;
+      Value       : OpenCV.Scalar := (others => 0.0);
+   end record;
+   Default_Morphology_Border : constant Morphology_Border_Value :=
+     (Use_Default => True, Value => (others => 0.0));
    type Fixed_Remap_Maps is record
       Coordinates  : OpenCV.Core.Mat;
       Coefficients : OpenCV.Core.Mat;

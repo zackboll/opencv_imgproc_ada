@@ -550,80 +550,16 @@ opencv_imgproc_status apply_morphology(
     int32_t border,
     morphology_operation operation)
 {
-    clear_error();
-
-    try {
-        const cv::Mat *src = nullptr;
-        cv::Mat *dst = nullptr;
-        opencv_core_status core_status =
-            opencv_core_module_input_mat(source, &src);
-
-        if (core_status != OPENCV_CORE_OK || src == nullptr) {
-            return invalid_argument("invalid source Mat");
-        }
-
-        core_status = opencv_core_module_output_mat(destination, &dst);
-
-        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
-            return invalid_argument("invalid destination Mat");
-        }
-
-        // ABI safety: reject malformed signed C dimensions before they reach
-        // cv::Size and OpenCV's kernel-allocation arithmetic.
-        if (kernel_width <= 0) {
-            return invalid_argument("morphology kernel width must be positive");
-        }
-
-        if (kernel_height <= 0) {
-            return invalid_argument("morphology kernel height must be positive");
-        }
-
-        // ABI safety: reject malformed signed C iteration counts before they
-        // reach OpenCV's repeated-operation control flow.
-        if (iterations <= 0) {
-            return invalid_argument("morphology iterations must be positive");
-        }
-
-        int opencv_shape = 0;
-
-        if (!to_opencv_morphology_shape(shape, opencv_shape)) {
-            return invalid_argument("unsupported morphology shape");
-        }
-
-        int opencv_border = 0;
-
-        if (!to_opencv_morphology_border(border, opencv_border)) {
-            return invalid_argument("unsupported morphology border");
-        }
-
-        const cv::Mat kernel = cv::getStructuringElement(
-            opencv_shape,
-            cv::Size(
-                static_cast<int>(kernel_width),
-                static_cast<int>(kernel_height)));
-
-        if (operation == morphology_operation::erosion) {
-            cv::erode(
-                *src,
-                *dst,
-                kernel,
-                cv::Point(-1, -1),
-                static_cast<int>(iterations),
-                opencv_border);
-        } else {
-            cv::dilate(
-                *src,
-                *dst,
-                kernel,
-                cv::Point(-1, -1),
-                static_cast<int>(iterations),
-                opencv_border);
-        }
-
-        return OPENCV_IMGPROC_OK;
-    } catch (...) {
-        return translate_current_exception();
-    }
+    if (kernel_width <= 0)
+        return invalid_argument("morphology kernel width must be positive");
+    if (kernel_height <= 0)
+        return invalid_argument("morphology kernel height must be positive");
+    if (iterations <= 0)
+        return invalid_argument("morphology iterations must be positive");
+    return opencv_imgproc_morphology_request(source, destination,
+        operation == morphology_operation::erosion ? 0 : 1, 0, nullptr,
+        kernel_width, kernel_height, shape, 0, 0, 0, iterations, border,
+        0, nullptr);
 }
 
 bool to_opencv_canny_aperture(int32_t selector, int &aperture) noexcept
@@ -1698,6 +1634,134 @@ bool mat_storage_overlaps(const cv::Mat &first, const cv::Mat &second) noexcept
         }
     }
     return false;
+}
+
+// Shared raw preflight for generated and borrowed custom masks.
+opencv_imgproc_status morphology_request_impl(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t operation, int32_t kernel_source,
+    const opencv_core_mat_handle *kernel_handle, int32_t kernel_width,
+    int32_t kernel_height, int32_t shape, int32_t explicit_anchor,
+    int32_t anchor_x, int32_t anchor_y, int32_t iterations, int32_t border,
+    int32_t explicit_border, const double *border_components)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid morphology Mat handle");
+        // ABI safety: morphOp and MorphRowFilter access image rows and require
+        // supported scalar dispatch types.
+        if (src->empty() || src->dims != 2 ||
+            (src->depth() != CV_8U && src->depth() != CV_16U &&
+             src->depth() != CV_16S && src->depth() != CV_32F &&
+             src->depth() != CV_64F))
+            return invalid_argument("invalid morphology source");
+        if (operation < 0 || operation > 6 || kernel_source < 0 || kernel_source > 1 ||
+            explicit_anchor < 0 || explicit_anchor > 1 || iterations <= 0 ||
+            explicit_border < 0 || explicit_border > 1)
+            return invalid_argument("invalid morphology selector or iterations");
+        int cv_border = 0;
+        if (!to_opencv_morphology_border(border, cv_border))
+            return invalid_argument("invalid morphology border");
+        cv::Mat generated;
+        const cv::Mat *kernel = nullptr;
+        const cv::Mat *custom = nullptr;
+        int cv_shape = 0;
+        if (kernel_source == 1) {
+            if (opencv_core_module_input_mat(kernel_handle, &custom) != OPENCV_CORE_OK || !custom)
+                return invalid_argument("invalid morphology kernel handle");
+            // ABI safety: countNonZero and preprocess2DKernel require a
+            // nonempty two-dimensional byte mask; malformed types/rows can
+            // make sparse coordinate indexing access outside allocated data.
+            if (custom->empty() || custom->dims != 2 || custom->type() != CV_8UC1 ||
+                custom->rows <= 0 || custom->cols <= 0)
+                return invalid_argument("invalid custom morphology kernel");
+            kernel = custom;
+        } else {
+            if (kernel_width <= 0 || kernel_height <= 0 ||
+                !to_opencv_morphology_shape(shape, cv_shape))
+                return invalid_argument("invalid generated morphology kernel");
+        }
+        const int64_t width = kernel_source ? custom->cols : kernel_width;
+        const int64_t height = kernel_source ? custom->rows : kernel_height;
+        const int64_t channels = src->channels();
+        const int64_t limit = std::numeric_limits<int>::max();
+        // ABI safety: native morphOp/IPP compute kernel.rows*kernel.cols in
+        // signed int; MorphRowVec/MorphRowFilter/MorphFilter compute width*cn,
+        // ksize*cn and sparse pt[k].x*cn in signed int.
+        if (width * height > limit ||
+            int64_t(src->cols) * channels > limit || width * channels > limit)
+            return invalid_argument("morphology dimension arithmetic overflows int");
+        const cv::Point anchor = explicit_anchor ? cv::Point(anchor_x, anchor_y) :
+            cv::Point(static_cast<int>(width / 2), static_cast<int>(height / 2));
+        // ABI safety: getStructuringElement, normalizeAnchor and morphOp use
+        // anchor coordinates as kernel indices and pointer offsets.
+        if (anchor.x < 0 || anchor.y < 0 || anchor.x >= width || anchor.y >= height)
+            return invalid_argument("morphology anchor outside kernel");
+        // ABI safety: getStructuringElement's ellipse evaluates r*r and dy*dy
+        // in signed int before converting to floating point.
+        if (!kernel_source && cv_shape == cv::MORPH_ELLIPSE && height / 2 > 46340)
+            return invalid_argument("ellipse radius arithmetic overflows int");
+        if (!kernel_source) {
+            generated = cv::getStructuringElement(cv_shape,
+                cv::Size(kernel_width, kernel_height), anchor);
+            kernel = &generated;
+        }
+        // ABI safety: preprocess2DKernel may leave coords empty for an all-zero
+        // mask, while MorphFilter later dereferences &coords[0] and kp[0].
+        const int nonzero = cv::countNonZero(*kernel);
+        if (!nonzero)
+            return invalid_argument("all-zero morphology kernel");
+        // ABI safety: morphOp's full-mask rectangular collapse multiplies
+        // anchor by iterations and evaluates width+(iterations-1)*(width-1)
+        // and its height equivalent in signed int, after the 1x1 early exit.
+        if (width * height > 1 && iterations > 1 && nonzero == width * height &&
+            (width + (int64_t(iterations) - 1) * (width - 1) > limit ||
+             height + (int64_t(iterations) - 1) * (height - 1) > limit ||
+             width + (int64_t(iterations) - 1) * (width - 1) > limit / channels ||
+             int64_t(anchor.x) * iterations > limit ||
+             int64_t(anchor.y) * iterations > limit))
+            return invalid_argument("morphology iteration expansion overflows int");
+        if (custom && mat_storage_overlaps(*custom, *dst))
+            return invalid_argument("morphology kernel overlaps destination");
+        cv::Scalar value = cv::morphologyDefaultBorderValue();
+        if (explicit_border) {
+            if (!border_components)
+                return invalid_argument("null morphology border value");
+            if (border == OPENCV_IMGPROC_BORDER_CONSTANT) {
+                const double max_float = std::numeric_limits<float>::max();
+                for (int i = 0; i < std::min(src->channels(), 4); ++i)
+                    if (!std::isfinite(border_components[i]) ||
+                        (src->depth() == CV_32F && std::abs(border_components[i]) > max_float))
+                        return invalid_argument("invalid explicit morphology border component");
+                if (src->channels() > 4 &&
+                    (border_components[0] != border_components[1] ||
+                     border_components[0] != border_components[2] ||
+                     border_components[0] != border_components[3]))
+                    return invalid_argument("nonuniform morphology border for C5+");
+                if (border_components[0] == DBL_MAX && border_components[1] == DBL_MAX &&
+                    border_components[2] == DBL_MAX && border_components[3] == DBL_MAX)
+                    return invalid_argument("reserved morphology border sentinel");
+                value = cv::Scalar(border_components[0], border_components[1],
+                                   border_components[2], border_components[3]);
+            }
+        }
+        switch (operation) {
+        case 0: cv::erode(*src, *dst, *kernel, anchor, iterations, cv_border, value); break;
+        case 1: cv::dilate(*src, *dst, *kernel, anchor, iterations, cv_border, value); break;
+        default: {
+            int cv_op = 0;
+            if (!to_opencv_morphology_operation(operation - 2, cv_op))
+                return invalid_argument("invalid morphology operation");
+            cv::morphologyEx(*src, *dst, cv_op, *kernel, anchor, iterations, cv_border, value);
+        }}
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
 }
 
 bool product_fits_int(std::uint64_t left, std::uint64_t right) noexcept
@@ -3310,77 +3374,24 @@ opencv_imgproc_morphology_ex(
     int32_t iterations,
     int32_t border)
 {
-    clear_error();
+    if (operation < 0 || operation > 4)
+        return invalid_argument("unsupported morphology operation");
+    return opencv_imgproc_morphology_request(source, destination,
+        operation + 2, 0, nullptr, kernel_width, kernel_height, shape,
+        0, 0, 0, iterations, border, 0, nullptr);
+}
 
-    try {
-        const cv::Mat *src = nullptr;
-        cv::Mat *dst = nullptr;
-        opencv_core_status core_status =
-            opencv_core_module_input_mat(source, &src);
-
-        if (core_status != OPENCV_CORE_OK || src == nullptr) {
-            return invalid_argument("invalid source Mat");
-        }
-
-        core_status = opencv_core_module_output_mat(destination, &dst);
-
-        if (core_status != OPENCV_CORE_OK || dst == nullptr) {
-            return invalid_argument("invalid destination Mat");
-        }
-
-        // ABI safety: reject malformed signed C dimensions before they reach
-        // cv::Size and OpenCV's kernel-allocation arithmetic.
-        if (kernel_width <= 0) {
-            return invalid_argument("morphology kernel width must be positive");
-        }
-
-        if (kernel_height <= 0) {
-            return invalid_argument("morphology kernel height must be positive");
-        }
-
-        // ABI safety: reject malformed signed C iteration counts before they
-        // reach OpenCV's repeated-operation control flow.
-        if (iterations <= 0) {
-            return invalid_argument("morphology iterations must be positive");
-        }
-
-        int opencv_operation = 0;
-
-        if (!to_opencv_morphology_operation(operation, opencv_operation)) {
-            return invalid_argument("unsupported morphology operation");
-        }
-
-        int opencv_shape = 0;
-
-        if (!to_opencv_morphology_shape(shape, opencv_shape)) {
-            return invalid_argument("unsupported morphology shape");
-        }
-
-        int opencv_border = 0;
-
-        if (!to_opencv_morphology_border(border, opencv_border)) {
-            return invalid_argument("unsupported morphology border");
-        }
-
-        const cv::Mat kernel = cv::getStructuringElement(
-            opencv_shape,
-            cv::Size(
-                static_cast<int>(kernel_width),
-                static_cast<int>(kernel_height)));
-
-        cv::morphologyEx(
-            *src,
-            *dst,
-            opencv_operation,
-            kernel,
-            cv::Point(-1, -1),
-            static_cast<int>(iterations),
-            opencv_border);
-
-        return OPENCV_IMGPROC_OK;
-    } catch (...) {
-        return translate_current_exception();
-    }
+opencv_imgproc_status opencv_imgproc_morphology_request(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t operation, int32_t kernel_source,
+    const opencv_core_mat_handle *kernel, int32_t kernel_width,
+    int32_t kernel_height, int32_t shape, int32_t explicit_anchor,
+    int32_t anchor_x, int32_t anchor_y, int32_t iterations, int32_t border,
+    int32_t explicit_border, const double *border_components)
+{
+    return morphology_request_impl(source, destination, operation, kernel_source,
+        kernel, kernel_width, kernel_height, shape, explicit_anchor, anchor_x,
+        anchor_y, iterations, border, explicit_border, border_components);
 }
 
 opencv_imgproc_status

@@ -768,8 +768,378 @@ package body Morphology_Tests is
          "malformed morphology operation must identify operation");
    end C_ABI_Rejects_Malformed_Morphology_Operation;
 
+   procedure Custom_Masks_And_Anchors (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Mask   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Result : OpenCV.Core.Mat;
+      Other  : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Source, (others => 0.0));
+      OpenCV.Core.UInt8_Access.Set (Source, 2, 2, 90);
+      OpenCV.Core.Set_To (Mask, (others => 0.0));
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 1);
+      Dilate (Source, Result, Mask);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Result, 3, 3) = 0,
+         "sparse kernel must not become a rectangle");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Result, 2, 3) = 90,
+         "sparse kernel must include the left neighbor");
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 255);
+      Dilate (Source, Other, Mask);
+      for Row in 0 .. 4 loop
+         for Col in 0 .. 4 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Result, Row, Col)
+               = OpenCV.Core.UInt8_Access.Get (Other, Row, Col),
+               "nonzero magnitude must not weight pixels");
+         end loop;
+      end loop;
+      Dilate (Source, Other, Mask, Anchor => (0, 0));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Other, 2, 2) = 0,
+         "custom anchor shifts neighborhood");
+      Dilate (Source, Other, (3, 3), Cross, (0, 0));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Other, 2, 2) = 90,
+         "Cross mask uses explicit anchor as its intersection");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Other, 1, 1) = 0,
+         "off-center Cross must not reuse centered mask");
+      Dilate (Source, Other, (3, 3), Rectangle, (0, 0));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Other, 3, 3) = 0,
+         "off-center rectangle anchor shifts footprint");
+   end Custom_Masks_And_Anchors;
+
+   procedure Custom_Validation_And_Border (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Mask   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Result : OpenCV.Core.Mat;
+      procedure Empty_Erode is
+      begin
+         Erode (Image, Result, Mask);
+      end Empty_Erode;
+      procedure Empty_Dilate is
+      begin
+         Dilate (Image, Result, Mask);
+      end Empty_Dilate;
+      procedure Empty_Opening is
+      begin
+         Apply_Morphology (Image, Result, Opening, Mask);
+      end Empty_Opening;
+      procedure Overlap is
+      begin
+         Erode (Image, Mask, Mask);
+      end Overlap;
+      procedure Bad_Anchor is
+      begin
+         Dilate (Image, Result, Mask, (3, 0));
+      end Bad_Anchor;
+      procedure Overflow is
+      begin
+         Erode (Image, Result, (3, 3), Iterations => 1_073_741_825);
+      end Overflow;
+      procedure Sentinel is
+         Max : constant Long_Float := Long_Float (OpenCV.Float64_Value'Last);
+         V   : constant Morphology_Border_Value :=
+           Explicit_Morphology_Border ((others => Max));
+         pragma Unreferenced (V);
+      begin
+         null;
+      end Sentinel;
+   begin
+      OpenCV.Core.Set_To (Image, (100.0, others => 0.0));
+      OpenCV.Core.Set_To (Mask, (others => 0.0));
+      Assert_Raises_OpenCV_Error (Empty_Erode'Access, "empty erosion kernel");
+      Assert_Raises_OpenCV_Error
+        (Empty_Dilate'Access, "empty dilation kernel");
+      Assert_Raises_OpenCV_Error
+        (Empty_Opening'Access, "empty opening kernel");
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 1);
+      Assert_Raises_OpenCV_Error
+        (Overlap'Access, "kernel/destination overlap");
+      Assert_Raises_OpenCV_Error (Bad_Anchor'Access, "anchor outside kernel");
+      Assert_Raises_OpenCV_Error (Overflow'Access, "iteration expansion");
+      Assert_Raises_OpenCV_Error (Sentinel'Access, "reserved sentinel");
+      Erode (Image, Result, (3, 3));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 100,
+         "default erosion border must be neutral");
+      Erode
+        (Image,
+         Result,
+         (3, 3),
+         Border_Value => Explicit_Morphology_Border ((others => 0.0)));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 0,
+         "explicit zero erosion border lowers edge");
+      Dilate
+        (Image,
+         Result,
+         (3, 3),
+         Border_Value =>
+           Explicit_Morphology_Border ((Component_0 => 300.0, others => 0.0)));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 255,
+         "integer border saturates rather than wraps");
+      Erode (Image, Result, (1, 1), Iterations => 2_147_483_647);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 100,
+         "1x1 early exit with huge iteration count");
+   end Custom_Validation_And_Border;
+
+   procedure Custom_Region_And_Dispatch (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Source     : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      Standalone : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      K_Parent   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Kernel     : OpenCV.Core.Mat :=
+        K_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      Expected   : OpenCV.Core.Mat;
+      Output     : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 0.0));
+      OpenCV.Core.Set_To (Source, (100.0, others => 0.0));
+      OpenCV.Core.Set_To (Standalone, (100.0, others => 0.0));
+      OpenCV.Core.Set_To (K_Parent, (255.0, others => 0.0));
+      OpenCV.Core.Set_To (Kernel, (others => 0.0));
+      OpenCV.Core.UInt8_Access.Set (Kernel, 1, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Kernel, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Kernel, 1, 0, 1);
+      Erode (Standalone, Expected, Kernel, Border => OpenCV.Replicate);
+      Erode (Source, Source, Kernel, Border => OpenCV.Replicate);
+      for Row in 0 .. 4 loop
+         for Col in 0 .. 4 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, Row, Col)
+               = (if Row in 1 .. 3 and then Col in 1 .. 3
+                  then
+                    OpenCV.Core.UInt8_Access.Get (Expected, Row - 1, Col - 1)
+                  else 0),
+               "custom Region isolation and in-place mutation");
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (K_Parent, Row, Col)
+               = (if Row in 1 .. 3 and then Col in 1 .. 3
+                  then OpenCV.Core.UInt8_Access.Get (Kernel, Row - 1, Col - 1)
+                  else 255),
+               "kernel parent stays unchanged");
+         end loop;
+      end loop;
+      for Op in Morphology_Operation loop
+         Apply_Morphology (Standalone, Output, Op, Kernel);
+         AUnit.Assertions.Assert
+           (not Output.Is_Empty, "every custom operation dispatches");
+      end loop;
+   end Custom_Region_And_Dispatch;
+
+   procedure Raw_Zero_Kernel (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Kernel : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Output : OpenCV.Core.Mat;
+      Status : C_API.Status;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure K_Input (K : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            procedure Dest (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+            begin
+               Status :=
+                 C_API.Morphology_Request
+                   (S,
+                    D,
+                    0,
+                    1,
+                    K,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    1,
+                    C_API.Border_Constant,
+                    0,
+                    null);
+            end Dest;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Output, Dest'Access);
+         end K_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle (Kernel, K_Input'Access);
+      end Input;
+   begin
+      OpenCV.Core.Set_To (Kernel, (others => 0.0));
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Error_Invalid_Argument,
+         "raw all-zero kernel must be rejected");
+   end Raw_Zero_Kernel;
+
+   procedure Border_Floats_And_Iterations (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      F32    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      F64    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float64, 1));
+      Output : OpenCV.Core.Mat;
+      Mask   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      procedure Too_Large is
+      begin
+         Erode
+           (F32,
+            Output,
+            (3, 3),
+            Border_Value =>
+              Explicit_Morphology_Border
+                ((Component_0 => Long_Float'Last, others => 0.0)));
+      end Too_Large;
+      procedure Custom_Overflow is
+      begin
+         Erode (F32, Output, Mask, Iterations => 1_073_741_825);
+      end Custom_Overflow;
+   begin
+      OpenCV.Core.Set_To (F32, (10.0, others => 0.0));
+      OpenCV.Core.Set_To (F64, (10.0, others => 0.0));
+      OpenCV.Core.Set_To (Mask, (1.0, others => 0.0));
+      Assert_Raises_OpenCV_Error (Too_Large'Access, "Float32 overflow border");
+      Assert_Raises_OpenCV_Error
+        (Custom_Overflow'Access, "custom full-mask expansion");
+      Erode
+        (F32,
+         Output,
+         (3, 3),
+         Border_Value =>
+           Explicit_Morphology_Border ((Component_0 => 2.5, others => 0.0)));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Output, 0, 0) = 2.5,
+         "Float32 explicit border");
+      Erode
+        (F64,
+         Output,
+         (3, 3),
+         Border_Value =>
+           Explicit_Morphology_Border ((Component_0 => 2.5, others => 0.0)));
+      OpenCV.Core.Set_To (Mask, (others => 0.0));
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 1);
+      Erode (F32, Output, Mask, Iterations => 3);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Output, 0, 0) = 10.0,
+         "sparse iterations do not collapse as a full rectangle");
+   end Border_Floats_And_Iterations;
+
+   procedure Overlapping_Regions_And_Custom_In_Place (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Parent          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      K               : constant OpenCV.Core.Mat :=
+        Parent.Region ((X => 0, Y => 0, Width => 3, Height => 3));
+      D               : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      Distinct_Kernel : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Image           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Expected        : OpenCV.Core.Mat;
+      procedure Bad is
+      begin
+         Dilate (Image, D, K);
+      end Bad;
+   begin
+      OpenCV.Core.Set_To (Parent, (1.0, others => 0.0));
+      OpenCV.Core.Set_To (Distinct_Kernel, (1.0, others => 0.0));
+      OpenCV.Core.Set_To (Image, (20.0, others => 0.0));
+      Assert_Raises_OpenCV_Error (Bad'Access, "overlapping kernel Region");
+      Dilate (Image, Expected, Distinct_Kernel);
+      Dilate (Image, Image, Distinct_Kernel);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, 1, 1)
+         = OpenCV.Core.UInt8_Access.Get (Expected, 1, 1),
+         "custom in-place dilation");
+      Erode (Image, Expected, Distinct_Kernel);
+      Erode (Image, Image, Distinct_Kernel);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, 1, 1)
+         = OpenCV.Core.UInt8_Access.Get (Expected, 1, 1),
+         "custom in-place erosion");
+      Apply_Morphology (Image, Expected, Opening, Distinct_Kernel);
+      Apply_Morphology (Image, Image, Opening, Distinct_Kernel);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, 1, 1)
+         = OpenCV.Core.UInt8_Access.Get (Expected, 1, 1),
+         "custom in-place opening");
+   end Overlapping_Regions_And_Custom_In_Place;
+
+   procedure Multichannel_Explicit_Border (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Output : OpenCV.Core.Mat;
+      Value  : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      OpenCV.Core.Set_To (Source, (10.0, 20.0, 30.0, 0.0));
+      Dilate
+        (Source,
+         Output,
+         (3, 3),
+         Border_Value => Explicit_Morphology_Border ((40.0, 50.0, 60.0, 0.0)));
+      Value := OpenCV.Core.UInt8_Vec3_Access.Get (Output, 0, 0);
+      AUnit.Assertions.Assert
+        (Value (0) = 40 and then Value (1) = 50 and then Value (2) = 60,
+         "C3 explicit border maps components independently");
+   end Multichannel_Explicit_Border;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("custom masks and anchors", Custom_Masks_And_Anchors'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("custom validation and explicit borders",
+            Custom_Validation_And_Border'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("custom Region and operations",
+            Custom_Region_And_Dispatch'Access));
+      Result.Add_Test
+        (Caller.Create ("raw all-zero kernel", Raw_Zero_Kernel'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("float borders and iterations",
+            Border_Floats_And_Iterations'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("custom overlapping Regions and in-place",
+            Overlapping_Regions_And_Custom_In_Place'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("C3 explicit border", Multichannel_Explicit_Border'Access));
       Result.Add_Test
         (Caller.Create
            ("erosion Region uses logical boundary",

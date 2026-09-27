@@ -835,27 +835,6 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Morphology_Shape;
 
-   function To_C_Morphology_Operation
-     (Operation : Morphology_Operation) return Interfaces.Integer_32 is
-   begin
-      case Operation is
-         when Opening   =>
-            return Internal.C_API.Morphology_Open;
-
-         when Closing   =>
-            return Internal.C_API.Morphology_Close;
-
-         when Gradient  =>
-            return Internal.C_API.Morphology_Gradient;
-
-         when Top_Hat   =>
-            return Internal.C_API.Morphology_Top_Hat;
-
-         when Black_Hat =>
-            return Internal.C_API.Morphology_Black_Hat;
-      end case;
-   end To_C_Morphology_Operation;
-
    function Required_Color_Channels
      (Conversion : Color_Conversion) return Positive is
    begin
@@ -2021,58 +2000,224 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Sep_Filter_2D_Anchor;
 
-   procedure Validate_Morphology
-     (Source      : OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Size;
-      Border      : OpenCV.Border_Kind;
-      Operation   : String) is
+   function Storage_Overlaps
+     (First, Second : OpenCV.Core.Mat; Operation : String) return Boolean;
+
+   function Explicit_Morphology_Border
+     (Value : OpenCV.Scalar) return Morphology_Border_Value
+   is
+      Max : constant Long_Float := Long_Float (OpenCV.Float64_Value'Last);
    begin
-      if Source.Is_Empty then
+      if Value.Component_0 = Max
+        and then Value.Component_1 = Max
+        and then Value.Component_2 = Max
+        and then Value.Component_3 = Max
+      then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
-            Operation & " requires a non-empty source Mat");
+            "Reserved morphology border sentinel");
       end if;
+      return (Use_Default => False, Value => Value);
+   end Explicit_Morphology_Border;
 
-      if Source.Dimension_Count /= 2 then
+   procedure Morphology_Execute
+     (Source          : OpenCV.Core.Mat;
+      Destination     : in out OpenCV.Core.Mat;
+      Operation       : Interfaces.Integer_32;
+      Kernel_Size     : OpenCV.Size;
+      Shape           : Morphology_Shape;
+      Kernel          : OpenCV.Core.Mat;
+      Custom          : Boolean;
+      Anchor          : OpenCV.Point;
+      Explicit_Anchor : Boolean;
+      Iterations      : Morphology_Iterations;
+      Border          : OpenCV.Border_Kind;
+      Border_Value    : Morphology_Border_Value)
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Mat_Size;
+      use type OpenCV.Float64_Value;
+      Width  : constant Long_Long_Integer :=
+        (if Custom
+         then Long_Long_Integer (Kernel.Columns)
+         else Long_Long_Integer (Kernel_Size.Width));
+      Height : constant Long_Long_Integer :=
+        (if Custom
+         then Long_Long_Integer (Kernel.Rows)
+         else Long_Long_Integer (Kernel_Size.Height));
+      Limit  : constant Long_Long_Integer := 2_147_483_647;
+      Status : Internal.C_API.Status;
+      Scalar : aliased constant Internal.C_API.Morphology_Scalar :=
+        (Interfaces.C.double (Border_Value.Value.Component_0),
+         Interfaces.C.double (Border_Value.Value.Component_1),
+         Interfaces.C.double (Border_Value.Value.Component_2),
+         Interfaces.C.double (Border_Value.Value.Component_3));
+
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            procedure Call
+              (Kernel_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Morphology_Request
+                   (Source_Handle,
+                    Destination_Handle,
+                    Operation,
+                    (if Custom then 1 else 0),
+                    Kernel_Handle,
+                    Interfaces.Integer_32 (Width),
+                    Interfaces.Integer_32 (Height),
+                    To_C_Morphology_Shape (Shape),
+                    (if Explicit_Anchor then 1 else 0),
+                    Interfaces.Integer_32 (Anchor.X),
+                    Interfaces.Integer_32 (Anchor.Y),
+                    Interfaces.Integer_32 (Iterations),
+                    To_C_Border (Border),
+                    (if Border_Value.Use_Default then 0 else 1),
+                    Scalar'Access);
+            end Call;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle (Kernel, Call'Access);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth
+                not in OpenCV.Core.UInt8
+                     | OpenCV.Core.UInt16
+                     | OpenCV.Core.Int16
+                     | OpenCV.Core.Float32
+                     | OpenCV.Core.Float64
+        or else Border = OpenCV.Wrap
+      then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity,
-            Operation & " requires a two-dimensional source Mat");
+            "Invalid morphology source or border");
       end if;
-
-      if Kernel_Size.Width = 0 then
+      if Custom
+        and then (Kernel.Is_Empty
+                  or else Kernel.Dimension_Count /= 2
+                  or else Kernel.Depth /= OpenCV.Core.UInt8
+                  or else Kernel.Channels /= 1)
+      then
          Ada.Exceptions.Raise_Exception
-           (OpenCV.OpenCV_Error'Identity,
-            Operation & " requires a positive kernel width");
+           (OpenCV.OpenCV_Error'Identity, "Invalid custom morphology kernel");
       end if;
-
-      if Kernel_Size.Height = 0 then
+      if Width <= 0
+        or else Height <= 0
+        or else Width * Height > Limit
+        or else Long_Long_Integer (Source.Columns)
+                * Long_Long_Integer (Source.Channels)
+                > Limit
+        or else Width * Long_Long_Integer (Source.Channels) > Limit
+        or else (not Custom
+                 and then Shape = Ellipse
+                 and then Height / 2 > 46340)
+        or else (Explicit_Anchor
+                 and then (Anchor.X < 0
+                           or else Anchor.Y < 0
+                           or else Long_Long_Integer (Anchor.X) >= Width
+                           or else Long_Long_Integer (Anchor.Y) >= Height))
+      then
          Ada.Exceptions.Raise_Exception
-           (OpenCV.OpenCV_Error'Identity,
-            Operation & " requires a positive kernel height");
+           (OpenCV.OpenCV_Error'Identity, "Invalid morphology geometry");
       end if;
-
-      if Border = OpenCV.Wrap then
+      if Custom and then Kernel.Count_Non_Zero = 0 then
          Ada.Exceptions.Raise_Exception
-           (OpenCV.OpenCV_Error'Identity,
-            Operation & " does not support Wrap border");
+           (OpenCV.OpenCV_Error'Identity, "All-zero morphology kernel");
       end if;
-
-      case Source.Depth is
-         when OpenCV.Core.UInt8
-            | OpenCV.Core.UInt16
-            | OpenCV.Core.Int16
-            | OpenCV.Core.Float32
-            | OpenCV.Core.Float64 =>
-            null;
-
-         when others              =>
+      --  OpenCV collapses a repeated full mask to an expanded rectangle.
+      --  The 1x1 copy/no-op is checked first. Sparse generated masks are
+      --  classified from their actual mask by the native preflight.
+      if Width * Height > 1
+        and then Iterations > 1
+        and then ((Custom
+                   and then Long_Long_Integer (Kernel.Count_Non_Zero)
+                            = Width * Height)
+                  or else (not Custom and then Shape = Rectangle))
+      then
+         declare
+            A_X : constant Long_Long_Integer :=
+              (if Explicit_Anchor
+               then Long_Long_Integer (Anchor.X)
+               else Width / 2);
+            A_Y : constant Long_Long_Integer :=
+              (if Explicit_Anchor
+               then Long_Long_Integer (Anchor.Y)
+               else Height / 2);
+            N   : constant Long_Long_Integer := Long_Long_Integer (Iterations);
+         begin
+            if Width + (N - 1) * (Width - 1) > Limit
+              or else Height + (N - 1) * (Height - 1) > Limit
+              or else Width + (N - 1) * (Width - 1)
+                      > Limit / Long_Long_Integer (Source.Channels)
+              or else A_X * N > Limit
+              or else A_Y * N > Limit
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV.OpenCV_Error'Identity,
+                  "Morphology iteration expansion overflows int");
+            end if;
+         end;
+      end if;
+      if Custom and then Storage_Overlaps (Kernel, Destination, "Morphology")
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "Kernel overlaps destination");
+      end if;
+      if Border = OpenCV.Constant_Border and then not Border_Value.Use_Default
+      then
+         for Index in 0 .. Integer'Min (Integer (Source.Channels), 4) - 1 loop
+            declare
+               V : constant OpenCV.Float64_Value :=
+                 (case Index is
+                    when 0      =>
+                      OpenCV.Float64_Value (Border_Value.Value.Component_0),
+                    when 1      =>
+                      OpenCV.Float64_Value (Border_Value.Value.Component_1),
+                    when 2      =>
+                      OpenCV.Float64_Value (Border_Value.Value.Component_2),
+                    when others =>
+                      OpenCV.Float64_Value (Border_Value.Value.Component_3));
+            begin
+               if V /= V
+                 or else V > OpenCV.Float64_Value'Last
+                 or else V < OpenCV.Float64_Value'First
+                 or else (Source.Depth = OpenCV.Core.Float32
+                          and then abs V
+                                   > OpenCV.Float64_Value
+                                       (OpenCV.Float32_Value'Last))
+               then
+                  Ada.Exceptions.Raise_Exception
+                    (OpenCV.OpenCV_Error'Identity,
+                     "Invalid morphology border value");
+               end if;
+            end;
+         end loop;
+         if Source.Channels > 4
+           and then (Border_Value.Value.Component_0
+                     /= Border_Value.Value.Component_1
+                     or else Border_Value.Value.Component_0
+                             /= Border_Value.Value.Component_2
+                     or else Border_Value.Value.Component_0
+                             /= Border_Value.Value.Component_3)
+         then
             Ada.Exceptions.Raise_Exception
-              (OpenCV.OpenCV_Error'Identity,
-               Operation
-               & " requires a UInt8, UInt16, Int16, Float32, or"
-               & " Float64 source Mat");
-      end case;
-   end Validate_Morphology;
+              (OpenCV.OpenCV_Error'Identity, "C5+ border must be uniform");
+         end if;
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Morphology");
+   end Morphology_Execute;
 
    procedure Validate_Canny
      (Source          : OpenCV.Core.Mat;
@@ -3693,152 +3838,296 @@ package body OpenCV.Image_Processing is
          Border);
    end Sep_Filter_2D;
 
-   type Basic_Morphology_Operation is (Erosion, Dilation);
-
-   procedure Apply_Basic_Morphology
-     (Source      : OpenCV.Core.Mat;
-      Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Size;
-      Shape       : Morphology_Shape;
-      Iterations  : Morphology_Iterations;
-      Border      : OpenCV.Border_Kind;
-      Operation   : Basic_Morphology_Operation)
-   is
-      Status : Internal.C_API.Status := Internal.C_API.Success;
-
-      procedure Morphology_Input
-        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
-      is
-         procedure Morphology_Output
-           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
-         is
-            Kernel_Width  : constant Interfaces.Integer_32 :=
-              Interfaces.Integer_32 (Kernel_Size.Width);
-            Kernel_Height : constant Interfaces.Integer_32 :=
-              Interfaces.Integer_32 (Kernel_Size.Height);
-            C_Shape       : constant Interfaces.Integer_32 :=
-              To_C_Morphology_Shape (Shape);
-            C_Iterations  : constant Interfaces.Integer_32 :=
-              Interfaces.Integer_32 (Iterations);
-            C_Border      : constant Interfaces.Integer_32 :=
-              To_C_Border (Border);
-         begin
-            case Operation is
-               when Erosion  =>
-                  Status :=
-                    Internal.C_API.Erode
-                      (Source_Handle,
-                       Destination_Handle,
-                       Kernel_Width,
-                       Kernel_Height,
-                       C_Shape,
-                       C_Iterations,
-                       C_Border);
-
-               when Dilation =>
-                  Status :=
-                    Internal.C_API.Dilate
-                      (Source_Handle,
-                       Destination_Handle,
-                       Kernel_Width,
-                       Kernel_Height,
-                       C_Shape,
-                       C_Iterations,
-                       C_Border);
-            end case;
-         end Morphology_Output;
-      begin
-         OpenCV.Core.Module_Interop.With_Output_Handle
-           (Destination, Morphology_Output'Access);
-      end Morphology_Input;
-
-      Name : constant String :=
-        (case Operation is
-           when Erosion  => "Erode",
-           when Dilation => "Dilate");
-   begin
-      Validate_Morphology (Source, Kernel_Size, Border, Name);
-      OpenCV.Core.Module_Interop.With_Input_Handle
-        (Source, Morphology_Input'Access);
-      Raise_On_Error (Status, Name);
-   end Apply_Basic_Morphology;
-
    procedure Erode
-     (Source      : OpenCV.Core.Mat;
-      Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Size;
-      Shape       : Morphology_Shape := Rectangle;
-      Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border) is
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape := Rectangle;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
    begin
-      Apply_Basic_Morphology
-        (Source, Destination, Kernel_Size, Shape, Iterations, Border, Erosion);
+      Morphology_Execute
+        (Source,
+         Destination,
+         0,
+         Kernel_Size,
+         Shape,
+         Source,
+         False,
+         (0, 0),
+         False,
+         Iterations,
+         Border,
+         Border_Value);
    end Erode;
 
    procedure Dilate
-     (Source      : OpenCV.Core.Mat;
-      Destination : in out OpenCV.Core.Mat;
-      Kernel_Size : OpenCV.Size;
-      Shape       : Morphology_Shape := Rectangle;
-      Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border) is
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape := Rectangle;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
    begin
-      Apply_Basic_Morphology
+      Morphology_Execute
         (Source,
          Destination,
+         1,
          Kernel_Size,
          Shape,
+         Source,
+         False,
+         (0, 0),
+         False,
          Iterations,
          Border,
-         Dilation);
+         Border_Value);
    end Dilate;
 
    procedure Apply_Morphology
-     (Source      : OpenCV.Core.Mat;
-      Destination : in out OpenCV.Core.Mat;
-      Operation   : Morphology_Operation;
-      Kernel_Size : OpenCV.Size;
-      Shape       : Morphology_Shape := Rectangle;
-      Iterations  : Morphology_Iterations := 1;
-      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border)
-   is
-      Status : Internal.C_API.Status := Internal.C_API.Success;
-
-      procedure Morphology_Input
-        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
-      is
-         procedure Morphology_Output
-           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
-         is
-         begin
-            Status :=
-              Internal.C_API.Morphology_Ex
-                (Source_Handle,
-                 Destination_Handle,
-                 To_C_Morphology_Operation (Operation),
-                 Interfaces.Integer_32 (Kernel_Size.Width),
-                 Interfaces.Integer_32 (Kernel_Size.Height),
-                 To_C_Morphology_Shape (Shape),
-                 Interfaces.Integer_32 (Iterations),
-                 To_C_Border (Border));
-         end Morphology_Output;
-      begin
-         OpenCV.Core.Module_Interop.With_Output_Handle
-           (Destination, Morphology_Output'Access);
-      end Morphology_Input;
-
-      Name : constant String :=
-        (case Operation is
-           when Opening   => "Opening",
-           when Closing   => "Closing",
-           when Gradient  => "Gradient",
-           when Top_Hat   => "Top_Hat",
-           when Black_Hat => "Black_Hat");
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Operation    : Morphology_Operation;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape := Rectangle;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
    begin
-      Validate_Morphology (Source, Kernel_Size, Border, Name);
-      OpenCV.Core.Module_Interop.With_Input_Handle
-        (Source, Morphology_Input'Access);
-      Raise_On_Error (Status, Name);
+      Morphology_Execute
+        (Source,
+         Destination,
+         Interfaces.Integer_32 (Morphology_Operation'Pos (Operation) + 2),
+         Kernel_Size,
+         Shape,
+         Source,
+         False,
+         (0, 0),
+         False,
+         Iterations,
+         Border,
+         Border_Value);
+   end Apply_Morphology;
+
+   procedure Erode
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         0,
+         Kernel_Size,
+         Shape,
+         Source,
+         False,
+         Anchor,
+         True,
+         Iterations,
+         Border,
+         Border_Value);
+   end Erode;
+
+   procedure Dilate
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         1,
+         Kernel_Size,
+         Shape,
+         Source,
+         False,
+         Anchor,
+         True,
+         Iterations,
+         Border,
+         Border_Value);
+   end Dilate;
+
+   procedure Apply_Morphology
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Operation    : Morphology_Operation;
+      Kernel_Size  : OpenCV.Size;
+      Shape        : Morphology_Shape;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         Interfaces.Integer_32 (Morphology_Operation'Pos (Operation) + 2),
+         Kernel_Size,
+         Shape,
+         Source,
+         False,
+         Anchor,
+         True,
+         Iterations,
+         Border,
+         Border_Value);
+   end Apply_Morphology;
+
+   procedure Erode
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel       : OpenCV.Core.Mat;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         0,
+         (0, 0),
+         Rectangle,
+         Kernel,
+         True,
+         (0, 0),
+         False,
+         Iterations,
+         Border,
+         Border_Value);
+   end Erode;
+
+   procedure Dilate
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel       : OpenCV.Core.Mat;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         1,
+         (0, 0),
+         Rectangle,
+         Kernel,
+         True,
+         (0, 0),
+         False,
+         Iterations,
+         Border,
+         Border_Value);
+   end Dilate;
+
+   procedure Apply_Morphology
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Operation    : Morphology_Operation;
+      Kernel       : OpenCV.Core.Mat;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         Interfaces.Integer_32 (Morphology_Operation'Pos (Operation) + 2),
+         (0, 0),
+         Rectangle,
+         Kernel,
+         True,
+         (0, 0),
+         False,
+         Iterations,
+         Border,
+         Border_Value);
+   end Apply_Morphology;
+
+   procedure Erode
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel       : OpenCV.Core.Mat;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         0,
+         (0, 0),
+         Rectangle,
+         Kernel,
+         True,
+         Anchor,
+         True,
+         Iterations,
+         Border,
+         Border_Value);
+   end Erode;
+
+   procedure Dilate
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Kernel       : OpenCV.Core.Mat;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         1,
+         (0, 0),
+         Rectangle,
+         Kernel,
+         True,
+         Anchor,
+         True,
+         Iterations,
+         Border,
+         Border_Value);
+   end Dilate;
+
+   procedure Apply_Morphology
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Operation    : Morphology_Operation;
+      Kernel       : OpenCV.Core.Mat;
+      Anchor       : OpenCV.Point;
+      Iterations   : Morphology_Iterations := 1;
+      Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value : Morphology_Border_Value := Default_Morphology_Border) is
+   begin
+      Morphology_Execute
+        (Source,
+         Destination,
+         Interfaces.Integer_32 (Morphology_Operation'Pos (Operation) + 2),
+         (0, 0),
+         Rectangle,
+         Kernel,
+         True,
+         Anchor,
+         True,
+         Iterations,
+         Border,
+         Border_Value);
    end Apply_Morphology;
 
    procedure Canny_Edges
