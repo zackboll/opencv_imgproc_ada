@@ -803,6 +803,38 @@ bool mat_storage_overlaps(const cv::Mat &first, const cv::Mat &second) noexcept;
 constexpr std::uint64_t pyramid_int_max =
     static_cast<std::uint64_t>(std::numeric_limits<int>::max());
 
+// Natural-size pyrDown: final y = ceil(rows/2)-1, PD_SZ=5, sy0=-2,
+// and k=4 maximize (y*2 - PD_SZ/2 + k - sy0) at 2*y+4.
+constexpr bool pyramid_down_vertical_ring_fits(std::uint64_t rows) noexcept
+{
+    return rows > 0 && 2 * ((rows + 1) / 2 - 1) + 4 <= pyramid_int_max;
+}
+
+// pyrDown_'s border table visits x=0..PD_SZ+1 (6). Its width0 is
+// min((cols-3)/2+1, ceil(cols/2)), with C++ truncation toward zero
+// for cols=2. The largest x + width0*2 - PD_SZ/2 is 2*width0+4.
+constexpr bool pyramid_down_horizontal_border_fits(std::uint64_t cols) noexcept
+{
+    if (cols == 0)
+        return false;
+    const std::uint64_t width0 = cols == 1 ? 0 :
+        cols == 2 ? 1 : (cols - 3) / 2 + 1;
+    return 2 * width0 + 4 <= pyramid_int_max;
+}
+
+static_assert(pyramid_down_vertical_ring_fits(pyramid_int_max - 3),
+              "INT_MAX-3 rows fit the pyrDown vertical ring selector");
+static_assert(!pyramid_down_vertical_ring_fits(pyramid_int_max - 2),
+              "INT_MAX-2 rows overflow the pyrDown vertical ring selector");
+static_assert(!pyramid_down_vertical_ring_fits(pyramid_int_max - 1),
+              "INT_MAX-1 rows overflow the pyrDown vertical ring selector");
+static_assert(pyramid_down_horizontal_border_fits(pyramid_int_max - 3),
+              "INT_MAX-3 columns fit the pyrDown border table");
+static_assert(!pyramid_down_horizontal_border_fits(pyramid_int_max - 2),
+              "INT_MAX-2 columns overflow the pyrDown border table");
+static_assert(!pyramid_down_horizontal_border_fits(pyramid_int_max - 1),
+              "INT_MAX-1 columns overflow the pyrDown border table");
+
 std::uint64_t pyramid_align_16(std::uint64_t value) noexcept
 {
     return (value + 15) & ~std::uint64_t{15};
@@ -821,14 +853,16 @@ opencv_imgproc_status pyramid_down_preflight(const cv::Mat &src,
     const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
     const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
     // ABI safety: pyrDown constructs Size((cols+1)/2, (rows+1)/2);
-    // pyrDown_ also doubles output extents and computes y*2+2 followed by
-    // sy++ in its vertical ring loop. The final y is ceil(rows/2)-1.
+    // pyrDown_ doubles output extents and computes y*2+2 in its ring fill.
+    // Its vertical ring selector reaches y*2+4; the horizontal border table
+    // independently reaches x+width0*2-2 at x=6. Check both expressions.
     const std::uint64_t down_width = (cols + 1) / 2;
     const std::uint64_t down_height = (rows + 1) / 2;
     if (cols >= pyramid_int_max || rows >= pyramid_int_max ||
         down_width * 2 > pyramid_int_max ||
         down_height * 2 > pyramid_int_max ||
-        (down_height - 1) * 2 + 2 >= pyramid_int_max)
+        !pyramid_down_vertical_ring_fits(rows) ||
+        !pyramid_down_horizontal_border_fits(cols))
         return invalid_argument("pyrDown dimensions overflow native int arithmetic");
 
     const std::uint64_t source_width = cols * cn;
@@ -839,14 +873,14 @@ opencv_imgproc_status pyramid_down_preflight(const cv::Mat &src,
         pyramid_align_16(scaled_width) * 5 + 16 > pyramid_int_max)
         return invalid_argument("pyrDown channel width or ring buffer overflows native int");
 
-    // OpenVX 4.1/4.10 accepts only CV_8UC1, REPLICATE and natural size;
-    // ivx::Image::createAddressing narrows the effective Mat step to vx_int32.
-    // IPP 4.1/4.10/5.0 accepts C1/C3 UInt8/Float32, DEFAULT and an
-    // owning (or isolated) source; it narrows both byte steps to int.
-    const bool openvx = src.type() == CV_8UC1 && border == cv::BORDER_REPLICATE;
-    const bool ipp = border == cv::BORDER_DEFAULT && pyramid_ipp_type(src);
-    if (openvx || ipp) {
-        // ABI safety: native OpenVX/IPP row-step casts truncate size_t.
+    // OpenVX pyrDown in 4.1/4.10 accepts CV_8UC1, REPLICATE and natural
+    // size; createAddressing narrows Mat row steps to vx_int32. OpenCV 5.0
+    // has no OpenVX path: retain this restriction as portable binding policy
+    // across supported builds. 4.1/4.10 ipp_pyrdown's step casts are behind
+    // dsz == Size(src.cols*2, src.rows*2), unreachable for natural downsize;
+    // 5.0 has no direct ipp_pyrdown. buildPyramid's IPP path is not bound.
+    if (src.type() == CV_8UC1 && border == cv::BORDER_REPLICATE) {
+        // ABI safety: native OpenVX row-step casts truncate size_t.
         const bool reused_destination =
             dst.size() == cv::Size(static_cast<int>(down_width),
                                    static_cast<int>(down_height)) &&
@@ -854,7 +888,7 @@ opencv_imgproc_status pyramid_down_preflight(const cv::Mat &src,
         if (src.step[0] > pyramid_int_max ||
             scaled_width * src.elemSize1() > pyramid_int_max ||
             (reused_destination && dst.step[0] > pyramid_int_max))
-            return invalid_argument("pyrDown backend byte step overflows signed int");
+            return invalid_argument("pyrDown OpenVX byte step overflows signed int");
     }
     return OPENCV_IMGPROC_OK;
 }
