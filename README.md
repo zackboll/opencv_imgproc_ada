@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **373 AUnit tests**
+> **Current registered test baseline:** **377 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -1480,7 +1480,11 @@ Behavior:
 - `Constant_Border`, `Replicate`, `Reflect`, and `Reflect_101` are supported;
 - `Wrap` is rejected;
 - constant-border morphology uses OpenCV's morphology default border value;
-- direct in-place operation is supported.
+- direct in-place operation is supported, including a parent-backed Region;
+- a Source Region is processed as its own logical image: pixels in its parent
+  outside the view do not participate. A distinct Destination is rebound to the
+  Region's geometry and type; in-place operation changes only the Region's
+  pixels, not the rest of its parent.
 
 ---
 

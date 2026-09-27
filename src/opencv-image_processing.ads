@@ -763,8 +763,9 @@ package OpenCV.Image_Processing is
    --  is rejected. Constant_Border uses OpenCV's morphology default border
    --  value. Destination receives Source's geometry and element type. Source
    --  remains unchanged unless it is also Destination, which is supported for
-   --  in-place erosion. Contract violations and OpenCV failures raise
-   --  OpenCV.OpenCV_Error.
+   --  in-place erosion. A Region is processed as its own logical image; pixels
+   --  in its parent outside the view do not participate. Contract violations
+   --  and OpenCV failures raise OpenCV.OpenCV_Error.
    procedure Erode
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -777,7 +778,9 @@ package OpenCV.Image_Processing is
    --  temporary structuring element of Kernel_Size and Shape. It has the same
    --  source depth, channel, kernel-size, iteration, border, destination, and
    --  in-place semantics as Erode. Constant_Border uses OpenCV's morphology
-   --  default border value. Contract violations and OpenCV failures raise
+   --  default border value. A Region is processed as its own logical image;
+   --  pixels in its parent outside the view do not participate.
+   --  Contract violations and OpenCV failures raise
    --  OpenCV.OpenCV_Error.
    procedure Dilate
      (Source      : OpenCV.Core.Mat;
@@ -796,7 +799,9 @@ package OpenCV.Image_Processing is
    --  supported; Wrap is rejected. Constant_Border uses OpenCV's morphology
    --  default border value. Destination receives Source's geometry and element
    --  type. Source remains unchanged unless it is also Destination, which is
-   --  supported in-place. Contract violations and OpenCV failures raise
+   --  supported in-place. A Region is processed as its own logical image;
+   --  pixels in its parent outside the view do not participate.
+   --  Contract violations and OpenCV failures raise
    --  OpenCV.OpenCV_Error.
    procedure Apply_Morphology
      (Source      : OpenCV.Core.Mat;

@@ -86,6 +86,125 @@ package body Morphology_Tests is
       end loop;
    end Set_UInt8_Image;
 
+   procedure Assert_Constant_Image
+     (Image : OpenCV.Core.Mat; Value : Interfaces.Unsigned_8; Label : String)
+   is
+   begin
+      for Row in 0 .. Integer (Image.Rows) - 1 loop
+         for Column in 0 .. Integer (Image.Columns) - 1 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Image, Row, Column) = Value,
+               Label & " at" & Row'Image & "," & Column'Image);
+         end loop;
+      end loop;
+   end Assert_Constant_Image;
+
+   procedure Erosion_Region_Uses_Logical_Boundary (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Source      : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 1));
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 0.0));
+      OpenCV.Core.Set_To (Source, (100.0, others => 0.0));
+      OpenCV.Image_Processing.Erode
+        (Source, Destination, (3, 3), Border => OpenCV.Reflect);
+      Assert_Constant_Image (Destination, 100, "isolated erosion");
+      AUnit.Assertions.Assert
+        (Destination.Rows = 3
+         and then Destination.Columns = 3
+         and then Destination.Depth = OpenCV.Core.UInt8,
+         "distinct destination must be rebound to Region geometry and type");
+      for Row in 0 .. 4 loop
+         for Column in 0 .. 4 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, Row, Column)
+               = (if Row in 1 .. 3 and then Column in 1 .. 3 then 100 else 0),
+               "erosion must preserve parent including outside Region");
+         end loop;
+      end loop;
+   end Erosion_Region_Uses_Logical_Boundary;
+
+   procedure Dilation_Region_Uses_Logical_Boundary (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Source      : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Parent, (200.0, others => 0.0));
+      OpenCV.Core.Set_To (Source, (10.0, others => 0.0));
+      OpenCV.Image_Processing.Dilate
+        (Source, Destination, (3, 3), Border => OpenCV.Replicate);
+      Assert_Constant_Image (Destination, 10, "isolated dilation");
+      for Row in 0 .. 4 loop
+         for Column in 0 .. 4 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, Row, Column)
+               = (if Row in 1 .. 3 and then Column in 1 .. 3 then 10 else 200),
+               "dilation must not alter the parent");
+         end loop;
+      end loop;
+   end Dilation_Region_Uses_Logical_Boundary;
+
+   procedure Gradient_Region_Uses_Logical_Boundary (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Source      : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 0.0));
+      OpenCV.Core.Set_To (Source, (100.0, others => 0.0));
+      OpenCV.Image_Processing.Apply_Morphology
+        (Source,
+         Destination,
+         OpenCV.Image_Processing.Gradient,
+         (3, 3),
+         Border => OpenCV.Reflect_101);
+      Assert_Constant_Image (Destination, 0, "isolated gradient");
+      Assert_Constant_Image (Source, 100, "gradient source Region");
+   end Gradient_Region_Uses_Logical_Boundary;
+
+   procedure In_Place_Region_Erosion_Only_Changes_View (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.UInt8, 1));
+      Source     : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      Standalone : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Expected   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 0.0));
+      OpenCV.Core.Set_To (Source, (100.0, others => 0.0));
+      OpenCV.Core.Set_To (Standalone, (100.0, others => 0.0));
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 200);
+      OpenCV.Core.UInt8_Access.Set (Standalone, 1, 1, 200);
+      OpenCV.Image_Processing.Erode
+        (Standalone, Expected, (3, 3), Border => OpenCV.Reflect);
+      OpenCV.Image_Processing.Erode
+        (Source, Source, (3, 3), Border => OpenCV.Reflect);
+      for Row in 0 .. 4 loop
+         for Column in 0 .. 4 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, Row, Column)
+               = (if Row in 1 .. 3 and then Column in 1 .. 3
+                  then
+                    OpenCV.Core.UInt8_Access.Get
+                      (Expected, Row - 1, Column - 1)
+                  else 0),
+               "in-place erosion must modify only the parent-backed view");
+         end loop;
+      end loop;
+   end In_Place_Region_Erosion_Only_Changes_View;
+
    procedure Rectangle_Erosion_Uses_Defaults_And_Replaces_Destination
      (Test : in out Fixture)
    is
@@ -651,6 +770,22 @@ package body Morphology_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("erosion Region uses logical boundary",
+            Erosion_Region_Uses_Logical_Boundary'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("dilation Region uses logical boundary",
+            Dilation_Region_Uses_Logical_Boundary'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("gradient Region uses logical boundary",
+            Gradient_Region_Uses_Logical_Boundary'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("in-place Region erosion only changes view",
+            In_Place_Region_Erosion_Only_Changes_View'Access));
       Result.Add_Test
         (Caller.Create
            ("rectangle erosion uses defaults and replaces destination",
