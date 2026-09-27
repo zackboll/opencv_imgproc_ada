@@ -215,6 +215,30 @@ package OpenCV.Image_Processing is
 
    subtype Drawing_Radius is Positive;
 
+   type Drawing_Marker_Kind is
+     (Cross_Marker,
+      Tilted_Cross_Marker,
+      Star_Marker,
+      Diamond_Marker,
+      Square_Marker,
+      Triangle_Up_Marker,
+      Triangle_Down_Marker);
+
+   type Text_Font is
+     (Hershey_Simplex,
+      Hershey_Plain,
+      Hershey_Duplex,
+      Hershey_Complex,
+      Hershey_Triplex,
+      Hershey_Complex_Small,
+      Hershey_Script_Simplex,
+      Hershey_Script_Complex);
+
+   type Text_Metrics is record
+      Size     : OpenCV.Size;
+      Baseline : Natural;
+   end record;
+
    --  Minimum accumulator votes required for a Hough line or segment.
    subtype Hough_Vote_Threshold is Positive range 1 .. 2_147_483_647;
 
@@ -1144,6 +1168,55 @@ package OpenCV.Image_Processing is
       Color      : OpenCV.Scalar;
       Thickness  : Drawing_Thickness := 1;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   --  Tip_Length is a finite fraction in (0, 1]. Coincident endpoints are
+   --  rejected. Unsafe native coordinate arithmetic raises OpenCV_Error.
+   procedure Draw_Arrow
+     (Image      : in out OpenCV.Core.Mat;
+      Start      : OpenCV.Point;
+      Finish     : OpenCV.Point;
+      Color      : OpenCV.Scalar;
+      Tip_Length : OpenCV.Float64_Value := 0.1;
+      Thickness  : Drawing_Thickness := 1;
+      Line_Style : Drawing_Line_Style := Eight_Connected_Line);
+
+   procedure Draw_Marker
+     (Image       : in out OpenCV.Core.Mat;
+      Position    : OpenCV.Point;
+      Color       : OpenCV.Scalar;
+      Kind        : Drawing_Marker_Kind := Cross_Marker;
+      Marker_Size : Positive := 20;
+      Thickness   : Drawing_Thickness := 1;
+      Line_Style  : Drawing_Line_Style := Eight_Connected_Line);
+
+   --  Hershey stroke fonts only: unsupported characters may render as '?'.
+   --  Text is passed as bytes, including embedded NULs; empty text is a no-op.
+   --  Bottom_Left_Origin reverses the vertical direction of the glyphs.
+   procedure Draw_Text
+     (Image              : in out OpenCV.Core.Mat;
+      Text               : String;
+      Origin             : OpenCV.Point;
+      Color              : OpenCV.Scalar;
+      Font               : Text_Font := Hershey_Simplex;
+      Font_Scale         : OpenCV.Float64_Value := 1.0;
+      Italic             : Boolean := False;
+      Thickness          : Drawing_Thickness := 1;
+      Line_Style         : Drawing_Line_Style := Eight_Connected_Line;
+      Bottom_Left_Origin : Boolean := False);
+
+   --  Baseline is the unadjusted native distance below the bottom-most point.
+   function Measure_Text
+     (Text       : String;
+      Font       : Text_Font := Hershey_Simplex;
+      Font_Scale : OpenCV.Float64_Value := 1.0;
+      Italic     : Boolean := False;
+      Thickness  : Drawing_Thickness := 1) return Text_Metrics;
+
+   function Font_Scale_For_Height
+     (Pixel_Height : Positive;
+      Font         : Text_Font := Hershey_Simplex;
+      Italic       : Boolean := False;
+      Thickness    : Drawing_Thickness := 1) return OpenCV.Float64_Value;
 
    procedure Draw_Rectangle
      (Image      : in out OpenCV.Core.Mat;

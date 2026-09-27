@@ -21,6 +21,7 @@ with Gaussian_Blur_Tests;
 with Gaussian_Kernel_Tests;
 with Derivative_Kernel_Tests;
 with Drawing_Tests;
+with Drawing_Annotation_Tests;
 with Distance_Transform_Tests;
 with Integral_Image_Tests;
 with Laplacian_Tests;
@@ -79,6 +80,7 @@ begin
 
    Suite.Add_Test (Contour_Tests.Suite);
    Suite.Add_Test (Drawing_Tests.Suite);
+   Suite.Add_Test (Drawing_Annotation_Tests.Suite);
    Suite.Add_Test (Hough_Detection_Tests.Suite);
    Suite.Add_Test (Segmentation_Tests.Suite);
    Suite.Add_Test (Histogram_Analysis_Tests.Suite);
