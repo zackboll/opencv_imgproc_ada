@@ -1189,8 +1189,10 @@ package OpenCV.Image_Processing is
       Thickness   : Drawing_Thickness := 1;
       Line_Style  : Drawing_Line_Style := Eight_Connected_Line);
 
-   --  Hershey stroke fonts only: unsupported characters may render as '?'.
-   --  Text is passed as bytes, including embedded NULs; empty text is a no-op.
+   --  Legacy Hershey selectors: OpenCV 4.x uses strokes; OpenCV 5 uses its
+   --  built-in TrueType compatibility renderer. Glyphs and metrics may differ.
+   --  Requires a nonempty 2-D UInt8 C1, C3 or C4 image. Text is a byte span,
+   --  including embedded NULs; empty text is a no-op after image/color checks.
    --  Bottom_Left_Origin reverses the vertical direction of the glyphs.
    procedure Draw_Text
      (Image              : in out OpenCV.Core.Mat;
@@ -1199,23 +1201,22 @@ package OpenCV.Image_Processing is
       Color              : OpenCV.Scalar;
       Font               : Text_Font := Hershey_Simplex;
       Font_Scale         : OpenCV.Float64_Value := 1.0;
-      Italic             : Boolean := False;
       Thickness          : Drawing_Thickness := 1;
-      Line_Style         : Drawing_Line_Style := Eight_Connected_Line;
       Bottom_Left_Origin : Boolean := False);
 
-   --  Baseline is the unadjusted native distance below the bottom-most point.
+   --  Empty text returns Size (0, 0) and Baseline 0. Otherwise the baseline
+   --  is the unadjusted native distance below the bottom-most point.
    function Measure_Text
      (Text       : String;
       Font       : Text_Font := Hershey_Simplex;
       Font_Scale : OpenCV.Float64_Value := 1.0;
-      Italic     : Boolean := False;
       Thickness  : Drawing_Thickness := 1) return Text_Metrics;
 
+   --  Reject heights where 2 * Pixel_Height <= Thickness + 1 (the OpenCV 4
+   --  scale would be nonpositive), regardless of the linked OpenCV version.
    function Font_Scale_For_Height
      (Pixel_Height : Positive;
       Font         : Text_Font := Hershey_Simplex;
-      Italic       : Boolean := False;
       Thickness    : Drawing_Thickness := 1) return OpenCV.Float64_Value;
 
    procedure Draw_Rectangle

@@ -689,14 +689,14 @@ opencv_imgproc_status opencv_imgproc_draw_text(
     opencv_core_mat_handle *image, const char *text, int32_t text_length,
     int32_t x, int32_t y, double color_0, double color_1,
     double color_2, double color_3, int32_t font, double font_scale,
-    uint8_t italic, int32_t thickness, int32_t line_style,
+    int32_t thickness,
     uint8_t bottom_left_origin);
 opencv_imgproc_status opencv_imgproc_measure_text(
     const char *text, int32_t text_length, int32_t font, double font_scale,
-    uint8_t italic, int32_t thickness, int32_t *width, int32_t *height,
+    int32_t thickness, int32_t *width, int32_t *height,
     int32_t *baseline);
 opencv_imgproc_status opencv_imgproc_font_scale_for_height(
-    int32_t pixel_height, int32_t font, uint8_t italic,
+    int32_t pixel_height, int32_t font,
     int32_t thickness, double *scale);
 
 opencv_imgproc_status

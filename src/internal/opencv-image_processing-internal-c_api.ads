@@ -854,8 +854,7 @@ package OpenCV.Image_Processing.Internal.C_API is
       Color_0, Color_1, Color_2, Color_3 : Interfaces.C.double;
       Font                               : Interfaces.Integer_32;
       Font_Scale                         : Interfaces.C.double;
-      Italic                             : Interfaces.Unsigned_8;
-      Thickness, Line_Style              : Interfaces.Integer_32;
+      Thickness                          : Interfaces.Integer_32;
       Bottom_Left_Origin                 : Interfaces.Unsigned_8) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_draw_text";
 
@@ -863,7 +862,6 @@ package OpenCV.Image_Processing.Internal.C_API is
      (Text                    : System.Address;
       Text_Length, Font       : Interfaces.Integer_32;
       Font_Scale              : Interfaces.C.double;
-      Italic                  : Interfaces.Unsigned_8;
       Thickness               : Interfaces.Integer_32;
       Width, Height, Baseline : access Interfaces.Integer_32) return Status
    with
@@ -873,7 +871,6 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    function Font_Scale_For_Height
      (Pixel_Height, Font : Interfaces.Integer_32;
-      Italic             : Interfaces.Unsigned_8;
       Thickness          : Interfaces.Integer_32;
       Scale              : access Interfaces.C.double) return Status
    with

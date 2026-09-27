@@ -9,6 +9,7 @@ with OpenCV.Core.Module_Interop;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
+with OpenCV.Core.UInt8_Vec4_Access;
 with OpenCV.Image_Processing;
 with OpenCV.Image_Processing.Internal.C_API;
 with System;
@@ -179,9 +180,6 @@ package body Drawing_Annotation_Tests is
            (IP.Measure_Text ("A", Font).Size.Width > 0,
             "Hershey selector must route " & Font'Image);
       end loop;
-      AUnit.Assertions.Assert
-        (IP.Measure_Text ("A", Italic => True).Size.Width > 0,
-         "italic flag routes");
    end Text_Rendering;
 
    procedure Text_Orientation_And_Empty (Test : in out Fixture) is
@@ -194,7 +192,14 @@ package body Drawing_Annotation_Tests is
       IP.Draw_Text (Normal, "H", (10, 50), White);
       IP.Draw_Text
         (Inverted, "H", (10, 50), White, Bottom_Left_Origin => True);
-      IP.Draw_Text (Normal, "", (10, 50), White);
+      declare
+         Before : constant OpenCV.Core.Mat := Normal.Clone;
+      begin
+         IP.Draw_Text (Normal, "", (10, 50), White);
+         AUnit.Assertions.Assert
+           (Pixel (Before, 10, 40) = Pixel (Normal, 10, 40),
+            "empty text leaves pixels unchanged");
+      end;
       for Y in 25 .. 49 loop
          for X in 10 .. 35 loop
             if Pixel (Normal, X, Y) /= 0 then
@@ -212,10 +217,10 @@ package body Drawing_Annotation_Tests is
       AUnit.Assertions.Assert
         (Above > 0 and then Below > 0, "bottom-left origin reverses glyphs");
       AUnit.Assertions.Assert
-        (Empty.Size.Width = 1
-         and then Empty.Size.Height > 0
-         and then Empty.Baseline > 0,
-         "empty native metrics");
+        (Empty.Size.Width = 0
+         and then Empty.Size.Height = 0
+         and then Empty.Baseline = 0,
+         "portable empty metrics");
    end Text_Orientation_And_Empty;
 
    procedure Metrics_And_Height (Test : in out Fixture) is
@@ -238,7 +243,7 @@ package body Drawing_Annotation_Tests is
          and then Metrics.Baseline > 0,
          "native bounding metrics and baseline");
       AUnit.Assertions.Assert
-        (abs (Integer (At_Height.Size.Height) - 30) <= 1,
+        (abs (Integer (At_Height.Size.Height) - 30) <= 3,
          "requested height rounds to native text height");
       Expect_Error (Too_Small'Access, "unusable requested height");
    end Metrics_And_Height;
@@ -270,7 +275,6 @@ package body Drawing_Annotation_Tests is
             -1,
             0,
             1.0,
-            0,
             1,
             Width'Access,
             Height'Access,
@@ -283,7 +287,6 @@ package body Drawing_Annotation_Tests is
             1,
             0,
             1.0,
-            0,
             1,
             Width'Access,
             Height'Access,
@@ -296,7 +299,6 @@ package body Drawing_Annotation_Tests is
             0,
             8,
             1.0,
-            0,
             1,
             Width'Access,
             Height'Access,
@@ -309,20 +311,6 @@ package body Drawing_Annotation_Tests is
             0,
             0,
             1.0,
-            2,
-            1,
-            Width'Access,
-            Height'Access,
-            Baseline'Access)
-         /= Zero,
-         "invalid italic boolean");
-      AUnit.Assertions.Assert
-        (C_API.Measure_Text
-           (System.Null_Address,
-            0,
-            0,
-            1.0,
-            0,
             1,
             null,
             Height'Access,
@@ -330,13 +318,10 @@ package body Drawing_Annotation_Tests is
          /= Zero,
          "null metric output");
       AUnit.Assertions.Assert
-        (C_API.Font_Scale_For_Height (20, 0, 0, 1, null) /= Zero,
+        (C_API.Font_Scale_For_Height (20, 0, 1, null) /= Zero,
          "null scale output");
       AUnit.Assertions.Assert
-        (C_API.Font_Scale_For_Height (20, 0, 2, 1, Scale'Access) /= Zero,
-         "invalid scale italic");
-      AUnit.Assertions.Assert
-        (C_API.Font_Scale_For_Height (20, 0, 0, 1, Scale'Access) = Zero
+        (C_API.Font_Scale_For_Height (20, 0, 1, Scale'Access) = Zero
          and then Scale > 0.0,
          "successful call clears prior ABI error");
    end Raw_Arguments;
@@ -402,9 +387,7 @@ package body Drawing_Annotation_Tests is
                0.0,
                0,
                1.0,
-               0,
                1,
-               8,
                2)
             /= Zero,
             "raw bottom-left boolean");
@@ -421,9 +404,7 @@ package body Drawing_Annotation_Tests is
                0.0,
                0,
                1.0E12,
-               0,
                1,
-               8,
                0)
             /= Zero,
             "raw scale overflow");
@@ -440,9 +421,7 @@ package body Drawing_Annotation_Tests is
                0.0,
                0,
                1.0,
-               0,
                1,
-               8,
                0)
             /= Zero,
             "raw text length arithmetic");
@@ -464,8 +443,7 @@ package body Drawing_Annotation_Tests is
       Empty : OpenCV.Core.Mat;
       procedure AA is
       begin
-         IP.Draw_Text
-           (Image, "A", (1, 8), White, Line_Style => IP.Anti_Aliased_Line);
+         IP.Draw_Text (Image, "A", (1, 8), White);
       end AA;
       procedure Empty_Image is
       begin
@@ -476,7 +454,7 @@ package body Drawing_Annotation_Tests is
          IP.Draw_Text (Image, "A", (1, 8), White, Font_Scale => 0.0);
       end Zero_Scale;
    begin
-      Expect_Error (AA'Access, "AA only on UInt8");
+      Expect_Error (AA'Access, "text only on UInt8");
       Expect_Error (Empty_Image'Access, "nonempty drawing image");
       Expect_Error (Zero_Scale'Access, "positive font scale");
    end Public_Validation;
@@ -508,6 +486,119 @@ package body Drawing_Annotation_Tests is
         (IP.Measure_Text (Text).Size.Width > IP.Measure_Text ("A").Size.Width,
          "embedded NUL and non-1 lower bound are passed as bytes");
    end Text_Bytes_And_Channels;
+
+   procedure Text_Image_Contract (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      C4      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (80, 120, (OpenCV.Core.UInt8, 4));
+      U16     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (80, 120, (OpenCV.Core.UInt16, 1));
+      F32     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (80, 120, (OpenCV.Core.Float32, 1));
+      C2      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (80, 120, (OpenCV.Core.UInt8, 2));
+      ROI     : OpenCV.Core.Mat := OpenCV.Core.Region (C4, (10, 10, 90, 60));
+      Changed : Boolean := False;
+      procedure Bad_U16 is
+      begin
+         IP.Draw_Text (U16, "A", (10, 50), White);
+      end Bad_U16;
+      procedure Bad_F32 is
+      begin
+         IP.Draw_Text (F32, "A", (10, 50), White);
+      end Bad_F32;
+      procedure Bad_C2 is
+      begin
+         IP.Draw_Text (C2, "A", (10, 50), White);
+      end Bad_C2;
+      procedure Raw_Check
+        (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      is
+         Text : aliased constant String := "A";
+      begin
+         AUnit.Assertions.Assert
+           (C_API.Draw_Text
+              (Handle,
+               Text'Address,
+               1,
+               10,
+               50,
+               255.0,
+               0.0,
+               0.0,
+               0.0,
+               0,
+               1.0,
+               1,
+               0)
+            /= 0,
+            "raw text rejects unsupported image layout");
+      end Raw_Check;
+   begin
+      OpenCV.Core.Set_To (C4, (others => 0.0));
+      IP.Draw_Text (ROI, "A", (10, 40), White);
+      for Y in 10 .. 69 loop
+         for X in 10 .. 99 loop
+            if OpenCV.Core.UInt8_Vec4_Access.Get (C4, Y, X) (0) /= 0 then
+               Changed := True;
+            end if;
+         end loop;
+      end loop;
+      AUnit.Assertions.Assert
+        (Changed, "C4 Region text renders and retains its Mat");
+      Expect_Error (Bad_U16'Access, "UInt16 text rejected");
+      Expect_Error (Bad_F32'Access, "Float32 text rejected");
+      Expect_Error (Bad_C2'Access, "C2 text rejected");
+      OpenCV.Core.Module_Interop.With_Output_Handle (U16, Raw_Check'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (F32, Raw_Check'Access);
+      OpenCV.Core.Module_Interop.With_Output_Handle (C2, Raw_Check'Access);
+   end Text_Image_Contract;
+
+   procedure Text_Origin_Overflow (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat := Blank (12, 12);
+      Text  : aliased constant String (1 .. 1_500) := (others => 'W');
+      procedure Check (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      is
+      begin
+         AUnit.Assertions.Assert
+           (C_API.Draw_Text
+              (Handle,
+               Text'Address,
+               Text'Length,
+               Interfaces.Integer_32'Last - 700,
+               5,
+               255.0,
+               0.0,
+               0.0,
+               0.0,
+               0,
+               1.0,
+               1,
+               0)
+            /= 0,
+            "long text plus extreme X origin rejected");
+         AUnit.Assertions.Assert
+           (C_API.Draw_Text
+              (Handle,
+               Text'Address,
+               Text'Length,
+               5,
+               Interfaces.Integer_32'First + 700,
+               255.0,
+               0.0,
+               0.0,
+               0.0,
+               0,
+               1.0,
+               1,
+               0)
+            /= 0,
+            "long text plus extreme Y origin rejected");
+      end Check;
+   begin
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Check'Access);
+   end Text_Origin_Overflow;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
@@ -542,6 +633,11 @@ package body Drawing_Annotation_Tests is
       Result.Add_Test
         (Caller.Create
            ("Annotation public validation", Public_Validation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Portable text image layout", Text_Image_Contract'Access));
+      Result.Add_Test
+        (Caller.Create ("Raw text pen overflow", Text_Origin_Overflow'Access));
       return Result'Access;
    end Suite;
 end Drawing_Annotation_Tests;

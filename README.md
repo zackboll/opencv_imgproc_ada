@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **406 AUnit tests**
+> **Current registered test baseline:** **408 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -218,7 +218,7 @@ The table below summarizes the current public operations.
 | Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
 | Analysis | `Distance_Transform`, `Manhattan_Distance_Transform_UInt8`, `Distance_Transform_With_Labels` | nonempty 2-D `UInt8` C1 with at least one zero | fresh Float32 distances, saturating UInt8 L1, or Float32 distances plus Int32 Voronoi labels |
 | Analysis | `Integral_Sum`, `Integral_Sum_And_Squares`, `Integral_Images` | nonempty 2-D `UInt8`, `Float32`, `Float64`; arbitrary valid channel count | fresh, independent-channel `(rows+1) x (cols+1)` integral Mats; Float64 accumulator defaults |
-| Drawing | `Draw_Line`, `Draw_Arrow`, `Draw_Marker`, `Draw_Text`, `Measure_Text`, `Font_Scale_For_Height`, rectangles, circles, ellipses, polylines, polygons | nonempty 2-D image; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | in-place annotation; Hershey fonts only; antialiasing only for `UInt8`; no alpha blending |
+| Drawing | `Draw_Line`, `Draw_Arrow`, `Draw_Marker`, `Draw_Text`, `Measure_Text`, `Font_Scale_For_Height`, rectangles, circles, ellipses, polylines, polygons | shapes: nonempty 2-D `UInt8`, `UInt16`, `Int16`, `Float32`, `Float64` C1..C4; text: nonempty 2-D `UInt8` C1/C3/C4 | in-place annotation; legacy text selectors; shape antialiasing only for `UInt8`; no alpha blending |
 | Hough | `Find_Hough_Lines`, `Find_Hough_Line_Segments` | nonempty 2-D `UInt8` C1 binary image | classical polar lines (radians) and probabilistic integer segments; Ada-owned arrays; source-preserving snapshot |
 | Hough | `Find_Hough_Circles` | nonempty 2-D `UInt8` C1 grayscale image | classic `HOUGH_GRADIENT`; automatic or explicit maximum radius; Float32 center/radius; source-preserving snapshot |
 | Segmentation | `Flood_Fill`, `Flood_Fill_With_Mask` | nonempty 2-D `UInt8`/`Float32`, C1/C3; mask `UInt8` C1 `(rows + 2) x (cols + 2)` | in place; floating/fixed range; 4/8 connectivity; area and bounds; mask fill value and mask-only mode |
@@ -2118,7 +2118,7 @@ API. A partial `Fill_Ellipse` interval fills the elliptic sector; a full turn
 fills the ellipse. Angles are finite and default to degrees. Radians are
 converted in Ada and are not otherwise normalized.
 
-The image must be nonempty and two-dimensional, with depth `UInt8`, `UInt16`,
+For shapes, the image must be nonempty and two-dimensional, with depth `UInt8`, `UInt16`,
 `Int16`, `Float32`, or `Float64`, and 1 through 4 channels. Scalar components
 are copied in channel order. The binding does not convert grayscale or color
 and does not blend the fourth channel as alpha. Color components used by the
@@ -2129,14 +2129,28 @@ bounds are arbitrary, so an extracted `Contour` can be passed directly.
 
 `Draw_Arrow` requires distinct endpoints and a finite tip fraction in (0, 1].
 All seven marker shapes are available; marker size must be positive. The eight
-Hershey stroke-font families support optional italic strokes, not arbitrary
-Unicode or custom fonts: OpenCV may render unsupported characters as `?`.
+legacy Hershey font selectors are available. OpenCV 4.1/4.10 render through
+classic Hershey strokes; OpenCV 5.0 maps the same selectors to built-in
+sans/serif/italic TrueType faces. Glyphs and exact metrics can differ. The
+binding guarantees selector routing and high-level semantics, not identical
+pixels. The legacy italic bit and text line-style selector are not portable
+and are not exposed; OpenCV 4.x uses LINE_8 internally. `Draw_Text` requires
+a nonempty 2-D `UInt8` image with exactly 1, 3 or 4 channels, including
+Regions. It rejects `UInt16`, `Int16`, `Float32`, `Float64` and C2.
 `Draw_Text` accepts empty and embedded-NUL byte strings; empty text draws
-nothing. Font scale must be finite and positive. `Measure_Text` returns the
-native bounding `Size` and unadjusted baseline (do not add thickness unless
+nothing after image/color validation. The byte span preserves arbitrary Ada
+lower bounds and embedded NULs; non-ASCII glyph interpretation depends on
+the native OpenCV generation. Font scale must be finite and positive.
+`Measure_Text ("")` always returns size `(0, 0)` and baseline `0` without
+calling native code. For nonempty text, it returns the native bounding `Size`
+and unadjusted baseline (do not add thickness unless
 you need the padding shown in OpenCV's layout example).
 `Font_Scale_For_Height` computes OpenCV's scale for a positive pixel height;
-heights yielding zero or negative or unsafe scales are rejected. Native
+heights with `2 * Pixel_Height <= Thickness + 1` are rejected before the native
+call, using widened arithmetic to preserve OpenCV-4-compatible positivity.
+Measured height for a representative requested height can differ by up to
+three pixels due to native rounding and generation-specific font metrics.
+Nonfinite, nonpositive or geometry-unsafe native scales are also rejected. Native
 arithmetic preflights reject extreme coordinates, glyph scales and text lengths
 even if the visible image is small. All drawing validation failures raise
 `OpenCV.OpenCV_Error`.
@@ -3227,7 +3241,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **406-test** baseline is:
+The current **408-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3258,13 +3272,13 @@ The current **406-test** baseline is:
 | Contours | 7 |
 | Connected components | 6 |
 | Drawing | 11 |
-| Drawing annotations | 12 |
+| Drawing annotations | 14 |
 | Hough detection | 24 |
 | Segmentation (flood fill, watershed, GrabCut) | 29 |
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **406** |
+| **Total** | **408** |
 
 
 The suite covers more than simple success paths. It includes:

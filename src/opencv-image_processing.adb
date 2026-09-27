@@ -4761,6 +4761,23 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Drawing_Image;
 
+   procedure Validate_Text_Image (Image : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Image.Is_Empty
+        or else Image.Dimension_Count /= 2
+        or else Image.Depth /= OpenCV.Core.UInt8
+        or else (Image.Channels /= 1
+                 and then Image.Channels /= 3
+                 and then Image.Channels /= 4)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "text requires a nonempty 2-D UInt8 C1, C3 or C4 image");
+      end if;
+   end Validate_Text_Image;
+
    procedure Validate_Drawing_Color
      (Image : OpenCV.Core.Mat; Color : OpenCV.Scalar)
    is
@@ -4987,9 +5004,7 @@ package body OpenCV.Image_Processing is
       Color              : OpenCV.Scalar;
       Font               : Text_Font := Hershey_Simplex;
       Font_Scale         : OpenCV.Float64_Value := 1.0;
-      Italic             : Boolean := False;
       Thickness          : Drawing_Thickness := 1;
-      Line_Style         : Drawing_Line_Style := Eight_Connected_Line;
       Bottom_Left_Origin : Boolean := False)
    is
       Status : Internal.C_API.Status;
@@ -5009,15 +5024,16 @@ package body OpenCV.Image_Processing is
               Interfaces.C.double (Color.Component_3),
               Font_Selector (Font),
               Interfaces.C.double (Font_Scale),
-              C_Boolean (Italic),
               Interfaces.Integer_32 (Thickness),
-              To_C_Line_Style (Line_Style),
               C_Boolean (Bottom_Left_Origin));
       end Draw;
    begin
       Validate_Text_Scale (Font_Scale);
-      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Text_Image (Image);
       Validate_Drawing_Color (Image, Color);
+      if Text'Length = 0 then
+         return;
+      end if;
       OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
       Raise_On_Error (Status, "Draw_Text");
    end Draw_Text;
@@ -5026,20 +5042,21 @@ package body OpenCV.Image_Processing is
      (Text       : String;
       Font       : Text_Font := Hershey_Simplex;
       Font_Scale : OpenCV.Float64_Value := 1.0;
-      Italic     : Boolean := False;
       Thickness  : Drawing_Thickness := 1) return Text_Metrics
    is
       Width, Height, Baseline : aliased Interfaces.Integer_32 := 0;
       Status                  : Internal.C_API.Status;
    begin
       Validate_Text_Scale (Font_Scale);
+      if Text'Length = 0 then
+         return (Size => (Width => 0, Height => 0), Baseline => 0);
+      end if;
       Status :=
         Internal.C_API.Measure_Text
           (Text_Address (Text),
            Text_Length (Text),
            Font_Selector (Font),
            Interfaces.C.double (Font_Scale),
-           C_Boolean (Italic),
            Interfaces.Integer_32 (Thickness),
            Width'Access,
            Height'Access,
@@ -5055,18 +5072,24 @@ package body OpenCV.Image_Processing is
    function Font_Scale_For_Height
      (Pixel_Height : Positive;
       Font         : Text_Font := Hershey_Simplex;
-      Italic       : Boolean := False;
       Thickness    : Drawing_Thickness := 1) return OpenCV.Float64_Value
    is
       Scale  : aliased Interfaces.C.double := 0.0;
-      Status : constant Internal.C_API.Status :=
+      Status : Internal.C_API.Status;
+   begin
+      if 2 * Long_Long_Integer (Pixel_Height)
+        <= Long_Long_Integer (Thickness) + 1
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "requested height cannot yield a positive portable text scale");
+      end if;
+      Status :=
         Internal.C_API.Font_Scale_For_Height
           (Interfaces.Integer_32 (Pixel_Height),
            Font_Selector (Font),
-           C_Boolean (Italic),
            Interfaces.Integer_32 (Thickness),
            Scale'Access);
-   begin
       Raise_On_Error (Status, "Font_Scale_For_Height");
       return OpenCV.Float64_Value (Scale);
    end Font_Scale_For_Height;
