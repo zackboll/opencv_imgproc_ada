@@ -759,6 +759,35 @@ package OpenCV.Image_Processing.Internal.C_API is
       Border_Value_3 : Interfaces.C.double) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_remap";
 
+   function Remap_Encoded
+     (Source         : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Map_1          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Map_2          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination    : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Mode           : Interfaces.Integer_32;
+      Interpolation  : Interfaces.Integer_32;
+      Border         : Interfaces.Integer_32;
+      Border_Value_0 : Interfaces.C.double;
+      Border_Value_1 : Interfaces.C.double;
+      Border_Value_2 : Interfaces.C.double;
+      Border_Value_3 : Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_remap_encoded";
+
+   function Convert_Remap_Maps
+     (Map_1        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Map_2        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Output_1     : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Output_2     : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Mode         : Interfaces.Integer_32;
+      Nearest_Only : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_convert_remap_maps";
+
    function Draw_Line
      (Image      : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Start_X    : Interfaces.Integer_32;

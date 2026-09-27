@@ -7,6 +7,9 @@ with Interfaces;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Vec2;
+with OpenCV.Core.Float32_Vec2_Access;
+with OpenCV.Core.UInt16_Access;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
@@ -18,10 +21,13 @@ package body Remap_Tests is
 
    use type Interfaces.Integer_32;
    use type Interfaces.Unsigned_8;
+   use type Interfaces.Unsigned_16;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
+   use type OpenCV.Core.Float32_Vec2.Vector;
+   use type OpenCV.Image_Processing.Interpolation_Method;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
 
@@ -105,6 +111,372 @@ package body Remap_Tests is
       end loop;
       return Map_Y;
    end Identity_Map_Y;
+
+   procedure Map_Representations (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      package IP renames OpenCV.Image_Processing;
+      X                                        : OpenCV.Core.Mat :=
+        Identity_Map (2, 3);
+      Y                                        : OpenCV.Core.Mat :=
+        Identity_Map_Y (2, 3);
+      Image                                    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
+      Direct, Interleaved_Output, Fixed_Output : OpenCV.Core.Mat;
+   begin
+      Fill_Unique_UInt8 (Image);
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 1.0);
+      declare
+         XY       : constant OpenCV.Core.Mat :=
+           IP.Interleave_Remap_Maps (X, Y);
+         Pair     : constant IP.Float_Remap_Maps := IP.Separate_Remap_Map (XY);
+         Fixed    : constant IP.Fixed_Remap_Maps :=
+           IP.Convert_Remap_To_Fixed (X, Y);
+         Fixed_XY : constant IP.Fixed_Remap_Maps :=
+           IP.Convert_Remap_To_Fixed (XY);
+         Back     : constant IP.Float_Remap_Maps :=
+           IP.Convert_Remap_To_Separate_Float (Fixed);
+         Back_XY  : constant OpenCV.Core.Mat :=
+           IP.Convert_Remap_To_Interleaved_Float (Fixed_XY);
+         Vector   : constant OpenCV.Core.Float32_Vec2.Vector :=
+           OpenCV.Core.Float32_Vec2_Access.Get (XY, 0, 0);
+      begin
+         AUnit.Assertions.Assert
+           (Vector (0) = 2.0
+            and then Vector (1) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Pair.Map_X, 0, 0) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Pair.Map_Y, 0, 0) = 1.0,
+            "C2 channel order and round trip must preserve asymmetric X/Y");
+         AUnit.Assertions.Assert
+           (not IP.Is_Empty (Fixed)
+            and then not IP.Is_Nearest_Only (Fixed)
+            and then OpenCV.Core.Float32_Access.Get (Back.Map_X, 0, 0) = 2.0
+            and then OpenCV.Core.Float32_Vec2_Access.Get (Back_XY, 0, 0)
+                     = Vector,
+            "fixed interpolation maps reverse to Float32 coordinates");
+         for Method in IP.Nearest_Neighbor .. IP.Linear loop
+            IP.Remap (Image, X, Y, Direct, Method);
+            IP.Remap (Image, XY, Interleaved_Output, Method);
+            IP.Remap (Image, Fixed, Fixed_Output, Method);
+            for Row in 0 .. 1 loop
+               for Col in 0 .. 2 loop
+                  AUnit.Assertions.Assert
+                    (OpenCV.Core.UInt8_Access.Get (Direct, Row, Col)
+                     = OpenCV.Core.UInt8_Access.Get
+                         (Interleaved_Output, Row, Col),
+                     "all map forms must sample identically");
+               end loop;
+            end loop;
+         end loop;
+         IP.Remap (Image, Fixed, Fixed_Output, IP.Cubic);
+         IP.Remap (Image, Fixed, Fixed_Output, IP.Lanczos_4);
+         IP.Remap (Image, Fixed, Fixed_Output, IP.Linear);
+      end;
+   end Map_Representations;
+
+   procedure Nearest_Fixed_And_Validation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      package IP renames OpenCV.Image_Processing;
+      X          : OpenCV.Core.Mat := Identity_Map (1, 2);
+      Y          : constant OpenCV.Core.Mat := Identity_Map_Y (1, 2);
+      Image      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.UInt8, 1));
+      Output     : OpenCV.Core.Mat;
+      Empty_Maps : IP.Fixed_Remap_Maps;
+      Bad_Map    : OpenCV.Core.Mat;
+   begin
+      Fill_Unique_UInt8 (Image);
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 1.75);
+      declare
+         XY      : constant OpenCV.Core.Mat := IP.Interleave_Remap_Maps (X, Y);
+         Fixed   : constant IP.Fixed_Remap_Maps :=
+           IP.Convert_Remap_To_Fixed (XY, Nearest_Neighbor_Only => True);
+         Back    : constant IP.Float_Remap_Maps :=
+           IP.Convert_Remap_To_Separate_Float (Fixed);
+         Back_XY : constant OpenCV.Core.Mat :=
+           IP.Convert_Remap_To_Interleaved_Float (Fixed);
+      begin
+         AUnit.Assertions.Assert
+           (IP.Is_Nearest_Only (Fixed)
+            and then OpenCV.Core.Float32_Access.Get (Back.Map_X, 0, 0) = 2.0
+            and then OpenCV.Core.Float32_Vec2_Access.Get (Back_XY, 0, 0) (0)
+                     = 2.0,
+            "nearest reverse conversion returns rounded integer coordinates");
+         IP.Remap (Image, Fixed, Output, IP.Nearest_Neighbor);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Output, 0, 0) = 3,
+            "nearest fixed map samples rounded coordinate");
+         for Method in IP.Linear .. IP.Lanczos_4 loop
+            if Method /= IP.Area then
+               declare
+                  procedure Attempt is
+                  begin
+                     IP.Remap (Image, Fixed, Output, Method);
+                  end Attempt;
+               begin
+                  Assert_Raises_OpenCV_Error
+                    (Attempt'Access,
+                     "nearest-only map must reject interpolation");
+               end;
+            end if;
+         end loop;
+      end;
+      declare
+         procedure Attempt_Empty is
+         begin
+            IP.Remap (Image, Empty_Maps, Output, IP.Nearest_Neighbor);
+         end Attempt_Empty;
+         procedure Attempt_Bad is
+         begin
+            IP.Remap (Image, Bad_Map, Output);
+         end Attempt_Bad;
+      begin
+         Assert_Raises_OpenCV_Error (Attempt_Empty'Access, "empty fixed map");
+         Assert_Raises_OpenCV_Error (Attempt_Bad'Access, "empty C2 map");
+      end;
+   end Nearest_Fixed_And_Validation;
+
+   procedure Encoded_Region_And_Stride (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      package IP renames OpenCV.Image_Processing;
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 32_768, (OpenCV.Core.UInt8, 1));
+      Source : constant OpenCV.Core.Mat :=
+        Parent.Region ((X => 8, Y => 0, Width => 2, Height => 2));
+      X      : constant OpenCV.Core.Mat := Identity_Map (1, 1);
+      Y      : constant OpenCV.Core.Mat := Identity_Map_Y (1, 1);
+      XY     : constant OpenCV.Core.Mat := IP.Interleave_Remap_Maps (X, Y);
+      Fixed  : constant IP.Fixed_Remap_Maps := IP.Convert_Remap_To_Fixed (XY);
+      Output : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      procedure Try_Interleaved is
+      begin
+         IP.Remap (Source, XY, Output, IP.Linear);
+      end Try_Interleaved;
+      procedure Try_Fixed is
+      begin
+         IP.Remap (Source, Fixed, Output, IP.Linear);
+      end Try_Fixed;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Parent, 0, 8, 41);
+      OpenCV.Core.UInt8_Access.Set (Output, 0, 0, 73);
+      Assert_Raises_OpenCV_Error
+        (Try_Interleaved'Access, "C2 must reuse SIMD stride safety");
+      Assert_Raises_OpenCV_Error
+        (Try_Fixed'Access, "fixed must reuse SIMD stride safety");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Output, 0, 0) = 73
+         and then OpenCV.Core.UInt8_Access.Get (Parent, 0, 8) = 41,
+         "stride rejection preserves output and Region parent");
+   end Encoded_Region_And_Stride;
+
+   procedure Encoded_Float_Safety (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      package IP renames OpenCV.Image_Processing;
+      Image  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      XY     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 2));
+      Output : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      procedure Try_Remap is
+      begin
+         IP.Remap (Image, XY, Output);
+      end Try_Remap;
+      procedure Try_Convert is
+         Fixed : constant IP.Fixed_Remap_Maps :=
+           IP.Convert_Remap_To_Fixed (XY);
+      begin
+         AUnit.Assertions.Assert (not IP.Is_Empty (Fixed), "unreachable");
+      end Try_Convert;
+      procedure Check (Value : OpenCV.Float32_Value) is
+         pragma Suppress (Validity_Check);
+      begin
+         OpenCV.Core.Float32_Vec2_Access.Set (XY, 0, 0, (0.0, Value));
+         Assert_Raises_OpenCV_Error
+           (Try_Remap'Access, "unsafe C2 coordinate must reject Remap");
+         Assert_Raises_OpenCV_Error
+           (Try_Convert'Access, "unsafe C2 coordinate must reject conversion");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Output, 0, 0) = 73,
+            "failed C2 Remap leaves marker untouched");
+      end Check;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Output, 0, 0, 73);
+      Check (1.0E30);
+      declare
+         pragma Suppress (Validity_Check);
+         Value : OpenCV.Float32_Value;
+      begin
+         Value := Bits_To_Float32 (NaN_Bits_32);
+         Check (Value);
+         Value := Bits_To_Float32 (Inf_Bits_32);
+         Check (Value);
+         Value := Bits_To_Float32 (Neg_Inf_Bits_32);
+         Check (Value);
+      end;
+   end Encoded_Float_Safety;
+
+   procedure Encoded_Region_And_Quantization (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      package IP renames OpenCV.Image_Processing;
+      X_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+      Y_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+      X        : OpenCV.Core.Mat :=
+        X_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 1));
+      Y        : OpenCV.Core.Mat :=
+        Y_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 1));
+      Image    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt16, 1));
+      Output   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (X_Parent, 0, 0, 1.0E30);
+      OpenCV.Core.Float32_Access.Set (Y_Parent, 0, 0, 1.0E30);
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 1.25);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 0.75);
+      OpenCV.Core.Float32_Access.Set (X, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 1, 1.0);
+      OpenCV.Core.UInt16_Access.Set (Image, 1, 2, 1234);
+      declare
+         XY    : constant OpenCV.Core.Mat := IP.Interleave_Remap_Maps (X, Y);
+         Fixed : constant IP.Fixed_Remap_Maps :=
+           IP.Convert_Remap_To_Fixed (X, Y);
+         Back  : constant IP.Float_Remap_Maps :=
+           IP.Convert_Remap_To_Separate_Float (Fixed);
+      begin
+         AUnit.Assertions.Assert
+           (XY.Rows = 1
+            and then XY.Columns = 2
+            and then OpenCV.Core.Float32_Vec2_Access.Get (XY, 0, 0)
+                     = (1.25, 0.75)
+            and then Nearly_Equal
+                       (OpenCV.Core.Float32_Access.Get (Back.Map_X, 0, 0),
+                        1.25,
+                        1.0 / 32.0),
+            "Region conversion uses logical geometry and quantized values");
+         IP.Remap (Image, XY, Output, IP.Nearest_Neighbor);
+         AUnit.Assertions.Assert
+           (Output.Depth = OpenCV.Core.UInt16
+            and then Output.Columns = 2
+            and then OpenCV.Core.UInt16_Access.Get (Output, 0, 1) = 1234
+            and then OpenCV.Core.Float32_Access.Get (X_Parent, 0, 0) = 1.0E30,
+            "C2 Region Remap respects source depth and parent pixels");
+      end;
+   end Encoded_Region_And_Quantization;
+
+   procedure Encoded_Raw_ABI (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      X         : constant OpenCV.Core.Mat := Identity_Map (1, 1);
+      Empty_Map : OpenCV.Core.Mat;
+      Wrong     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      First     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Second    : OpenCV.Core.Mat;
+      Status    : C_API.Status := C_API.Success;
+      procedure First_Input
+        (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Second_Input
+           (Other : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Output_1
+              (A : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               procedure Output_2
+                 (B : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    C_API.Convert_Remap_Maps (Handle, Other, A, B, 5, 0);
+               end Output_2;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Second, Output_2'Access);
+            end Output_1;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (First, Output_1'Access);
+         end Second_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Empty_Map, Second_Input'Access);
+      end First_Input;
+   begin
+      OpenCV.Core.UInt8_Access.Set (First, 0, 0, 77);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Wrong, First_Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Error_Invalid_Argument
+         and then OpenCV.Core.UInt8_Access.Get (First, 0, 0) = 77,
+         "raw conversion rejects incorrect interleaved type atomically");
+      OpenCV.Core.Module_Interop.With_Input_Handle (X, First_Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Error_Invalid_Argument
+         and then OpenCV.Core.UInt8_Access.Get (First, 0, 0) = 77,
+         "raw conversion rejects C1 as interleaved atomically");
+   end Encoded_Raw_ABI;
+
+   procedure Fixed_Quantization_And_Reuse (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      package IP renames OpenCV.Image_Processing;
+      X                       : OpenCV.Core.Mat := Identity_Map (1, 1);
+      Y                       : OpenCV.Core.Mat := Identity_Map_Y (1, 1);
+      Frame_1                 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Frame_2                 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Expected, First, Second : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 1.25);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 1.5);
+      for Row in 0 .. 2 loop
+         for Col in 0 .. 2 loop
+            OpenCV.Core.Float32_Access.Set
+              (Frame_1, Row, Col, OpenCV.Float32_Value (Row * 3 + Col));
+            OpenCV.Core.Float32_Access.Set
+              (Frame_2, Row, Col, OpenCV.Float32_Value (Row * 3 + Col + 10));
+         end loop;
+      end loop;
+      declare
+         Fixed    : constant IP.Fixed_Remap_Maps :=
+           IP.Convert_Remap_To_Fixed (X, Y);
+         Restored : constant IP.Float_Remap_Maps :=
+           IP.Convert_Remap_To_Separate_Float (Fixed);
+      begin
+         AUnit.Assertions.Assert
+           (Nearly_Equal
+              (OpenCV.Core.Float32_Access.Get (Restored.Map_X, 0, 0),
+               1.25,
+               1.0 / 32.0)
+            and then Nearly_Equal
+                       (OpenCV.Core.Float32_Access.Get (Restored.Map_Y, 0, 0),
+                        1.5,
+                        1.0 / 32.0),
+            "reverse fixed coordinates differ by at most 1/32 pixel");
+         for Method in IP.Linear .. IP.Lanczos_4 loop
+            if Method /= IP.Area then
+               IP.Remap (Frame_1, X, Y, Expected, Method);
+               IP.Remap (Frame_1, Fixed, First, Method);
+               AUnit.Assertions.Assert
+                 (Nearly_Equal
+                    (OpenCV.Core.Float32_Access.Get (Expected, 0, 0),
+                     OpenCV.Core.Float32_Access.Get (First, 0, 0),
+                     0.01),
+                  "table-aligned fixed interpolation matches Float32");
+            end if;
+         end loop;
+         IP.Remap (Frame_1, Fixed, First, IP.Linear);
+         IP.Remap (Frame_2, Fixed, Second, IP.Linear);
+         AUnit.Assertions.Assert
+           (Nearly_Equal
+              (OpenCV.Core.Float32_Access.Get (Second, 0, 0)
+               - OpenCV.Core.Float32_Access.Get (First, 0, 0),
+               10.0,
+               0.01),
+            "fixed map can be reused with independent Float32 frames");
+      end;
+   end Fixed_Quantization_And_Reuse;
 
    procedure Identity_Nearest_Rebinds_Destination (Test : in out Fixture) is
       pragma Unreferenced (Test);
@@ -1031,6 +1403,34 @@ package body Remap_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Remap fixed quantization interpolation and reuse",
+            Fixed_Quantization_And_Reuse'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Remap encoded raw ABI rejects malformed map",
+            Encoded_Raw_ABI'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Remap Region maps and fixed quantization",
+            Encoded_Region_And_Quantization'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Remap C2 and fixed SIMD stride Region safety",
+            Encoded_Region_And_Stride'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Remap C2 nonfinite and huge coordinates",
+            Encoded_Float_Safety'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Remap map representations and fixed reuse",
+            Map_Representations'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Remap nearest fixed and invalid maps",
+            Nearest_Fixed_And_Validation'Access));
       Result.Add_Test
         (Caller.Create
            ("Remap UInt8 Linear SIMD stride boundary and scalar fallback",
