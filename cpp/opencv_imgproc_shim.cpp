@@ -4607,7 +4607,18 @@ opencv_imgproc_pyr_down(
             return invalid_argument("unsupported pyrDown border");
         }
 
-        cv::pyrDown(*src, *dst, cv::Size(), opencv_border);
+        const cv::Mat *effective_source = src;
+        cv::Mat logical_source;
+
+        // Region semantics: OpenCV 5 may dispatch a submatrix through
+        // cv_hal_pyrdown_offset using parent ROI information. Clone only the
+        // logical view so all supported versions/backends see the same image.
+        if (src->isSubmatrix()) {
+            logical_source = src->clone();
+            effective_source = &logical_source;
+        }
+
+        cv::pyrDown(*effective_source, *dst, cv::Size(), opencv_border);
 
         return OPENCV_IMGPROC_OK;
     } catch (...) {

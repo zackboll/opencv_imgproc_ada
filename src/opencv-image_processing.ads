@@ -411,6 +411,8 @@ package OpenCV.Image_Processing is
    --  Int16, Float32, or Float64. Channel count is unrestricted. Destination
    --  receives Source's depth and channel count with OpenCV's natural size:
    --  Columns = (Source.Columns + 1) / 2 and Rows = (Source.Rows + 1) / 2.
+   --  A Region is processed as its own logical image; parent pixels outside
+   --  the Region do not participate.
    --  Replicate, Reflect, Reflect_101, and Wrap are supported;
    --  Constant_Border is rejected. Direct in-place operation is not
    --  supported. Contract violations and failures reported by OpenCV raise
@@ -424,7 +426,8 @@ package OpenCV.Image_Processing is
    --  Source must be a non-empty two-dimensional Mat with depth UInt8, UInt16,
    --  Int16, Float32, or Float64. Channel count is unrestricted. Destination
    --  receives Source's depth and channel count with exactly doubled rows and
-   --  columns. OpenCV supports only its default border for this operation, so
+   --  columns. A Region is processed as its own logical image, without parent
+   --  pixels. OpenCV supports only its default border for this operation, so
    --  no Border parameter is exposed. Direct in-place operation is not
    --  supported. Contract violations and failures reported by OpenCV raise
    --  OpenCV.OpenCV_Error.

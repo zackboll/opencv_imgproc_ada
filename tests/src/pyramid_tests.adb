@@ -46,8 +46,8 @@ package body Pyramid_Tests is
    end Assert_Raises_OpenCV_Error;
 
    function Nearly_Equal
-     (Left, Right : OpenCV.Float32_Value;
-      Tolerance   : OpenCV.Float32_Value) return Boolean is
+     (Left, Right : OpenCV.Float32_Value; Tolerance : OpenCV.Float32_Value)
+      return Boolean is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
@@ -101,6 +101,183 @@ package body Pyramid_Tests is
          and then OpenCV.Core.UInt8_Access.Get (Destination, 1, 1) = 40,
          "Pyramid_Down of 7x5 must use ceiling-half 4x3 geometry");
    end Pyramid_Down_Odd_Geometry;
+
+   procedure Pyramid_Down_Region_Uses_Logical_Boundary (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 1));
+      Source      : OpenCV.Core.Mat :=
+        Parent.Region ((X => 2, Y => 2, Width => 3, Height => 3));
+      Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 0.0));
+      OpenCV.Core.Set_To (Source, (others => 100.0));
+      OpenCV.Image_Processing.Pyramid_Down
+        (Source, Destination, OpenCV.Reflect);
+      AUnit.Assertions.Assert
+        (Destination.Rows = 2 and then Destination.Columns = 2,
+         "Region downsampling must have ceiling-half geometry");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 1 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Destination, Row, Column) = 100,
+               "parent zeros must not enter Region downsampling");
+         end loop;
+      end loop;
+      for Row in 0 .. 6 loop
+         for Column in 0 .. 6 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, Row, Column)
+               = (if Row in 2 .. 4 and then Column in 2 .. 4 then 100 else 0),
+               "Pyramid_Down must preserve Region and outside parent pixels");
+         end loop;
+      end loop;
+   end Pyramid_Down_Region_Uses_Logical_Boundary;
+
+   procedure Pyramid_Down_Asymmetric_Region_Matches_Owning
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 1));
+      Source        : OpenCV.Core.Mat :=
+        Parent.Region ((X => 2, Y => 2, Width => 3, Height => 3));
+      Owning        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Region_Result : OpenCV.Core.Mat;
+      Owning_Result : OpenCV.Core.Mat;
+      Borders       : constant array (1 .. 3) of OpenCV.Border_Kind :=
+        (OpenCV.Reflect_101, OpenCV.Replicate, OpenCV.Wrap);
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 240.0));
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 2 loop
+            declare
+               Value : constant Interfaces.Unsigned_8 :=
+                 Interfaces.Unsigned_8 (10 + Row * 31 + Column * 17);
+            begin
+               OpenCV.Core.UInt8_Access.Set (Source, Row, Column, Value);
+               OpenCV.Core.UInt8_Access.Set (Owning, Row, Column, Value);
+            end;
+         end loop;
+      end loop;
+      for Border of Borders loop
+         OpenCV.Image_Processing.Pyramid_Down (Source, Region_Result, Border);
+         OpenCV.Image_Processing.Pyramid_Down (Owning, Owning_Result, Border);
+         for Row in 0 .. 1 loop
+            for Column in 0 .. 1 loop
+               AUnit.Assertions.Assert
+                 (OpenCV.Core.UInt8_Access.Get (Region_Result, Row, Column)
+                  = OpenCV.Core.UInt8_Access.Get (Owning_Result, Row, Column),
+                  "asymmetric Region and owning outputs must match for "
+                  & Border'Image);
+            end loop;
+         end loop;
+      end loop;
+      for Row in 0 .. 6 loop
+         for Column in 0 .. 6 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, Row, Column)
+               = (if Row in 2 .. 4 and then Column in 2 .. 4
+                  then
+                    OpenCV.Core.UInt8_Access.Get (Owning, Row - 2, Column - 2)
+                  else 240),
+               "asymmetric Pyramid_Down must leave parent unchanged");
+         end loop;
+      end loop;
+   end Pyramid_Down_Asymmetric_Region_Matches_Owning;
+
+   procedure Pyramid_Down_C3_Region (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 3));
+      Source      : OpenCV.Core.Mat :=
+        Parent.Region ((X => 2, Y => 2, Width => 3, Height => 3));
+      Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Parent, (200.0, 0.0, 240.0, 0.0));
+      OpenCV.Core.Set_To (Source, (10.0, 60.0, 110.0, 0.0));
+      OpenCV.Image_Processing.Pyramid_Down
+        (Source, Destination, OpenCV.Reflect_101);
+      AUnit.Assertions.Assert
+        (Destination.Rows = 2
+         and then Destination.Columns = 2
+         and then Destination.Channels = 3,
+         "C3 Region must retain natural size and channels");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 1 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Vec3_Access.Get (Destination, Row, Column)
+               = (10, 60, 110),
+               "C3 Region must not mix in parent channels");
+         end loop;
+      end loop;
+   end Pyramid_Down_C3_Region;
+
+   procedure Pyramid_Down_Raw_Region (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 1));
+      Source      : OpenCV.Core.Mat :=
+        Parent.Region ((X => 2, Y => 2, Width => 3, Height => 3));
+      Destination : OpenCV.Core.Mat;
+      Status      : C_API.Status := C_API.Success;
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              C_API.Pyramid_Down
+                (Source_Handle, Destination_Handle, C_API.Border_Reflect);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 0.0));
+      OpenCV.Core.Set_To (Source, (others => 100.0));
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Success, "raw Region must succeed");
+      AUnit.Assertions.Assert
+        (Destination.Rows = 2 and then Destination.Columns = 2,
+         "raw Region must have natural geometry");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 1 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Destination, Row, Column) = 100,
+               "raw Region must exclude parent pixels");
+         end loop;
+      end loop;
+   end Pyramid_Down_Raw_Region;
+
+   procedure Pyramid_Up_Region_Uses_Logical_View (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (7, 7, (OpenCV.Core.UInt8, 1));
+      Source      : OpenCV.Core.Mat :=
+        Parent.Region ((X => 2, Y => 2, Width => 3, Height => 3));
+      Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 0.0));
+      OpenCV.Core.Set_To (Source, (others => 100.0));
+      OpenCV.Image_Processing.Pyramid_Up (Source, Destination);
+      AUnit.Assertions.Assert
+        (Destination.Rows = 6 and then Destination.Columns = 6,
+         "Region upsampling must double logical dimensions");
+      for Row in 0 .. 5 loop
+         for Column in 0 .. 5 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Destination, Row, Column) = 100,
+               "Pyramid_Up Region must exclude parent pixels");
+         end loop;
+      end loop;
+   end Pyramid_Up_Region_Uses_Logical_View;
 
    procedure Supported_Depths_Are_Preserved (Test : in out Fixture) is
       pragma Unreferenced (Test);
@@ -192,8 +369,7 @@ package body Pyramid_Tests is
       OpenCV.Image_Processing.Pyramid_Down (Source, Default_Result);
       OpenCV.Image_Processing.Pyramid_Down
         (Source, Explicit_Default, OpenCV.Reflect_101);
-      OpenCV.Image_Processing.Pyramid_Down
-        (Source, Wrap_Result, OpenCV.Wrap);
+      OpenCV.Image_Processing.Pyramid_Down (Source, Wrap_Result, OpenCV.Wrap);
 
       AUnit.Assertions.Assert
         (Replicate_Result.Rows = 2
@@ -610,6 +786,26 @@ package body Pyramid_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Pyramid_Down Region excludes parent pixels",
+            Pyramid_Down_Region_Uses_Logical_Boundary'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pyramid_Down asymmetric Region matches owning Mat",
+            Pyramid_Down_Asymmetric_Region_Matches_Owning'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pyramid_Down C3 Region excludes parent channels",
+            Pyramid_Down_C3_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pyramid_Down raw C ABI Region excludes parent pixels",
+            Pyramid_Down_Raw_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pyramid_Up Region uses logical image",
+            Pyramid_Up_Region_Uses_Logical_View'Access));
       Result.Add_Test
         (Caller.Create
            ("Pyramid_Down even geometry rebinds Destination",

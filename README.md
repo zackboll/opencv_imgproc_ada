@@ -476,12 +476,15 @@ Destination.Rows    = (Source.Rows    + 1) / 2
 Supported depths are `UInt8`, `UInt16`, `Int16`, `Float32`, and `Float64`.
 Channel count is unrestricted. `Replicate`, `Reflect`, `Reflect_101`, and
 `Wrap` are accepted; `Constant_Border` is rejected. Direct in-place use is
-unsupported.
+unsupported. A Source Region is processed as its own logical image: parent
+pixels outside the Region do not participate. Only submatrix sources require
+a logical-view copy; ordinary owning Mats stay on the direct path.
 
 `Pyramid_Up` performs OpenCV's Gaussian-pyramid upsampling. Destination keeps
 Source depth and channel count and exactly doubles both dimensions. OpenCV
 supports only its default border for this operation, so no `Border` parameter
-is exposed. Direct in-place use is unsupported.
+is exposed. A Source Region is processed as its own logical image, without
+parent pixels. Direct in-place use is unsupported.
 
 `Pyramid_Up(Pyramid_Down(Image))` is generally a smoothed reconstruction, not
 the original image. `buildPyramid` is not bound.
