@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **408 AUnit tests**
+> **Current registered test baseline:** **414 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -129,8 +129,10 @@ The current public surface includes:
 - contrast limited adaptive histogram equalization (CLAHE);
 - connected-component labeling and statistics;
 - in-place drawing of lines, arrows, markers, rectangles, circles, ellipses,
-  polylines, polygons, and Hershey text; text metrics and height scaling;
-- contour extraction, hierarchy, and approximation modes.
+  polylines, polygons, contours, and Hershey text; text metrics and height
+  scaling;
+- contour extraction, hierarchy, approximation modes, and hierarchy-aware
+  outline/fill rendering.
 
 Computational contour geometry such as area, arc length, and moments is
 **intentionally not part of this crate**. Those operations live in the separate
@@ -187,6 +189,7 @@ The table below summarizes the current public operations.
 
 | Area | Public API | Main input requirements | Important behavior |
 | --- | --- | --- | --- |
+| Contour rendering | `Draw_Contours`, `Fill_Contours` | one Ada-owned `Contour_Set`; ordinary drawing image contract | all or selected root-relative subtree; even-odd holes/islands; Region-local offset |
 | Color | `Convert_Color` | nonempty 2-D C1/C3/C4 according to selector; `UInt8`/`UInt16`/`Float32` for linear, `UInt8`/`Float32` for nonlinear | common layout, Gray, XYZ, YCrCb, YUV, HSV, HLS, Lab, Luv conversions |
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
@@ -2044,6 +2047,43 @@ native contour-result lifetime.
 
 `Find_Contours` preserves the source `Mat`.
 
+### Contour rendering
+
+`Draw_Contours (Image, Contours, Color, ...)` outlines **every** stored contour;
+`Fill_Contours (Image, Contours, Color, ...)` fills all of them. Overloads with
+`Root : Contour_Index` instead select the root and its descendants through
+`Descendant_Levels` generations: zero selects only the root, one includes direct
+children, two also includes grandchildren, and depths beyond the tree simply
+include every reachable descendant. The selection follows `First_Child` and
+`Next`, not storage order. Invalid roots or inconsistent internal hierarchy
+raise `OpenCV.OpenCV_Error`. Empty all-contour sets are no-ops after normal
+image/color/style validation; empty individual contours are skipped.
+
+Filling the selected collection uses OpenCV's even-odd rule. An outer contour
+alone fills its interior; adding a hole leaves that interior empty; adding an
+island fills the island again. All-contours fill preserves holes and islands
+from a single `Find_Contours` result. OpenCV cautions that independently
+retrieved, unrelated collections mixed into one fill may yield different
+even-odd semantics; this API accepts only one `Contour_Set` per call.
+
+The Ada layer selects and flattens contours into contiguous signed-32-bit
+points and `(first_point, point_count)` spans; no hierarchy or native result
+handle crosses the draw ABI. OpenCV 4.1 routes `drawContours` through legacy
+`CvSeq`/`cvDrawContours` and applies `maxLevel` to the iterator; OpenCV 4.10
+traverses hierarchy for fill but iterates all requested outlines directly;
+OpenCV 5 selects hierarchy before either branch. Supplying already selected
+contours as siblings (with native level 1 and no hierarchy) normalizes these
+differences. The native shim checks all spans, accumulated point counts and
+point-plus-offset arithmetic before writing any pixels. Native failures after
+rasterization begins do not roll back the image.
+
+`Offset` moves every selected point before rasterization. Drawing through a
+shallow alias changes shared storage; a `Region` uses local coordinates and
+does not change pixels outside the view. The ordinary drawing depth/channel,
+color, thickness and line-style rules apply, including UInt8-only antialiasing.
+Only raster rendering belongs here; contour area, moments, hulls, and other
+computational geometry belong in `opencv_geometry`.
+
 ---
 
 ## Shared value types
@@ -2084,6 +2124,8 @@ that view. Pixels outside the region stay unchanged. There is no hidden clone.
 declare
    Image : OpenCV.Core.Mat :=
      OpenCV.Core.Create (64, 64, (OpenCV.Core.UInt8, 3));
+   Mask : OpenCV.Core.Mat :=
+     OpenCV.Core.Create (64, 64, (OpenCV.Core.UInt8, 1));
    Outline : constant OpenCV.Scalar :=
      (Component_0 => 0.0, Component_1 => 255.0, Component_2 => 0.0,
       others => 0.0);
@@ -2100,6 +2142,13 @@ begin
       Kind => OpenCV.Image_Processing.Diamond_Marker);
    OpenCV.Image_Processing.Draw_Text
      (Image, "Ada", (X => 8, Y => 56), Outline);
+   OpenCV.Core.Set_To (Mask, (others => 0.0));
+   OpenCV.Image_Processing.Fill_Rectangle
+     (Mask, (X => 10, Y => 10, Width => 16, Height => 16),
+      (Component_0 => 255.0, others => 0.0));
+   --  Draw every extracted contour into Image:
+   OpenCV.Image_Processing.Draw_Contours
+     (Image, OpenCV.Image_Processing.Find_Contours (Mask), Outline);
 end;
 ```
 
@@ -2112,7 +2161,8 @@ end;
 | `Anti_Aliased_Line` | Gaussian-filtered outline, accepted only for `UInt8` |
 
 `Draw_*` operations take a positive `Drawing_Thickness` from 1 through 32767.
-`Fill_Rectangle`, `Fill_Circle`, `Fill_Ellipse`, and `Fill_Polygon` select
+`Fill_Rectangle`, `Fill_Circle`, `Fill_Ellipse`, `Fill_Polygon`, and
+`Fill_Contours` select
 OpenCV's filled mode internally. Negative thickness is not part of the public
 API. A partial `Fill_Ellipse` interval fills the elliptic sector; a full turn
 fills the ellipse. Angles are finite and default to degrees. Radians are
@@ -2155,9 +2205,9 @@ arithmetic preflights reject extreme coordinates, glyph scales and text lengths
 even if the visible image is small. All drawing validation failures raise
 `OpenCV.OpenCV_Error`.
 
-This slice does not include `drawContours`, subpixel fixed-point shift, alpha
-blending, multi-polygon holes, OpenCV 5 custom font faces, FreeType/arbitrary
-font loading, or `drawFrameAxes`.
+This slice does not include subpixel fixed-point shift, alpha blending,
+arbitrary public multi-polygon containers, OpenCV 5 custom font faces,
+FreeType/arbitrary font loading, or `drawFrameAxes`.
 
 ---
 
@@ -3241,7 +3291,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **408-test** baseline is:
+The current **414-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3270,6 +3320,7 @@ The current **408-test** baseline is:
 | Histogram equalization | 12 |
 | CLAHE | 9 |
 | Contours | 7 |
+| Contour drawing and filling | 6 |
 | Connected components | 6 |
 | Drawing | 11 |
 | Drawing annotations | 14 |
@@ -3278,7 +3329,7 @@ The current **408-test** baseline is:
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **408** |
+| **Total** | **414** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -3903,11 +3954,10 @@ Notable Imgproc families that are not yet broadly bound include:
   boundaries, accumulation/update, `SparseMat` histograms, and EMD (a future
   sparse-histogram abstraction may revisit the dense 10-dimension limit);
 - custom/user-defined distance masks (not part of the portable foundation);
-- `drawContours` as its own operation;
 - custom OpenCV 5 font faces and FreeType/arbitrary font loading;
 - `drawFrameAxes` (calibration-dependent);
 - subpixel fixed-point drawing;
-- alpha blending and multi-polygon holes;
+- alpha blending and arbitrary multi-polygon construction;
 - additional shape/image analysis that still belongs specifically to Imgproc.
 
 

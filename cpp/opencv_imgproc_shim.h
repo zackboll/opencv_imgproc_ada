@@ -770,6 +770,22 @@ opencv_imgproc_fill_polygon(
     double color_3,
     int32_t line_style);
 
+/* Flat, already selected contours. Spans refer to elements of points. */
+typedef struct {
+    int32_t first_point;
+    int32_t point_count;
+} opencv_imgproc_contour_span;
+
+opencv_imgproc_status opencv_imgproc_draw_contours(
+    opencv_core_mat_handle *image,
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    const opencv_imgproc_contour_span *contours,
+    int32_t contour_count,
+    double color_0, double color_1, double color_2, double color_3,
+    uint8_t filled, int32_t thickness, int32_t line_style,
+    int32_t offset_x, int32_t offset_y);
+
 /* Segmentation. */
 
 /* Four scalar components; channel k uses values[k]. */

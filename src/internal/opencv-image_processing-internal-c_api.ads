@@ -180,6 +180,15 @@ package OpenCV.Image_Processing.Internal.C_API is
    type Point_I32_Array is array (Natural range <>) of aliased Point_I32
    with Convention => C;
 
+   type Contour_Span is record
+      First_Point : Interfaces.Integer_32;
+      Point_Count : Interfaces.Integer_32;
+   end record
+   with Convention => C;
+
+   type Contour_Span_Array is array (Natural range <>) of aliased Contour_Span
+   with Convention => C;
+
    type Hough_Lines_Handle is new System.Address;
    Null_Hough_Lines_Handle : constant Hough_Lines_Handle :=
      Hough_Lines_Handle (System.Null_Address);
@@ -960,6 +969,26 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_fill_polygon";
+
+   function Draw_Contours
+     (Image         : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Points        : access constant Point_I32;
+      Point_Count   : Interfaces.Integer_32;
+      Contours      : access constant Contour_Span;
+      Contour_Count : Interfaces.Integer_32;
+      Color_0       : Interfaces.C.double;
+      Color_1       : Interfaces.C.double;
+      Color_2       : Interfaces.C.double;
+      Color_3       : Interfaces.C.double;
+      Filled        : Interfaces.Unsigned_8;
+      Thickness     : Interfaces.Integer_32;
+      Line_Style    : Interfaces.Integer_32;
+      Offset_X      : Interfaces.Integer_32;
+      Offset_Y      : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_draw_contours";
 
    --  Segmentation.
 

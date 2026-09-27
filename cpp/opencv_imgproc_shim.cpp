@@ -6201,6 +6201,104 @@ opencv_imgproc_fill_polygon(
 }
 
 opencv_imgproc_status
+opencv_imgproc_draw_contours(
+    opencv_core_mat_handle *image,
+    const opencv_imgproc_point_i32 *points,
+    int32_t point_count,
+    const opencv_imgproc_contour_span *contours,
+    int32_t contour_count,
+    double color_0, double color_1, double color_2, double color_3,
+    uint8_t filled, int32_t thickness, int32_t line_style,
+    int32_t offset_x, int32_t offset_y)
+{
+    clear_error();
+    try {
+        cv::Mat *img = nullptr;
+        if (opencv_core_module_output_mat(image, &img) != OPENCV_CORE_OK || img == nullptr) {
+            return invalid_argument("invalid drawing image");
+        }
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) {
+            return invalid_argument(message);
+        }
+        if (point_count < 0 || contour_count < 0 ||
+            (point_count != 0 && points == nullptr) ||
+            (contour_count != 0 && contours == nullptr)) {
+            return invalid_argument("invalid contour buffer or count");
+        }
+        if (filled > 1) {
+            return invalid_argument("invalid contour fill selector");
+        }
+        cv::Scalar color;
+        if (!drawing_color(*img, color_0, color_1, color_2, color_3,
+                           color, &message)) {
+            return invalid_argument(message);
+        }
+        int native_line = 0;
+        if (!drawing_line_style(line_style, *img, native_line, &message)) {
+            return invalid_argument(message);
+        }
+        int native_thickness = 0;
+        if (!drawing_thickness(filled, thickness, native_thickness, &message)) {
+            return invalid_argument(message);
+        }
+
+        // Validate all descriptors before reading any point, allocating native
+        // storage or starting rasterization. fillPoly accumulates counts in int.
+        int64_t total = 0;
+        for (int32_t i = 0; i < contour_count; ++i) {
+            const int64_t start = contours[i].first_point;
+            const int64_t count = contours[i].point_count;
+            if (start < 0 || count <= 0 ||
+                start + count > point_count ||
+                total + count > std::numeric_limits<int>::max()) {
+                return invalid_argument("invalid contour span or total point count");
+            }
+            total += count;
+        }
+        if (contour_count == 0) {
+            return OPENCV_IMGPROC_OK;
+        }
+        const int64_t low = std::numeric_limits<int>::min();
+        const int64_t high = std::numeric_limits<int>::max();
+        for (int32_t i = 0; i < contour_count; ++i) {
+            const auto &span = contours[i];
+            for (int64_t j = span.first_point;
+                 j < static_cast<int64_t>(span.first_point) + span.point_count; ++j) {
+                const int64_t x = static_cast<int64_t>(points[j].x) + offset_x;
+                const int64_t y = static_cast<int64_t>(points[j].y) + offset_y;
+                // ABI safety: drawContours adds the offset in signed Point
+                // arithmetic before clipping (including the legacy 4.1 path).
+                if (x < low || x > high || y < low || y > high) {
+                    return invalid_argument("contour point plus offset exceeds signed int");
+                }
+            }
+        }
+
+        std::vector<std::vector<cv::Point>> native;
+        native.reserve(static_cast<std::size_t>(contour_count));
+        for (int32_t i = 0; i < contour_count; ++i) {
+            const auto &span = contours[i];
+            std::vector<cv::Point> shape;
+            shape.reserve(static_cast<std::size_t>(span.point_count));
+            for (int64_t j = span.first_point;
+                 j < static_cast<int64_t>(span.first_point) + span.point_count; ++j) {
+                shape.emplace_back(points[j].x, points[j].y);
+            }
+            native.push_back(std::move(shape));
+        }
+        // The selected contours are siblings; maxLevel 1 includes every
+        // sibling in 4.1's legacy tree iterator. No native hierarchy is used.
+        cv::drawContours(*img, native, -1, color, native_thickness,
+                         native_line, cv::noArray(), 1,
+                         cv::Point(offset_x, offset_y));
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_hough_lines(
     const opencv_core_mat_handle *source,
     double rho,
