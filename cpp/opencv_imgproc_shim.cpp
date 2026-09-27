@@ -1104,6 +1104,25 @@ bool remap_may_use_ipp(int type, int interpolation, int border) noexcept
     }
 }
 
+bool remap_uint8_linear_simd_stride_safe(const cv::Mat &src,
+                                          int interpolation) noexcept
+{
+    if (interpolation != cv::INTER_LINEAR ||
+        (src.type() != CV_8UC1 && src.type() != CV_8UC3 &&
+         src.type() != CV_8UC4))
+        return true;
+
+    // ABI safety: RemapVec_8u narrows _src.step from size_t to int before
+    // checking the SIMD stride limit in OpenCV 4.1, 4.10 and 5.0.
+    if (src.step[0] > static_cast<size_t>(std::numeric_limits<int>::max()))
+        return false;
+
+    // ABI safety: OpenCV 4.1 admits sstep == 0x8000 and later forms
+    // sstep << 16; reject that exact portable-baseline boundary. Values
+    // above 0x8000 (but within int) take the scalar fallback instead.
+    return src.step[0] != static_cast<size_t>(0x8000);
+}
+
 bool drawing_image(const cv::Mat &image, const char **message) noexcept
 {
     if (image.dims != 2) {
@@ -5147,6 +5166,10 @@ opencv_imgproc_remap(
         if (!to_opencv_remap_interpolation(
                 interpolation, opencv_interpolation)) {
             return invalid_argument("unsupported remap interpolation");
+        }
+
+        if (!remap_uint8_linear_simd_stride_safe(*src, opencv_interpolation)) {
+            return invalid_argument("remap UInt8 Linear SIMD source byte stride is unsafe");
         }
 
         // ABI safety: validate before OpenCV rounds Float32 source coordinates

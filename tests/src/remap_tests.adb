@@ -712,6 +712,77 @@ package body Remap_Tests is
          "ordinary out-of-source coordinates must use the border");
    end Float_Coordinate_Range_And_Atomicity;
 
+   procedure UInt8_Linear_SIMD_Stride_Boundary (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Boundary_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 32_768, (OpenCV.Core.UInt8, 1));
+      Fallback_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 32_769, (OpenCV.Core.UInt8, 1));
+      Boundary        : constant OpenCV.Core.Mat :=
+        Boundary_Parent.Region ((X => 8, Y => 0, Width => 2, Height => 2));
+      Fallback        : constant OpenCV.Core.Mat :=
+        Fallback_Parent.Region ((X => 8, Y => 0, Width => 2, Height => 2));
+      Map_X           : constant OpenCV.Core.Mat := Identity_Map (1, 1);
+      Map_Y           : constant OpenCV.Core.Mat := Identity_Map_Y (1, 1);
+      Destination     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+
+      procedure Reject_Boundary is
+      begin
+         OpenCV.Image_Processing.Remap
+           (Boundary,
+            Map_X,
+            Map_Y,
+            Destination,
+            OpenCV.Image_Processing.Linear,
+            OpenCV.Reflect);
+      end Reject_Boundary;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Boundary_Parent, 0, 7, 99);
+      OpenCV.Core.UInt8_Access.Set (Boundary_Parent, 0, 8, 21);
+      OpenCV.Core.UInt8_Access.Set (Fallback_Parent, 0, 7, 99);
+      OpenCV.Core.UInt8_Access.Set (Fallback_Parent, 0, 8, 42);
+      OpenCV.Core.UInt8_Access.Set (Destination, 0, 0, 73);
+      OpenCV.Core.UInt8_Access.Set (Destination, 0, 1, 74);
+
+      AUnit.Assertions.Assert
+        (Boundary.Rows = 2
+         and then Boundary.Columns = 2
+         and then Fallback.Rows = 2
+         and then Fallback.Columns = 2,
+         "Regions must have small logical dimensions despite parent strides");
+      Assert_Raises_OpenCV_Error
+        (Reject_Boundary'Access,
+         "UInt8 Linear Remap must reject the exact 32768-byte stride");
+      AUnit.Assertions.Assert
+        (Destination.Rows = 1
+         and then Destination.Columns = 2
+         and then Destination.Depth = OpenCV.Core.UInt8
+         and then Destination.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Destination, 0, 0) = 73
+         and then OpenCV.Core.UInt8_Access.Get (Destination, 0, 1) = 74,
+         "SIMD stride rejection preserves Destination metadata and pixels");
+
+      OpenCV.Image_Processing.Remap
+        (Fallback,
+         Map_X,
+         Map_Y,
+         Destination,
+         OpenCV.Image_Processing.Linear,
+         OpenCV.Reflect);
+      AUnit.Assertions.Assert
+        (Destination.Rows = 1
+         and then Destination.Columns = 1
+         and then OpenCV.Core.UInt8_Access.Get (Destination, 0, 0) = 42,
+         "32769-byte stride must use scalar fallback and sample the Region");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Boundary_Parent, 0, 7) = 99
+         and then OpenCV.Core.UInt8_Access.Get (Boundary_Parent, 0, 8) = 21
+         and then OpenCV.Core.UInt8_Access.Get (Fallback_Parent, 0, 7) = 99
+         and then OpenCV.Core.UInt8_Access.Get (Fallback_Parent, 0, 8) = 42,
+         "Remap must leave both Region parents unchanged");
+   end UInt8_Linear_SIMD_Stride_Boundary;
+
    procedure Rejects_Destination_Aliases (Test : in out Fixture) is
       pragma Unreferenced (Test);
       Source : OpenCV.Core.Mat :=
@@ -960,6 +1031,10 @@ package body Remap_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Remap UInt8 Linear SIMD stride boundary and scalar fallback",
+            UInt8_Linear_SIMD_Stride_Boundary'Access));
       Result.Add_Test
         (Caller.Create
            ("Remap rejects huge Float32 coordinates atomically",

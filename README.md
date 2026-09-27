@@ -902,6 +902,10 @@ out-of-image coordinates, such as -1 or a few pixels beyond the source, remain
 legal. For eligible separate Float32 C1+C1 map operations, OpenCV 4.x may use
 IPP, which narrows source, map, and output byte strides to `int`; those paths
 also check the actual byte strides before invoking native Remap.
+The UInt8 C1/C3/C4 Linear SIMD path separately narrows the source row stride:
+the binding rejects strides above `INT_MAX` before narrowing and the exact
+32768-byte boundary admitted by OpenCV 4.1's unsafe SIMD shift. Larger
+representable strides remain eligible for the scalar fallback.
 
 Supported interpolation:
 
