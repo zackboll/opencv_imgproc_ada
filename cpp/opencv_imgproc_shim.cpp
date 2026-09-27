@@ -798,6 +798,105 @@ bool valid_filter_depth_combination(int src_depth, int32_t destination_depth)
     }
 }
 
+bool mat_storage_overlaps(const cv::Mat &first, const cv::Mat &second) noexcept;
+
+constexpr std::uint64_t pyramid_int_max =
+    static_cast<std::uint64_t>(std::numeric_limits<int>::max());
+
+std::uint64_t pyramid_align_16(std::uint64_t value) noexcept
+{
+    return (value + 15) & ~std::uint64_t{15};
+}
+
+bool pyramid_ipp_type(const cv::Mat &src) noexcept
+{
+    return src.type() == CV_8UC1 || src.type() == CV_8UC3 ||
+           src.type() == CV_32FC1 || src.type() == CV_32FC3;
+}
+
+opencv_imgproc_status pyramid_down_preflight(const cv::Mat &src,
+                                              const cv::Mat &dst, int border)
+{
+    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
+    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
+    const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
+    // ABI safety: pyrDown constructs Size((cols+1)/2, (rows+1)/2);
+    // pyrDown_ also doubles output extents and computes y*2+2 followed by
+    // sy++ in its vertical ring loop. The final y is ceil(rows/2)-1.
+    const std::uint64_t down_width = (cols + 1) / 2;
+    const std::uint64_t down_height = (rows + 1) / 2;
+    if (cols >= pyramid_int_max || rows >= pyramid_int_max ||
+        down_width * 2 > pyramid_int_max ||
+        down_height * 2 > pyramid_int_max ||
+        (down_height - 1) * 2 + 2 >= pyramid_int_max)
+        return invalid_argument("pyrDown dimensions overflow native int arithmetic");
+
+    const std::uint64_t source_width = cols * cn;
+    const std::uint64_t scaled_width = down_width * cn;
+    // ABI safety: pyrDown_ multiplies ssize.width and dsize.width by cn;
+    // its aligned int bufstep then allocates AutoBuffer(bufstep*5+16).
+    if (source_width > pyramid_int_max || scaled_width > pyramid_int_max ||
+        pyramid_align_16(scaled_width) * 5 + 16 > pyramid_int_max)
+        return invalid_argument("pyrDown channel width or ring buffer overflows native int");
+
+    // OpenVX 4.1/4.10 accepts only CV_8UC1, REPLICATE and natural size;
+    // ivx::Image::createAddressing narrows the effective Mat step to vx_int32.
+    // IPP 4.1/4.10/5.0 accepts C1/C3 UInt8/Float32, DEFAULT and an
+    // owning (or isolated) source; it narrows both byte steps to int.
+    const bool openvx = src.type() == CV_8UC1 && border == cv::BORDER_REPLICATE;
+    const bool ipp = border == cv::BORDER_DEFAULT && pyramid_ipp_type(src);
+    if (openvx || ipp) {
+        // ABI safety: native OpenVX/IPP row-step casts truncate size_t.
+        const bool reused_destination =
+            dst.size() == cv::Size(static_cast<int>(down_width),
+                                   static_cast<int>(down_height)) &&
+            dst.type() == src.type();
+        if (src.step[0] > pyramid_int_max ||
+            scaled_width * src.elemSize1() > pyramid_int_max ||
+            (reused_destination && dst.step[0] > pyramid_int_max))
+            return invalid_argument("pyrDown backend byte step overflows signed int");
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status pyramid_up_preflight(const cv::Mat &src,
+                                            const cv::Mat &dst)
+{
+    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
+    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
+    const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
+    const std::uint64_t up_width = cols * 2;
+    // ABI safety: pyrUp constructs Size(src.cols*2, src.rows*2), and
+    // pyrUp_ doubles source height in borderInterpolate and y-side indexing.
+    if (up_width > pyramid_int_max || rows * 2 > pyramid_int_max)
+        return invalid_argument("pyrUp dimensions would overflow signed int");
+
+    const std::uint64_t source_width = cols * cn;
+    const std::uint64_t scaled_width = up_width * cn;
+    const std::uint64_t raw_bufstep = (up_width + 1) * cn;
+    // ABI safety: pyrUp_ multiplies both widths by cn, allocates its int
+    // dtab(ssize.width*cn), and computes alignSize((dsize.width+1)*cn,16)
+    // before casting bufstep to int and allocating bufstep*3+16.
+    if (source_width > pyramid_int_max || scaled_width > pyramid_int_max ||
+        raw_bufstep > pyramid_int_max ||
+        pyramid_align_16(raw_bufstep) * 3 + 16 > pyramid_int_max)
+        return invalid_argument("pyrUp channel width or ring buffer overflows native int");
+
+    // IPP excludes unisolated Regions; the public call is never isolated.
+    if (!src.isSubmatrix() && pyramid_ipp_type(src)) {
+        // ABI safety: ipp_pyrup casts src.step and dst.step to signed int.
+        const bool reused_destination =
+            dst.size() == cv::Size(static_cast<int>(up_width),
+                                   static_cast<int>(rows * 2)) &&
+            dst.type() == src.type();
+        if (src.step[0] > pyramid_int_max ||
+            scaled_width * src.elemSize1() > pyramid_int_max ||
+            (reused_destination && dst.step[0] > pyramid_int_max))
+            return invalid_argument("pyrUp IPP byte step overflows signed int");
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
 opencv_imgproc_status resolve_pyramid_source_and_destination(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,
@@ -840,13 +939,12 @@ opencv_imgproc_status resolve_pyramid_source_and_destination(
 
     // ABI safety: writing dst while reading the same buffer is undefined
     // for this size-changing pyramid operation.
-    if (*src == *dst
-        || ((*src)->data != nullptr && (*src)->data == (*dst)->data)) {
+    if (*src == *dst || mat_storage_overlaps(**src, **dst)) {
         char message[error_message_capacity];
         std::snprintf(
             message,
             error_message_capacity,
-            "%s does not support aliased source and destination",
+            "%s does not support aliased or overlapping source and destination storage",
             operation);
         return invalid_argument(message);
     }
@@ -4618,6 +4716,11 @@ opencv_imgproc_pyr_down(
             effective_source = &logical_source;
         }
 
+        const opencv_imgproc_status preflight =
+            pyramid_down_preflight(*effective_source, *dst, opencv_border);
+        if (preflight != OPENCV_IMGPROC_OK)
+            return preflight;
+
         cv::pyrDown(*effective_source, *dst, cv::Size(), opencv_border);
 
         return OPENCV_IMGPROC_OK;
@@ -4648,13 +4751,9 @@ opencv_imgproc_pyr_up(
             return resolved;
         }
 
-        // ABI safety: OpenCV constructs Size(src.cols * 2, src.rows * 2)
-        // with signed int multiplication before allocating dst.
-        const int max_extent = std::numeric_limits<int>::max() / 2;
-        if (src->cols > max_extent || src->rows > max_extent) {
-            return invalid_argument(
-                "pyrUp dimensions would overflow signed int");
-        }
+        const opencv_imgproc_status preflight = pyramid_up_preflight(*src, *dst);
+        if (preflight != OPENCV_IMGPROC_OK)
+            return preflight;
 
         cv::pyrUp(*src, *dst, cv::Size(), cv::BORDER_DEFAULT);
 

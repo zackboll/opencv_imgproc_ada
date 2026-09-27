@@ -279,6 +279,111 @@ package body Pyramid_Tests is
       end loop;
    end Pyramid_Up_Region_Uses_Logical_View;
 
+   procedure Pyramid_Down_Rejects_Overlapping_Regions (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 6, (OpenCV.Core.UInt8, 1));
+      Source      : constant OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 4, Height => 4));
+      Destination : OpenCV.Core.Mat :=
+        Parent.Region ((X => 2, Y => 2, Width => 2, Height => 2));
+
+      procedure Attempt is
+      begin
+         OpenCV.Image_Processing.Pyramid_Down (Source, Destination);
+      end Attempt;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 37.0));
+      Assert_Raises_OpenCV_Error
+        (Attempt'Access, "down must reject partially overlapping Regions");
+      AUnit.Assertions.Assert
+        (Parent.Rows = 6
+         and then Parent.Columns = 6
+         and then Destination.Rows = 2
+         and then Destination.Columns = 2,
+         "rejected down call must preserve headers");
+      for Row in 0 .. 5 loop
+         for Column in 0 .. 5 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, Row, Column) = 37,
+               "rejected down call must preserve parent pixels");
+         end loop;
+      end loop;
+   end Pyramid_Down_Rejects_Overlapping_Regions;
+
+   procedure Pyramid_Up_Rejects_Overlapping_Regions (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 6, (OpenCV.Core.UInt8, 1));
+      Source      : constant OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Destination : OpenCV.Core.Mat :=
+        Parent.Region ((X => 2, Y => 2, Width => 4, Height => 4));
+
+      procedure Attempt is
+      begin
+         OpenCV.Image_Processing.Pyramid_Up (Source, Destination);
+      end Attempt;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 63.0));
+      Assert_Raises_OpenCV_Error
+        (Attempt'Access, "up must reject partially overlapping Regions");
+      AUnit.Assertions.Assert
+        (Parent.Rows = 6
+         and then Parent.Columns = 6
+         and then Destination.Rows = 4
+         and then Destination.Columns = 4,
+         "rejected up call must preserve headers");
+      for Row in 0 .. 5 loop
+         for Column in 0 .. 5 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, Row, Column) = 63,
+               "rejected up call must preserve parent pixels");
+         end loop;
+      end loop;
+   end Pyramid_Up_Rejects_Overlapping_Regions;
+
+   procedure Raw_Pyramid_Rejects_Overlapping_Regions (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 6, (OpenCV.Core.UInt8, 1));
+      Source      : constant OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 4, Height => 4));
+      Destination : OpenCV.Core.Mat :=
+        Parent.Region ((X => 2, Y => 2, Width => 2, Height => 2));
+      Status      : C_API.Status := C_API.Success;
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              C_API.Pyramid_Down
+                (Source_Handle, Destination_Handle, C_API.Border_Reflect_101);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 42.0));
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Error_Invalid_Argument,
+         "raw overlapping Region must return invalid argument");
+      AUnit.Assertions.Assert
+        (Ada.Strings.Fixed.Index (C_API.Last_Error_Message, "overlapping")
+         /= 0,
+         "raw overlap diagnostic must identify storage overlap");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Parent, 2, 2) = 42
+         and then Destination.Rows = 2,
+         "raw rejected call must not alter parent or destination header");
+   end Raw_Pyramid_Rejects_Overlapping_Regions;
+
    procedure Supported_Depths_Are_Preserved (Test : in out Fixture) is
       pragma Unreferenced (Test);
 
@@ -786,6 +891,18 @@ package body Pyramid_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Pyramid_Down rejects overlapping Regions",
+            Pyramid_Down_Rejects_Overlapping_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pyramid_Up rejects overlapping Regions",
+            Pyramid_Up_Rejects_Overlapping_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Raw pyramid rejects overlapping Regions",
+            Raw_Pyramid_Rejects_Overlapping_Regions'Access));
       Result.Add_Test
         (Caller.Create
            ("Pyramid_Down Region excludes parent pixels",

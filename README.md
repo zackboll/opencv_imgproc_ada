@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **377 AUnit tests**
+> **Current registered test baseline:** **394 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -475,16 +475,21 @@ Destination.Rows    = (Source.Rows    + 1) / 2
 
 Supported depths are `UInt8`, `UInt16`, `Int16`, `Float32`, and `Float64`.
 Channel count is unrestricted. `Replicate`, `Reflect`, `Reflect_101`, and
-`Wrap` are accepted; `Constant_Border` is rejected. Direct in-place use is
-unsupported. A Source Region is processed as its own logical image: parent
+`Wrap` are accepted; `Constant_Border` is rejected. Source and Destination
+must not address overlapping storage, including overlapping Regions. A Source
+Region is processed as its own logical image: parent
 pixels outside the Region do not participate. Only submatrix sources require
-a logical-view copy; ordinary owning Mats stay on the direct path.
+a logical-view copy; ordinary owning Mats stay on the direct path. Extreme
+geometries are rejected before native signed-int pyramid intermediate
+arithmetic can overflow.
 
 `Pyramid_Up` performs OpenCV's Gaussian-pyramid upsampling. Destination keeps
 Source depth and channel count and exactly doubles both dimensions. OpenCV
 supports only its default border for this operation, so no `Border` parameter
 is exposed. A Source Region is processed as its own logical image, without
-parent pixels. Direct in-place use is unsupported.
+parent pixels. Source and Destination must not address overlapping storage,
+including overlapping Regions. Extreme geometries are rejected before native
+signed-int pyramid intermediate arithmetic can overflow.
 
 `Pyramid_Up(Pyramid_Down(Image))` is generally a smoothed reconstruction, not
 the original image. `buildPyramid` is not bound.
