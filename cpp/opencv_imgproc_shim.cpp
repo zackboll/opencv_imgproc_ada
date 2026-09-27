@@ -353,6 +353,18 @@ bool to_opencv_border(int32_t border, int &opencv_border) noexcept
     }
 }
 
+bool to_opencv_morphology_border(int32_t border, int &opencv_border) noexcept
+{
+    if (!to_opencv_border(border, opencv_border)) {
+        return false;
+    }
+
+    // Region semantics: BORDER_ISOLATED prevents native morphOp from using
+    // locateROI() to read pixels outside the logical Source view.
+    opencv_border |= cv::BORDER_ISOLATED;
+    return true;
+}
+
 bool to_opencv_pyramid_down_border(int32_t border, int &opencv_border) noexcept
 {
     switch (border) {
@@ -580,7 +592,7 @@ opencv_imgproc_status apply_morphology(
 
         int opencv_border = 0;
 
-        if (!to_opencv_border(border, opencv_border)) {
+        if (!to_opencv_morphology_border(border, opencv_border)) {
             return invalid_argument("unsupported morphology border");
         }
 
@@ -3346,7 +3358,7 @@ opencv_imgproc_morphology_ex(
 
         int opencv_border = 0;
 
-        if (!to_opencv_border(border, opencv_border)) {
+        if (!to_opencv_morphology_border(border, opencv_border)) {
             return invalid_argument("unsupported morphology border");
         }
 
