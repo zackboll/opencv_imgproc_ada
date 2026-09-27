@@ -534,13 +534,65 @@ package OpenCV.Image_Processing is
    --  Border_Value is ignored. Source, Map_X, and Map_Y are read-only and
    --  may share storage. Destination must not share storage with Source,
    --  Map_X, or Map_Y. Direct in-place operation is not supported.
-   --  Failed calls leave Destination unchanged. Interleaved, fixed-point,
-   --  and relative maps are not bound. Contract
+   --  Failed calls leave Destination unchanged. Relative maps are not bound.
+   --  Contract
    --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
    procedure Remap
      (Source        : OpenCV.Core.Mat;
       Map_X         : OpenCV.Core.Mat;
       Map_Y         : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Interpolation : Interpolation_Method := Linear;
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0));
+
+   --  An absolute Float32 C2 map stores X in component 0 and Y in component 1.
+   --  It must be nonempty, two-dimensional, and have both dimensions < 32767.
+   --  The Source, interpolation, borders, alias and failure contracts above
+   --  also apply to this overload.
+   procedure Remap
+     (Source        : OpenCV.Core.Mat;
+      Map_XY        : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Interpolation : Interpolation_Method := Linear;
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0));
+
+   --  Coordinates are Int16 C2; Coefficients are UInt16 C1 for interpolation
+   --  or empty for nearest-only maps. The invariant-bearing pair is private.
+   type Fixed_Remap_Maps is private;
+   function Is_Empty (Maps : Fixed_Remap_Maps) return Boolean;
+   function Is_Nearest_Only (Maps : Fixed_Remap_Maps) return Boolean;
+
+   type Float_Remap_Maps is record
+      Map_X : OpenCV.Core.Mat;
+      Map_Y : OpenCV.Core.Mat;
+   end record;
+
+   --  All input maps are nonempty 2-D Float32 C1+C1 or Float32 C2, with
+   --  matching geometry where separate and dimensions < 32767. Conversion
+   --  to fixed maps quantizes fractions to 1/32 pixel; nearest-only conversion
+   --  discards fractions. Int16 coordinate saturation can lose information.
+   function Convert_Remap_To_Fixed
+     (Map_X, Map_Y : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean := False)
+      return Fixed_Remap_Maps;
+   function Convert_Remap_To_Fixed
+     (Map_XY : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean := False)
+      return Fixed_Remap_Maps;
+   function Interleave_Remap_Maps
+     (Map_X, Map_Y : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+   function Separate_Remap_Map
+     (Map_XY : OpenCV.Core.Mat) return Float_Remap_Maps;
+   function Convert_Remap_To_Interleaved_Float
+     (Maps : Fixed_Remap_Maps) return OpenCV.Core.Mat;
+   function Convert_Remap_To_Separate_Float
+     (Maps : Fixed_Remap_Maps) return Float_Remap_Maps;
+
+   --  Coefficient-bearing maps support Nearest, Linear, Cubic and Lanczos_4;
+   --  nearest-only maps support Nearest_Neighbor exclusively.
+   procedure Remap
+     (Source        : OpenCV.Core.Mat;
+      Maps          : Fixed_Remap_Maps;
       Destination   : in out OpenCV.Core.Mat;
       Interpolation : Interpolation_Method := Linear;
       Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
@@ -1376,6 +1428,11 @@ package OpenCV.Image_Processing is
       Scale        : OpenCV.Float64_Value := 1.0) return OpenCV.Core.Mat;
 
 private
+   type Fixed_Remap_Maps is record
+      Coordinates  : OpenCV.Core.Mat;
+      Coefficients : OpenCV.Core.Mat;
+   end record;
+
    package Contour_Vectors is new
      Ada.Containers.Indefinite_Vectors
        (Index_Type   => Natural,

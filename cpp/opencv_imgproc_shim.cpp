@@ -1061,7 +1061,8 @@ bool to_opencv_remap_border(int32_t border, int &opencv_border) noexcept
 bool float32_map_coordinates_safe(const cv::Mat &matrix, bool nearest) noexcept
 {
     const int rows = matrix.rows;
-    const int cols = matrix.cols;
+    // ABI safety: map width < 32767 makes 2 * cols fit int for C2 rows.
+    const int cols = matrix.cols * matrix.channels();
 
     for (int row = 0; row < rows; ++row) {
         const float *const coordinates = matrix.ptr<float>(row);
@@ -5240,6 +5241,142 @@ opencv_imgproc_remap(
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+// ABI safety: native convertMaps flattens continuous maps (width *= height)
+// and C2 SIMD paths double an element index. 32766^2 = 1073610756 < 2^30,
+// so both the flattened width and doubled index fit signed int.
+bool encoded_map(const cv::Mat &m, int type) noexcept
+{
+    return !m.empty() && m.dims == 2 && m.type() == type &&
+           m.rows < 32767 && m.cols < 32767;
+}
+
+opencv_imgproc_status opencv_imgproc_convert_remap_maps(
+    const opencv_core_mat_handle *map1, const opencv_core_mat_handle *map2,
+    opencv_core_mat_handle *output1, opencv_core_mat_handle *output2,
+    int32_t mode, int32_t nearest_only)
+{
+    clear_error();
+    if (!map1 || !map2 || !output1 || !output2 || output1 == output2)
+        return invalid_argument("invalid or duplicate map handles");
+    try {
+        const cv::Mat *a = nullptr, *b = nullptr;
+        cv::Mat *out1 = nullptr, *out2 = nullptr;
+        if (opencv_core_module_input_mat(map1, &a) != OPENCV_CORE_OK ||
+            opencv_core_module_input_mat(map2, &b) != OPENCV_CORE_OK ||
+            opencv_core_module_output_mat(output1, &out1) != OPENCV_CORE_OK ||
+            opencv_core_module_output_mat(output2, &out2) != OPENCV_CORE_OK ||
+            !a || !b || !out1 || !out2 || out1 == out2)
+            return invalid_argument("invalid map handle");
+        if (mode < 0 || mode > 5 || (nearest_only != 0 && nearest_only != 1))
+            return invalid_argument("invalid map conversion selector");
+        const bool separate = mode == 0 || mode == 4;
+        const bool fixed = mode == 2 || mode == 3;
+        if (!encoded_map(*a, fixed ? CV_16SC2 : separate ? CV_32FC1 : CV_32FC2))
+            return invalid_argument("invalid primary map type or size");
+        if (separate && (!encoded_map(*b, CV_32FC1) || b->size() != a->size()))
+            return invalid_argument("invalid separate map geometry or type");
+        if (fixed && !b->empty() &&
+            (!encoded_map(*b, CV_16UC1) || b->size() != a->size()))
+            return invalid_argument("invalid fixed coefficient map");
+        if ((mode == 1 || mode == 5) && !b->empty())
+            return invalid_argument("interleaved map requires empty second map");
+        if ((mode == 0 || mode == 1) &&
+            (!float32_map_coordinates_safe(*a, nearest_only != 0) ||
+             (separate && !float32_map_coordinates_safe(*b, nearest_only != 0))))
+            return invalid_argument("unsafe Float32 map coordinate");
+        if (a == out1 || a == out2 || b == out1 || b == out2 ||
+            (out1->data && (out1->data == a->data || out1->data == b->data)) ||
+            (out2->data && (out2->data == a->data || out2->data == b->data)) ||
+            (out1->data && out1->data == out2->data))
+            return invalid_argument("map output aliases input or other output");
+        cv::Mat first, second;
+        if (mode == 0 || mode == 1)
+            cv::convertMaps(*a, *b, first, second, CV_16SC2, nearest_only != 0);
+        else if (mode == 2 || mode == 3) {
+            const bool nn = b->empty();
+            if (mode == 2)
+                cv::convertMaps(*a, *b, first, second, CV_32FC2, nn);
+            else if (nn) {
+                cv::Mat xy, unused;
+                cv::convertMaps(*a, *b, xy, unused, CV_32FC2, true);
+                cv::extractChannel(xy, first, 0);
+                cv::extractChannel(xy, second, 1);
+            } else
+                cv::convertMaps(*a, *b, first, second, CV_32FC1, false);
+        } else if (mode == 4) {
+            cv::Mat channels[] = {*a, *b};
+            cv::merge(channels, 2, first);
+        } else {
+            cv::extractChannel(*a, first, 0);
+            cv::extractChannel(*a, second, 1);
+        }
+        *out1 = std::move(first);
+        *out2 = std::move(second);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status opencv_imgproc_remap_encoded(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *map1,
+    const opencv_core_mat_handle *map2, opencv_core_mat_handle *destination,
+    int32_t mode, int32_t interpolation, int32_t border,
+    double border_value_0, double border_value_1,
+    double border_value_2, double border_value_3)
+{
+    clear_error();
+    if (!source || !map1 || !map2 || !destination)
+        return invalid_argument("null Remap handle");
+    try {
+        const cv::Mat *src = nullptr, *a = nullptr, *b = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK ||
+            opencv_core_module_input_mat(map1, &a) != OPENCV_CORE_OK ||
+            opencv_core_module_input_mat(map2, &b) != OPENCV_CORE_OK ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK ||
+            !src || !a || !b || !dst)
+            return invalid_argument("invalid Remap handle");
+        if (mode != 0 && mode != 1)
+            return invalid_argument("invalid Remap map selector");
+        // ABI safety: RemapInvoker dereferences typed map rows before rejecting
+        // malformed geometry or type; the short coordinate tables need <32767.
+        if (!encoded_map(*a, mode == 0 ? CV_32FC2 : CV_16SC2))
+            return invalid_argument("invalid primary Remap map");
+        if (mode == 0 ? !b->empty() :
+            (!b->empty() && (!encoded_map(*b, CV_16UC1) || b->size() != a->size())))
+            return invalid_argument("invalid secondary Remap map");
+        // ABI safety: typed source kernels access only two-dimensional
+        // supported-depth/channel pixels; 16-bit coordinate tables bound size.
+        if (src->empty() || src->dims != 2 || src->rows >= 32767 ||
+            src->cols >= 32767 || src->channels() > 4 ||
+            (src->depth() != CV_8U && src->depth() != CV_16U &&
+             src->depth() != CV_16S && src->depth() != CV_32F &&
+             src->depth() != CV_64F))
+            return invalid_argument("invalid Remap source");
+        int method = 0, edge = 0;
+        if (!to_opencv_remap_interpolation(interpolation, method) ||
+            !to_opencv_remap_border(border, edge))
+            return invalid_argument("invalid Remap selector");
+        // ABI safety: without coefficients non-nearest RemapInvoker reads an
+        // empty coefficient row through ptr<ushort>.
+        if (mode == 1 && b->empty() && method != cv::INTER_NEAREST)
+            return invalid_argument("nearest-only map cannot interpolate");
+        if (!remap_uint8_linear_simd_stride_safe(*src, method))
+            return invalid_argument("unsafe Remap SIMD source stride");
+        if (mode == 0 && !float32_map_coordinates_safe(*a, method == cv::INTER_NEAREST))
+            return invalid_argument("unsafe Float32 Remap coordinate");
+        if (src == dst || a == dst || b == dst ||
+            (dst->data && (dst->data == src->data || dst->data == a->data ||
+                           dst->data == b->data)))
+            return invalid_argument("Remap destination aliases an input");
+        cv::Mat result;
+        cv::remap(*src, result, *a, *b, method, edge,
+                  cv::Scalar(border_value_0, border_value_1,
+                             border_value_2, border_value_3));
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_imgproc_status

@@ -629,6 +629,26 @@ opencv_imgproc_remap(
     double border_value_2,
     double border_value_3);
 
+/* Semantic map modes: 0 interleaved float, 1 fixed. */
+opencv_imgproc_status opencv_imgproc_remap_encoded(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *map1,
+    const opencv_core_mat_handle *map2,
+    opencv_core_mat_handle *destination,
+    int32_t mode, int32_t interpolation, int32_t border,
+    double border_value_0, double border_value_1,
+    double border_value_2, double border_value_3);
+
+/* Semantic conversions: 0 separate->fixed, 1 interleaved->fixed,
+   2 fixed->interleaved, 3 fixed->separate,
+   4 separate->interleaved, 5 interleaved->separate. */
+opencv_imgproc_status opencv_imgproc_convert_remap_maps(
+    const opencv_core_mat_handle *map1,
+    const opencv_core_mat_handle *map2,
+    opencv_core_mat_handle *output1,
+    opencv_core_mat_handle *output2,
+    int32_t mode, int32_t nearest_only);
+
 opencv_imgproc_status
 opencv_imgproc_draw_line(
     opencv_core_mat_handle *image,

@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **364 AUnit tests**
+> **Current registered test baseline:** **373 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -852,6 +852,22 @@ procedure Remap
    Border        : OpenCV.Border_Kind :=
                      OpenCV.Constant_Border;
    Border_Value  : OpenCV.Scalar := (others => 0.0));
+
+procedure Remap
+  (Source        : OpenCV.Core.Mat;
+   Map_XY        : OpenCV.Core.Mat;
+   Destination   : in out OpenCV.Core.Mat;
+   Interpolation : Interpolation_Method := Linear;
+   Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+   Border_Value  : OpenCV.Scalar := (others => 0.0));
+
+procedure Remap
+  (Source        : OpenCV.Core.Mat;
+   Maps          : Fixed_Remap_Maps;
+   Destination   : in out OpenCV.Core.Mat;
+   Interpolation : Interpolation_Method := Linear;
+   Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+   Border_Value  : OpenCV.Scalar := (others => 0.0));
 ```
 
 `Remap` applies an absolute source-coordinate map. Destination `(Row,
@@ -938,8 +954,53 @@ operation is not supported.
 Destination is rebound only after native Remap succeeds; rejected operations
 leave its previous contents intact.
 
-Interleaved `CV_32FC2` maps, fixed-point maps, relative maps, and
-`Convert_Maps` are not yet bound.
+The following absolute map representations are available:
+
+| Representation | Primary map | Secondary map | Intended use |
+| --- | --- | --- | --- |
+| Separate Float | Float32 C1 X | Float32 C1 Y | simple/editable |
+| Interleaved Float | Float32 C2 XY | none | compact Float map |
+| Fixed interpolated | Int16 C2 | UInt16 C1 | reusable interpolation map |
+| Fixed nearest-only | Int16 C2 | none | nearest only |
+
+All maps contain **absolute** source coordinates. C2 component 0 is X (source
+column), component 1 is Y (source row). All map dimensions must be less than
+32767. The existing finite/roundable Float32 coordinate checks apply to C2
+Remap and Float-to-fixed conversion, and the UInt8 Linear SIMD source-stride
+guard also applies to C2 and fixed Remap. IPP's separate-C1+C1-map stride
+checks do not apply to the other two representations.
+
+`Fixed_Remap_Maps` is private: its Int16 C2 coordinates and optional UInt16 C1
+coefficients cannot be independently mutated. `Float_Remap_Maps` returns fresh
+owning separate Float32 C1 Mats. Convert a map once and reuse it with multiple
+frames; fixed conversion is lossy. Interpolated coordinates are quantized to
+OpenCV's 32-step interpolation table (approximately 1/32 pixel resolution on
+reverse conversion); nearest-only maps discard fractions permanently. Extreme
+coordinates can also saturate in the fixed Int16 representation. Nearest-only
+fixed maps accept only `Nearest_Neighbor`; coefficient-bearing maps accept
+Nearest, Linear, Cubic, and Lanczos_4. `Area` remains unsupported. Reverse
+nearest-only conversion returns the already-rounded coordinates as Float32.
+Conversion and Remap failures leave caller-visible outputs unchanged. Relative
+`WARP_RELATIVE_MAP` remains deferred.
+
+```ada
+--  Map_X and Map_Y are Float32 C1; Map_XY is Float32 C2 (X then Y).
+Remap (Source, Map_XY, Destination, Linear);
+
+Fixed := Convert_Remap_To_Fixed
+  (Map_X, Map_Y, Nearest_Neighbor_Only => False);
+Remap (Frame, Fixed, Output, Linear);
+Remap (Next_Frame, Fixed, Next_Output, Linear);
+
+Fixed := Convert_Remap_To_Fixed
+  (Map_XY, Nearest_Neighbor_Only => True);
+Remap (Frame, Fixed, Output, Nearest_Neighbor);
+
+Map_XY := Interleave_Remap_Maps (Map_X, Map_Y);
+Separate := Separate_Remap_Map (Map_XY);
+Restored_XY := Convert_Remap_To_Interleaved_Float (Fixed);
+Restored_Separate := Convert_Remap_To_Separate_Float (Fixed);
+```
 
 Example: identity remap of a 2x3 UInt8 image:
 
@@ -3717,7 +3778,8 @@ Notable Imgproc families that are not yet broadly bound include:
   two-plane conversion, Bayer/demosaicing, FULL hue variants, linear-light
   Lab/Luv variants, and premultiplied alpha;
 - custom morphology kernels, anchors, and arbitrary constant border values;
-- additional map encodings and `Convert_Maps`;
+- relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
+  calibration/undistortion map generation in the appropriate module;
 - polar transforms;
 - Laplacian pyramids and `buildPyramid`;
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted

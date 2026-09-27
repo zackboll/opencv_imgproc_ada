@@ -1404,11 +1404,8 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Warp_Perspective;
 
-   procedure Validate_Remap
-     (Source        : OpenCV.Core.Mat;
-      Map_X         : OpenCV.Core.Mat;
-      Map_Y         : OpenCV.Core.Mat;
-      Interpolation : Interpolation_Method)
+   procedure Validate_Remap_Source
+     (Source : OpenCV.Core.Mat; Interpolation : Interpolation_Method)
    is
       use type OpenCV.Core.Channel_Count;
       use type OpenCV.Core.Depth_Type;
@@ -1452,6 +1449,27 @@ package body OpenCV.Image_Processing is
             "Remap requires Source Rows and Columns less than 32767");
       end if;
 
+      case Interpolation is
+         when Nearest_Neighbor | Linear | Cubic | Lanczos_4 =>
+            null;
+
+         when Area                                          =>
+            raise OpenCV.OpenCV_Error
+              with "Remap does not support Area interpolation";
+      end case;
+   end Validate_Remap_Source;
+
+   procedure Validate_Remap
+     (Source        : OpenCV.Core.Mat;
+      Map_X         : OpenCV.Core.Mat;
+      Map_Y         : OpenCV.Core.Mat;
+      Interpolation : Interpolation_Method)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+      Remap_Limit : constant Natural := 32_767;
+   begin
+      Validate_Remap_Source (Source, Interpolation);
       if Map_X.Is_Empty then
          Ada.Exceptions.Raise_Exception
            (OpenCV.OpenCV_Error'Identity, "Remap requires a non-empty Map_X");
@@ -1498,16 +1516,52 @@ package body OpenCV.Image_Processing is
             "Remap requires map Rows and Columns less than 32767");
       end if;
 
-      case Interpolation is
-         when Nearest_Neighbor | Linear | Cubic | Lanczos_4 =>
-            null;
-
-         when Area                                          =>
-            Ada.Exceptions.Raise_Exception
-              (OpenCV.OpenCV_Error'Identity,
-               "Remap does not support Area interpolation");
-      end case;
    end Validate_Remap;
+
+   procedure Validate_Float_Remap_Map
+     (Map : OpenCV.Core.Mat; Channels : OpenCV.Core.Channel_Count)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Map.Is_Empty
+        or else Map.Dimension_Count /= 2
+        or else Map.Depth /= OpenCV.Core.Float32
+        or else Map.Channels /= Channels
+        or else Map.Rows >= 32_767
+        or else Map.Columns >= 32_767
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "Invalid Float32 Remap map");
+      end if;
+   end Validate_Float_Remap_Map;
+
+   procedure Validate_Fixed_Remap_Maps (Maps : Fixed_Remap_Maps) is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Maps.Coordinates.Is_Empty
+        or else Maps.Coordinates.Dimension_Count /= 2
+        or else Maps.Coordinates.Depth /= OpenCV.Core.Int16
+        or else Maps.Coordinates.Channels /= 2
+        or else Maps.Coordinates.Rows >= 32_767
+        or else Maps.Coordinates.Columns >= 32_767
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "Invalid fixed Remap coordinates");
+      end if;
+      if not Maps.Coefficients.Is_Empty
+        and then (Maps.Coefficients.Dimension_Count /= 2
+                  or else Maps.Coefficients.Depth /= OpenCV.Core.UInt16
+                  or else Maps.Coefficients.Channels /= 1
+                  or else Maps.Coefficients.Rows /= Maps.Coordinates.Rows
+                  or else Maps.Coefficients.Columns
+                          /= Maps.Coordinates.Columns)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "Invalid fixed Remap coefficients");
+      end if;
+   end Validate_Fixed_Remap_Maps;
 
    procedure Validate_Median_Blur
      (Source : OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size)
@@ -3052,6 +3106,260 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle
         (Source, Source_Input'Access);
       Raise_On_Error (Status, "Remap");
+   end Remap;
+
+   function Is_Empty (Maps : Fixed_Remap_Maps) return Boolean is
+   begin
+      return Maps.Coordinates.Is_Empty;
+   end Is_Empty;
+
+   function Is_Nearest_Only (Maps : Fixed_Remap_Maps) return Boolean is
+   begin
+      return not Maps.Coordinates.Is_Empty and then Maps.Coefficients.Is_Empty;
+   end Is_Nearest_Only;
+
+   procedure Convert_Remap_Impl
+     (First, Second      : OpenCV.Core.Mat;
+      Output_1, Output_2 : in out OpenCV.Core.Mat;
+      Mode               : Interfaces.Integer_32;
+      Nearest            : Boolean)
+   is
+      use Internal.C_API;
+      Status : Internal.C_API.Status := Success;
+      procedure First_Input
+        (First_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Second_Input
+           (Second_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure First_Output
+              (First_Out : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               procedure Second_Output
+                 (Second_Out : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Convert_Remap_Maps
+                      (First_Handle,
+                       Second_Handle,
+                       First_Out,
+                       Second_Out,
+                       Mode,
+                       (if Nearest then 1 else 0));
+               end Second_Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Output_2, Second_Output'Access);
+            end First_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Output_1, First_Output'Access);
+         end Second_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Second, Second_Input'Access);
+      end First_Input;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle (First, First_Input'Access);
+      Raise_On_Error (Status, "Convert_Remap_Maps");
+   end Convert_Remap_Impl;
+
+   function Convert_Remap_To_Fixed
+     (Map_X, Map_Y : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean := False)
+      return Fixed_Remap_Maps
+   is
+      Result : Fixed_Remap_Maps;
+   begin
+      Validate_Float_Remap_Map (Map_X, 1);
+      Validate_Float_Remap_Map (Map_Y, 1);
+      if Map_X.Rows /= Map_Y.Rows or else Map_X.Columns /= Map_Y.Columns then
+         raise OpenCV.OpenCV_Error
+           with "Remap maps must have matching geometry";
+      end if;
+      Convert_Remap_Impl
+        (Map_X,
+         Map_Y,
+         Result.Coordinates,
+         Result.Coefficients,
+         0,
+         Nearest_Neighbor_Only);
+      return Result;
+   end Convert_Remap_To_Fixed;
+
+   function Convert_Remap_To_Fixed
+     (Map_XY : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean := False)
+      return Fixed_Remap_Maps
+   is
+      Result    : Fixed_Remap_Maps;
+      Empty_Map : OpenCV.Core.Mat;
+   begin
+      Validate_Float_Remap_Map (Map_XY, 2);
+      Convert_Remap_Impl
+        (Map_XY,
+         Empty_Map,
+         Result.Coordinates,
+         Result.Coefficients,
+         1,
+         Nearest_Neighbor_Only);
+      return Result;
+   end Convert_Remap_To_Fixed;
+
+   function Interleave_Remap_Maps
+     (Map_X, Map_Y : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+      Result, Unused : OpenCV.Core.Mat;
+   begin
+      Validate_Float_Remap_Map (Map_X, 1);
+      Validate_Float_Remap_Map (Map_Y, 1);
+      if Map_X.Rows /= Map_Y.Rows or else Map_X.Columns /= Map_Y.Columns then
+         raise OpenCV.OpenCV_Error
+           with "Remap maps must have matching geometry";
+      end if;
+      Convert_Remap_Impl (Map_X, Map_Y, Result, Unused, 4, False);
+      return Result;
+   end Interleave_Remap_Maps;
+
+   function Separate_Remap_Map
+     (Map_XY : OpenCV.Core.Mat) return Float_Remap_Maps
+   is
+      Result    : Float_Remap_Maps;
+      Empty_Map : OpenCV.Core.Mat;
+   begin
+      Validate_Float_Remap_Map (Map_XY, 2);
+      Convert_Remap_Impl
+        (Map_XY, Empty_Map, Result.Map_X, Result.Map_Y, 5, False);
+      return Result;
+   end Separate_Remap_Map;
+
+   function Convert_Remap_To_Interleaved_Float
+     (Maps : Fixed_Remap_Maps) return OpenCV.Core.Mat
+   is
+      Result, Unused : OpenCV.Core.Mat;
+   begin
+      Validate_Fixed_Remap_Maps (Maps);
+      Convert_Remap_Impl
+        (Maps.Coordinates, Maps.Coefficients, Result, Unused, 2, False);
+      return Result;
+   end Convert_Remap_To_Interleaved_Float;
+
+   function Convert_Remap_To_Separate_Float
+     (Maps : Fixed_Remap_Maps) return Float_Remap_Maps
+   is
+      Result : Float_Remap_Maps;
+   begin
+      Validate_Fixed_Remap_Maps (Maps);
+      Convert_Remap_Impl
+        (Maps.Coordinates,
+         Maps.Coefficients,
+         Result.Map_X,
+         Result.Map_Y,
+         3,
+         False);
+      return Result;
+   end Convert_Remap_To_Separate_Float;
+
+   procedure Remap_Encoded_Impl
+     (Source, First, Second : OpenCV.Core.Mat;
+      Destination           : in out OpenCV.Core.Mat;
+      Mode                  : Interfaces.Integer_32;
+      Interpolation         : Interpolation_Method;
+      Border                : OpenCV.Border_Kind;
+      Border_Value          : OpenCV.Scalar)
+   is
+      use Internal.C_API;
+      Status : Internal.C_API.Status := Success;
+      procedure Source_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure First_Input
+           (First_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Second_Input
+              (Second_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure Output
+                 (Destination_Handle :
+                    OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Remap_Encoded
+                      (Source_Handle,
+                       First_Handle,
+                       Second_Handle,
+                       Destination_Handle,
+                       Mode,
+                       To_C_Remap_Interpolation (Interpolation),
+                       To_C_Remap_Border (Border),
+                       Interfaces.C.double (Border_Value.Component_0),
+                       Interfaces.C.double (Border_Value.Component_1),
+                       Interfaces.C.double (Border_Value.Component_2),
+                       Interfaces.C.double (Border_Value.Component_3));
+               end Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Destination, Output'Access);
+            end Second_Input;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Second, Second_Input'Access);
+         end First_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (First, First_Input'Access);
+      end Source_Input;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Source_Input'Access);
+      Raise_On_Error (Status, "Remap");
+   end Remap_Encoded_Impl;
+
+   procedure Remap
+     (Source        : OpenCV.Core.Mat;
+      Map_XY        : OpenCV.Core.Mat;
+      Destination   : in out OpenCV.Core.Mat;
+      Interpolation : Interpolation_Method := Linear;
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0))
+   is
+      Empty_Map : OpenCV.Core.Mat;
+   begin
+      Validate_Remap_Source (Source, Interpolation);
+      Validate_Float_Remap_Map (Map_XY, 2);
+      Remap_Encoded_Impl
+        (Source,
+         Map_XY,
+         Empty_Map,
+         Destination,
+         0,
+         Interpolation,
+         Border,
+         Border_Value);
+   end Remap;
+
+   procedure Remap
+     (Source        : OpenCV.Core.Mat;
+      Maps          : Fixed_Remap_Maps;
+      Destination   : in out OpenCV.Core.Mat;
+      Interpolation : Interpolation_Method := Linear;
+      Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
+      Border_Value  : OpenCV.Scalar := (others => 0.0)) is
+   begin
+      Validate_Fixed_Remap_Maps (Maps);
+      Validate_Remap_Source (Source, Interpolation);
+      if Maps.Coefficients.Is_Empty and then Interpolation /= Nearest_Neighbor
+      then
+         raise OpenCV.OpenCV_Error
+           with "Nearest-only map requires Nearest_Neighbor";
+      end if;
+      Remap_Encoded_Impl
+        (Source,
+         Maps.Coordinates,
+         Maps.Coefficients,
+         Destination,
+         1,
+         Interpolation,
+         Border,
+         Border_Value);
    end Remap;
 
    procedure Median_Blur
