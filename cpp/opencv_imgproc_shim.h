@@ -627,6 +627,13 @@ opencv_imgproc_warp_perspective(
     double border_value_2,
     double border_value_3);
 
+opencv_imgproc_status opencv_imgproc_warp_polar(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    float center_x, float center_y, double maximum_radius,
+    int32_t output_width, int32_t output_height,
+    int32_t mapping, int32_t direction, int32_t interpolation);
+
 opencv_imgproc_status
 opencv_imgproc_remap(
     const opencv_core_mat_handle *source,

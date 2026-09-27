@@ -1164,6 +1164,27 @@ bool float32_map_coordinates_safe(const cv::Mat &matrix, bool nearest) noexcept
     return true;
 }
 
+// ABI safety: bound the Float32 operand rounded by RemapInvoker (including
+// the interpolated Float32 multiplication) before warpPolar creates its maps.
+// The extra margin covers Float32 map construction and transcendental error.
+bool polar_coordinate_bound_safe(double bound, bool nearest) noexcept
+{
+    constexpr double limit = 2147483648.0;
+    const double operand = nearest ? bound : bound * 32.0;
+    return std::isfinite(bound) && bound >= 0 &&
+           bound < static_cast<double>(std::numeric_limits<float>::max()) &&
+           std::isfinite(operand) && operand < limit - 1024.0;
+}
+
+// ABI safety: copyMakeBorder adds two rows before inverse remap checks its
+// signed 16-bit source geometry. Avoid addition in the signed-int domain.
+constexpr bool polar_inverse_rows_safe(int rows) noexcept
+{
+    return rows > 0 && rows <= 32764;
+}
+static_assert(polar_inverse_rows_safe(32764) && !polar_inverse_rows_safe(32765),
+              "inverse wrap padding must leave remap rows below 32767");
+
 // In OpenCV 4.1/4.10 these are exactly the separate-map, interpolation,
 // border and source types dispatched through IPPRemapInvoker. OpenCV 5.0
 // has no such IPP remap invoker, but retaining the portable guard is safe.
@@ -5257,6 +5278,120 @@ opencv_imgproc_warp_perspective(
                 border_value_2,
                 border_value_3));
 
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_warp_polar(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    float center_x, float center_y, double maximum_radius,
+    int32_t output_width, int32_t output_height,
+    int32_t mapping, int32_t direction, int32_t interpolation)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid polar Mat handle");
+        if ((mapping != 0 && mapping != 1) || (direction != 0 && direction != 1))
+            return invalid_argument("invalid polar selector");
+        // ABI safety: remap's typed kernels require a supported nonempty 2-D
+        // source, and warpPolar's map construction reads its metadata.
+        if (src->empty() || src->dims != 2 || src->channels() > 4 ||
+            (src->depth() != CV_8U && src->depth() != CV_16U &&
+             src->depth() != CV_16S && src->depth() != CV_32F &&
+             src->depth() != CV_64F))
+            return invalid_argument("unsupported polar source");
+        // ABI safety: remap uses signed 16-bit dimensions and warpPolar
+        // divides by explicit nonzero geometry.
+        if (output_width <= 0 || output_height <= 0 ||
+            output_width >= 32767 || output_height >= 32767)
+            return invalid_argument("unsafe polar output size");
+        if (!std::isfinite(center_x) || !std::isfinite(center_y))
+            return invalid_argument("nonfinite polar center");
+        // ABI safety: native log and divisions feed map coordinates which
+        // remap rounds into signed int; reject degenerate scales first.
+        if (!std::isfinite(maximum_radius) ||
+            !(maximum_radius > (mapping == 0 ? 0.0 : 1.0)))
+            return invalid_argument("unsafe polar radius");
+        if (src->cols >= 32767 ||
+            (direction == 0 ? src->rows >= 32767 :
+             !polar_inverse_rows_safe(src->rows)))
+            return invalid_argument("unsafe polar source dimensions");
+        int method = 0;
+        if (!to_opencv_remap_interpolation(interpolation, method))
+            return invalid_argument("unsupported polar interpolation");
+        const double scale = (mapping == 0 ? maximum_radius : std::log(maximum_radius)) /
+                             (direction == 0 ? output_width : src->cols);
+        if (!std::isfinite(scale) || !(scale > 0))
+            return invalid_argument("unsafe polar scale");
+        const bool nearest = method == cv::INTER_NEAREST;
+        if (direction == 0) {
+            // ABI safety: both coordinates lie within center +/- radius;
+            // Float32 map rounding must stay strictly within int endpoints.
+            if (!polar_coordinate_bound_safe(std::abs(static_cast<double>(center_x)) + maximum_radius + 4.0, nearest) ||
+                !polar_coordinate_bound_safe(std::abs(static_cast<double>(center_y)) + maximum_radius + 4.0, nearest))
+                return invalid_argument("unsafe forward polar map coordinates");
+        } else {
+            double distance = 0;
+            for (int y : {0, output_height - 1})
+                for (int x : {0, output_width - 1})
+                    distance = std::max(distance, std::hypot(static_cast<double>(x) - center_x,
+                                                               static_cast<double>(y) - center_y));
+            // ABI safety: warpPolar converts Cartesian offsets to Float32
+            // before cartToPolar; an infinite intermediate corrupts the map.
+            if (!std::isfinite(distance) ||
+                distance >= static_cast<double>(std::numeric_limits<float>::max()) / 2.0)
+                return invalid_argument("unsafe inverse polar distance");
+            const double rho = mapping == 0 ? distance / scale : std::log1p(distance) / scale;
+            // ABI safety: angular map receives a one-row wrap offset; the
+            // radial map may otherwise overflow Float32 or remap's cvRound.
+            if (!polar_coordinate_bound_safe(rho + 4.0, nearest) ||
+                !polar_coordinate_bound_safe(static_cast<double>(src->rows) + 4.0, nearest))
+                return invalid_argument("unsafe inverse polar map coordinates");
+        }
+        // Forward remap sees the actual Region stride; inverse remap sees the
+        // packed copyMakeBorder temporary, not the original source stride.
+        const size_t source_step = direction == 0 ? src->step[0] :
+            static_cast<size_t>(src->cols) * src->elemSize();
+        if (direction == 0) {
+            if (!remap_uint8_linear_simd_stride_safe(*src, method))
+                return invalid_argument("unsafe polar SIMD source stride");
+        } else if (method == cv::INTER_LINEAR &&
+                   (src->type() == CV_8UC1 || src->type() == CV_8UC3 || src->type() == CV_8UC4) &&
+                   (source_step > static_cast<size_t>(std::numeric_limits<int>::max()) || source_step == 0x8000)) {
+            // ABI safety: the inverse packed UInt8 Linear step hits the same
+            // OpenCV 4.1 RemapVec_8u signed shift at exactly 0x8000.
+            return invalid_argument("unsafe inverse polar SIMD stride");
+        }
+        if (remap_may_use_ipp(src->type(), method, cv::BORDER_CONSTANT) &&
+            (source_step > static_cast<size_t>(std::numeric_limits<int>::max()) ||
+             static_cast<uint64_t>(output_width) * src->elemSize() >
+                 static_cast<uint64_t>(std::numeric_limits<int>::max()))) {
+            // ABI safety: OpenCV 4.1/4.10 IPP narrows source and destination
+            // strides to int; generated Float32 maps are packed and <32767.
+            return invalid_argument("unsafe polar IPP stride");
+        }
+        if (src == dst || mat_storage_overlaps(*src, *dst))
+            return invalid_argument("polar destination overlaps source");
+        cv::Mat result;
+        // copyMakeBorder may expand an ROI into its parent when wrapping the
+        // inverse polar source; clone the view to keep its logical boundary.
+        cv::Mat isolated;
+        if (direction != 0 && src->isSubmatrix())
+            isolated = src->clone();
+        const cv::Mat &input = isolated.empty() ? *src : isolated;
+        cv::warpPolar(input, result, cv::Size(output_width, output_height),
+                      cv::Point2f(center_x, center_y), maximum_radius,
+                      method | cv::WARP_FILL_OUTLIERS |
+                      (mapping == 0 ? cv::WARP_POLAR_LINEAR : cv::WARP_POLAR_LOG) |
+                      (direction == 0 ? 0 : cv::WARP_INVERSE_MAP));
+        *dst = std::move(result);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

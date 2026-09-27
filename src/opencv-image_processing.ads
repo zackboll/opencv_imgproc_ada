@@ -132,6 +132,9 @@ package OpenCV.Image_Processing is
    type Interpolation_Method is
      (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4);
 
+   type Polar_Mapping is (Linear_Polar, Logarithmic_Polar);
+   type Polar_Direction is (Cartesian_To_Polar, Polar_To_Cartesian);
+
    type Canny_Aperture is (Sobel_3x3, Sobel_5x5, Sobel_7x7);
 
    type Canny_Gradient_Norm is (L1_Norm, L2_Norm);
@@ -549,6 +552,30 @@ package OpenCV.Image_Processing is
       Mapping       : Warp_Mapping_Direction := Source_To_Destination;
       Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value  : OpenCV.Scalar := (others => 0.0));
+
+   --  Polar output X is radial rho and Y is angular phi (one revolution).
+   --  Linear rho follows distance; logarithmic rho follows log(distance+1).
+   --  In forward mode Center is relative to the Source view; in inverse mode
+   --  it is relative to the requested Cartesian destination. Source must be
+   --  nonempty 2-D UInt8/UInt16/Int16/Float32/Float64, C1..C4. Output_Size
+   --  must be explicit and positive. Both dimensions and Source dimensions
+   --  must be < 32767; inverse Source.Rows must be <= 32764 because OpenCV
+   --  adds two wrap rows. Radius must be finite and > 0 (linear) or > 1
+   --  (logarithmic). Center must be finite. Nearest, Linear, Cubic and
+   --  Lanczos_4 are supported; Area is rejected. Outliers are zero-filled.
+   --  Destination must not overlap Source, including Regions and aliases.
+   --  Successful calls replace Destination with a fresh result of Source's
+   --  type. Failed calls leave it unchanged. Round trips are interpolated
+   --  and are not guaranteed to reproduce the input exactly.
+   procedure Warp_Polar
+     (Source         : OpenCV.Core.Mat;
+      Destination    : in out OpenCV.Core.Mat;
+      Center         : OpenCV.Float32_Point;
+      Maximum_Radius : OpenCV.Float64_Value;
+      Output_Size    : OpenCV.Size;
+      Mapping        : Polar_Mapping := Linear_Polar;
+      Direction      : Polar_Direction := Cartesian_To_Polar;
+      Interpolation  : Interpolation_Method := Linear);
 
    --  Remap applies an absolute source-coordinate map. Destination(Row,
    --  Column) samples Source at X = Map_X(Row, Column) and
