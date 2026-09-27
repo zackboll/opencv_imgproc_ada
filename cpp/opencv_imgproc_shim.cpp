@@ -1204,6 +1204,33 @@ bool remap_uint8_linear_simd_stride_safe(const cv::Mat &src,
     return src.step[0] != static_cast<size_t>(0x8000);
 }
 
+// ABI safety: OpenCV 4.1/4.10 use cvRound(scale * XY_ONE), byte-offset
+// Hershey glyph coordinates (at most 173 from 'R'), fixed-point products,
+// accumulated view_x/view_y and getTextSize accumulation/cvRound.
+// OpenCV 5 uses hersheyToTruetype cvRound(100*scale/sf), weight*65536,
+// int(len), UTF-8 -> UTF-32 buffers, glyph bitmap sizes and advance conversion;
+// its pen, linegap, glyph coordinates and bounding-box additions/subtractions
+// use int. This intentionally conservative bound limits all of those paths,
+// including multiline vertical advance, and leaves room at both ends of int.
+bool safe_text_geometry(int32_t length, double scale, int32_t thickness,
+                        int64_t *excursion = nullptr) noexcept
+{
+    constexpr double limit = 1000000.0;
+    const double extent = static_cast<double>(length) * scale * 512.0 + thickness;
+    const bool safe = length >= 0 && thickness > 0 && thickness <= 32767 &&
+        std::isfinite(scale) && scale > 0 &&
+        scale * 65536.0 <= limit &&
+        extent < limit;
+    if (safe && excursion)
+        *excursion = static_cast<int64_t>(std::ceil(extent + scale * 512.0 + 64.0));
+    return safe;
+}
+
+bool valid_hershey(int32_t font) noexcept
+{
+    return font >= 0 && font <= 7;
+}
+
 bool drawing_image(const cv::Mat &image, const char **message) noexcept
 {
     if (image.dims != 2) {
@@ -1236,6 +1263,18 @@ bool drawing_image(const cv::Mat &image, const char **message) noexcept
         return false;
     }
 
+    return true;
+}
+
+bool text_image(const cv::Mat &image, const char **message) noexcept
+{
+    // ABI safety: OpenCV 5's renderer assumes byte pixels with 1, 3 or 4
+    // components when it writes glyph bitmaps; reject other layouts first.
+    if (image.empty() || image.dims != 2 || image.depth() != CV_8U ||
+        (image.channels() != 1 && image.channels() != 3 && image.channels() != 4)) {
+        *message = "text image must be nonempty 2-D UInt8 C1, C3 or C4";
+        return false;
+    }
     return true;
 }
 
@@ -5622,6 +5661,172 @@ opencv_imgproc_draw_line(
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_imgproc_status
+opencv_imgproc_draw_arrow(
+    opencv_core_mat_handle *image, int32_t start_x, int32_t start_y,
+    int32_t finish_x, int32_t finish_y, double color_0, double color_1,
+    double color_2, double color_3, double tip_length, int32_t thickness,
+    int32_t line_style)
+{
+    clear_error();
+    try {
+        cv::Mat *img = nullptr;
+        if (opencv_core_module_output_mat(image, &img) != OPENCV_CORE_OK || !img)
+            return invalid_argument("invalid drawing image");
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) return invalid_argument(message);
+        cv::Scalar color;
+        if (!drawing_color(*img, color_0, color_1, color_2, color_3, color, &message))
+            return invalid_argument(message);
+        int line = 0, thick = 0;
+        if (!drawing_line_style(line_style, *img, line, &message) ||
+            !drawing_thickness(OPENCV_IMGPROC_DRAW_OUTLINE, thickness, thick, &message))
+            return invalid_argument(message);
+        const int64_t dx = static_cast<int64_t>(start_x) - finish_x;
+        const int64_t dy = static_cast<int64_t>(start_y) - finish_y;
+        // ABI safety: native Point subtraction is signed int, and cvRound
+        // converts the generated arrowhead coordinates to signed int.
+        if (!std::isfinite(tip_length) || tip_length <= 0 || tip_length > 1 ||
+            (dx == 0 && dy == 0) ||
+            std::abs(dx) > std::numeric_limits<int>::max() ||
+            std::abs(dy) > std::numeric_limits<int>::max())
+            return invalid_argument("unsafe arrow geometry");
+        const double radius = std::hypot(static_cast<double>(dx), static_cast<double>(dy)) * tip_length;
+        const double angle = std::atan2(static_cast<double>(dy), static_cast<double>(dx));
+        for (int sign : {-1, 1}) {
+            const double x = finish_x + radius * std::cos(angle + sign * CV_PI / 4);
+            const double y = finish_y + radius * std::sin(angle + sign * CV_PI / 4);
+            if (!std::isfinite(x) || !std::isfinite(y) ||
+                x < static_cast<double>(std::numeric_limits<int>::min()) + 1 ||
+                y < static_cast<double>(std::numeric_limits<int>::min()) + 1 ||
+                x > static_cast<double>(std::numeric_limits<int>::max()) - 1 ||
+                y > static_cast<double>(std::numeric_limits<int>::max()) - 1)
+                return invalid_argument("arrow tip exceeds native coordinate range");
+        }
+        cv::arrowedLine(*img, cv::Point(start_x, start_y),
+                        cv::Point(finish_x, finish_y), color, thick, line, 0, tip_length);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status
+opencv_imgproc_draw_marker(
+    opencv_core_mat_handle *image, int32_t x, int32_t y,
+    double color_0, double color_1, double color_2, double color_3,
+    int32_t marker, int32_t marker_size, int32_t thickness, int32_t line_style)
+{
+    clear_error();
+    try {
+        cv::Mat *img = nullptr;
+        if (opencv_core_module_output_mat(image, &img) != OPENCV_CORE_OK || !img)
+            return invalid_argument("invalid drawing image");
+        const char *message = nullptr;
+        if (!drawing_image(*img, &message)) return invalid_argument(message);
+        cv::Scalar color;
+        if (!drawing_color(*img, color_0, color_1, color_2, color_3, color, &message))
+            return invalid_argument(message);
+        int line = 0, thick = 0;
+        if (!drawing_line_style(line_style, *img, line, &message) ||
+            !drawing_thickness(OPENCV_IMGPROC_DRAW_OUTLINE, thickness, thick, &message))
+            return invalid_argument(message);
+        if (marker < 0 || marker > 6 || marker_size <= 0)
+            return invalid_argument("invalid marker selector or size");
+        const int64_t half = static_cast<int64_t>(marker_size) / 2;
+        // ABI safety: drawMarker constructs endpoints using signed int +/- half.
+        for (int32_t coordinate : {x, y})
+            if (static_cast<int64_t>(coordinate) - half < std::numeric_limits<int>::min() ||
+                static_cast<int64_t>(coordinate) + half > std::numeric_limits<int>::max())
+                return invalid_argument("marker endpoint exceeds native coordinate range");
+        cv::drawMarker(*img, cv::Point(x, y), color, marker, marker_size, thick, line);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status
+opencv_imgproc_draw_text(
+    opencv_core_mat_handle *image, const char *text, int32_t text_length,
+    int32_t x, int32_t y, double color_0, double color_1,
+    double color_2, double color_3, int32_t font, double font_scale,
+    int32_t thickness,
+    uint8_t bottom_left_origin)
+{
+    clear_error();
+    try {
+        int64_t excursion = 0;
+        if (text_length < 0 || (text_length && !text) ||
+            !valid_hershey(font) || bottom_left_origin > 1 ||
+            !safe_text_geometry(text_length, font_scale, thickness, &excursion))
+            return invalid_argument("invalid text span, selector or geometry");
+        cv::Mat *img = nullptr;
+        if (opencv_core_module_output_mat(image, &img) != OPENCV_CORE_OK || !img)
+            return invalid_argument("invalid drawing image");
+        const char *message = nullptr;
+        if (!text_image(*img, &message)) return invalid_argument(message);
+        cv::Scalar color;
+        if (!drawing_color(*img, color_0, color_1, color_2, color_3, color, &message))
+            return invalid_argument(message);
+        // ABI safety: OpenCV 5 adds advances, linegap and glyph offsets to
+        // a 32-bit Point pen. The excursion bounds both axes, including newlines.
+        for (int32_t coordinate : {x, y})
+            if (static_cast<int64_t>(coordinate) <
+                    static_cast<int64_t>(std::numeric_limits<int>::min()) + excursion ||
+                static_cast<int64_t>(coordinate) >
+                    static_cast<int64_t>(std::numeric_limits<int>::max()) - excursion)
+            return invalid_argument("text origin exceeds safe raster range");
+        const cv::String bytes(text_length ? text : "", static_cast<size_t>(text_length));
+        cv::putText(*img, bytes, cv::Point(x, y), font,
+                    font_scale, color, thickness, cv::LINE_8, bottom_left_origin != 0);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status
+opencv_imgproc_measure_text(
+    const char *text, int32_t text_length, int32_t font, double font_scale,
+    int32_t thickness, int32_t *width, int32_t *height,
+    int32_t *baseline)
+{
+    clear_error();
+    if (width) *width = 0;
+    if (height) *height = 0;
+    if (baseline) *baseline = 0;
+    try {
+        if (!width || !height || !baseline || text_length < 0 ||
+            (text_length && !text) || !valid_hershey(font) ||
+            !safe_text_geometry(text_length, font_scale, thickness))
+            return invalid_argument("invalid text metrics arguments");
+        const cv::String bytes(text_length ? text : "", static_cast<size_t>(text_length));
+        int base = 0;
+        const cv::Size size = cv::getTextSize(bytes, font,
+                                              font_scale, thickness, &base);
+        *width = size.width; *height = size.height; *baseline = base;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status
+opencv_imgproc_font_scale_for_height(
+    int32_t pixel_height, int32_t font,
+    int32_t thickness, double *scale)
+{
+    clear_error();
+    if (scale) *scale = 0;
+    try {
+        if (!scale || pixel_height <= 0 || !valid_hershey(font) ||
+            thickness <= 0 || thickness > 32767)
+            return invalid_argument("invalid font height arguments");
+        const double result = cv::getFontScaleFromHeight(
+            font, pixel_height, thickness);
+        // ABI safety: a nonpositive scale cannot be passed back to putText;
+        // reject it at the source instead of publishing an unusable result.
+        if (!std::isfinite(result) || result <= 0 ||
+            !safe_text_geometry(1, result, thickness))
+            return invalid_argument("requested height yields unsafe font scale");
+        *scale = result;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_imgproc_status

@@ -827,6 +827,57 @@ package OpenCV.Image_Processing.Internal.C_API is
       Line_Style : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_draw_line";
 
+   function Draw_Arrow
+     (Image                                :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Start_X, Start_Y, Finish_X, Finish_Y : Interfaces.Integer_32;
+      Color_0, Color_1, Color_2, Color_3   : Interfaces.C.double;
+      Tip_Length                           : Interfaces.C.double;
+      Thickness, Line_Style                : Interfaces.Integer_32)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_draw_arrow";
+
+   function Draw_Marker
+     (Image                                      :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      X, Y                                       : Interfaces.Integer_32;
+      Color_0, Color_1, Color_2, Color_3         : Interfaces.C.double;
+      Marker, Marker_Size, Thickness, Line_Style : Interfaces.Integer_32)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_draw_marker";
+
+   function Draw_Text
+     (Image                              :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Text                               : System.Address;
+      Text_Length, X, Y                  : Interfaces.Integer_32;
+      Color_0, Color_1, Color_2, Color_3 : Interfaces.C.double;
+      Font                               : Interfaces.Integer_32;
+      Font_Scale                         : Interfaces.C.double;
+      Thickness                          : Interfaces.Integer_32;
+      Bottom_Left_Origin                 : Interfaces.Unsigned_8) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_draw_text";
+
+   function Measure_Text
+     (Text                    : System.Address;
+      Text_Length, Font       : Interfaces.Integer_32;
+      Font_Scale              : Interfaces.C.double;
+      Thickness               : Interfaces.Integer_32;
+      Width, Height, Baseline : access Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_measure_text";
+
+   function Font_Scale_For_Height
+     (Pixel_Height, Font : Interfaces.Integer_32;
+      Thickness          : Interfaces.Integer_32;
+      Scale              : access Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_font_scale_for_height";
+
    function Draw_Rectangle
      (Image      : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Origin_X   : Interfaces.Integer_32;

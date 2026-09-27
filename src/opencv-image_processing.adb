@@ -7,6 +7,7 @@ with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Int32_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Image_Processing.Internal.C_API;
+with System;
 
 package body OpenCV.Image_Processing is
 
@@ -4760,6 +4761,23 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Drawing_Image;
 
+   procedure Validate_Text_Image (Image : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Image.Is_Empty
+        or else Image.Dimension_Count /= 2
+        or else Image.Depth /= OpenCV.Core.UInt8
+        or else (Image.Channels /= 1
+                 and then Image.Channels /= 3
+                 and then Image.Channels /= 4)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "text requires a nonempty 2-D UInt8 C1, C3 or C4 image");
+      end if;
+   end Validate_Text_Image;
+
    procedure Validate_Drawing_Color
      (Image : OpenCV.Core.Mat; Color : OpenCV.Scalar)
    is
@@ -4870,6 +4888,211 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
       Raise_On_Error (Status, "Draw_Line");
    end Draw_Line;
+
+   function Font_Selector (Font : Text_Font) return Interfaces.Integer_32
+   is (Interfaces.Integer_32 (Text_Font'Pos (Font)));
+
+   function C_Boolean (Value : Boolean) return Interfaces.Unsigned_8
+   is (if Value then 1 else 0);
+
+   procedure Validate_Text_Scale (Scale : OpenCV.Float64_Value) is
+      use type OpenCV.Float64_Value;
+   begin
+      if not Is_Finite (Scale) or else Scale <= 0.0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "text scale must be finite and positive");
+      end if;
+   end Validate_Text_Scale;
+
+   function Text_Address (Text : String) return System.Address
+   is (if Text'Length = 0
+       then System.Null_Address
+       else Text (Text'First)'Address);
+
+   function Text_Length (Text : String) return Interfaces.Integer_32 is
+   begin
+      if Long_Long_Integer (Text'Length)
+        > Long_Long_Integer (Interfaces.Integer_32'Last)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "text length exceeds C ABI range");
+      end if;
+      return Interfaces.Integer_32 (Text'Length);
+   end Text_Length;
+
+   procedure Draw_Arrow
+     (Image         : in out OpenCV.Core.Mat;
+      Start, Finish : OpenCV.Point;
+      Color         : OpenCV.Scalar;
+      Tip_Length    : OpenCV.Float64_Value := 0.1;
+      Thickness     : Drawing_Thickness := 1;
+      Line_Style    : Drawing_Line_Style := Eight_Connected_Line)
+   is
+      Status : Internal.C_API.Status;
+      use type OpenCV.Float64_Value;
+      procedure Draw (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Draw_Arrow
+             (Handle,
+              Interfaces.Integer_32 (Start.X),
+              Interfaces.Integer_32 (Start.Y),
+              Interfaces.Integer_32 (Finish.X),
+              Interfaces.Integer_32 (Finish.Y),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              Interfaces.C.double (Tip_Length),
+              Interfaces.Integer_32 (Thickness),
+              To_C_Line_Style (Line_Style));
+      end Draw;
+   begin
+      if not Is_Finite (Tip_Length)
+        or else Tip_Length <= 0.0
+        or else Tip_Length > 1.0
+        or else Start = Finish
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "arrow requires distinct endpoints and tip in (0, 1]");
+      end if;
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Draw_Arrow");
+   end Draw_Arrow;
+
+   procedure Draw_Marker
+     (Image       : in out OpenCV.Core.Mat;
+      Position    : OpenCV.Point;
+      Color       : OpenCV.Scalar;
+      Kind        : Drawing_Marker_Kind := Cross_Marker;
+      Marker_Size : Positive := 20;
+      Thickness   : Drawing_Thickness := 1;
+      Line_Style  : Drawing_Line_Style := Eight_Connected_Line)
+   is
+      Status : Internal.C_API.Status;
+      procedure Draw (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Draw_Marker
+             (Handle,
+              Interfaces.Integer_32 (Position.X),
+              Interfaces.Integer_32 (Position.Y),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              Interfaces.Integer_32 (Drawing_Marker_Kind'Pos (Kind)),
+              Interfaces.Integer_32 (Marker_Size),
+              Interfaces.Integer_32 (Thickness),
+              To_C_Line_Style (Line_Style));
+      end Draw;
+   begin
+      Validate_Drawing_Image (Image, Line_Style);
+      Validate_Drawing_Color (Image, Color);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Draw_Marker");
+   end Draw_Marker;
+
+   procedure Draw_Text
+     (Image              : in out OpenCV.Core.Mat;
+      Text               : String;
+      Origin             : OpenCV.Point;
+      Color              : OpenCV.Scalar;
+      Font               : Text_Font := Hershey_Simplex;
+      Font_Scale         : OpenCV.Float64_Value := 1.0;
+      Thickness          : Drawing_Thickness := 1;
+      Bottom_Left_Origin : Boolean := False)
+   is
+      Status : Internal.C_API.Status;
+      Length : constant Interfaces.Integer_32 := Text_Length (Text);
+      procedure Draw (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Draw_Text
+             (Handle,
+              Text_Address (Text),
+              Length,
+              Interfaces.Integer_32 (Origin.X),
+              Interfaces.Integer_32 (Origin.Y),
+              Interfaces.C.double (Color.Component_0),
+              Interfaces.C.double (Color.Component_1),
+              Interfaces.C.double (Color.Component_2),
+              Interfaces.C.double (Color.Component_3),
+              Font_Selector (Font),
+              Interfaces.C.double (Font_Scale),
+              Interfaces.Integer_32 (Thickness),
+              C_Boolean (Bottom_Left_Origin));
+      end Draw;
+   begin
+      Validate_Text_Scale (Font_Scale);
+      Validate_Text_Image (Image);
+      Validate_Drawing_Color (Image, Color);
+      if Text'Length = 0 then
+         return;
+      end if;
+      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Draw'Access);
+      Raise_On_Error (Status, "Draw_Text");
+   end Draw_Text;
+
+   function Measure_Text
+     (Text       : String;
+      Font       : Text_Font := Hershey_Simplex;
+      Font_Scale : OpenCV.Float64_Value := 1.0;
+      Thickness  : Drawing_Thickness := 1) return Text_Metrics
+   is
+      Width, Height, Baseline : aliased Interfaces.Integer_32 := 0;
+      Status                  : Internal.C_API.Status;
+   begin
+      Validate_Text_Scale (Font_Scale);
+      if Text'Length = 0 then
+         return (Size => (Width => 0, Height => 0), Baseline => 0);
+      end if;
+      Status :=
+        Internal.C_API.Measure_Text
+          (Text_Address (Text),
+           Text_Length (Text),
+           Font_Selector (Font),
+           Interfaces.C.double (Font_Scale),
+           Interfaces.Integer_32 (Thickness),
+           Width'Access,
+           Height'Access,
+           Baseline'Access);
+      Raise_On_Error (Status, "Measure_Text");
+      return
+        (Size     =>
+           (Width  => OpenCV.Size_Coordinate (Width),
+            Height => OpenCV.Size_Coordinate (Height)),
+         Baseline => Natural (Baseline));
+   end Measure_Text;
+
+   function Font_Scale_For_Height
+     (Pixel_Height : Positive;
+      Font         : Text_Font := Hershey_Simplex;
+      Thickness    : Drawing_Thickness := 1) return OpenCV.Float64_Value
+   is
+      Scale  : aliased Interfaces.C.double := 0.0;
+      Status : Internal.C_API.Status;
+   begin
+      if 2 * Long_Long_Integer (Pixel_Height)
+        <= Long_Long_Integer (Thickness) + 1
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "requested height cannot yield a positive portable text scale");
+      end if;
+      Status :=
+        Internal.C_API.Font_Scale_For_Height
+          (Interfaces.Integer_32 (Pixel_Height),
+           Font_Selector (Font),
+           Interfaces.Integer_32 (Thickness),
+           Scale'Access);
+      Raise_On_Error (Status, "Font_Scale_For_Height");
+      return OpenCV.Float64_Value (Scale);
+   end Font_Scale_For_Height;
 
    procedure Draw_Or_Fill_Rectangle
      (Image      : in out OpenCV.Core.Mat;
