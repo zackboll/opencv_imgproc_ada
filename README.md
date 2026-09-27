@@ -880,7 +880,7 @@ Channels = 1
 Depth    = Float32
 Map_X and Map_Y have identical Rows/Columns
 Rows and Columns < 32767
-all coordinates finite
+all coordinates finite and safely convertible to native integer coordinates
 ```
 
 Map geometry does not need to match Source. Destination is always rebound
@@ -894,7 +894,18 @@ Channels = Source.Channels
 ```
 
 Coordinates may lie outside Source; the selected border mode fills those
-samples. NaN and +/-Infinity map values are rejected.
+samples. NaN and +/-Infinity map values are rejected. Extremely large finite
+Float32 coordinates can also be rejected: native Remap rounds coordinates into
+signed integer/Int16 coordinate tables, and non-nearest interpolation first
+multiplies them by the interpolation-table scale (32) in Float32. Ordinary
+out-of-image coordinates, such as -1 or a few pixels beyond the source, remain
+legal. For eligible separate Float32 C1+C1 map operations, OpenCV 4.x may use
+IPP, which narrows source, map, and output byte strides to `int`; those paths
+also check the actual byte strides before invoking native Remap.
+The UInt8 C1/C3/C4 Linear SIMD path separately narrows the source row stride:
+the binding rejects strides above `INT_MAX` before narrowing and the exact
+32768-byte boundary admitted by OpenCV 4.1's unsafe SIMD shift. Larger
+representable strides remain eligible for the scalar fallback.
 
 Supported interpolation:
 
@@ -924,6 +935,8 @@ uses 0..2, and C4 uses 0..3. For other borders, `Border_Value` is ignored.
 Source, Map_X, and Map_Y are read-only and may share storage. Destination
 must not share storage with Source or either map. Direct in-place
 operation is not supported.
+Destination is rebound only after native Remap succeeds; rejected operations
+leave its previous contents intact.
 
 Interleaved `CV_32FC2` maps, fixed-point maps, relative maps, and
 `Convert_Maps` are not yet bound.

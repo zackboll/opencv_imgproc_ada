@@ -522,7 +522,8 @@ package OpenCV.Image_Processing is
    --  channels and with Rows and Columns less than 32767. Map_X and Map_Y
    --  must be non-empty two-dimensional single-channel Float32 Mats of
    --  identical size, each with Rows and Columns less than 32767. Map
-   --  coordinates must be finite; they may lie outside Source. Destination
+   --  coordinates must be finite and safely convertible through native
+   --  integer coordinate tables; they may lie outside Source. Destination
    --  is always replaced with a Mat of Rows = Map_X.Rows,
    --  Columns = Map_X.Columns, and Source's depth and channel count.
    --  Callers do not need to preallocate Destination. No color conversion
@@ -533,7 +534,8 @@ package OpenCV.Image_Processing is
    --  Border_Value is ignored. Source, Map_X, and Map_Y are read-only and
    --  may share storage. Destination must not share storage with Source,
    --  Map_X, or Map_Y. Direct in-place operation is not supported.
-   --  Interleaved, fixed-point, and relative maps are not bound. Contract
+   --  Failed calls leave Destination unchanged. Interleaved, fixed-point,
+   --  and relative maps are not bound. Contract
    --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
    procedure Remap
      (Source        : OpenCV.Core.Mat;
