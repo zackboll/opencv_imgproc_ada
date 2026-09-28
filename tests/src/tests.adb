@@ -28,6 +28,7 @@ with Integral_Image_Tests;
 with Laplacian_Tests;
 with Median_Blur_Tests;
 with Morphology_Tests;
+with Pyramid_Construction_Tests;
 with Pyramid_Tests;
 with Resize_Tests;
 with Segmentation_Tests;
@@ -58,6 +59,7 @@ begin
    Suite.Add_Test (Gaussian_Kernel_Tests.Suite);
    Suite.Add_Test (Derivative_Kernel_Tests.Suite);
    Suite.Add_Test (Pyramid_Tests.Suite);
+   Suite.Add_Test (Pyramid_Construction_Tests.Suite);
    Suite.Add_Test (Template_Matching_Tests.Suite);
    Suite.Add_Test (Warp_Affine_Tests.Suite);
    Suite.Add_Test (Warp_Perspective_Tests.Suite);

@@ -461,6 +461,85 @@ package OpenCV.Image_Processing is
    procedure Pyramid_Up
      (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat);
 
+   --  Pyramid_Up with an explicit Output_Size performs the same Gaussian
+   --  upsampling to the requested size. Each extent must equal twice the
+   --  Source extent or one less than that (for example 5 -> 9 or 5 -> 10),
+   --  so every natural Pyramid_Down geometry, including odd sizes, can be
+   --  reversed exactly. Other sizes are rejected before any native
+   --  allocation. The Source contract matches the natural overload. The
+   --  result is computed into fresh storage and bound to Destination only on
+   --  success; on failure Destination is unchanged. Destination may therefore
+   --  share Source storage. Contract violations and failures reported by
+   --  OpenCV raise OpenCV.OpenCV_Error.
+   procedure Pyramid_Up
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Output_Size : OpenCV.Size);
+
+   --  Maximum_Pyramid_Level_Count returns the number of distinct natural
+   --  Gaussian levels of Source, including level 0: both extents are halved
+   --  as (N + 1) / 2 until they both reach 1. For example 1 x 1 -> 1,
+   --  8 x 8 -> 4, and 9 x 7 -> 5. Source must be a non-empty
+   --  two-dimensional Mat; otherwise OpenCV.OpenCV_Error is raised.
+   function Maximum_Pyramid_Level_Count
+     (Source : OpenCV.Core.Mat) return Positive;
+
+   --  Build_Gaussian_Pyramid returns Level_Count images indexed
+   --  0 .. Level_Count - 1. Level 0 is an independent copy of Source; each
+   --  later level is Pyramid_Down of the previous level with Border. Every
+   --  level owns independent storage shared with neither Source nor another
+   --  level. Source follows the Pyramid_Down contract (UInt8, UInt16, Int16,
+   --  Float32, or Float64; any channel count). A Region is processed as its
+   --  own logical image; parent pixels never participate. Replicate, Reflect,
+   --  Reflect_101, and Wrap are supported; Constant_Border is rejected.
+   --  Level_Count must not exceed Maximum_Pyramid_Level_Count (Source).
+   --  Contract violations and failures reported by OpenCV raise
+   --  OpenCV.OpenCV_Error.
+   function Build_Gaussian_Pyramid
+     (Source      : OpenCV.Core.Mat;
+      Level_Count : Positive;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat_Array;
+
+   --  Working floating depth of a Laplacian pyramid. Automatic_Precision
+   --  keeps Float64 sources in Float64 and promotes every other supported
+   --  depth to Float32, so negative detail coefficients never saturate.
+   type Laplacian_Precision is
+     (Automatic_Precision, Float32_Precision, Float64_Precision);
+
+   --  Build_Laplacian_Pyramid converts Source to the selected floating depth,
+   --  builds a Gaussian pyramid G (0 .. Level_Count - 1) with Border, and
+   --  returns L (0 .. Level_Count - 1) where, for I < Level_Count - 1,
+   --  L (I) = G (I) - Pyramid_Up (G (I + 1), Output_Size => size of G (I))
+   --  and the last level is the low-frequency base L (N) = G (N). All levels
+   --  are Float32 or Float64 with Source's channel count and independent
+   --  storage, so callers may edit residuals before reconstruction. Source,
+   --  Region, Border, and Level_Count contracts match
+   --  Build_Gaussian_Pyramid. Contract violations and failures reported by
+   --  OpenCV raise OpenCV.OpenCV_Error.
+   function Build_Laplacian_Pyramid
+     (Source      : OpenCV.Core.Mat;
+      Level_Count : Positive;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101;
+      Precision   : Laplacian_Precision := Automatic_Precision)
+      return OpenCV.Core.Mat_Array;
+
+   --  Reconstruct_Laplacian_Pyramid inverts Build_Laplacian_Pyramid.
+   --  Pyramid is read in array iteration order as fine-to-coarse levels and
+   --  may have any index bounds. It must be non-empty; every level must be a
+   --  non-empty two-dimensional Mat of one common depth (Float32 or Float64)
+   --  and one common channel count, and each following level must have
+   --  Rows = (Previous.Rows + 1) / 2 and Columns = (Previous.Columns + 1) / 2.
+   --  The whole array is validated before any work begins. Starting from the
+   --  last level, each step computes
+   --  Current := Pyramid_Up (Current, size of Level) + Level. The result is
+   --  an independent Mat of the pyramid's floating depth; it is not narrowed
+   --  to any original integer depth (use Convert_To explicitly). Input levels
+   --  are never modified. Contract violations and failures reported by
+   --  OpenCV raise OpenCV.OpenCV_Error.
+   function Reconstruct_Laplacian_Pyramid
+     (Pyramid : OpenCV.Core.Mat_Array) return OpenCV.Core.Mat;
+
    --  Match_Template slides Template over Source and writes a score map to
    --  Destination. Source and Template must each be a non-empty
    --  two-dimensional Mat of depth UInt8 or Float32 with 1 to 4 channels, and

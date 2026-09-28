@@ -15,6 +15,7 @@ typedef struct opencv_imgproc_hough_segments_handle
     opencv_imgproc_hough_segments_handle;
 typedef struct opencv_imgproc_hough_circles_handle
     opencv_imgproc_hough_circles_handle;
+typedef struct opencv_imgproc_pyramid_handle opencv_imgproc_pyramid_handle;
 
 typedef struct {
     int32_t x;
@@ -588,6 +589,43 @@ opencv_imgproc_pyr_down(
 opencv_imgproc_status
 opencv_imgproc_pyr_up(
     const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination);
+
+/* Upsamples to an explicit width/height accepted by cv::pyrUp. The result is
+ * computed into fresh storage and bound to destination only on success, so
+ * destination may share source storage and is unchanged on failure. */
+opencv_imgproc_status
+opencv_imgproc_pyr_up_sized(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t width,
+    int32_t height);
+
+/* Builds level_count Gaussian levels (level 0 is the logical source) into a
+ * new owned result. *result is null on failure. level_count must lie in
+ * 1 .. distinct natural levels of source. */
+opencv_imgproc_status
+opencv_imgproc_build_pyramid(
+    const opencv_core_mat_handle *source,
+    int32_t level_count,
+    int32_t border,
+    opencv_imgproc_pyramid_handle **result);
+
+/* Null-safe. */
+void
+opencv_imgproc_pyramid_destroy(opencv_imgproc_pyramid_handle *result);
+
+opencv_imgproc_status
+opencv_imgproc_pyramid_count(
+    const opencv_imgproc_pyramid_handle *result,
+    int32_t *count);
+
+/* Binds destination to an independent deep copy of level index. Destination
+ * is unchanged on failure. */
+opencv_imgproc_status
+opencv_imgproc_pyramid_copy_level(
+    const opencv_imgproc_pyramid_handle *result,
+    int32_t index,
     opencv_core_mat_handle *destination);
 
 opencv_imgproc_status

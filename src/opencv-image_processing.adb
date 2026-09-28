@@ -3053,6 +3053,302 @@ package body OpenCV.Image_Processing is
       Raise_On_Error (Status, "Pyramid_Up");
    end Pyramid_Up;
 
+   --  True when Target is a legal explicit Pyramid_Up extent for Source:
+   --  exactly twice Source or one less. Widened so 2 * Source cannot wrap.
+   function Is_Pyramid_Up_Extent
+     (Source : Natural; Target : OpenCV.Size_Coordinate) return Boolean
+   is
+      Twice : constant Long_Long_Integer := 2 * Long_Long_Integer (Source);
+   begin
+      return Long_Long_Integer (Target) in Twice - 1 | Twice;
+   end Is_Pyramid_Up_Extent;
+
+   procedure Pyramid_Up
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Output_Size : OpenCV.Size)
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Up_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Up_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Pyramid_Up_Sized
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.Integer_32 (Output_Size.Width),
+                 Interfaces.Integer_32 (Output_Size.Height));
+         end Up_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Up_Output'Access);
+      end Up_Input;
+   begin
+      Validate_Pyramid_Source (Source, "Pyramid_Up");
+      if not Is_Pyramid_Up_Extent (Source.Columns, Output_Size.Width)
+        or else not Is_Pyramid_Up_Extent (Source.Rows, Output_Size.Height)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Pyramid_Up Output_Size extents must be 2 * Source or"
+            & " 2 * Source - 1");
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Up_Input'Access);
+      Raise_On_Error (Status, "Pyramid_Up");
+   end Pyramid_Up;
+
+   --  Natural Gaussian halving used by every pyramid geometry check.
+   function Pyramid_Half (Extent : Natural) return Natural
+   is (Natural ((Long_Long_Integer (Extent) + 1) / 2));
+
+   function Maximum_Pyramid_Level_Count
+     (Source : OpenCV.Core.Mat) return Positive
+   is
+      Columns : Long_Long_Integer;
+      Rows    : Long_Long_Integer;
+      Count   : Positive := 1;
+   begin
+      if Source.Is_Empty or else Source.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Maximum_Pyramid_Level_Count requires a non-empty"
+            & " two-dimensional source Mat");
+      end if;
+
+      Columns := Long_Long_Integer (Source.Columns);
+      Rows := Long_Long_Integer (Source.Rows);
+      while Columns > 1 or else Rows > 1 loop
+         Columns := (Columns + 1) / 2;
+         Rows := (Rows + 1) / 2;
+         Count := Count + 1;
+      end loop;
+      return Count;
+   end Maximum_Pyramid_Level_Count;
+
+   procedure Validate_Pyramid_Build
+     (Source      : OpenCV.Core.Mat;
+      Level_Count : Positive;
+      Border      : OpenCV.Border_Kind;
+      Operation   : String) is
+   begin
+      Validate_Pyramid_Source (Source, Operation);
+
+      if Border = OpenCV.Constant_Border then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation & " does not support Constant_Border");
+      end if;
+
+      if Level_Count > Maximum_Pyramid_Level_Count (Source) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            Operation
+            & " Level_Count exceeds the distinct natural pyramid levels");
+      end if;
+   end Validate_Pyramid_Build;
+
+   --  Destroys a native pyramid result and clears the handle so a later
+   --  exception handler cannot free it twice. Destroy accepts null.
+   procedure Release_Pyramid (Result : in out Internal.C_API.Pyramid_Handle) is
+   begin
+      Internal.C_API.Pyramid_Destroy (Result);
+      Result := Internal.C_API.Null_Pyramid_Handle;
+   end Release_Pyramid;
+
+   function Build_Gaussian_Pyramid
+     (Source      : OpenCV.Core.Mat;
+      Level_Count : Positive;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat_Array
+   is
+      use type Interfaces.Integer_32;
+
+      Operation : constant String := "Build_Gaussian_Pyramid";
+      Result    : aliased Internal.C_API.Pyramid_Handle :=
+        Internal.C_API.Null_Pyramid_Handle;
+      Status    : Internal.C_API.Status := Internal.C_API.Success;
+      Count     : aliased Interfaces.Integer_32 := 0;
+
+      procedure Build
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Build_Pyramid
+             (Source_Handle,
+              Interfaces.Integer_32 (Level_Count),
+              To_C_Pyramid_Down_Border (Border),
+              Result'Access);
+      end Build;
+   begin
+      Validate_Pyramid_Build (Source, Level_Count, Border, Operation);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Build'Access);
+      Raise_On_Error (Status, Operation);
+
+      begin
+         Raise_On_Error
+           (Internal.C_API.Pyramid_Count (Result, Count'Access), Operation);
+         if Count /= Interfaces.Integer_32 (Level_Count) then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               Operation & " produced an unexpected level count");
+         end if;
+
+         declare
+            Levels : OpenCV.Core.Mat_Array (0 .. Level_Count - 1);
+         begin
+            for Index in Levels'Range loop
+               declare
+                  procedure Copy
+                    (Target : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+                  begin
+                     Status :=
+                       Internal.C_API.Pyramid_Copy_Level
+                         (Result, Interfaces.Integer_32 (Index), Target);
+                  end Copy;
+               begin
+                  OpenCV.Core.Module_Interop.With_Output_Handle
+                    (Levels (Index), Copy'Access);
+                  Raise_On_Error (Status, Operation);
+               end;
+            end loop;
+            Release_Pyramid (Result);
+            return Levels;
+         end;
+      exception
+         when others =>
+            Release_Pyramid (Result);
+            raise;
+      end;
+   end Build_Gaussian_Pyramid;
+
+   function Laplacian_Working_Depth
+     (Source : OpenCV.Core.Mat; Precision : Laplacian_Precision)
+      return OpenCV.Core.Depth_Type
+   is
+      use type OpenCV.Core.Depth_Type;
+   begin
+      case Precision is
+         when Automatic_Precision =>
+            if Source.Depth = OpenCV.Core.Float64 then
+               return OpenCV.Core.Float64;
+            else
+               return OpenCV.Core.Float32;
+            end if;
+
+         when Float32_Precision   =>
+            return OpenCV.Core.Float32;
+
+         when Float64_Precision   =>
+            return OpenCV.Core.Float64;
+      end case;
+   end Laplacian_Working_Depth;
+
+   function Level_Size (Level : OpenCV.Core.Mat) return OpenCV.Size
+   is ((Width  => OpenCV.Size_Coordinate (Level.Columns),
+        Height => OpenCV.Size_Coordinate (Level.Rows)));
+
+   function Build_Laplacian_Pyramid
+     (Source      : OpenCV.Core.Mat;
+      Level_Count : Positive;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101;
+      Precision   : Laplacian_Precision := Automatic_Precision)
+      return OpenCV.Core.Mat_Array is
+   begin
+      Validate_Pyramid_Build
+        (Source, Level_Count, Border, "Build_Laplacian_Pyramid");
+
+      declare
+         --  Convert_To returns an independent copy of the logical image, so
+         --  a Region's parent pixels cannot reach the Gaussian build.
+         Working  : constant OpenCV.Core.Mat :=
+           Source.Convert_To (Laplacian_Working_Depth (Source, Precision));
+         Gaussian : constant OpenCV.Core.Mat_Array :=
+           Build_Gaussian_Pyramid (Working, Level_Count, Border);
+         Levels   : OpenCV.Core.Mat_Array (Gaussian'Range);
+      begin
+         for Index in Gaussian'First .. Gaussian'Last - 1 loop
+            declare
+               Up : OpenCV.Core.Mat;
+            begin
+               Pyramid_Up
+                 (Gaussian (Index + 1),
+                  Up,
+                  Output_Size => Level_Size (Gaussian (Index)));
+               Levels (Index) := OpenCV.Core.Subtract (Gaussian (Index), Up);
+            end;
+         end loop;
+         --  Gaussian levels already own independent storage.
+         Levels (Levels'Last) := Gaussian (Gaussian'Last);
+         return Levels;
+      end;
+   end Build_Laplacian_Pyramid;
+
+   procedure Validate_Laplacian_Pyramid (Pyramid : OpenCV.Core.Mat_Array) is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+
+      procedure Fail (Message : String) is
+      begin
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Reconstruct_Laplacian_Pyramid " & Message);
+      end Fail;
+   begin
+      if Pyramid'Length = 0 then
+         Fail ("requires a non-empty pyramid");
+      end if;
+
+      for Index in Pyramid'Range loop
+         declare
+            Level : OpenCV.Core.Mat renames Pyramid (Index);
+         begin
+            if Level.Is_Empty or else Level.Dimension_Count /= 2 then
+               Fail ("requires non-empty two-dimensional levels");
+            elsif Level.Depth not in OpenCV.Core.Float32 | OpenCV.Core.Float64
+            then
+               Fail ("requires Float32 or Float64 levels");
+            elsif Level.Depth /= Pyramid (Pyramid'First).Depth then
+               Fail ("requires one common level depth");
+            elsif Level.Channels /= Pyramid (Pyramid'First).Channels then
+               Fail ("requires one common channel count");
+            elsif Index > Pyramid'First
+              and then (Level.Rows /= Pyramid_Half (Pyramid (Index - 1).Rows)
+                        or else Level.Columns
+                                /= Pyramid_Half (Pyramid (Index - 1).Columns))
+            then
+               Fail ("requires natural half-size level geometry");
+            end if;
+         end;
+      end loop;
+   end Validate_Laplacian_Pyramid;
+
+   function Reconstruct_Laplacian_Pyramid
+     (Pyramid : OpenCV.Core.Mat_Array) return OpenCV.Core.Mat
+   is
+      Current : OpenCV.Core.Mat;
+   begin
+      Validate_Laplacian_Pyramid (Pyramid);
+
+      Current := Pyramid (Pyramid'Last).Clone;
+      for Index in reverse Pyramid'First .. Pyramid'Last - 1 loop
+         declare
+            Up : OpenCV.Core.Mat;
+         begin
+            Pyramid_Up
+              (Current, Up, Output_Size => Level_Size (Pyramid (Index)));
+            Current := OpenCV.Core.Add (Up, Pyramid (Index));
+         end;
+      end loop;
+      return Current;
+   end Reconstruct_Laplacian_Pyramid;
+
    procedure Match_Template
      (Source      : OpenCV.Core.Mat;
       Template    : OpenCV.Core.Mat;
