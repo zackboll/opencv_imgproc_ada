@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **422 AUnit tests**
+> **Current registered test baseline:** **423 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -881,7 +881,10 @@ rows and columns must be < 32767; inverse Source rows must be **at most
 32764** because OpenCV adds one wrap row at each end before `remap`. The
 generated Float32 coordinates are preflighted against native remap rounding
 limits. Nearest_Neighbor, Linear, Cubic, and Lanczos_4 are available; Area is
-rejected. Out-of-source samples are always zero-filled. Source is unchanged;
+rejected. Inverse logarithmic maps with both a sub-0.0001-pixel maximum output distance
+and a radial scale below 0.000001 are conservatively rejected: Float32
+`magnitude + 1.f` quantization can overflow remap's coordinate rounding.
+Otherwise, out-of-source samples are zero-filled. Source is unchanged;
 Destination must not overlap it (including aliases and Regions). On success
 Destination is rebound to a fresh Mat with the requested size and Source's
 depth/channels; validation or native failure leaves it unchanged. Interpolation
@@ -3348,7 +3351,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **422-test** baseline is:
+The current **423-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3362,7 +3365,7 @@ The current **422-test** baseline is:
 | Affine warping | 13 |
 | Perspective warping | 13 |
 | Remapping | 22 |
-| Polar transforms | 8 |
+| Polar transforms | 9 |
 | Median blur | 10 |
 | Box blur | 11 |
 | Bilateral filter | 10 |
@@ -3387,7 +3390,7 @@ The current **422-test** baseline is:
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **422** |
+| **Total** | **423** |
 
 
 The suite covers more than simple success paths. It includes:

@@ -2,6 +2,7 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
 with Interfaces;
+with Ada.Unchecked_Conversion;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Module_Interop;
@@ -25,6 +26,10 @@ package body Polar_Transform_Tests is
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use type OpenCV.Core.Depth_Type;
    use type IP.Interpolation_Method;
+   function Float32_From_Bits is new
+     Ada.Unchecked_Conversion (Interfaces.Unsigned_32, OpenCV.Float32_Value);
+   function Float64_From_Bits is new
+     Ada.Unchecked_Conversion (Interfaces.Unsigned_64, OpenCV.Float64_Value);
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
    package Caller is new AUnit.Test_Caller (Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -151,10 +156,52 @@ package body Polar_Transform_Tests is
          "Region-local center samples feature");
    end Region_And_Interpolation;
 
+   procedure Inverse_Region_Wrap (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 8, (OpenCV.Core.UInt8, 1));
+      View   : OpenCV.Core.Mat :=
+        Parent.Region ((X => 0, Y => 1, Width => 8, Height => 4));
+      Dest   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 210.0));
+      for X in 0 .. 7 loop
+         OpenCV.Core.UInt8_Access.Set (View, 0, X, 40);
+         OpenCV.Core.UInt8_Access.Set (View, 3, X, 80);
+      end loop;
+      IP.Warp_Polar
+        (View,
+         Dest,
+         (-1.0, 0.1),
+         4.0,
+         (1, 1),
+         Direction     => IP.Polar_To_Cartesian,
+         Interpolation => IP.Linear);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Dest, 0, 0) in 40 .. 80,
+         "inverse wrap uses Region's first/last rows, not parent neighbor");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Parent, 5, 0) = 210,
+         "parent neighboring row remains distinct");
+   end Inverse_Region_Wrap;
+
    procedure Validation (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Source : OpenCV.Core.Mat := Image;
-      Dest   : OpenCV.Core.Mat := Image;
+      pragma Suppress (Validity_Check);
+      Source     : OpenCV.Core.Mat := Image;
+      Dest       : OpenCV.Core.Mat := Image;
+      Bad_Center : constant OpenCV.Float32_Value :=
+        Float32_From_Bits (16#7F80_0000#);
+      Bad_Radius : constant OpenCV.Float64_Value :=
+        Float64_From_Bits (16#7FF0_0000_0000_0000#);
+      procedure Try_Center is
+      begin
+         IP.Warp_Polar (Source, Dest, (Bad_Center, 4.0), 4.0, (8, 16));
+      end Try_Center;
+      procedure Try_Radius is
+      begin
+         IP.Warp_Polar (Source, Dest, (4.0, 4.0), Bad_Radius, (8, 16));
+      end Try_Radius;
       procedure Try_Area is
       begin
          IP.Warp_Polar
@@ -180,6 +227,8 @@ package body Polar_Transform_Tests is
       end Try_Alias;
    begin
       Assert_Error (Try_Area'Access);
+      Assert_Error (Try_Center'Access);
+      Assert_Error (Try_Radius'Access);
       Assert_Error (Try_Log'Access);
       Assert_Error (Try_Zero'Access);
       Assert_Error (Try_Alias'Access);
@@ -232,6 +281,21 @@ package body Polar_Transform_Tests is
             AUnit.Assertions.Assert
               (Status = C_API.Error_Invalid_Argument,
                "inverse near-unit log radius bound");
+            Status :=
+              C_API.Warp_Polar
+                (Handle,
+                 Target,
+                 6.0E-8,
+                 0.0,
+                 1.000000000000012,
+                 1,
+                 1,
+                 1,
+                 1,
+                 1);
+            AUnit.Assertions.Assert
+              (Status = C_API.Error_Invalid_Argument,
+               "inverse semilog Float32 +1 rounding hazard");
             Status :=
               C_API.Warp_Polar (Handle, Target, 4.0, 4.0, 4.0, 8, 16, 0, 0, 1);
             AUnit.Assertions.Assert
@@ -379,6 +443,10 @@ package body Polar_Transform_Tests is
         (Caller.Create
            ("Polar Region and interpolation",
             Region_And_Interpolation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Polar inverse Region wrap isolation",
+            Inverse_Region_Wrap'Access));
       Result.Add_Test (Caller.Create ("Polar validation", Validation'Access));
       Result.Add_Test
         (Caller.Create ("Polar raw ABI safety", Raw_Safety'Access));

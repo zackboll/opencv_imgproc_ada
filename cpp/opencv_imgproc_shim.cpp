@@ -5348,9 +5348,36 @@ opencv_imgproc_warp_polar(
             if (!std::isfinite(distance) ||
                 distance >= static_cast<double>(std::numeric_limits<float>::max()) / 2.0)
                 return invalid_argument("unsafe inverse polar distance");
-            const double rho = mapping == 0 ? distance / scale : std::log1p(distance) / scale;
+            double rho = distance / scale;
+            if (mapping != 0) {
+                // ABI safety: in 4.1, 4.10 and 5.0 the inverse semilog map
+                // uses Float32 Cartesian offsets -> cartToPolar magnitude
+                // -> + 1.f -> log -> double rho / Kmag -> Float32 mapx.
+                // A mathematical double log1p(distance) misses the upward
+                // rounding at 1.f. Bound each Float32 stage upwards; the
+                // deliberately broad log envelope also covers the different
+                // scalar/SIMD HAL log approximations. Near zero with a tiny
+                // scale, reject rather than depend on their last-bit errors.
+                if (distance < 1.0e-4 && scale < 1.0e-6)
+                    return invalid_argument("unsafe inverse semilog precision");
+                const auto up = [](double value) {
+                    return std::nextafterf(static_cast<float>(value),
+                                           std::numeric_limits<float>::infinity());
+                };
+                const double x_bound = up(std::max(std::abs(static_cast<double>(center_x)),
+                                                   std::abs(static_cast<double>(output_width - 1) - center_x)));
+                const double y_bound = up(std::max(std::abs(static_cast<double>(center_y)),
+                                                   std::abs(static_cast<double>(output_height - 1) - center_y)));
+                // A second upward step encloses Float32 subtraction and
+                // cartToPolar's Float32 multiply/add/sqrt rounding.
+                const float magnitude = up(std::hypot(up(x_bound), up(y_bound)));
+                const float plus_one = up(1.0 + static_cast<double>(magnitude));
+                const double log_bound = 2.0 * std::log(static_cast<double>(plus_one)) + 1.0e-6;
+                rho = log_bound / scale;
+            }
             // ABI safety: angular map receives a one-row wrap offset; the
             // radial map may otherwise overflow Float32 or remap's cvRound.
+            // The bound also covers Float32 mapx storage and remap's x32 operand.
             if (!polar_coordinate_bound_safe(rho + 4.0, nearest) ||
                 !polar_coordinate_bound_safe(static_cast<double>(src->rows) + 4.0, nearest))
                 return invalid_argument("unsafe inverse polar map coordinates");
