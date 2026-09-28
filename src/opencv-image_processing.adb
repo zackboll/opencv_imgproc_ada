@@ -3413,6 +3413,88 @@ package body OpenCV.Image_Processing is
       return Result;
    end Convert_Remap_To_Separate_Float;
 
+   procedure Warp_Polar
+     (Source         : OpenCV.Core.Mat;
+      Destination    : in out OpenCV.Core.Mat;
+      Center         : OpenCV.Float32_Point;
+      Maximum_Radius : OpenCV.Float64_Value;
+      Output_Size    : OpenCV.Size;
+      Mapping        : Polar_Mapping := Linear_Polar;
+      Direction      : Polar_Direction := Cartesian_To_Polar;
+      Interpolation  : Interpolation_Method := Linear)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Float64_Value;
+      use type OpenCV.Float32_Value;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Warp_Polar
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.C.C_float (Center.X),
+                 Interfaces.C.C_float (Center.Y),
+                 Interfaces.C.double (Maximum_Radius),
+                 Interfaces.Integer_32 (Output_Size.Width),
+                 Interfaces.Integer_32 (Output_Size.Height),
+                 (if Mapping = Linear_Polar then 0 else 1),
+                 (if Direction = Cartesian_To_Polar then 0 else 1),
+                 To_C_Remap_Interpolation (Interpolation));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth
+                not in OpenCV.Core.UInt8
+                     | OpenCV.Core.UInt16
+                     | OpenCV.Core.Int16
+                     | OpenCV.Core.Float32
+                     | OpenCV.Core.Float64
+        or else Source.Channels > 4
+        or else Source.Columns >= 32_767
+        or else Source.Rows
+                >= (if Direction = Polar_To_Cartesian then 32_765 else 32_767)
+      then
+         raise OpenCV.OpenCV_Error
+           with "Warp_Polar source exceeds remap limits or has invalid type";
+      end if;
+      if Output_Size.Width = 0
+        or else Output_Size.Height = 0
+        or else Output_Size.Width >= 32_767
+        or else Output_Size.Height >= 32_767
+      then
+         raise OpenCV.OpenCV_Error
+           with "Warp_Polar requires explicit output dimensions below 32767";
+      end if;
+      if Center.X /= Center.X
+        or else Center.Y /= Center.Y
+        or else abs Center.X > OpenCV.Float32_Value'Last
+        or else abs Center.Y > OpenCV.Float32_Value'Last
+        or else Maximum_Radius /= Maximum_Radius
+        or else Maximum_Radius > OpenCV.Float64_Value'Last
+        or else Maximum_Radius <= (if Mapping = Linear_Polar then 0.0 else 1.0)
+      then
+         raise OpenCV.OpenCV_Error
+           with "Warp_Polar requires finite center and radius (>1 for log)";
+      end if;
+      if Interpolation = Area then
+         raise OpenCV.OpenCV_Error
+           with "Warp_Polar does not support Area interpolation";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Warp_Polar");
+   end Warp_Polar;
+
    procedure Remap_Encoded_Impl
      (Source, First, Second : OpenCV.Core.Mat;
       Destination           : in out OpenCV.Core.Mat;

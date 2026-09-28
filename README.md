@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **414 AUnit tests**
+> **Current registered test baseline:** **423 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -60,6 +60,7 @@ Ada package, and built libraries serve different roles.
 - [Affine warping](#affine-warping)
 - [Perspective warping](#perspective-warping)
 - [Remapping](#remapping)
+- [Polar transforms](#polar-transforms)
 - [Median blur](#median-blur)
 
 - [Box blur](#box-blur)
@@ -200,6 +201,7 @@ The table below summarizes the current public operations.
 | Warping | `Warp_Affine` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 2x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
 | Warping | `Warp_Perspective` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 3x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
 | Warping | `Remap` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4; Rows/Columns < 32767 | separate Float32 C1 Map_X/Map_Y; output follows maps; Nearest/Linear/Cubic/Lanczos_4; Area rejected; all public borders; Destination must not share input storage |
+| Warping | `Warp_Polar` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | explicit output size; linear/log; forward/inverse; Nearest/Linear/Cubic/Lanczos_4; zero outliers; no overlapping destination |
 | Filtering | `Median_Blur` | nonempty 2-D; 1/3/4 channels | odd kernel >= 3; 3/5: `UInt8`/`UInt16`/`Float32`; >5: `UInt8` only; in-place supported; internal `BORDER_REPLICATE` |
 
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
@@ -848,6 +850,64 @@ end Translate_Perspective_Example;
 ```
 
 ---
+
+## Polar transforms
+
+`Warp_Polar` binds `cv::warpPolar` for both linear and logarithmic polar images:
+
+```ada
+procedure Warp_Polar
+  (Source         : OpenCV.Core.Mat;
+   Destination    : in out OpenCV.Core.Mat;
+   Center         : OpenCV.Float32_Point;
+   Maximum_Radius : OpenCV.Float64_Value;
+   Output_Size    : OpenCV.Size;
+   Mapping        : Polar_Mapping := Linear_Polar;
+   Direction      : Polar_Direction := Cartesian_To_Polar;
+   Interpolation  : Interpolation_Method := Linear);
+```
+
+Forward output X is radial rho and Y is angular phi (one full revolution).
+Linear rho follows distance from `Center`; logarithmic rho follows
+`log(distance + 1)`. `Center` is local to the supplied Source view in forward
+mode, but refers to the requested Cartesian output in inverse mode. In inverse
+mode Source is the polar image. `Maximum_Radius` must be finite and > 0 for
+linear, > 1 for logarithmic mapping; the actual radial scale must also remain
+finite and strictly positive. The Float32 center coordinates must be finite;
+off-image centers are allowed within the generated-map arithmetic limits.
+
+Both `Output_Size` dimensions must be explicitly positive and < 32767. Source
+rows and columns must be < 32767; inverse Source rows must be **at most
+32764** because OpenCV adds one wrap row at each end before `remap`. The
+generated Float32 coordinates are preflighted against native remap rounding
+limits. Nearest_Neighbor, Linear, Cubic, and Lanczos_4 are available; Area is
+rejected. Inverse logarithmic maps with both a sub-0.0001-pixel maximum output distance
+and a radial scale below 0.000001 are conservatively rejected: Float32
+`magnitude + 1.f` quantization can overflow remap's coordinate rounding.
+Otherwise, out-of-source samples are zero-filled. Source is unchanged;
+Destination must not overlap it (including aliases and Regions). On success
+Destination is rebound to a fresh Mat with the requested size and Source's
+depth/channels; validation or native failure leaves it unchanged. Interpolation
+and Float32 map quantization mean forward/inverse round trips are not exact.
+
+```ada
+Warp_Polar
+  (Source         => Frame,
+   Destination    => Polar_Image,
+   Center         => (X => 120.0, Y => 90.0),
+   Maximum_Radius => 80.0,
+   Output_Size    => (Width => 160, Height => 256),
+   Mapping        => Logarithmic_Polar);
+
+Warp_Polar
+  (Source         => Polar_Image,
+   Destination    => Reconstructed,
+   Center         => (X => 120.0, Y => 90.0),
+   Maximum_Radius => 80.0,
+   Output_Size    => (Width => 240, Height => 180),
+   Mapping        => Logarithmic_Polar,
+   Direction      => Polar_To_Cartesian);
+```
 
 ## Remapping
 
@@ -3291,7 +3351,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **414-test** baseline is:
+The current **423-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3305,6 +3365,7 @@ The current **414-test** baseline is:
 | Affine warping | 13 |
 | Perspective warping | 13 |
 | Remapping | 22 |
+| Polar transforms | 9 |
 | Median blur | 10 |
 | Box blur | 11 |
 | Bilateral filter | 10 |
@@ -3329,7 +3390,7 @@ The current **414-test** baseline is:
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **414** |
+| **Total** | **423** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -3941,7 +4002,6 @@ Notable Imgproc families that are not yet broadly bound include:
 - deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;
 - relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
   calibration/undistortion map generation in the appropriate module;
-- polar transforms;
 - Laplacian pyramids and `buildPyramid`;
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
   (`use_edgeval`) Hough, `HoughLinesPointSet`, `HOUGH_GRADIENT_ALT`,
