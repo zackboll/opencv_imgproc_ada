@@ -2381,6 +2381,44 @@ bool grabcut_mask_counts(
     return true;
 }
 
+// Mirror GMM::calcInverseCovAndDeterm(ci, 0.0): direct double determinant
+// arithmetic, its assertion, and construction of every inverse covariance
+// entry. A mathematically positive determinant alone is not sufficient.
+const char *grabcut_covariance_validation(const double *c) noexcept
+{
+    const double dtrm =
+        c[0] * (c[4] * c[8] - c[5] * c[7])
+        - c[1] * (c[3] * c[8] - c[5] * c[6])
+        + c[2] * (c[3] * c[7] - c[4] * c[6]);
+    if (!std::isfinite(dtrm)) {
+        return "GrabCut active covariance has nonfinite native determinant arithmetic";
+    }
+    if (dtrm <= std::numeric_limits<double>::epsilon()) {
+        return "GrabCut active covariance has invalid determinant";
+    }
+    const double inv_dtrm = 1.0 / dtrm;
+    if (!std::isfinite(inv_dtrm)) {
+        return "GrabCut active covariance has nonfinite native inverse arithmetic";
+    }
+    const double inverse[] = {
+        (c[4] * c[8] - c[5] * c[7]) * inv_dtrm,
+        -(c[3] * c[8] - c[5] * c[6]) * inv_dtrm,
+        (c[3] * c[7] - c[4] * c[6]) * inv_dtrm,
+        -(c[1] * c[8] - c[2] * c[7]) * inv_dtrm,
+        (c[0] * c[8] - c[2] * c[6]) * inv_dtrm,
+        -(c[0] * c[7] - c[1] * c[6]) * inv_dtrm,
+        (c[1] * c[5] - c[2] * c[4]) * inv_dtrm,
+        -(c[0] * c[5] - c[2] * c[3]) * inv_dtrm,
+        (c[0] * c[4] - c[1] * c[3]) * inv_dtrm
+    };
+    for (double entry : inverse) {
+        if (!std::isfinite(entry)) {
+            return "GrabCut active covariance has nonfinite native inverse arithmetic";
+        }
+    }
+    return nullptr;
+}
+
 const char *grabcut_model_validation(const cv::Mat &model) noexcept
 {
     // ABI safety: an empty model is silently created with zero weights by
@@ -2410,31 +2448,12 @@ const char *grabcut_model_validation(const cv::Mat &model) noexcept
         }
         active = true;
         // Native GMM stores five weights, then 15 means, then five 3x3
-        // row-major covariance matrices (columns 20 .. 64). Scale before
-        // multiplying so finite binary64 inputs cannot overflow the check.
+        // row-major covariance matrices (columns 20 .. 64).
         const double *cov = values + 20 + 9 * component;
-        long double scale = 0;
-        for (int index = 0; index < 9; ++index) {
-            scale = std::max(scale, std::fabs(static_cast<long double>(cov[index])));
-        }
-        if (scale == 0) {
-            return "GrabCut active covariance has nonpositive determinant";
-        }
-        const long double a = cov[0] / scale, b = cov[1] / scale;
-        const long double c = cov[2] / scale, d = cov[3] / scale;
-        const long double e = cov[4] / scale, f = cov[5] / scale;
-        const long double g = cov[6] / scale, h = cov[7] / scale;
-        const long double i = cov[8] / scale;
-        const long double normalized =
-            a * (e * i - f * h) - b * (d * i - f * g)
-            + c * (d * h - e * g);
-        const long double determinant = normalized * scale * scale * scale;
-        // ABI safety: native calcInverseCovAndDeterm(ci, 0.0) asserts a
-        // positive determinant; overflow would poison inverse/graph values.
-        if (!std::isfinite(determinant)
-            || determinant <= std::numeric_limits<double>::epsilon()
-            || determinant > std::numeric_limits<double>::max()) {
-            return "GrabCut active covariance has invalid determinant";
+        // ABI safety: native GMM asserts on the determinant and can produce
+        // nonfinite inverse entries, poisoning subsequent graph arithmetic.
+        if (const char *message = grabcut_covariance_validation(cov)) {
+            return message;
         }
     }
     return active ? nullptr : "GrabCut model has no active component";

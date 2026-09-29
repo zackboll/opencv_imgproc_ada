@@ -1,3 +1,4 @@
+with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Unchecked_Conversion;
 with AUnit.Assertions;
@@ -63,6 +64,9 @@ package body Segmentation_Tests is
    begin
       return Bits_To_Float (NaN_Bits);
    end NaN;
+
+   function Smallest_Subnormal return Long_Float
+   is (Bits_To_Float (1));
 
    function Gray (Value : Long_Float) return OpenCV.Scalar
    is ((Component_0 => Value, others => 0.0));
@@ -1805,6 +1809,33 @@ package body Segmentation_Tests is
 
    --  Native layout (4.1/4.10/5.0): weights 0..4, means 5..19,
    --  covariances 20..64; component I covariance starts at 20 + 9 * I.
+   function Cancellation_Model return OpenCV.Core.Mat is
+      Result : OpenCV.Core.Mat := Model;
+   begin
+      F64.Set (Result, 0, 0, 1.0);
+      --  Positive mathematical determinant, but native +inf - +inf is NaN.
+      F64.Set (Result, 0, 20, 1.0E200);
+      F64.Set (Result, 0, 21, 1.0E200);
+      F64.Set (Result, 0, 22, 1.0);
+      F64.Set (Result, 0, 23, 1.0E200);
+      F64.Set (Result, 0, 24, 1.0E200);
+      F64.Set (Result, 0, 27, 1.0);
+      F64.Set (Result, 0, 28, 1.0);
+      return Result;
+   end Cancellation_Model;
+
+   function Inverse_Overflow_Model return OpenCV.Core.Mat is
+      Result : OpenCV.Core.Mat := Model;
+   begin
+      F64.Set (Result, 0, 0, 1.0);
+      --  Native determinant is finite: 1e200 * (1e200 * 2**(-1074)).
+      --  Its (2,2) cofactor multiplies the two large entries first: +inf.
+      F64.Set (Result, 0, 20, 1.0E200);
+      F64.Set (Result, 0, 24, 1.0E200);
+      F64.Set (Result, 0, 28, OpenCV.Float64_Value (Smallest_Subnormal));
+      return Result;
+   end Inverse_Overflow_Model;
+
    procedure GrabCut_Invalid_Import (Test : in out Fixture) is
       pragma Unreferenced (Test);
       Source     : constant OpenCV.Core.Mat := GrabCut_Source;
@@ -1822,6 +1853,19 @@ package body Segmentation_Tests is
       begin
          null;
       end Restore;
+      procedure Restore_Cancellation is
+      begin
+         Restore;
+         AUnit.Assertions.Assert (False, "cancellation must be rejected");
+      exception
+         when Error : OpenCV.OpenCV_Error =>
+            AUnit.Assertions.Assert
+              (Ada.Strings.Fixed.Index
+                 (Ada.Exceptions.Exception_Message (Error),
+                  "nonfinite native determinant")
+               /= 0,
+               "restore reports nonfinite native determinant arithmetic");
+      end Restore_Cancellation;
    begin
       declare
          Empty : OpenCV.Core.Mat;
@@ -1880,6 +1924,9 @@ package body Segmentation_Tests is
       Restore;
       AUnit.Assertions.Assert
         (Same (Background, Valid), "validation leaves native model unchanged");
+      Background := Cancellation_Model;
+      Restore_Cancellation;
+      Background := Valid.Clone;
       OpenCV.Core.Set_To (Mask, Gray (0.0));
       Restore;
    end GrabCut_Invalid_Import;
@@ -1917,6 +1964,22 @@ package body Segmentation_Tests is
       AUnit.Assertions.Assert
         (Status = C_API.Success and then Same (Model_Copy, Snapshot),
          "valid native model accepted without mutation");
+      Model_Copy := IP.GrabCut_Foreground_Model (Ready);
+      Check;
+      AUnit.Assertions.Assert
+        (Status = C_API.Success, "native exported foreground model accepted");
+      Model_Copy := Cancellation_Model;
+      Check;
+      Assert_Invalid
+        (Status,
+         "nonfinite native determinant",
+         "native determinant cancellation rejected");
+      Model_Copy := Inverse_Overflow_Model;
+      Check;
+      Assert_Invalid
+        (Status,
+         "nonfinite native inverse",
+         "finite determinant with overflowing inverse rejected");
       Model_Copy := Model (64);
       Check;
       Assert_Invalid (Status, "1 x 65", "wrong geometry rejected");
