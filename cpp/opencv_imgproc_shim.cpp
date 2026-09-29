@@ -7424,9 +7424,10 @@ opencv_imgproc_hough_line_evidence_copy(
     return OPENCV_IMGPROC_OK;
 }
 
-// maximum_lines and threshold are not checked here: OpenCV 4.1.0, 4.10.0,
-// and 5.0.0 reject lines_max <= 0 and threshold < 0 before allocating the
-// accumulator or running the vote loop, and threshold == 0 is safe natively.
+// OpenCV 4.1.0, 4.10.0, and 5.0.0 HoughLinesPointSet reject lines_max <= 0
+// and threshold < 0 before allocating the accumulator; threshold == 0 is
+// valid natively. The shim repeats only those two checks, and only because
+// its empty-point path below returns without invoking OpenCV.
 opencv_imgproc_status
 opencv_imgproc_hough_lines_point_set(
     const opencv_imgproc_point_f32 *points,
@@ -7452,6 +7453,18 @@ opencv_imgproc_hough_lines_point_set(
     // shim's int32_t index.
     if (point_count < 0 || (point_count > 0 && points == nullptr)) {
         return invalid_argument("invalid Hough point-set point span");
+    }
+    // ABI compatibility: the empty-point fast path bypasses
+    // HoughLinesPointSet's own parameter checks, so preserve the native
+    // contract (maximum_lines > 0, threshold >= 0) for raw callers even when
+    // no native call is made.
+    if (maximum_lines <= 0) {
+        return invalid_argument(
+            "Hough point-set maximum lines must be positive");
+    }
+    if (threshold < 0) {
+        return invalid_argument(
+            "Hough point-set threshold must be nonnegative");
     }
 
     try {

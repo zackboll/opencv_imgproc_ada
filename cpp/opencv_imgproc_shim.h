@@ -562,7 +562,9 @@ opencv_imgproc_hough_lines_with_votes(
 
 /*
  * cv::HoughLinesPointSet over point_count binary32 points. point_count must
- * be nonnegative and points non-null when point_count > 0. Before OpenCV
+ * be nonnegative and points non-null when point_count > 0. As in OpenCV,
+ * maximum_lines must be positive and threshold nonnegative (0 is valid),
+ * including for an empty point set. Before OpenCV
  * runs, every point/angle vote is checked to land inside the rho
  * accumulator (OpenCV 4.1 performs no such check), so a rho range that does
  * not contain every vote is rejected.

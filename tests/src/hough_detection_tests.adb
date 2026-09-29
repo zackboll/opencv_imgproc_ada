@@ -2034,19 +2034,33 @@ package body Hough_Detection_Tests is
          "a valid raw point-set request must succeed after failures");
       C_API.Hough_Line_Evidence_Destroy (Handle);
 
-      --  An empty span with a null pointer is valid and yields no lines.
+      --  The empty-span fast path skips OpenCV, yet must keep its native
+      --  parameter contract: maximum lines > 0 and threshold >= 0.
       Count := 0;
       Use_Nil := True;
+      Lines := 0;
+      Expect ("maximum lines", "an empty span with zero lines is rejected");
+      Count := 0;
+      Use_Nil := True;
+      Votes := -1;
+      Expect ("nonnegative", "an empty span with a negative threshold fails");
+
+      --  Threshold 0 is valid natively (only the public Ada API requires a
+      --  positive vote threshold); an empty null span then yields no lines.
+      Count := 0;
+      Use_Nil := True;
+      Votes := 0;
       Detect;
       declare
          Found : aliased Interfaces.Integer_32 := -1;
       begin
          AUnit.Assertions.Assert
            (Status = C_API.Success
+            and then Handle /= C_API.Null_Hough_Line_Evidence_Handle
             and then C_API.Hough_Line_Evidence_Count (Handle, Found'Access)
                      = C_API.Success
             and then Found = 0,
-            "an empty raw point span must yield an empty result ("
+            "an empty raw span with threshold 0 must yield an empty result ("
             & C_API.Last_Error_Message
             & ")");
       end;
