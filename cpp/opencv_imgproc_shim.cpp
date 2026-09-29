@@ -31,6 +31,19 @@ struct opencv_imgproc_hough_circles_handle {
     std::vector<cv::Vec3f> circles;
 };
 
+// Normalized (rho, theta, votes) lines shared by raster Hough lines with
+// votes (native Vec3f) and HoughLinesPointSet (native Vec3d
+// (votes, rho, theta)).
+struct opencv_imgproc_hough_line_evidence_handle {
+    std::vector<opencv_imgproc_hough_line_evidence> lines;
+};
+
+// Radius-finding HOUGH_GRADIENT output (x, y, radius, votes). Never filled
+// in centers-only mode, whose fourth native component is an index.
+struct opencv_imgproc_hough_circle_evidence_handle {
+    std::vector<cv::Vec4f> circles;
+};
+
 // Owned buildPyramid result. levels[0] may be a shallow header over the
 // shim-local logical source; copy_level always publishes deep clones.
 struct opencv_imgproc_pyramid_handle {
@@ -1834,11 +1847,21 @@ bool hough_circles_preflight(
         return false;
     }
     std::int64_t effective_max = 0;
-    if (radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC) {
+    const bool centers_only =
+        radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_CENTERS_ONLY;
+    if (radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC
+        || centers_only) {
+        // ABI safety: centers-only privately passes maxRadius = -1; a raw
+        // caller cannot choose the sentinel or another value for it.
         if (max_radius != 0) {
-            *message = "automatic Hough radius mode requires max_radius 0";
+            *message = centers_only
+                ? "centers-only Hough radius mode requires max_radius 0"
+                : "automatic Hough radius mode requires max_radius 0";
             return false;
         }
+        // OpenCV 4.1/4.10/5.0 HoughCircles rewrite maxRadius <= 0 (including
+        // the centers-only -1, after recording centersOnly) to
+        // max(rows, cols), which bounds the accumulator voting walk.
         effective_max = std::max(rows, cols);
     } else if (radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_EXPLICIT) {
         if (max_radius <= min_radius) {
@@ -1851,18 +1874,29 @@ bool hough_circles_preflight(
         return false;
     }
     // ABI safety: HoughCirclesGradient evaluates maxRadius * maxRadius in int
-    // and filterCircles evaluates maxRadius + 1.
-    if (effective_max > 46340) {
+    // and filterCircles evaluates maxRadius + 1. Both occur only in the
+    // radius-estimation branch; with centersOnly, OpenCV 4.1, 4.10, and 5.0
+    // call GetCircleCenters instead and never evaluate them, so that mode
+    // is not rejected for them.
+    if (!centers_only && effective_max > 46340) {
         *message = "Hough maximum radius exceeds native int arithmetic";
         return false;
     }
     // ABI safety: the accumulator invoker forms x0 = cvRound(x / dp * 1024)
     // and then x0 + minRadius * sx (|sx| <= 1024) in int before its first
     // bounds check, then advances one step past the accumulator border.
+    // HoughCirclesAccumInvoker runs in every mode, including centers-only.
     if ((std::max(rows, cols) + static_cast<std::int64_t>(min_radius) + 2)
             * 1024 > hough_int_max) {
         *message = "Hough circle geometry exceeds native fixed-point range";
         return false;
+    }
+    if (centers_only) {
+        // The nBins histogram below belongs to
+        // HoughCircleEstimateRadiusInvoker, which centers-only never
+        // constructs, and GetCircleCenters only decodes accumulator
+        // indices already bounded by the padded-accumulator check above.
+        return true;
     }
     // ABI safety: radius estimation allocates AutoBuffer<int>(nBins) with
     // nBins = cvRound((maxRadius - minRadius) / dp * 10) and then writes
@@ -1874,6 +1908,172 @@ bool hough_circles_preflight(
     if (cvRound(bins) < 1) {
         *message = "Hough radius range is empty at this accumulator scale";
         return false;
+    }
+    return true;
+}
+
+// HoughLinesPointSet preflight. OpenCV 4.1.0, 4.10.0, and 5.0.0 compute
+//     float irho     = 1 / (float)rho_step;
+//     float irho_min = (float)min_rho * irho;
+//     numangle = cvRound((max_theta - min_theta) / theta_step)       (4.1)
+//              = computeNumangle(min_theta, max_theta, theta_step)  (4.10/5.0)
+//     numrho   = cvRound((max_rho - min_rho + 1) / rho_step);
+//     Mat::zeros(numangle + 2, numrho + 2, CV_32SC1);
+// and then, for every point and angle bin n,
+//     r = cvRound(x * tabCos[n] + y * tabSin[n] - irho_min);
+//     accum[(n + 1) * (numrho + 2) + r + 1]++;
+// OpenCV 4.10 and 5.0 guard that write with r >= 0 && r <= numrho. OpenCV
+// 4.1 has NO range check, so a vote column outside the accumulator writes
+// out of bounds there. NaN passes OpenCV's own max > min and step > 0
+// checks, and cvRound of NaN, infinity, or an out-of-int operand is
+// undefined.
+
+struct point_set_geometry {
+    float irho;
+    float irho_min;
+    std::int64_t numangle_bound;  // >= native numangle in every version
+    std::int64_t numrho_low;      // <= native numrho under any cvRound tie
+};
+
+bool hough_point_set_geometry(
+    double min_rho, double max_rho, double rho_step,
+    double min_theta, double max_theta, double theta_step,
+    point_set_geometry &geometry, const char **message) noexcept
+{
+    // ABI safety: rho/angle bounds and steps are narrowed to float and their
+    // quotients feed cvRound/cvFloor before OpenCV validates anything.
+    if (!representable_binary32(min_rho) || !representable_binary32(max_rho)
+        || !representable_binary32(rho_step)
+        || !representable_binary32(min_theta)
+        || !representable_binary32(max_theta)
+        || !representable_binary32(theta_step)) {
+        *message = "Hough point-set bounds and steps must be finite binary32";
+        return false;
+    }
+    // ABI safety: the shim's own bin model below divides by numrho + 2 and
+    // floors the angle quotient; both assume positive spans. (OpenCV
+    // rejects these too, but NaN reached it before the checks above.)
+    if (!(min_rho < max_rho) || !(min_theta < max_theta)) {
+        *message = "Hough point-set maximum must exceed minimum";
+        return false;
+    }
+    const float native_rho_step = static_cast<float>(rho_step);
+    const float irho = 1.0f / native_rho_step;
+    if (!(native_rho_step > 0.0f) || !std::isfinite(irho)) {
+        *message = "Hough point-set rho step must be positive in binary32";
+        return false;
+    }
+    const float irho_min = static_cast<float>(min_rho) * irho;
+    if (!std::isfinite(irho_min)) {
+        *message = "Hough point-set minimum rho overflows binary32 arithmetic";
+        return false;
+    }
+    if (!(static_cast<float>(theta_step) > 0.0f)) {
+        *message = "Hough point-set angle step must be positive in binary32";
+        return false;
+    }
+    // ABI safety: 4.1 uses cvRound(q) and 4.10/5.0 cvFloor(q) + 1 (minus at
+    // most one), in int before any validation; floor(q) + 1 bounds every
+    // version. (Zero bins are memory-safe natively; requiring at least one
+    // bin is public Ada policy and is not repeated here.)
+    const double angle_quotient = (max_theta - min_theta) / theta_step;
+    if (!(angle_quotient <= static_cast<double>(hough_int_max - 4))) {
+        *message = "Hough point-set angle step yields too many angle bins";
+        return false;
+    }
+    const std::int64_t numangle_bound =
+        static_cast<std::int64_t>(std::floor(angle_quotient)) + 1;
+    // ABI safety: numrho = cvRound(q) in int; q beyond int is undefined.
+    // Ties are modelled both ways (half-even lrint and half-away fallback
+    // cvRound): the smaller value bounds vote columns, the larger bounds the
+    // allocation. A zero-bin numrho is memory-safe natively (every vote must
+    // then round to r = 0, the padded column); requiring at least one
+    // usable bin is public Ada policy and is not repeated here.
+    const double rho_quotient = (max_rho - min_rho + 1.0) / rho_step;
+    if (!(rho_quotient <= static_cast<double>(hough_int_max - 4))) {
+        *message = "Hough point-set rho step yields too many rho bins";
+        return false;
+    }
+    const std::int64_t numrho_low =
+        static_cast<std::int64_t>(std::ceil(rho_quotient - 0.5));
+    const std::int64_t numrho_high =
+        static_cast<std::int64_t>(std::floor(rho_quotient + 0.5));
+    // ABI safety: the accumulator holds (numangle + 2) * (numrho + 2) ints
+    // addressed by the signed int index (n + 1) * (numrho + 2) + r + 1.
+    // Checked in widened arithmetic without forming the product.
+    if (numangle_bound + 2 > hough_int_max / (numrho_high + 2)) {
+        *message = "Hough point-set accumulator exceeds native int indexing";
+        return false;
+    }
+    geometry.irho = irho;
+    geometry.irho_min = irho_min;
+    geometry.numangle_bound = numangle_bound;
+    geometry.numrho_low = numrho_low;
+    return true;
+}
+
+// ABI safety: OpenCV 4.1 HoughLinesPointSet increments
+// accum[(n + 1) * (numrho + 2) + r + 1] with no check on r. This emulates
+// the native binary32 vote column of every point for every angle bin any
+// supported version can visit (numangle_bound) and requires
+// 0 <= r <= numrho, the range 4.10/5.0 accept. On an accepted request 4.1
+// never writes outside its accumulator, and no version drops a vote.
+//
+// The running angle and trig tables follow createTrigTable exactly:
+//     float ang = (float)min_theta; ... ang += (float)theta_step;
+//     tab[n] = (float)(sin((double)ang) * irho);
+// The vote operand x * tabCos + y * tabSin - irho_min is then evaluated
+// exactly in double (every binary32 product is exact there) and widened by
+// magnitude * 2^-20. That covers the three binary32 roundings of any
+// evaluation order or FMA contraction (at most 3 * 2^-24 relative) plus a
+// one-ulp libm difference in each table value (2^-23 relative). The bound
+// requires the operand to lie strictly inside (-0.5, numrho + 0.5), so
+// cvRound yields r in [0, numrho] under either tie rule and is never
+// applied to an out-of-int operand. cvRound itself is never called here.
+bool hough_point_set_votes_fit(
+    const opencv_imgproc_point_f32 *points, int32_t point_count,
+    double min_theta, double theta_step, const point_set_geometry &geometry,
+    const char **message) noexcept
+{
+    if (point_count == 0) {
+        return true;
+    }
+    // Every binary32 intermediate stays finite when the sum of absolute
+    // terms is at most 2^100, far below FLT_MAX (about 2^128).
+    const double finite_limit = std::ldexp(1.0, 100);
+    const double error_scale = std::ldexp(1.0, -20);
+    const double high_limit = static_cast<double>(geometry.numrho_low) + 0.5;
+    const double irho = static_cast<double>(geometry.irho);
+    const double irho_min = static_cast<double>(geometry.irho_min);
+    const float angle_step = static_cast<float>(theta_step);
+
+    float angle = static_cast<float>(min_theta);
+    for (std::int64_t n = 0; n < geometry.numangle_bound;
+         ++n, angle += angle_step) {
+        const double table_sin = static_cast<double>(static_cast<float>(
+            std::sin(static_cast<double>(angle)) * irho));
+        const double table_cos = static_cast<double>(static_cast<float>(
+            std::cos(static_cast<double>(angle)) * irho));
+        for (int32_t index = 0; index < point_count; ++index) {
+            const double term_x =
+                static_cast<double>(points[index].x) * table_cos;
+            const double term_y =
+                static_cast<double>(points[index].y) * table_sin;
+            const double magnitude =
+                std::fabs(term_x) + std::fabs(term_y) + std::fabs(irho_min);
+            if (!(magnitude <= finite_limit)) {
+                *message =
+                    "Hough point-set vote arithmetic exceeds binary32 range";
+                return false;
+            }
+            const double operand = term_x + term_y - irho_min;
+            const double error = magnitude * error_scale;
+            if (!(operand - error > -0.5) || !(operand + error < high_limit)) {
+                *message =
+                    "Hough point-set rho range does not contain every vote";
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -7024,13 +7224,18 @@ opencv_imgproc_hough_circles(
         // Continuous snapshot so a view is filtered as its own image rather
         // than acquiring parent pixels through Sobel border handling.
         cv::Mat snapshot = src->clone();
+        // The centers-only -1 sentinel is produced only here, from the
+        // validated private radius mode.
         const int native_max_radius =
             radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC
                 ? 0
-                : static_cast<int>(max_radius);
+                : radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_CENTERS_ONLY
+                    ? -1
+                    : static_cast<int>(max_radius);
         auto *result = new opencv_imgproc_hough_circles_handle;
         try {
-            // A vector<Vec3f> requests (x, y, radius) without votes.
+            // A vector<Vec3f> requests (x, y, radius) without votes; in
+            // centers-only mode GetCircleCenters(Vec3f) writes (x, y, 0).
             cv::HoughCircles(
                 snapshot, result->circles, cv::HOUGH_GRADIENT, dp, min_dist,
                 static_cast<double>(canny_threshold),
@@ -7097,6 +7302,361 @@ opencv_imgproc_hough_circles_copy(
         circles[index].x = circle[0];
         circles[index].y = circle[1];
         circles[index].radius = circle[2];
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_lines_with_votes(
+    const opencv_core_mat_handle *source,
+    double rho,
+    double theta,
+    int32_t threshold,
+    double min_theta,
+    double max_theta,
+    opencv_imgproc_hough_line_evidence_handle **out_result)
+{
+    clear_error();
+
+    if (out_result == nullptr) {
+        return invalid_argument("null Hough line evidence output pointer");
+    }
+    *out_result = nullptr;
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        const char *message = nullptr;
+        std::int64_t rows = 0;
+        std::int64_t cols = 0;
+        if (!hough_source_valid(*src, rows, cols, &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::Mat snapshot = src->clone();
+        const std::int64_t nonzero_count = cv::countNonZero(snapshot);
+        // The ordinary line preflight is reused unchanged, so both standard
+        // detectors accept exactly the same geometry. Its IPP nonzero-product
+        // guard is merely conservative here: a Vec3f request never enters
+        // the CV_32FC2-only IPP branch.
+        if (!hough_lines_preflight(
+                rows, cols, nonzero_count, rho, theta, threshold, min_theta,
+                max_theta, &message)) {
+            return invalid_argument(message);
+        }
+
+        auto *result = new opencv_imgproc_hough_line_evidence_handle;
+        try {
+            // Classical call: srn = stn = 0 and no OpenCV 5 use_edgeval. A
+            // vector<Vec3f> is a fixed CV_32FC3 output: (rho, theta, votes).
+            std::vector<cv::Vec3f> native;
+            cv::HoughLines(
+                snapshot, native, rho, theta, threshold,
+                0.0, 0.0, min_theta, max_theta);
+            if (!fits_int32(native.size())) {
+                delete result;
+                return invalid_argument(
+                    "Hough line evidence count exceeds C ABI range");
+            }
+            result->lines.reserve(native.size());
+            for (const cv::Vec3f &line : native) {
+                result->lines.push_back(
+                    {static_cast<double>(line[0]),
+                     static_cast<double>(line[1]),
+                     static_cast<double>(line[2])});
+            }
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        } catch (...) {
+            delete result;
+            throw;
+        }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+void
+opencv_imgproc_hough_line_evidence_destroy(
+    opencv_imgproc_hough_line_evidence_handle *result)
+{
+    delete result;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_line_evidence_count(
+    const opencv_imgproc_hough_line_evidence_handle *result,
+    int32_t *out_count)
+{
+    clear_error();
+    if (result == nullptr || out_count == nullptr) {
+        return invalid_argument("invalid Hough line evidence count arguments");
+    }
+    if (!fits_int32(result->lines.size())) {
+        return invalid_argument("Hough line evidence count exceeds C ABI range");
+    }
+    *out_count = static_cast<int32_t>(result->lines.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_line_evidence_copy(
+    const opencv_imgproc_hough_line_evidence_handle *result,
+    opencv_imgproc_hough_line_evidence *lines,
+    int32_t capacity)
+{
+    clear_error();
+    if (result == nullptr) {
+        return invalid_argument("invalid Hough line evidence result");
+    }
+    const std::size_t count = result->lines.size();
+    if (!fits_capacity(capacity, count)) {
+        return invalid_argument("invalid Hough line evidence buffer capacity");
+    }
+    if (count > 0 && lines == nullptr) {
+        return invalid_argument("null Hough line evidence buffer");
+    }
+    std::copy(result->lines.begin(), result->lines.end(), lines);
+    return OPENCV_IMGPROC_OK;
+}
+
+// OpenCV 4.1.0, 4.10.0, and 5.0.0 HoughLinesPointSet reject lines_max <= 0
+// and threshold < 0 before allocating the accumulator; threshold == 0 is
+// valid natively. The shim repeats only those two checks, and only because
+// its empty-point path below returns without invoking OpenCV.
+opencv_imgproc_status
+opencv_imgproc_hough_lines_point_set(
+    const opencv_imgproc_point_f32 *points,
+    int32_t point_count,
+    int32_t maximum_lines,
+    int32_t threshold,
+    double min_rho,
+    double max_rho,
+    double rho_step,
+    double min_theta,
+    double max_theta,
+    double theta_step,
+    opencv_imgproc_hough_line_evidence_handle **out_result)
+{
+    clear_error();
+
+    if (out_result == nullptr) {
+        return invalid_argument("null Hough line evidence output pointer");
+    }
+    *out_result = nullptr;
+    // ABI safety: the shim itself reads point_count records through points.
+    // A nonnegative int32_t count also fits OpenCV's int point loop and the
+    // shim's int32_t index.
+    if (point_count < 0 || (point_count > 0 && points == nullptr)) {
+        return invalid_argument("invalid Hough point-set point span");
+    }
+    // ABI compatibility: the empty-point fast path bypasses
+    // HoughLinesPointSet's own parameter checks, so preserve the native
+    // contract (maximum_lines > 0, threshold >= 0) for raw callers even when
+    // no native call is made.
+    if (maximum_lines <= 0) {
+        return invalid_argument(
+            "Hough point-set maximum lines must be positive");
+    }
+    if (threshold < 0) {
+        return invalid_argument(
+            "Hough point-set threshold must be nonnegative");
+    }
+
+    try {
+        const char *message = nullptr;
+        point_set_geometry geometry{};
+        if (!hough_point_set_geometry(
+                min_rho, max_rho, rho_step, min_theta, max_theta, theta_step,
+                geometry, &message)) {
+            return invalid_argument(message);
+        }
+        // ABI safety: a nonfinite coordinate makes the native vote operand
+        // NaN or infinite, which cvRound converts with undefined behavior
+        // and which OpenCV 4.1 then uses as an unchecked accumulator index.
+        for (int32_t index = 0; index < point_count; ++index) {
+            if (!std::isfinite(points[index].x)
+                || !std::isfinite(points[index].y)) {
+                return invalid_argument(
+                    "Hough point-set coordinates must be finite");
+            }
+        }
+        if (!hough_point_set_votes_fit(
+                points, point_count, min_theta, theta_step, geometry,
+                &message)) {
+            return invalid_argument(message);
+        }
+
+        // A CV_32FC2 collection: exactly the Point2f values the preflight
+        // modelled (OpenCV copies its input to vector<Point2f>).
+        std::vector<cv::Point2f> native_points;
+        native_points.reserve(static_cast<std::size_t>(point_count));
+        for (int32_t index = 0; index < point_count; ++index) {
+            native_points.emplace_back(points[index].x, points[index].y);
+        }
+
+        auto *result = new opencv_imgproc_hough_line_evidence_handle;
+        if (point_count == 0) {
+            // An empty InputArray has no CV_32FC2 type, so OpenCV 4.10 fails
+            // its internal copyTo; no points means no lines in any version.
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        }
+        try {
+            // Native output is Vec3d (votes, rho, theta).
+            std::vector<cv::Vec3d> native;
+            cv::HoughLinesPointSet(
+                native_points, native, maximum_lines, threshold, min_rho,
+                max_rho, rho_step, min_theta, max_theta, theta_step);
+            if (!fits_int32(native.size())) {
+                delete result;
+                return invalid_argument(
+                    "Hough line evidence count exceeds C ABI range");
+            }
+            result->lines.reserve(native.size());
+            for (const cv::Vec3d &line : native) {
+                result->lines.push_back({line[1], line[2], line[0]});
+            }
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        } catch (...) {
+            delete result;
+            throw;
+        }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_circles_with_votes(
+    const opencv_core_mat_handle *source,
+    double dp,
+    double min_dist,
+    int32_t canny_threshold,
+    int32_t accumulator_threshold,
+    int32_t radius_mode,
+    int32_t min_radius,
+    int32_t max_radius,
+    opencv_imgproc_hough_circle_evidence_handle **out_result)
+{
+    clear_error();
+
+    if (out_result == nullptr) {
+        return invalid_argument("null Hough circle evidence output pointer");
+    }
+    *out_result = nullptr;
+    // ABI safety: in centers-only mode OpenCV 4.1.0, 4.10.0, and 5.0.0
+    // GetCircleCenters(Vec4f) stores the accumulator index (float)center in
+    // the fourth component; publishing it through this vote-bearing record
+    // would present an index as a vote count.
+    if (radius_mode != OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC
+        && radius_mode != OPENCV_IMGPROC_HOUGH_RADIUS_EXPLICIT) {
+        return invalid_argument(
+            "vote-bearing Hough circles require a radius-finding mode");
+    }
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        const char *message = nullptr;
+        std::int64_t rows = 0;
+        std::int64_t cols = 0;
+        if (!hough_source_valid(*src, rows, cols, &message)
+            || !hough_circles_preflight(
+                rows, cols, dp, min_dist, canny_threshold,
+                accumulator_threshold, radius_mode, min_radius, max_radius,
+                &message)) {
+            return invalid_argument(message);
+        }
+
+        cv::Mat snapshot = src->clone();
+        const int native_max_radius =
+            radius_mode == OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC
+                ? 0
+                : static_cast<int>(max_radius);
+        auto *result = new opencv_imgproc_hough_circle_evidence_handle;
+        try {
+            // A vector<Vec4f> is a fixed CV_32FC4 output; with radius finding
+            // GetCircle4f writes (x, y, radius, (float)accum).
+            cv::HoughCircles(
+                snapshot, result->circles, cv::HOUGH_GRADIENT, dp, min_dist,
+                static_cast<double>(canny_threshold),
+                static_cast<double>(accumulator_threshold),
+                static_cast<int>(min_radius), native_max_radius);
+            if (!fits_int32(result->circles.size())) {
+                delete result;
+                return invalid_argument(
+                    "Hough circle evidence count exceeds C ABI range");
+            }
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        } catch (...) {
+            delete result;
+            throw;
+        }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+void
+opencv_imgproc_hough_circle_evidence_destroy(
+    opencv_imgproc_hough_circle_evidence_handle *result)
+{
+    delete result;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_circle_evidence_count(
+    const opencv_imgproc_hough_circle_evidence_handle *result,
+    int32_t *out_count)
+{
+    clear_error();
+    if (result == nullptr || out_count == nullptr) {
+        return invalid_argument(
+            "invalid Hough circle evidence count arguments");
+    }
+    if (!fits_int32(result->circles.size())) {
+        return invalid_argument(
+            "Hough circle evidence count exceeds C ABI range");
+    }
+    *out_count = static_cast<int32_t>(result->circles.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_hough_circle_evidence_copy(
+    const opencv_imgproc_hough_circle_evidence_handle *result,
+    opencv_imgproc_hough_circle_evidence *circles,
+    int32_t capacity)
+{
+    clear_error();
+    if (result == nullptr) {
+        return invalid_argument("invalid Hough circle evidence result");
+    }
+    const std::size_t count = result->circles.size();
+    if (!fits_capacity(capacity, count)) {
+        return invalid_argument(
+            "invalid Hough circle evidence buffer capacity");
+    }
+    if (count > 0 && circles == nullptr) {
+        return invalid_argument("null Hough circle evidence buffer");
+    }
+    for (std::size_t index = 0; index < count; ++index) {
+        const cv::Vec4f &circle = result->circles[index];
+        circles[index].x = circle[0];
+        circles[index].y = circle[1];
+        circles[index].radius = circle[2];
+        circles[index].votes = circle[3];
     }
     return OPENCV_IMGPROC_OK;
 }

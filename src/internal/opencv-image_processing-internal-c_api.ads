@@ -205,8 +205,49 @@ package OpenCV.Image_Processing.Internal.C_API is
    Null_Pyramid_Handle : constant Pyramid_Handle :=
      Pyramid_Handle (System.Null_Address);
 
-   Hough_Radius_Automatic : constant Interfaces.Integer_32 := 0;
-   Hough_Radius_Explicit  : constant Interfaces.Integer_32 := 1;
+   type Hough_Line_Evidence_Handle is new System.Address;
+   Null_Hough_Line_Evidence_Handle : constant Hough_Line_Evidence_Handle :=
+     Hough_Line_Evidence_Handle (System.Null_Address);
+
+   type Hough_Circle_Evidence_Handle is new System.Address;
+   Null_Hough_Circle_Evidence_Handle : constant Hough_Circle_Evidence_Handle :=
+     Hough_Circle_Evidence_Handle (System.Null_Address);
+
+   Hough_Radius_Automatic    : constant Interfaces.Integer_32 := 0;
+   Hough_Radius_Explicit     : constant Interfaces.Integer_32 := 1;
+   Hough_Radius_Centers_Only : constant Interfaces.Integer_32 := 2;
+
+   type Point_F32 is record
+      X : Interfaces.C.C_float;
+      Y : Interfaces.C.C_float;
+   end record
+   with Convention => C;
+
+   type Point_F32_Array is array (Natural range <>) of aliased Point_F32
+   with Convention => C;
+
+   type Hough_Line_Evidence_Record is record
+      Rho   : Interfaces.C.double;
+      Theta : Interfaces.C.double;
+      Votes : Interfaces.C.double;
+   end record
+   with Convention => C;
+
+   type Hough_Line_Evidence_Record_Array is
+     array (Natural range <>) of aliased Hough_Line_Evidence_Record
+   with Convention => C;
+
+   type Hough_Circle_Evidence_Record is record
+      X      : Interfaces.C.C_float;
+      Y      : Interfaces.C.C_float;
+      Radius : Interfaces.C.C_float;
+      Votes  : Interfaces.C.C_float;
+   end record
+   with Convention => C;
+
+   type Hough_Circle_Evidence_Record_Array is
+     array (Natural range <>) of aliased Hough_Circle_Evidence_Record
+   with Convention => C;
 
    type Hough_Line_Record is record
       Rho   : Interfaces.C.C_float;
@@ -697,6 +738,99 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_hough_circles_copy";
+
+   function Hough_Lines_With_Votes
+     (Source    : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Rho       : Interfaces.C.double;
+      Theta     : Interfaces.C.double;
+      Threshold : Interfaces.Integer_32;
+      Min_Theta : Interfaces.C.double;
+      Max_Theta : Interfaces.C.double;
+      Result    : access Hough_Line_Evidence_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_lines_with_votes";
+
+   function Hough_Lines_Point_Set
+     (Points        : access constant Point_F32;
+      Point_Count   : Interfaces.Integer_32;
+      Maximum_Lines : Interfaces.Integer_32;
+      Threshold     : Interfaces.Integer_32;
+      Min_Rho       : Interfaces.C.double;
+      Max_Rho       : Interfaces.C.double;
+      Rho_Step      : Interfaces.C.double;
+      Min_Theta     : Interfaces.C.double;
+      Max_Theta     : Interfaces.C.double;
+      Theta_Step    : Interfaces.C.double;
+      Result        : access Hough_Line_Evidence_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_lines_point_set";
+
+   procedure Hough_Line_Evidence_Destroy (Result : Hough_Line_Evidence_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_line_evidence_destroy";
+
+   function Hough_Line_Evidence_Count
+     (Result : Hough_Line_Evidence_Handle;
+      Count  : access Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_line_evidence_count";
+
+   function Hough_Line_Evidence_Copy
+     (Result   : Hough_Line_Evidence_Handle;
+      Lines    : access Hough_Line_Evidence_Record;
+      Capacity : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_line_evidence_copy";
+
+   function Hough_Circles_With_Votes
+     (Source                : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Accumulator_Scale     : Interfaces.C.double;
+      Min_Distance          : Interfaces.C.double;
+      Canny_Threshold       : Interfaces.Integer_32;
+      Accumulator_Threshold : Interfaces.Integer_32;
+      Radius_Mode           : Interfaces.Integer_32;
+      Min_Radius            : Interfaces.Integer_32;
+      Max_Radius            : Interfaces.Integer_32;
+      Result                : access Hough_Circle_Evidence_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_circles_with_votes";
+
+   procedure Hough_Circle_Evidence_Destroy
+     (Result : Hough_Circle_Evidence_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_circle_evidence_destroy";
+
+   function Hough_Circle_Evidence_Count
+     (Result : Hough_Circle_Evidence_Handle;
+      Count  : access Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_circle_evidence_count";
+
+   function Hough_Circle_Evidence_Copy
+     (Result   : Hough_Circle_Evidence_Handle;
+      Circles  : access Hough_Circle_Evidence_Record;
+      Capacity : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hough_circle_evidence_copy";
 
    function Sobel
      (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;

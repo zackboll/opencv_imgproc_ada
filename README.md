@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **441 AUnit tests**
+> **Current registered test baseline:** **454 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -230,6 +230,8 @@ The table below summarizes the current public operations.
 | Drawing | `Draw_Line`, `Draw_Arrow`, `Draw_Marker`, `Draw_Text`, `Measure_Text`, `Font_Scale_For_Height`, rectangles, circles, ellipses, polylines, polygons | shapes: nonempty 2-D `UInt8`, `UInt16`, `Int16`, `Float32`, `Float64` C1..C4; text: nonempty 2-D `UInt8` C1/C3/C4 | in-place annotation; legacy text selectors; shape antialiasing only for `UInt8`; no alpha blending |
 | Hough | `Find_Hough_Lines`, `Find_Hough_Line_Segments` | nonempty 2-D `UInt8` C1 binary image | classical polar lines (radians) and probabilistic integer segments; Ada-owned arrays; source-preserving snapshot |
 | Hough | `Find_Hough_Circles` | nonempty 2-D `UInt8` C1 grayscale image | classic `HOUGH_GRADIENT`; automatic or explicit maximum radius; Float32 center/radius; source-preserving snapshot |
+| Hough | `Find_Hough_Lines_With_Votes`, `Find_Hough_Lines_From_Points` | binary `UInt8` C1 image, or an Ada array of finite Float32 points | polar lines with accumulator votes; point-set rho range must contain every vote (OpenCV 4.1 safety) |
+| Hough | `Find_Hough_Circle_Centers`, `Find_Hough_Circles_With_Votes` | nonempty 2-D `UInt8` C1 grayscale image | centers-only gradient detection; radius-finding circles with support votes |
 | Segmentation | `Flood_Fill`, `Flood_Fill_With_Mask` | nonempty 2-D `UInt8`/`Float32`, C1/C3; mask `UInt8` C1 `(rows + 2) x (cols + 2)` | in place; floating/fixed range; 4/8 connectivity; area and bounds; mask fill value and mask-only mode |
 | Segmentation | `Watershed` | `UInt8` C3 source; `Int32` C1 markers of the same size | markers mutated in place (`-1` boundaries); source preserved; nonnegative input markers; overlap rejected |
 | Segmentation | `Initialize_GrabCut`, `Refine_GrabCut`, `Refine_GrabCut_Frozen_Model` | `UInt8` C3 source; rectangle or 0..3 label mask with at least 5 background and 5 foreground pixels | limited private `GrabCut_State` with hidden models; `GrabCut_Mask` returns a clone; `GrabCut_Label` values |
@@ -2418,7 +2420,8 @@ FreeType/arbitrary font loading, or `drawFrameAxes`.
 
 ## Hough detection
 
-Three Hough detectors return Ada-owned value arrays:
+The Hough detectors return Ada-owned value arrays. The three basic detectors
+use:
 
 ```ada
 subtype Hough_Vote_Threshold   is Positive range 1 .. 2_147_483_647;
@@ -2561,13 +2564,111 @@ The snapshot costs one copy of the source per call and is never exposed.
 
 ### Result ordering and omitted outputs
 
-Result order is unspecified for all three detectors. In the inspected OpenCV
-implementations, standard lines and circles are ordered by accumulator
+Result order is unspecified for every Hough operation. In the inspected
+OpenCV implementations, standard lines and circles are ordered by accumulator
 support, while probabilistic segments appear in the order produced by the
 randomized point walk and are not sorted. Search results by geometry rather
-than relying on an index. The optional accumulator-vote components (`Vec3f`
-lines and `Vec4f` circles) are not requested, so vote semantics are not part
-of this pre-1.0 API.
+than relying on an index. The three detectors above do not request
+accumulator votes; the evidence operations below do.
+
+### Evidence: accumulator votes, point sets, and circle centers
+
+```ada
+type Hough_Line_With_Votes is record
+   Rho           : OpenCV.Float32_Value;
+   Angle_Radians : OpenCV.Float32_Value;
+   Votes         : OpenCV.Float64_Value;
+end record;
+
+type Hough_Circle_With_Votes is record
+   Center : OpenCV.Float32_Point;
+   Radius : OpenCV.Float32_Value;
+   Votes  : OpenCV.Float64_Value;
+end record;
+
+Hough_Degree : constant := Ada.Numerics.Pi / 180.0;
+
+type Hough_Point_Array is array (Integer range <>) of OpenCV.Float32_Point;
+type Hough_Circle_Center_Array is
+  array (Natural range <>) of OpenCV.Float32_Point;
+--  Hough_Line_With_Votes_Array, Hough_Circle_With_Votes_Array:
+--  array (Natural range <>) of the record above.
+
+function Find_Hough_Lines_With_Votes
+  (Source                   : OpenCV.Core.Mat;
+   Distance_Resolution      : OpenCV.Float64_Value;
+   Angle_Resolution_Radians : OpenCV.Float64_Value;
+   Vote_Threshold           : Hough_Vote_Threshold;
+   Minimum_Angle_Radians    : OpenCV.Float64_Value := 0.0;
+   Maximum_Angle_Radians    : OpenCV.Float64_Value := Ada.Numerics.Pi)
+   return Hough_Line_With_Votes_Array;
+
+function Find_Hough_Lines_From_Points
+  (Points                   : Hough_Point_Array;
+   Maximum_Lines            : Positive;
+   Vote_Threshold           : Hough_Vote_Threshold;
+   Minimum_Rho              : OpenCV.Float64_Value;
+   Maximum_Rho              : OpenCV.Float64_Value;
+   Distance_Resolution      : OpenCV.Float64_Value;
+   Minimum_Angle_Radians    : OpenCV.Float64_Value := 0.0;
+   Maximum_Angle_Radians    : OpenCV.Float64_Value := Ada.Numerics.Pi;
+   Angle_Resolution_Radians : OpenCV.Float64_Value := Hough_Degree)
+   return Hough_Line_With_Votes_Array;
+
+function Find_Hough_Circle_Centers
+  (Source                  : OpenCV.Core.Mat;
+   Accumulator_Scale       : OpenCV.Float64_Value;
+   Minimum_Center_Distance : OpenCV.Float64_Value;
+   Canny_Threshold         : Hough_Circle_Threshold;
+   Accumulator_Threshold   : Hough_Circle_Threshold;
+   Minimum_Radius          : OpenCV.Size_Coordinate := 0)
+   return Hough_Circle_Center_Array;
+
+--  Two overloads mirroring Find_Hough_Circles: automatic maximum radius,
+--  and explicit Maximum_Radius > Minimum_Radius.
+function Find_Hough_Circles_With_Votes (...)
+   return Hough_Circle_With_Votes_Array;
+```
+
+Record fields always use the same order: geometry first (`Rho`,
+`Angle_Radians`, or `Center`, `Radius`), then `Votes`. OpenCV's own component
+orders differ (`HoughLinesPointSet` returns `(votes, rho, theta)`); the
+binding normalizes them. Array bounds follow the other Hough results.
+
+- **Standard lines with votes** have exactly the `Find_Hough_Lines` contract
+  and add each bin's accumulator count. OpenCV's optional IPP standard-Hough
+  path serves only the vote-free output, so on IPP-enabled builds the two
+  operations are not guaranteed to return identical lines or ordering.
+- **Point-set lines** run `HoughLinesPointSet` over explicit binary32 points
+  (any array bounds, possibly empty; coordinates must be finite). Rho bins
+  start at `Minimum_Rho` with width `Distance_Resolution`;
+  `Minimum_Rho < Maximum_Rho`, the usual angle bounds, and at least one rho
+  and one angle bin are required. `Maximum_Lines` is a cap, not a requested
+  count. An empty point set returns an empty result.
+- **Point-set range safety.** Every point must vote inside
+  `[Minimum_Rho, Maximum_Rho]` for every searched angle. OpenCV 4.1 writes
+  out-of-range votes outside its accumulator (later versions drop them), so a
+  rho range that does not contain all votes raises `OpenCV.OpenCV_Error` on
+  every OpenCV version. Since `|rho| <= sqrt (X**2 + Y**2)`, a range reaching
+  a little beyond plus and minus the largest point distance from the origin
+  always works.
+- **Circle centers** run the classic gradient detector without radius
+  estimation (OpenCV's private negative-`maxRadius` mode, never exposed). Only
+  centers are returned; OpenCV's placeholder radius is discarded.
+  `Minimum_Radius` still limits how close to each edge pixel center votes are
+  cast.
+- **Circles with votes** always estimate radii and report the support count
+  of the chosen radius. They never use centers-only mode, whose native fourth
+  component is an accumulator index rather than a vote count.
+
+**Vote semantics.** OpenCV keeps only strict local maxima whose count exceeds
+the requested threshold, so accepted results normally report
+`Votes > threshold`. `Votes` is stored as `Float64_Value` for one uniform API:
+raster-line votes come from OpenCV's `Vec3f` output and circle votes from its
+`Vec4f` output (so counts above 2**24 may already be rounded by binary32),
+while point-set votes come from `Vec3d`; all are integer accumulator counts.
+Magnitudes can differ across OpenCV generations and backends: use votes as
+ranking and evidence, not as a cross-version constant.
 
 ### Validation and native safety
 
@@ -2581,6 +2682,12 @@ Those also raise `OpenCV.OpenCV_Error`. There is no arbitrary resolution
 floor; the limits come from the native arithmetic itself. The raw C ABI
 independently rejects malformed sources (empty, N-D, non-`UInt8`, or
 multi-channel), nonpositive thresholds, and negative segment length or gap.
+For point sets it rejects malformed point spans, nonfinite coordinates or
+bounds, bin counts or accumulator products beyond native `int`, and any
+point/angle vote whose modelled binary32 column falls outside the
+accumulator. Vote-bearing circles refuse the centers-only mode, and
+centers-only detection skips only the checks that belong to radius
+estimation.
 
 ### Examples
 
@@ -2641,9 +2748,8 @@ end;
 
 ### Deferred
 
-Multiscale `srn`/`stn`, OpenCV 5 weighted Hough (`use_edgeval`),
-`HoughLinesPointSet`, `HOUGH_GRADIENT_ALT`, centers-only circle output, and
-accumulator votes are intentionally not part of this slice.
+Multiscale `srn`/`stn`, OpenCV 5 weighted Hough (`use_edgeval`), and
+`HOUGH_GRADIENT_ALT` are intentionally not part of this slice.
 
 ---
 
@@ -3496,7 +3602,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **441-test** baseline is:
+The current **454-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3531,12 +3637,12 @@ The current **441-test** baseline is:
 | Connected components | 6 |
 | Drawing | 11 |
 | Drawing annotations | 14 |
-| Hough detection | 24 |
+| Hough detection | 37 |
 | Segmentation (flood fill, watershed, GrabCut) | 29 |
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **441** |
+| **Total** | **454** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4150,8 +4256,7 @@ Notable Imgproc families that are not yet broadly bound include:
 - relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
   calibration/undistortion map generation in the appropriate module;
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
-  (`use_edgeval`) Hough, `HoughLinesPointSet`, `HOUGH_GRADIENT_ALT`,
-  centers-only circle output, and optional accumulator votes;
+  (`use_edgeval`) Hough, and `HOUGH_GRADIENT_ALT`;
 - deferred segmentation capabilities: flood fill on `Int32` images,
   combined `GC_INIT_WITH_RECT | GC_INIT_WITH_MASK` initialization, exposing or
   importing GrabCut models, mean-shift segmentation, and higher-level

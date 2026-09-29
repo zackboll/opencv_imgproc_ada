@@ -6126,6 +6126,26 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Hough_Resolutions;
 
+   procedure Validate_Hough_Angle_Bounds
+     (Minimum_Angle_Radians : OpenCV.Float64_Value;
+      Maximum_Angle_Radians : OpenCV.Float64_Value;
+      Operation             : String)
+   is
+      use type OpenCV.Float64_Value;
+   begin
+      if not Is_Finite (Minimum_Angle_Radians)
+        or else not Is_Finite (Maximum_Angle_Radians)
+      then
+         Raise_Hough_Error (Operation, "requires finite angle bounds");
+      elsif Minimum_Angle_Radians < 0.0
+        or else Maximum_Angle_Radians > Ada.Numerics.Pi
+        or else Minimum_Angle_Radians >= Maximum_Angle_Radians
+      then
+         Raise_Hough_Error
+           (Operation, "requires 0 <= Minimum_Angle < Maximum_Angle <= Pi");
+      end if;
+   end Validate_Hough_Angle_Bounds;
+
    function Find_Hough_Lines
      (Source                   : OpenCV.Core.Mat;
       Distance_Resolution      : OpenCV.Float64_Value;
@@ -6136,7 +6156,6 @@ package body OpenCV.Image_Processing is
       return Hough_Line_Array
    is
       use type Interfaces.Integer_32;
-      use type OpenCV.Float64_Value;
 
       Operation : constant String := "Find_Hough_Lines";
       Result    : aliased Internal.C_API.Hough_Lines_Handle :=
@@ -6161,17 +6180,8 @@ package body OpenCV.Image_Processing is
       Validate_Hough_Source (Source, Operation);
       Validate_Hough_Resolutions
         (Distance_Resolution, Angle_Resolution_Radians, Operation);
-      if not Is_Finite (Minimum_Angle_Radians)
-        or else not Is_Finite (Maximum_Angle_Radians)
-      then
-         Raise_Hough_Error (Operation, "requires finite angle bounds");
-      elsif Minimum_Angle_Radians < 0.0
-        or else Maximum_Angle_Radians > Ada.Numerics.Pi
-        or else Minimum_Angle_Radians >= Maximum_Angle_Radians
-      then
-         Raise_Hough_Error
-           (Operation, "requires 0 <= Minimum_Angle < Maximum_Angle <= Pi");
-      end if;
+      Validate_Hough_Angle_Bounds
+        (Minimum_Angle_Radians, Maximum_Angle_Radians, Operation);
 
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Detect'Access);
       Raise_On_Error (Status, Operation);
@@ -6286,6 +6296,27 @@ package body OpenCV.Image_Processing is
       end;
    end Find_Hough_Line_Segments;
 
+   --  Public argument contract shared by every gradient-circle operation.
+   procedure Validate_Hough_Circle_Arguments
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Operation               : String)
+   is
+      use type OpenCV.Float64_Value;
+   begin
+      Validate_Hough_Source (Source, Operation);
+      if not Is_Finite (Accumulator_Scale) or else Accumulator_Scale < 1.0 then
+         Raise_Hough_Error
+           (Operation, "requires a finite Accumulator_Scale >= 1.0");
+      elsif not Is_Finite (Minimum_Center_Distance)
+        or else Minimum_Center_Distance <= 0.0
+      then
+         Raise_Hough_Error
+           (Operation, "requires a positive finite Minimum_Center_Distance");
+      end if;
+   end Validate_Hough_Circle_Arguments;
+
    function Detect_Hough_Circles
      (Source                  : OpenCV.Core.Mat;
       Accumulator_Scale       : OpenCV.Float64_Value;
@@ -6294,17 +6325,16 @@ package body OpenCV.Image_Processing is
       Accumulator_Threshold   : Hough_Circle_Threshold;
       Minimum_Radius          : OpenCV.Size_Coordinate;
       Radius_Mode             : Interfaces.Integer_32;
-      Maximum_Radius          : OpenCV.Size_Coordinate)
+      Maximum_Radius          : OpenCV.Size_Coordinate;
+      Operation               : String := "Find_Hough_Circles")
       return Hough_Circle_Array
    is
       use type Interfaces.Integer_32;
-      use type OpenCV.Float64_Value;
 
-      Operation : constant String := "Find_Hough_Circles";
-      Result    : aliased Internal.C_API.Hough_Circles_Handle :=
+      Result : aliased Internal.C_API.Hough_Circles_Handle :=
         Internal.C_API.Null_Hough_Circles_Handle;
-      Status    : Internal.C_API.Status := Internal.C_API.Success;
-      Count     : aliased Interfaces.Integer_32 := 0;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      Count  : aliased Interfaces.Integer_32 := 0;
 
       procedure Detect
         (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
@@ -6322,16 +6352,8 @@ package body OpenCV.Image_Processing is
               Result'Access);
       end Detect;
    begin
-      Validate_Hough_Source (Source, Operation);
-      if not Is_Finite (Accumulator_Scale) or else Accumulator_Scale < 1.0 then
-         Raise_Hough_Error
-           (Operation, "requires a finite Accumulator_Scale >= 1.0");
-      elsif not Is_Finite (Minimum_Center_Distance)
-        or else Minimum_Center_Distance <= 0.0
-      then
-         Raise_Hough_Error
-           (Operation, "requires a positive finite Minimum_Center_Distance");
-      end if;
+      Validate_Hough_Circle_Arguments
+        (Source, Accumulator_Scale, Minimum_Center_Distance, Operation);
 
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Detect'Access);
       Raise_On_Error (Status, Operation);
@@ -6419,6 +6441,374 @@ package body OpenCV.Image_Processing is
            Internal.C_API.Hough_Radius_Explicit,
            Maximum_Radius);
    end Find_Hough_Circles;
+
+   procedure Release_Hough_Line_Evidence
+     (Result : in out Internal.C_API.Hough_Line_Evidence_Handle) is
+   begin
+      Internal.C_API.Hough_Line_Evidence_Destroy (Result);
+      Result := Internal.C_API.Null_Hough_Line_Evidence_Handle;
+   end Release_Hough_Line_Evidence;
+
+   procedure Release_Hough_Circle_Evidence
+     (Result : in out Internal.C_API.Hough_Circle_Evidence_Handle) is
+   begin
+      Internal.C_API.Hough_Circle_Evidence_Destroy (Result);
+      Result := Internal.C_API.Null_Hough_Circle_Evidence_Handle;
+   end Release_Hough_Circle_Evidence;
+
+   --  Copies a successful native line-evidence result into Ada storage and
+   --  releases it on every path.
+   function Take_Hough_Line_Evidence
+     (Result    : in out Internal.C_API.Hough_Line_Evidence_Handle;
+      Operation : String) return Hough_Line_With_Votes_Array
+   is
+      use type Interfaces.Integer_32;
+
+      Count : aliased Interfaces.Integer_32 := 0;
+   begin
+      Raise_On_Error
+        (Internal.C_API.Hough_Line_Evidence_Count (Result, Count'Access),
+         Operation);
+      if Count <= 0 then
+         Release_Hough_Line_Evidence (Result);
+         return Empty : Hough_Line_With_Votes_Array (1 .. 0);
+      end if;
+
+      declare
+         Raw    :
+           Internal.C_API.Hough_Line_Evidence_Record_Array
+             (0 .. Natural (Count) - 1);
+         Output : Hough_Line_With_Votes_Array (Raw'Range);
+      begin
+         Raise_On_Error
+           (Internal.C_API.Hough_Line_Evidence_Copy
+              (Result, Raw (Raw'First)'Access, Count),
+            Operation);
+         for Index in Raw'Range loop
+            --  Rho and theta were binary32 in every native source, so the
+            --  narrowing below is exact.
+            Output (Index) :=
+              (Rho           => OpenCV.Float32_Value (Raw (Index).Rho),
+               Angle_Radians => OpenCV.Float32_Value (Raw (Index).Theta),
+               Votes         => OpenCV.Float64_Value (Raw (Index).Votes));
+         end loop;
+         Release_Hough_Line_Evidence (Result);
+         return Output;
+      end;
+   exception
+      when others =>
+         Release_Hough_Line_Evidence (Result);
+         raise;
+   end Take_Hough_Line_Evidence;
+
+   function Find_Hough_Lines_With_Votes
+     (Source                   : OpenCV.Core.Mat;
+      Distance_Resolution      : OpenCV.Float64_Value;
+      Angle_Resolution_Radians : OpenCV.Float64_Value;
+      Vote_Threshold           : Hough_Vote_Threshold;
+      Minimum_Angle_Radians    : OpenCV.Float64_Value := 0.0;
+      Maximum_Angle_Radians    : OpenCV.Float64_Value := Ada.Numerics.Pi)
+      return Hough_Line_With_Votes_Array
+   is
+      Operation : constant String := "Find_Hough_Lines_With_Votes";
+      Result    : aliased Internal.C_API.Hough_Line_Evidence_Handle :=
+        Internal.C_API.Null_Hough_Line_Evidence_Handle;
+      Status    : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure Detect
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Hough_Lines_With_Votes
+             (Source_Handle,
+              Interfaces.C.double (Distance_Resolution),
+              Interfaces.C.double (Angle_Resolution_Radians),
+              Interfaces.Integer_32 (Vote_Threshold),
+              Interfaces.C.double (Minimum_Angle_Radians),
+              Interfaces.C.double (Maximum_Angle_Radians),
+              Result'Access);
+      end Detect;
+   begin
+      Validate_Hough_Source (Source, Operation);
+      Validate_Hough_Resolutions
+        (Distance_Resolution, Angle_Resolution_Radians, Operation);
+      Validate_Hough_Angle_Bounds
+        (Minimum_Angle_Radians, Maximum_Angle_Radians, Operation);
+
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Detect'Access);
+      Raise_On_Error (Status, Operation);
+      return Take_Hough_Line_Evidence (Result, Operation);
+   end Find_Hough_Lines_With_Votes;
+
+   function Is_Finite_Coordinate (Value : OpenCV.Float32_Value) return Boolean
+   is
+      use type OpenCV.Float32_Value;
+   begin
+      return
+        Value = Value
+        and then Value <= OpenCV.Float32_Value'Last
+        and then Value >= OpenCV.Float32_Value'First;
+   end Is_Finite_Coordinate;
+
+   --  Heap storage for the C point span, so a large point set never lands
+   --  on the primary or secondary stack.
+   type Point_F32_Array_Access is access Internal.C_API.Point_F32_Array;
+
+   procedure Free_Points is new
+     Ada.Unchecked_Deallocation
+       (Internal.C_API.Point_F32_Array,
+        Point_F32_Array_Access);
+
+   function Find_Hough_Lines_From_Points
+     (Points                   : Hough_Point_Array;
+      Maximum_Lines            : Positive;
+      Vote_Threshold           : Hough_Vote_Threshold;
+      Minimum_Rho              : OpenCV.Float64_Value;
+      Maximum_Rho              : OpenCV.Float64_Value;
+      Distance_Resolution      : OpenCV.Float64_Value;
+      Minimum_Angle_Radians    : OpenCV.Float64_Value := 0.0;
+      Maximum_Angle_Radians    : OpenCV.Float64_Value := Ada.Numerics.Pi;
+      Angle_Resolution_Radians : OpenCV.Float64_Value := Hough_Degree)
+      return Hough_Line_With_Votes_Array
+   is
+      use type OpenCV.Float64_Value;
+
+      Operation   : constant String := "Find_Hough_Lines_From_Points";
+      --  Beyond binary32 range the native layer rejects the bounds anyway;
+      --  staying below it keeps the Float64 span arithmetic finite.
+      Native_Span : constant OpenCV.Float64_Value :=
+        OpenCV.Float64_Value (OpenCV.Float32_Value'Last);
+      Result      : aliased Internal.C_API.Hough_Line_Evidence_Handle :=
+        Internal.C_API.Null_Hough_Line_Evidence_Handle;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      Native      : Point_F32_Array_Access;
+   begin
+      Validate_Hough_Resolutions
+        (Distance_Resolution, Angle_Resolution_Radians, Operation);
+      Validate_Hough_Angle_Bounds
+        (Minimum_Angle_Radians, Maximum_Angle_Radians, Operation);
+      if not Is_Finite (Minimum_Rho) or else not Is_Finite (Maximum_Rho) then
+         Raise_Hough_Error (Operation, "requires finite rho bounds");
+      elsif Minimum_Rho >= Maximum_Rho then
+         Raise_Hough_Error (Operation, "requires Minimum_Rho < Maximum_Rho");
+      elsif abs Minimum_Rho > Native_Span or else abs Maximum_Rho > Native_Span
+      then
+         Raise_Hough_Error
+           (Operation, "requires rho bounds within native binary32 range");
+      elsif (Maximum_Rho - Minimum_Rho + 1.0) / Distance_Resolution < 1.0 then
+         Raise_Hough_Error
+           (Operation, "requires Distance_Resolution to yield a rho bin");
+      elsif (Maximum_Angle_Radians - Minimum_Angle_Radians)
+        / Angle_Resolution_Radians
+        < 1.0
+      then
+         Raise_Hough_Error
+           (Operation, "requires Angle_Resolution_Radians to yield a bin");
+      elsif Points'Length > Natural (Interfaces.Integer_32'Last) then
+         Raise_Hough_Error (Operation, "has too many points for native code");
+      end if;
+      for Point of Points loop
+         if not Is_Finite_Coordinate (Point.X)
+           or else not Is_Finite_Coordinate (Point.Y)
+         then
+            Raise_Hough_Error (Operation, "requires finite point coordinates");
+         end if;
+      end loop;
+
+      if Points'Length = 0 then
+         return Empty : Hough_Line_With_Votes_Array (1 .. 0);
+      end if;
+
+      Native := new Internal.C_API.Point_F32_Array (0 .. Points'Length - 1);
+      for Offset in Native'Range loop
+         Native (Offset) :=
+           (X => Interfaces.C.C_float (Points (Points'First + Offset).X),
+            Y => Interfaces.C.C_float (Points (Points'First + Offset).Y));
+      end loop;
+      Status :=
+        Internal.C_API.Hough_Lines_Point_Set
+          (Native (Native'First)'Access,
+           Interfaces.Integer_32 (Native'Length),
+           Interfaces.Integer_32 (Maximum_Lines),
+           Interfaces.Integer_32 (Vote_Threshold),
+           Interfaces.C.double (Minimum_Rho),
+           Interfaces.C.double (Maximum_Rho),
+           Interfaces.C.double (Distance_Resolution),
+           Interfaces.C.double (Minimum_Angle_Radians),
+           Interfaces.C.double (Maximum_Angle_Radians),
+           Interfaces.C.double (Angle_Resolution_Radians),
+           Result'Access);
+      Free_Points (Native);
+      Raise_On_Error (Status, Operation);
+      return Take_Hough_Line_Evidence (Result, Operation);
+   exception
+      when others =>
+         Free_Points (Native);
+         Release_Hough_Line_Evidence (Result);
+         raise;
+   end Find_Hough_Lines_From_Points;
+
+   function Find_Hough_Circle_Centers
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate := 0)
+      return Hough_Circle_Center_Array
+   is
+      --  The private centers-only mode makes the shim pass OpenCV's -1
+      --  maxRadius sentinel; the native radius component is then 0 and is
+      --  discarded here.
+      Circles : constant Hough_Circle_Array :=
+        Detect_Hough_Circles
+          (Source,
+           Accumulator_Scale,
+           Minimum_Center_Distance,
+           Canny_Threshold,
+           Accumulator_Threshold,
+           Minimum_Radius,
+           Internal.C_API.Hough_Radius_Centers_Only,
+           0,
+           Operation => "Find_Hough_Circle_Centers");
+   begin
+      if Circles'Length = 0 then
+         return Empty : Hough_Circle_Center_Array (1 .. 0);
+      end if;
+      return Centers : Hough_Circle_Center_Array (Circles'Range) do
+         for Index in Circles'Range loop
+            Centers (Index) := Circles (Index).Center;
+         end loop;
+      end return;
+   end Find_Hough_Circle_Centers;
+
+   --  Radius-finding circles with native Vec4f support counts. Radius_Mode
+   --  is only ever Automatic or Explicit here.
+   function Detect_Hough_Circles_With_Votes
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate;
+      Radius_Mode             : Interfaces.Integer_32;
+      Maximum_Radius          : OpenCV.Size_Coordinate)
+      return Hough_Circle_With_Votes_Array
+   is
+      use type Interfaces.Integer_32;
+
+      Operation : constant String := "Find_Hough_Circles_With_Votes";
+      Result    : aliased Internal.C_API.Hough_Circle_Evidence_Handle :=
+        Internal.C_API.Null_Hough_Circle_Evidence_Handle;
+      Status    : Internal.C_API.Status := Internal.C_API.Success;
+      Count     : aliased Interfaces.Integer_32 := 0;
+
+      procedure Detect
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Hough_Circles_With_Votes
+             (Source_Handle,
+              Interfaces.C.double (Accumulator_Scale),
+              Interfaces.C.double (Minimum_Center_Distance),
+              Interfaces.Integer_32 (Canny_Threshold),
+              Interfaces.Integer_32 (Accumulator_Threshold),
+              Radius_Mode,
+              Interfaces.Integer_32 (Minimum_Radius),
+              Interfaces.Integer_32 (Maximum_Radius),
+              Result'Access);
+      end Detect;
+   begin
+      Validate_Hough_Circle_Arguments
+        (Source, Accumulator_Scale, Minimum_Center_Distance, Operation);
+
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Detect'Access);
+      Raise_On_Error (Status, Operation);
+
+      begin
+         Raise_On_Error
+           (Internal.C_API.Hough_Circle_Evidence_Count (Result, Count'Access),
+            Operation);
+         if Count <= 0 then
+            Release_Hough_Circle_Evidence (Result);
+            return Empty : Hough_Circle_With_Votes_Array (1 .. 0);
+         end if;
+
+         declare
+            Raw    :
+              Internal.C_API.Hough_Circle_Evidence_Record_Array
+                (0 .. Natural (Count) - 1);
+            Output : Hough_Circle_With_Votes_Array (Raw'Range);
+         begin
+            Raise_On_Error
+              (Internal.C_API.Hough_Circle_Evidence_Copy
+                 (Result, Raw (Raw'First)'Access, Count),
+               Operation);
+            for Index in Raw'Range loop
+               Output (Index) :=
+                 (Center =>
+                    (X => OpenCV.Float32_Value (Raw (Index).X),
+                     Y => OpenCV.Float32_Value (Raw (Index).Y)),
+                  Radius => OpenCV.Float32_Value (Raw (Index).Radius),
+                  Votes  => OpenCV.Float64_Value (Raw (Index).Votes));
+            end loop;
+            Release_Hough_Circle_Evidence (Result);
+            return Output;
+         end;
+      exception
+         when others =>
+            Release_Hough_Circle_Evidence (Result);
+            raise;
+      end;
+   end Detect_Hough_Circles_With_Votes;
+
+   function Find_Hough_Circles_With_Votes
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate := 0)
+      return Hough_Circle_With_Votes_Array is
+   begin
+      return
+        Detect_Hough_Circles_With_Votes
+          (Source,
+           Accumulator_Scale,
+           Minimum_Center_Distance,
+           Canny_Threshold,
+           Accumulator_Threshold,
+           Minimum_Radius,
+           Internal.C_API.Hough_Radius_Automatic,
+           0);
+   end Find_Hough_Circles_With_Votes;
+
+   function Find_Hough_Circles_With_Votes
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate := 0;
+      Maximum_Radius          : OpenCV.Size_Coordinate)
+      return Hough_Circle_With_Votes_Array is
+   begin
+      if Maximum_Radius <= Minimum_Radius then
+         Raise_Hough_Error
+           ("Find_Hough_Circles_With_Votes",
+            "requires Maximum_Radius greater than Minimum_Radius");
+      end if;
+      return
+        Detect_Hough_Circles_With_Votes
+          (Source,
+           Accumulator_Scale,
+           Minimum_Center_Distance,
+           Canny_Threshold,
+           Accumulator_Threshold,
+           Minimum_Radius,
+           Internal.C_API.Hough_Radius_Explicit,
+           Maximum_Radius);
+   end Find_Hough_Circles_With_Votes;
 
    --  Segmentation.
 
