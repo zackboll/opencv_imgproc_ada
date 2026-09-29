@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **440 AUnit tests**
+> **Current registered test baseline:** **441 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -516,9 +516,15 @@ The explicit-size overload calls native `pyrUp` with the requested size, so
 odd previous-level geometry can be recovered exactly (for example
 `9 -> 5 -> 9` and `7 -> 4 -> 7`). Each extent must be `2 * Source` or
 `2 * Source - 1`; other sizes are rejected in Ada before any native work.
-OpenCV also accepts `2 * Source + 1`, but in OpenCV 4.1-4.6 (and for
-one-column sources in every release) that extra column or row can be left
-uninitialized, so the binding does not expose it. The result is computed
+OpenCV also accepts `2 * Source + 1`, but its extra **column** is not
+portable: OpenCV 4.1-4.6 index it incorrectly for multichannel images, and
+every reviewed release leaves it unwritten for one-column sources, so the
+binding does not expose that size. (The scalar path does explicitly fill a
+`2 * Source + 1` extra row; the column is the problem.) A one-row target
+from a one-row source (`1 -> 1`) is legal `2 * Source - 1` geometry; there
+OpenCV 4.1 aliases its even and odd destination rows, which is benign because
+both formulas coincide for a single source row, and the tests pin the result
+to row 0 of the two-row request for integer depths. The result is computed
 into fresh storage and bound to Destination only on success; a failed call
 leaves Destination unchanged. Signed native ring-buffer arithmetic is checked
 against the requested size, and IPP's signed row-step narrowing is checked
@@ -3490,7 +3496,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **440-test** baseline is:
+The current **441-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3500,7 +3506,7 @@ The current **440-test** baseline is:
 | Gaussian kernel | 8 |
 | Derivative kernels | 10 |
 | Image pyramids | 18 |
-| Pyramid construction (Gaussian / Laplacian) | 17 |
+| Pyramid construction (Gaussian / Laplacian) | 18 |
 | Template matching | 10 |
 | Affine warping | 13 |
 | Perspective warping | 13 |
@@ -3530,7 +3536,7 @@ The current **440-test** baseline is:
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **440** |
+| **Total** | **441** |
 
 
 The suite covers more than simple success paths. It includes:

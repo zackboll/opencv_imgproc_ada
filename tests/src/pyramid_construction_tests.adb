@@ -484,6 +484,56 @@ package body Pyramid_Construction_Tests is
          "explicit 2x size must equal the natural Pyramid_Up");
    end Sized_Pyramid_Up_Reverses_Odd_Geometry;
 
+   --  A one-row target is legal 2N - 1 geometry (1 -> 1). OpenCV 4.1 pyrUp_
+   --  aliases dst0 == dst1 there and its integer SIMD PyrUpVecV stores
+   --  both row formulas through that pointer; 4.10 added PyrUpVecVOneRow.
+   --  With one source row the reflected ring rows are equal, so both
+   --  formulas reduce to 8 * H and the double store is benign. This test
+   --  pins that: 32 columns reach the SIMD loop, and the one-row result must
+   --  equal row 0 of the two-row request for every affected integer depth.
+   procedure Sized_Pyramid_Up_One_Row_Integer_Depths (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Depths : constant array (1 .. 3) of OpenCV.Core.Depth_Type :=
+        (OpenCV.Core.UInt8, OpenCV.Core.UInt16, OpenCV.Core.Int16);
+      Widths : constant array (1 .. 2) of OpenCV.Size_Coordinate := (64, 63);
+   begin
+      for Depth of Depths loop
+         for Width of Widths loop
+            declare
+               Label       : constant String :=
+                 Depth'Image & " 1 x 32 -> 1 x" & Width'Image;
+               --  Horizontally varying pattern, so the horizontal pass
+               --  produces distinct even and odd columns.
+               Source      : constant OpenCV.Core.Mat :=
+                 Random_Mat (1, 32, Depth, Seed => 19);
+               Original    : constant OpenCV.Core.Mat := Source.Clone;
+               Reference   : OpenCV.Core.Mat;
+               Destination : OpenCV.Core.Mat :=
+                 OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 2));
+            begin
+               IP.Pyramid_Up (Source, Reference, Output_Size => (Width, 2));
+               AUnit.Assertions.Assert
+                 (Has_Size (Reference, 2, Natural (Width)),
+                  Label & ": two-row reference geometry");
+               IP.Pyramid_Up (Source, Destination, Output_Size => (Width, 1));
+               AUnit.Assertions.Assert
+                 (Has_Size (Destination, 1, Natural (Width))
+                  and then Destination.Depth = Depth
+                  and then Destination.Channels = 1,
+                  Label & ": Destination must be rebound to one row");
+               AUnit.Assertions.Assert
+                 (Max_Difference
+                    (Destination, OpenCV.Core.Row_View (Reference, 0))
+                  = 0.0,
+                  Label & ": one row must equal row 0 of the two-row result");
+               AUnit.Assertions.Assert
+                 (Max_Difference (Source, Original) = 0.0,
+                  Label & ": Source must be unchanged");
+            end;
+         end loop;
+      end loop;
+   end Sized_Pyramid_Up_One_Row_Integer_Depths;
+
    procedure Sized_Pyramid_Up_Rejects_Illegal_Geometry (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
@@ -1112,6 +1162,9 @@ package body Pyramid_Construction_Tests is
       Add
         ("Sized Pyramid_Up reverses odd Pyramid_Down geometry",
          Sized_Pyramid_Up_Reverses_Odd_Geometry'Access);
+      Add
+        ("Sized Pyramid_Up one-row integer targets match two-row row 0",
+         Sized_Pyramid_Up_One_Row_Integer_Depths'Access);
       Add
         ("Sized Pyramid_Up rejects illegal geometry atomically",
          Sized_Pyramid_Up_Rejects_Illegal_Geometry'Access);
