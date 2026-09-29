@@ -8,6 +8,7 @@ with Interfaces.C;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Int32_Access;
 with OpenCV.Core.Int32_Buffer_Access;
 with OpenCV.Core.Module_Interop;
@@ -32,6 +33,7 @@ package body Segmentation_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Mat_Size;
    use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
    use type OpenCV.Rect;
    use type OpenCV.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
@@ -41,6 +43,7 @@ package body Segmentation_Tests is
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
    package U8 renames OpenCV.Core.UInt8_Access;
    package I32 renames OpenCV.Core.Int32_Access;
+   package F64 renames OpenCV.Core.Float64_Access;
    package RGB renames OpenCV.Core.UInt8_Vec3_Access;
    use type C_API.Status;
    use type C_API.Rect_I32;
@@ -1510,6 +1513,29 @@ package body Segmentation_Tests is
          null;
       end Mask_Blank;
 
+      procedure Background_Blank is
+         Value : constant OpenCV.Core.Mat :=
+           IP.GrabCut_Background_Model (Blank);
+         pragma Unreferenced (Value);
+      begin
+         null;
+      end Background_Blank;
+
+      procedure Foreground_Blank is
+         Value : constant OpenCV.Core.Mat :=
+           IP.GrabCut_Foreground_Model (Blank);
+         pragma Unreferenced (Value);
+      begin
+         null;
+      end Foreground_Blank;
+
+      procedure Clone_Blank is
+         Value : constant IP.GrabCut_State := IP.Clone_GrabCut_State (Blank);
+         pragma Unreferenced (Value);
+      begin
+         null;
+      end Clone_Blank;
+
       procedure Read (State : IP.GrabCut_State; Row, Column : Natural) is
          Label : constant IP.GrabCut_Label :=
            IP.GrabCut_Label_At (State, Row, Column);
@@ -1549,6 +1575,9 @@ package body Segmentation_Tests is
       Assert_Raises (Refine_Blank'Access, "refining a blank state fails");
       Assert_Raises (Freeze_Blank'Access, "freezing a blank state fails");
       Assert_Raises (Mask_Blank'Access, "a blank state has no mask");
+      Assert_Raises (Background_Blank'Access, "blank background export fails");
+      Assert_Raises (Foreground_Blank'Access, "blank foreground export fails");
+      Assert_Raises (Clone_Blank'Access, "blank state cannot be cloned");
       Assert_Raises (Label_Blank'Access, "a blank state has no labels");
       Assert_Raises (Row_Outside'Access, "a row outside the mask fails");
       Assert_Raises (Column_Outside'Access, "a column outside the mask fails");
@@ -1607,6 +1636,298 @@ package body Segmentation_Tests is
 
    function Model (Columns : Positive := 65) return OpenCV.Core.Mat
    is (Filled (1, Columns, (OpenCV.Core.Float64, 1), Gray (0.0)));
+
+   procedure GrabCut_Combined (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source      : constant OpenCV.Core.Mat := GrabCut_Source;
+      Source_Copy : constant OpenCV.Core.Mat := Source.Clone;
+      Seeds       : OpenCV.Core.Mat := Four_Label_Mask;
+      Area        : constant OpenCV.Rect := Guess_Area;
+   begin
+      U8.Set (Seeds, 0, 0, 1);
+      U8.Set (Seeds, 0, 1, 3);
+      U8.Set (Seeds, 0, 2, 2);
+      declare
+         Original : constant OpenCV.Core.Mat := Seeds.Clone;
+         Combined : constant IP.GrabCut_State :=
+           IP.Initialize_GrabCut (Source, Seeds, Area);
+         Plain    : constant IP.GrabCut_State :=
+           IP.Initialize_GrabCut (Source, Seeds);
+      begin
+         Assert_Segmented (Combined, "combined initialization");
+         AUnit.Assertions.Assert
+           (IP.GrabCut_Label_At (Combined, 0, 0) = IP.Definite_Background
+            and then IP.GrabCut_Label_At (Combined, 0, 1)
+                     = IP.Definite_Background
+            and then IP.GrabCut_Label_At (Combined, 0, 2)
+                     = IP.Definite_Background
+            and then IP.GrabCut_Label_At (Plain, 0, 0)
+                     = IP.Definite_Foreground,
+            "outside foreground seeds are overwritten only in combined mode");
+         AUnit.Assertions.Assert
+           (IP.GrabCut_Label_At (Combined, 20, 20) = IP.Definite_Foreground,
+            "inside definite foreground remains definite");
+         AUnit.Assertions.Assert
+           (IP.GrabCut_Label_At (Combined, 9, 9) = IP.Probable_Background
+            and then Is_Foreground (IP.GrabCut_Label_At (Combined, 13, 13)),
+            "probable labels inside the region remain usable");
+         AUnit.Assertions.Assert
+           (Same (Seeds, Original) and then Same (Source, Source_Copy),
+            "combined initialization does not change caller Mats");
+      end;
+   end GrabCut_Combined;
+
+   procedure GrabCut_Combined_Region (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source_Parent  : constant OpenCV.Core.Mat :=
+        Filled (48, 48, (OpenCV.Core.UInt8, 3), Gray (0.0));
+      Mask_Parent    : constant OpenCV.Core.Mat := Gray8 (48, 48);
+      View_Area      : constant OpenCV.Rect :=
+        (X => 4, Y => 4, Width => 40, Height => 40);
+      Source_View    : OpenCV.Core.Mat :=
+        OpenCV.Core.Region (Source_Parent, View_Area);
+      Mask_View      : OpenCV.Core.Mat :=
+        OpenCV.Core.Region (Mask_Parent, View_Area);
+      Fixture_Source : constant OpenCV.Core.Mat := GrabCut_Source;
+      Fixture_Mask   : constant OpenCV.Core.Mat := Four_Label_Mask;
+   begin
+      Fixture_Source.Copy_To (Source_View);
+      Fixture_Mask.Copy_To (Mask_View);
+      declare
+         Source_Copy : constant OpenCV.Core.Mat := Source_Parent.Clone;
+         Mask_Copy   : constant OpenCV.Core.Mat := Mask_Parent.Clone;
+         State       : constant IP.GrabCut_State :=
+           IP.Initialize_GrabCut (Source_View, Mask_View, Guess_Area);
+      begin
+         Assert_Segmented (State, "combined Region initialization");
+         AUnit.Assertions.Assert
+           (Same (Source_Parent, Source_Copy)
+            and then Same (Mask_Parent, Mask_Copy),
+            "Region inputs and their parents are not mutated");
+      end;
+   end GrabCut_Combined_Region;
+
+   procedure GrabCut_Combined_Invalid (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Seeds : OpenCV.Core.Mat := Four_Label_Mask;
+      procedure Try (Area : OpenCV.Rect) is
+         State : constant IP.GrabCut_State :=
+           IP.Initialize_GrabCut (GrabCut_Source, Seeds, Area);
+         pragma Unreferenced (State);
+      begin
+         null;
+      end Try;
+      procedure Outside is
+      begin
+         Try ((X => 35, Y => 8, Width => 10, Height => 10));
+      end Outside;
+      procedure No_Foreground is
+      begin
+         Try ((X => 0, Y => 0, Width => 5, Height => 5));
+      end No_Foreground;
+      procedure No_Background is
+      begin
+         Try ((X => 0, Y => 0, Width => 40, Height => 40));
+      end No_Background;
+   begin
+      Assert_Raises (Outside'Access, "out-of-image rectangle");
+      Assert_Raises (No_Foreground'Access, "constrained foreground sparse");
+      OpenCV.Core.Set_To (Seeds, Gray (3.0));
+      Assert_Raises (No_Background'Access, "constrained background sparse");
+      --  Background inside the region counts, even when there is no outside.
+      for Column in 0 .. 4 loop
+         U8.Set (Seeds, 0, Column, 2);
+      end loop;
+      Try ((X => 0, Y => 0, Width => 40, Height => 40));
+   end GrabCut_Combined_Invalid;
+
+   procedure GrabCut_Interchange (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source     : constant OpenCV.Core.Mat := GrabCut_Source;
+      Original   : IP.GrabCut_State :=
+        IP.Initialize_GrabCut (Source, Guess_Area);
+      Mask       : OpenCV.Core.Mat := IP.GrabCut_Mask (Original);
+      Background : OpenCV.Core.Mat := IP.GrabCut_Background_Model (Original);
+      Foreground : OpenCV.Core.Mat := IP.GrabCut_Foreground_Model (Original);
+      Saved_Mask : constant OpenCV.Core.Mat := Mask.Clone;
+      Saved_Back : constant OpenCV.Core.Mat := Background.Clone;
+      Saved_Fore : constant OpenCV.Core.Mat := Foreground.Clone;
+      Restored   : IP.GrabCut_State :=
+        IP.Restore_GrabCut_State (Mask, Background, Foreground);
+      Cloned     : IP.GrabCut_State := IP.Clone_GrabCut_State (Original);
+   begin
+      AUnit.Assertions.Assert
+        (IP.Is_Initialized (Restored) and then IP.Is_Initialized (Cloned),
+         "restored and cloned states are initialized");
+      AUnit.Assertions.Assert
+        (Background.Rows = 1
+         and then Background.Columns = IP.GrabCut_Model_Column_Count
+         and then Background.Depth = OpenCV.Core.Float64
+         and then Background.Channels = 1
+         and then Foreground.Rows = 1
+         and then Foreground.Columns = IP.GrabCut_Model_Column_Count
+         and then Foreground.Depth = OpenCV.Core.Float64
+         and then Foreground.Channels = 1,
+         "both exported models have native Float64 C1 1 x 65 format");
+      U8.Set (Mask, 0, 0, 3);
+      F64.Set (Background, 0, 0, 0.0);
+      F64.Set (Foreground, 0, 0, 0.0);
+      AUnit.Assertions.Assert
+        (Same (IP.GrabCut_Mask (Restored), Saved_Mask)
+         and then Same (IP.GrabCut_Background_Model (Restored), Saved_Back)
+         and then Same (IP.GrabCut_Foreground_Model (Restored), Saved_Fore)
+         and then Same (IP.GrabCut_Background_Model (Original), Saved_Back)
+         and then Same (IP.GrabCut_Foreground_Model (Original), Saved_Fore),
+         "imports and exports own independent storage");
+      AUnit.Assertions.Assert
+        (Same (IP.GrabCut_Background_Model (Original), Saved_Back)
+         and then Same (IP.GrabCut_Foreground_Model (Original), Saved_Fore),
+         "repeated exports do not return mutated caller copies");
+      IP.Refine_GrabCut_Frozen_Model (Source, Restored);
+      IP.Refine_GrabCut_Frozen_Model (Source, Cloned);
+      AUnit.Assertions.Assert
+        (Same (IP.GrabCut_Mask (Original), Saved_Mask)
+         and then Same (IP.GrabCut_Background_Model (Original), Saved_Back)
+         and then Same (IP.GrabCut_Foreground_Model (Original), Saved_Fore),
+         "refining independent states does not change their origin");
+      IP.Refine_GrabCut_Frozen_Model (Source, Original);
+      AUnit.Assertions.Assert
+        (Same (IP.GrabCut_Mask (Original), IP.GrabCut_Mask (Restored))
+         and then Same (IP.GrabCut_Mask (Original), IP.GrabCut_Mask (Cloned)),
+         "frozen refinement agrees for independent states");
+      IP.Refine_GrabCut (Source, Cloned);
+      AUnit.Assertions.Assert
+        (Same (IP.GrabCut_Mask (Original), IP.GrabCut_Mask (Restored))
+         and then Same (IP.GrabCut_Background_Model (Original), Saved_Back)
+         and then Same (IP.GrabCut_Foreground_Model (Original), Saved_Fore),
+         "refining a clone cannot mutate its origin");
+   end GrabCut_Interchange;
+
+   --  Native layout (4.1/4.10/5.0): weights 0..4, means 5..19,
+   --  covariances 20..64; component I covariance starts at 20 + 9 * I.
+   procedure GrabCut_Invalid_Import (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source     : constant OpenCV.Core.Mat := GrabCut_Source;
+      Ready      : constant IP.GrabCut_State :=
+        IP.Initialize_GrabCut (Source, Guess_Area);
+      Mask       : OpenCV.Core.Mat := IP.GrabCut_Mask (Ready);
+      Background : OpenCV.Core.Mat := IP.GrabCut_Background_Model (Ready);
+      Foreground : constant OpenCV.Core.Mat :=
+        IP.GrabCut_Foreground_Model (Ready);
+      Valid      : constant OpenCV.Core.Mat := Background.Clone;
+      procedure Restore is
+         State : constant IP.GrabCut_State :=
+           IP.Restore_GrabCut_State (Mask, Background, Foreground);
+         pragma Unreferenced (State);
+      begin
+         null;
+      end Restore;
+   begin
+      declare
+         Empty : OpenCV.Core.Mat;
+      begin
+         Mask := Empty;
+         Assert_Raises (Restore'Access, "empty mask rejected");
+      end;
+      Mask := Model;
+      Assert_Raises (Restore'Access, "wrong mask type rejected");
+      Mask := IP.GrabCut_Mask (Ready);
+      U8.Set (Mask, 0, 0, 4);
+      Assert_Raises (Restore'Access, "bad label rejected");
+      Mask := IP.GrabCut_Mask (Ready);
+      Background := Filled (1, 65, (OpenCV.Core.Float32, 1), Gray (0.0));
+      Assert_Raises (Restore'Access, "wrong model depth rejected");
+      Background := Model (64);
+      Assert_Raises (Restore'Access, "wrong model shape rejected");
+      Background := Valid.Clone;
+      F64.Set (Background, 0, 5, OpenCV.Float64_Value (NaN));
+      Assert_Raises (Restore'Access, "NaN rejected");
+      Background := Model;
+      Assert_Raises (Restore'Access, "all-zero model rejected");
+      Background := Valid.Clone;
+      F64.Set (Background, 0, 0, -1.0);
+      Assert_Raises (Restore'Access, "negative weight rejected");
+      Background := Valid.Clone;
+      for Component in 0 .. 4 loop
+         if F64.Get (Background, 0, Component) > 0.0 then
+            for Index in 0 .. 8 loop
+               F64.Set (Background, 0, 20 + 9 * Component + Index, 0.0);
+            end loop;
+            exit;
+         end if;
+      end loop;
+      Assert_Raises (Restore'Access, "singular active covariance rejected");
+      declare
+         Raw_Mask       : OpenCV.Core.Mat := IP.GrabCut_Mask (Ready);
+         Raw_Foreground : OpenCV.Core.Mat := Foreground.Clone;
+         Before         : constant OpenCV.Core.Mat := Raw_Mask.Clone;
+      begin
+         Raw_GrabCut
+           (Source,
+            Raw_Mask,
+            Background,
+            Raw_Foreground,
+            C_API.GrabCut_Eval_Freeze_Model);
+         Assert_Invalid
+           (GrabCut_Status,
+            "determinant",
+            "raw evaluation rejects singular model");
+         AUnit.Assertions.Assert
+           (Same (Raw_Mask, Before),
+            "failed raw evaluation leaves mask intact");
+      end;
+      Background := Valid.Clone;
+      Restore;
+      AUnit.Assertions.Assert
+        (Same (Background, Valid), "validation leaves native model unchanged");
+      OpenCV.Core.Set_To (Mask, Gray (0.0));
+      Restore;
+   end GrabCut_Invalid_Import;
+
+   function Raw_Validate_GrabCut_Model
+     (Handle : System.Address) return C_API.Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_validate_grabcut_model";
+
+   procedure GrabCut_Raw_Import (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Ready      : constant IP.GrabCut_State :=
+        IP.Initialize_GrabCut (GrabCut_Source, Guess_Area);
+      Model_Copy : OpenCV.Core.Mat := IP.GrabCut_Background_Model (Ready);
+      Snapshot   : constant OpenCV.Core.Mat := Model_Copy.Clone;
+      Status     : C_API.Status;
+      procedure Validate (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+      begin
+         Status := C_API.Validate_GrabCut_Model (Handle);
+      end Validate;
+      procedure Check is
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Model_Copy, Validate'Access);
+      end Check;
+   begin
+      Assert_Invalid
+        (Raw_Validate_GrabCut_Model (System.Null_Address),
+         "handle",
+         "null model handle rejected");
+      Check;
+      AUnit.Assertions.Assert
+        (Status = C_API.Success and then Same (Model_Copy, Snapshot),
+         "valid native model accepted without mutation");
+      Model_Copy := Model (64);
+      Check;
+      Assert_Invalid (Status, "1 x 65", "wrong geometry rejected");
+      Model_Copy := Filled (1, 65, (OpenCV.Core.Float32, 1), Gray (0.0));
+      Check;
+      Assert_Invalid (Status, "Float64", "wrong type rejected");
+      Model_Copy := Snapshot.Clone;
+      F64.Set (Model_Copy, 0, 5, OpenCV.Float64_Value (NaN));
+      Check;
+      Assert_Invalid (Status, "finite", "malformed payload rejected");
+   end GrabCut_Raw_Import;
 
    procedure GrabCut_Raw_Modes (Test : in out Fixture) is
       pragma Unreferenced (Test);
@@ -1811,6 +2132,12 @@ package body Segmentation_Tests is
         ("GrabCut rectangle initialization",
          GrabCut_Rectangle_Initialization'Access);
       Add ("GrabCut mask initialization", GrabCut_Mask_Initialization'Access);
+      Add ("GrabCut combined initialization", GrabCut_Combined'Access);
+      Add ("GrabCut combined Region", GrabCut_Combined_Region'Access);
+      Add ("GrabCut combined invalid inputs", GrabCut_Combined_Invalid'Access);
+      Add ("GrabCut state interchange", GrabCut_Interchange'Access);
+      Add ("GrabCut invalid import", GrabCut_Invalid_Import'Access);
+      Add ("GrabCut raw model validation", GrabCut_Raw_Import'Access);
       Add ("GrabCut label conversions", GrabCut_Label_Conversions'Access);
       Add ("GrabCut refinement", GrabCut_Refinement'Access);
       Add ("GrabCut state isolation", GrabCut_State_Isolation'Access);

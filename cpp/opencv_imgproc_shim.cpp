@@ -2381,10 +2381,63 @@ bool grabcut_mask_counts(
     return true;
 }
 
-bool grabcut_model_valid(const cv::Mat &model) noexcept
+const char *grabcut_model_validation(const cv::Mat &model) noexcept
 {
-    return model.dims == 2 && model.type() == CV_64FC1 && model.rows == 1
-        && model.cols == 65;
+    // ABI safety: an empty model is silently created with zero weights by
+    // GMM, while a malformed shape cannot be indexed as 65 doubles below.
+    if (model.dims != 2 || model.type() != CV_64FC1 || model.rows != 1
+        || model.cols != 65) {
+        return "GrabCut models must be Float64 C1 1 x 65";
+    }
+    const double *values = model.ptr<double>(0);
+    // ABI safety: nonfinite payloads propagate into inverse covariance and
+    // graph capacities; these values are also inspected before GMM runs.
+    for (int index = 0; index < 65; ++index) {
+        if (!std::isfinite(values[index])) {
+            return "GrabCut model values must be finite";
+        }
+    }
+    bool active = false;
+    for (int component = 0; component < 5; ++component) {
+        // ABI safety: negative or absent mixture weights cannot define
+        // usable native likelihoods for graph construction.
+        const double weight = values[component];
+        if (weight < 0) {
+            return "GrabCut model weights must be nonnegative";
+        }
+        if (weight == 0) {
+            continue;
+        }
+        active = true;
+        // Native GMM stores five weights, then 15 means, then five 3x3
+        // row-major covariance matrices (columns 20 .. 64). Scale before
+        // multiplying so finite binary64 inputs cannot overflow the check.
+        const double *cov = values + 20 + 9 * component;
+        long double scale = 0;
+        for (int index = 0; index < 9; ++index) {
+            scale = std::max(scale, std::fabs(static_cast<long double>(cov[index])));
+        }
+        if (scale == 0) {
+            return "GrabCut active covariance has nonpositive determinant";
+        }
+        const long double a = cov[0] / scale, b = cov[1] / scale;
+        const long double c = cov[2] / scale, d = cov[3] / scale;
+        const long double e = cov[4] / scale, f = cov[5] / scale;
+        const long double g = cov[6] / scale, h = cov[7] / scale;
+        const long double i = cov[8] / scale;
+        const long double normalized =
+            a * (e * i - f * h) - b * (d * i - f * g)
+            + c * (d * h - e * g);
+        const long double determinant = normalized * scale * scale * scale;
+        // ABI safety: native calcInverseCovAndDeterm(ci, 0.0) asserts a
+        // positive determinant; overflow would poison inverse/graph values.
+        if (!std::isfinite(determinant)
+            || determinant <= std::numeric_limits<double>::epsilon()
+            || determinant > std::numeric_limits<double>::max()) {
+            return "GrabCut active covariance has invalid determinant";
+        }
+    }
+    return active ? nullptr : "GrabCut model has no active component";
 }
 
 // Validates flood-fill selectors and geometry. Returns nullptr when the
@@ -2717,11 +2770,14 @@ const char *grabcut_mode_preflight(
         return nullptr;
     }
 
-    if (!grabcut_model_valid(background) || !grabcut_model_valid(foreground)) {
-        // ABI safety: in evaluation modes OpenCV silently create()s an empty
-        // model with all-zero weights (rebinding the caller's header), and the
-        // frozen-model graph then receives -log(0) = infinite capacities.
-        return "GrabCut models must be Float64 C1 1 x 65";
+    if (const char *message = grabcut_model_validation(background)) {
+        // ABI safety: malformed model data reaches GMM inverse-covariance
+        // arithmetic and graph capacities before native evaluation can recover.
+        return message;
+    }
+    if (const char *message = grabcut_model_validation(foreground)) {
+        // ABI safety: same native GMM/graph hazard for the foreground model.
+        return message;
     }
     return nullptr;
 }
@@ -7835,6 +7891,25 @@ opencv_imgproc_grabcut(
         cv::grabCut(
             *src, *labels, rect, *background, *foreground,
             static_cast<int>(iteration_count), opencv_mode);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_validate_grabcut_model(const opencv_core_mat_handle *model)
+{
+    clear_error();
+    try {
+        const cv::Mat *native = nullptr;
+        if (opencv_core_module_input_mat(model, &native) != OPENCV_CORE_OK
+            || native == nullptr) {
+            return invalid_argument("invalid GrabCut model handle");
+        }
+        if (const char *message = grabcut_model_validation(*native)) {
+            return invalid_argument(message);
+        }
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

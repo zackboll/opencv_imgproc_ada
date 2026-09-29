@@ -7283,52 +7283,56 @@ package body OpenCV.Image_Processing is
                 (Component_0 => Low, others => 0.0),
                 (Component_0 => High, others => 0.0)))));
 
-   function Initialize_GrabCut
-     (Source       : OpenCV.Core.Mat;
-      Initial_Mask : OpenCV.Core.Mat;
-      Iterations   : GrabCut_Iterations := 1) return GrabCut_State
+   procedure Validate_GrabCut_Mask (Mask : OpenCV.Core.Mat; Operation : String)
    is
       use type OpenCV.Core.Channel_Count;
       use type OpenCV.Core.Depth_Type;
    begin
-      Validate_GrabCut_Source (Source, "Initialize_GrabCut");
-      if Initial_Mask.Is_Empty
-        or else Initial_Mask.Dimension_Count /= 2
-        or else Initial_Mask.Depth /= OpenCV.Core.UInt8
-        or else Initial_Mask.Channels /= 1
+      if Mask.Is_Empty
+        or else Mask.Dimension_Count /= 2
+        or else Mask.Depth /= OpenCV.Core.UInt8
+        or else Mask.Channels /= 1
       then
          Segmentation_Error
-           ("Initialize_GrabCut requires a two-dimensional UInt8 C1"
-            & " Initial_Mask");
-      elsif Initial_Mask.Rows /= Source.Rows
+           (Operation & " requires a non-empty two-dimensional UInt8 C1 mask");
+      elsif Count_Labels (Mask, 4.0, 255.0) /= 0 then
+         Segmentation_Error (Operation & " requires mask values in 0 .. 3");
+      end if;
+   end Validate_GrabCut_Mask;
+
+   procedure Validate_GrabCut_Training
+     (Mask : OpenCV.Core.Mat; Operation : String)
+   is
+      Background : constant Long_Long_Integer :=
+        Count_Labels (Mask, 0.0, 0.0) + Count_Labels (Mask, 2.0, 2.0);
+      Foreground : constant Long_Long_Integer :=
+        Count_Labels (Mask, 1.0, 1.0) + Count_Labels (Mask, 3.0, 3.0);
+   begin
+      if Background < GrabCut_Minimum_Training_Pixels
+        or else Foreground < GrabCut_Minimum_Training_Pixels
+      then
+         Segmentation_Error
+           (Operation
+            & " requires at least five background and five"
+            & " foreground pixels in the constrained mask");
+      end if;
+   end Validate_GrabCut_Training;
+
+   function Initialize_GrabCut
+     (Source       : OpenCV.Core.Mat;
+      Initial_Mask : OpenCV.Core.Mat;
+      Iterations   : GrabCut_Iterations := 1) return GrabCut_State is
+   begin
+      Validate_GrabCut_Source (Source, "Initialize_GrabCut");
+      Validate_GrabCut_Mask (Initial_Mask, "Initialize_GrabCut");
+      if Initial_Mask.Rows /= Source.Rows
         or else Initial_Mask.Columns /= Source.Columns
       then
          Segmentation_Error
            ("Initialize_GrabCut requires Initial_Mask with the source rows"
             & " and columns");
-      elsif Count_Labels (Initial_Mask, 4.0, 255.0) /= 0 then
-         Segmentation_Error
-           ("Initialize_GrabCut requires Initial_Mask values in 0 .. 3");
       end if;
-
-      declare
-         --  Background is GC_BGD (0) or GC_PR_BGD (2); foreground is
-         --  GC_FGD (1) or GC_PR_FGD (3).
-         Background : constant Long_Long_Integer :=
-           Count_Labels (Initial_Mask, 0.0, 0.0)
-           + Count_Labels (Initial_Mask, 2.0, 2.0);
-         Foreground : constant Long_Long_Integer :=
-           Count_Labels (Initial_Mask, 1.0, 1.0)
-           + Count_Labels (Initial_Mask, 3.0, 3.0);
-      begin
-         if Background < GrabCut_Minimum_Training_Pixels
-           or else Foreground < GrabCut_Minimum_Training_Pixels
-         then
-            Segmentation_Error
-              ("Initialize_GrabCut requires at least five background and"
-               & " five foreground pixels in Initial_Mask");
-         end if;
-      end;
+      Validate_GrabCut_Training (Initial_Mask, "Initialize_GrabCut");
 
       return State : GrabCut_State do
          --  The deep copy keeps the caller's mask unchanged and gives the
@@ -7345,6 +7349,138 @@ package body OpenCV.Image_Processing is
          State.Initialized := True;
       end return;
    end Initialize_GrabCut;
+
+   function Initialize_GrabCut
+     (Source            : OpenCV.Core.Mat;
+      Initial_Mask      : OpenCV.Core.Mat;
+      Foreground_Region : OpenCV.Rect;
+      Iterations        : GrabCut_Iterations := 1) return GrabCut_State
+   is
+      X      : constant Long_Long_Integer :=
+        Long_Long_Integer (Foreground_Region.X);
+      Y      : constant Long_Long_Integer :=
+        Long_Long_Integer (Foreground_Region.Y);
+      Width  : constant Long_Long_Integer :=
+        Long_Long_Integer (Foreground_Region.Width);
+      Height : constant Long_Long_Integer :=
+        Long_Long_Integer (Foreground_Region.Height);
+   begin
+      Validate_GrabCut_Source (Source, "Initialize_GrabCut");
+      Validate_GrabCut_Mask (Initial_Mask, "Initialize_GrabCut");
+      if Initial_Mask.Rows /= Source.Rows
+        or else Initial_Mask.Columns /= Source.Columns
+      then
+         Segmentation_Error
+           ("Initialize_GrabCut requires Initial_Mask with the source rows"
+            & " and columns");
+      end if;
+      if Width = 0
+        or else Height = 0
+        or else X < 0
+        or else Y < 0
+        or else X + Width > Long_Long_Integer (Source.Columns)
+        or else Y + Height > Long_Long_Integer (Source.Rows)
+      then
+         Segmentation_Error
+           ("Initialize_GrabCut requires a non-empty Foreground_Region"
+            & " inside Source");
+      end if;
+
+      return State : GrabCut_State do
+         State.Mask := Initial_Mask.Clone;
+         for Row in 0 .. Source.Rows - 1 loop
+            for Column in 0 .. Source.Columns - 1 loop
+               if Long_Long_Integer (Row) < Y
+                 or else Long_Long_Integer (Row) >= Y + Height
+                 or else Long_Long_Integer (Column) < X
+                 or else Long_Long_Integer (Column) >= X + Width
+               then
+                  OpenCV.Core.UInt8_Access.Set
+                    (State.Mask,
+                     Row,
+                     Column,
+                     GrabCut_Label_Value (Definite_Background));
+               end if;
+            end loop;
+         end loop;
+         Validate_GrabCut_Training (State.Mask, "Initialize_GrabCut");
+         Run_GrabCut
+           (Source,
+            State.Mask,
+            State.Background_Model,
+            State.Foreground_Model,
+            No_Region,
+            Iterations,
+            Internal.C_API.GrabCut_Init_With_Mask);
+         State.Initialized := True;
+      end return;
+   end Initialize_GrabCut;
+
+   procedure Validate_Imported_GrabCut_Model
+     (Model : OpenCV.Core.Mat; Operation : String)
+   is
+      Status : Internal.C_API.Status;
+      procedure Validate (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+      begin
+         Status := Internal.C_API.Validate_GrabCut_Model (Handle);
+      end Validate;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle (Model, Validate'Access);
+      Raise_On_Error (Status, Operation);
+   end Validate_Imported_GrabCut_Model;
+
+   function Restore_GrabCut_State
+     (Mask             : OpenCV.Core.Mat;
+      Background_Model : OpenCV.Core.Mat;
+      Foreground_Model : OpenCV.Core.Mat) return GrabCut_State is
+   begin
+      Validate_GrabCut_Mask (Mask, "Restore_GrabCut_State");
+      Validate_Imported_GrabCut_Model
+        (Background_Model, "Restore_GrabCut_State background model");
+      Validate_Imported_GrabCut_Model
+        (Foreground_Model, "Restore_GrabCut_State foreground model");
+      return State : GrabCut_State do
+         State.Mask := Mask.Clone;
+         State.Background_Model := Background_Model.Clone;
+         State.Foreground_Model := Foreground_Model.Clone;
+         State.Initialized := True;
+      end return;
+   end Restore_GrabCut_State;
+
+   function Clone_GrabCut_State (State : GrabCut_State) return GrabCut_State is
+   begin
+      if not State.Initialized then
+         Segmentation_Error
+           ("Clone_GrabCut_State requires an initialized state");
+      end if;
+      return Copy : GrabCut_State do
+         Copy.Mask := State.Mask.Clone;
+         Copy.Background_Model := State.Background_Model.Clone;
+         Copy.Foreground_Model := State.Foreground_Model.Clone;
+         Copy.Initialized := True;
+      end return;
+   end Clone_GrabCut_State;
+
+   function GrabCut_Background_Model
+     (State : GrabCut_State) return OpenCV.Core.Mat is
+   begin
+      if not State.Initialized then
+         Segmentation_Error
+           ("GrabCut_Background_Model requires an initialized state");
+      end if;
+      return State.Background_Model.Clone;
+   end GrabCut_Background_Model;
+
+   function GrabCut_Foreground_Model
+     (State : GrabCut_State) return OpenCV.Core.Mat is
+   begin
+      if not State.Initialized then
+         Segmentation_Error
+           ("GrabCut_Foreground_Model requires an initialized state");
+      end if;
+      return State.Foreground_Model.Clone;
+   end GrabCut_Foreground_Model;
 
    procedure Validate_GrabCut_Refinement
      (Source : OpenCV.Core.Mat; State : GrabCut_State; Operation : String) is
