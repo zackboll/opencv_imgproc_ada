@@ -1266,6 +1266,13 @@ package OpenCV.Image_Processing.Internal.C_API is
       Mode             : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_grabcut";
 
+   function Validate_GrabCut_Model
+     (Model : OpenCV.Core.Module_Interop.Input_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_validate_grabcut_model";
+
    function Mat_Storage_Overlap
      (First   : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Second  : OpenCV.Core.Module_Interop.Input_Mat_Handle;

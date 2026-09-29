@@ -1045,6 +1045,11 @@ opencv_imgproc_grabcut(
     int32_t iteration_count,
     int32_t mode);
 
+/* Read-only structural and payload validation for an imported GrabCut GMM. */
+opencv_imgproc_status
+opencv_imgproc_validate_grabcut_model(
+    const opencv_core_mat_handle *model);
+
 /* Sets *overlap to 1 when any element byte addressed by one Mat is also
  * addressed by the other, independent of element type or row step, and to 0
  * otherwise. Empty Mats never overlap. Used by segmentation validation. */

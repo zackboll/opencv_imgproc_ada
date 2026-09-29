@@ -1712,6 +1712,7 @@ package OpenCV.Image_Processing is
    --  GrabCut portably: OpenCV 4.1 clusters each training set into five
    --  Gaussian-mixture components with k-means, which needs five samples.
    GrabCut_Minimum_Training_Pixels : constant := 5;
+   GrabCut_Model_Column_Count      : constant Positive := 65;
 
    --  GrabCut segmentation state: a private label mask plus hidden
    --  background and foreground colour models. The type is limited, so a
@@ -1742,6 +1743,34 @@ package OpenCV.Image_Processing is
      (Source       : OpenCV.Core.Mat;
       Initial_Mask : OpenCV.Core.Mat;
       Iterations   : GrabCut_Iterations := 1) return GrabCut_State;
+
+   --  Combines caller labels with a rectangle: every label outside the
+   --  region becomes Definite_Background, while all four labels inside are
+   --  preserved before segmentation. Requires five pixels of each training
+   --  class in the constrained mask. Source and Initial_Mask are unchanged.
+   function Initialize_GrabCut
+     (Source            : OpenCV.Core.Mat;
+      Initial_Mask      : OpenCV.Core.Mat;
+      Foreground_Region : OpenCV.Rect;
+      Iterations        : GrabCut_Iterations := 1) return GrabCut_State;
+
+   --  Import learned GrabCut state without running segmentation. Mask must
+   --  be UInt8 C1, 2-D, nonempty, with labels 0 .. 3. Each model must be
+   --  Float64 C1, 1 x 65, with a valid native GrabCut GMM payload. All inputs
+   --  are deep-cloned; sparse classes are allowed in restored masks.
+   function Restore_GrabCut_State
+     (Mask             : OpenCV.Core.Mat;
+      Background_Model : OpenCV.Core.Mat;
+      Foreground_Model : OpenCV.Core.Mat) return GrabCut_State;
+
+   --  Explicit independent copy of an initialized state.
+   function Clone_GrabCut_State (State : GrabCut_State) return GrabCut_State;
+
+   --  Independent deep clones; modifying these Mats cannot change State.
+   function GrabCut_Background_Model
+     (State : GrabCut_State) return OpenCV.Core.Mat;
+   function GrabCut_Foreground_Model
+     (State : GrabCut_State) return OpenCV.Core.Mat;
 
    --  Runs Iterations further rounds that relearn the colour models and
    --  re-segment the probable pixels. Source must be a UInt8 C3 image with

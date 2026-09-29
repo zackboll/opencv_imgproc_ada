@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **454 AUnit tests**
+> **Current registered test baseline:** **460 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -234,7 +234,7 @@ The table below summarizes the current public operations.
 | Hough | `Find_Hough_Circle_Centers`, `Find_Hough_Circles_With_Votes` | nonempty 2-D `UInt8` C1 grayscale image | centers-only gradient detection; radius-finding circles with support votes |
 | Segmentation | `Flood_Fill`, `Flood_Fill_With_Mask` | nonempty 2-D `UInt8`/`Float32`, C1/C3; mask `UInt8` C1 `(rows + 2) x (cols + 2)` | in place; floating/fixed range; 4/8 connectivity; area and bounds; mask fill value and mask-only mode |
 | Segmentation | `Watershed` | `UInt8` C3 source; `Int32` C1 markers of the same size | markers mutated in place (`-1` boundaries); source preserved; nonnegative input markers; overlap rejected |
-| Segmentation | `Initialize_GrabCut`, `Refine_GrabCut`, `Refine_GrabCut_Frozen_Model` | `UInt8` C3 source; rectangle or 0..3 label mask with at least 5 background and 5 foreground pixels | limited private `GrabCut_State` with hidden models; `GrabCut_Mask` returns a clone; `GrabCut_Label` values |
+| Segmentation | `Initialize_GrabCut`, `Restore_GrabCut_State`, `Clone_GrabCut_State`, `Refine_GrabCut`, `Refine_GrabCut_Frozen_Model` | `UInt8` C3 source; rectangle and/or 0..3 label mask; imported Float64 C1 1 x 65 models | limited private state; masks and models exported as deep clones; restored models validated before evaluation |
 | Histogram analysis | `Calculate_Histogram` | nonempty 2-D `UInt8`/`UInt16`/`Float32`; selected channels; optional `UInt8` C1 mask | dense uniform 1..10-D Float32 counts; `[lower, upper)` ranges; private `Histogram` owns metadata; `Histogram_Values` returns a clone |
 | Histogram analysis | `Compare_Histograms` | two histograms with identical bin counts and ranges | six OpenCV metrics; channels may differ |
 | Histogram analysis | `Back_Project` | nonempty 2-D `UInt8`/`UInt16`/`Float32` containing the stored channels | fresh C1 Mat of source size and depth; finite scale; uses the histogram's own metadata |
@@ -2861,13 +2861,17 @@ type GrabCut_Label is
 
 subtype GrabCut_Iterations is Positive range 1 .. 2_147_483_647;
 GrabCut_Minimum_Training_Pixels : constant := 5;
+GrabCut_Model_Column_Count : constant Positive := 65;
 
 type GrabCut_State is limited private;
 ```
 
 `GrabCut_State` privately owns the label mask and OpenCV's background and
-foreground Gaussian-mixture models. The native models (Float64 `1 x 65`, five
-components of 13 values) are an implementation detail and are never exposed.
+foreground Gaussian-mixture models. Each native model is Float64 C1 `1 x 65`:
+five weights (columns 0..4), 15 means (5..19), and 45 covariance entries
+(20..64), five components of 13 values. Exported models are **deep clones**,
+never writable aliases into state storage. This interchange format is specific
+to OpenCV GrabCut, not a general GMM serialization standard.
 The state is **limited**, so it cannot be assigned or shallow-copied. Two states
 can never share mutable algorithm storage, and its Mats are released through
 normal `OpenCV.Core.Mat` finalization. A default-declared state is
@@ -2878,6 +2882,10 @@ rejects it.
 | --- | --- |
 | `Initialize_GrabCut (Source, Foreground_Region, Iterations)` | Outside the region is `Definite_Background`, inside starts as `Probable_Foreground`, then `Iterations` rounds run |
 | `Initialize_GrabCut (Source, Initial_Mask, Iterations)` | Deep-copies a caller label mask (UInt8 C1, same geometry, values 0..3). The caller's mask is unchanged |
+| `Initialize_GrabCut (Source, Initial_Mask, Foreground_Region, Iterations)` | Clones the mask, sets **every** pixel outside the rectangle to `Definite_Background`, preserves **all four** caller labels inside, then initializes with native mask mode |
+| `Restore_GrabCut_State (Mask, Background_Model, Foreground_Model)` | Validates and clones all three Mats without running GrabCut; sparse restored mask classes are allowed |
+| `Clone_GrabCut_State (State)` | Explicit independent deep copy of all three Mats |
+| `GrabCut_Background_Model` / `GrabCut_Foreground_Model` | Return independent Float64 C1 `1 x 65` deep clones |
 | `Refine_GrabCut (Source, State, Iterations)` | Relearns the models and re-segments the probable pixels (`GC_EVAL`) |
 | `Refine_GrabCut_Frozen_Model (Source, State)` | One pass with the models held fixed (`GC_EVAL_FREEZE_MODEL`, always one iteration) |
 | `GrabCut_Mask (State)` | Returns a **deep clone**. Changing it never affects `State` |
@@ -2898,6 +2906,23 @@ probable) and **five foreground** (definite or probable) pixels:
 - rectangle initialization requires a positive-size rectangle entirely inside
   `Source`, with at least five pixels inside it and five outside it;
 - mask initialization requires at least five pixels of each class.
+- combined initialization requires five pixels of each class **after** the
+  rectangle overwrites outside labels; background seeds inside count too.
+
+The headers of OpenCV 4.1.0, 4.10.0 and 5.0.0 document combining
+`GC_INIT_WITH_RECT | GC_INIT_WITH_MASK`, but `RECT = 0` and `MASK = 1`: the
+implementations dispatch on equality, so OR selects mask-only mode and ignores
+the rectangle. The binding implements the combined behavior explicitly and
+calls native `GC_INIT_WITH_MASK`. Coordinates and dimensions refer to the
+supplied Source view; neither Source nor the caller's Initial_Mask is changed.
+Restoration checks nonempty UInt8 C1 2-D labels 0..3 and nonempty Float64 C1
+2-D 1x65 models, rejecting nonfinite payloads, negative weights, no active
+component, and active covariance determinants invalid for the native GMM.
+Imported models are checked again before native evaluation. Inactive components
+may retain stale finite mean/covariance entries (native learning permits this).
+OpenCV 4.1 requires five k-means samples per class; 4.10 and 5.0 shrink K
+for smaller training sets. All three use the same 65-double GMM layout and
+mode dispatch; 5.0 moves the graph header to the geometry module.
 
 ```ada
 declare
@@ -3602,7 +3627,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **454-test** baseline is:
+The current **460-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3638,11 +3663,11 @@ The current **454-test** baseline is:
 | Drawing | 11 |
 | Drawing annotations | 14 |
 | Hough detection | 37 |
-| Segmentation (flood fill, watershed, GrabCut) | 29 |
+| Segmentation (flood fill, watershed, GrabCut) | 35 |
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **454** |
+| **Total** | **460** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4258,8 +4283,7 @@ Notable Imgproc families that are not yet broadly bound include:
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
   (`use_edgeval`) Hough, and `HOUGH_GRADIENT_ALT`;
 - deferred segmentation capabilities: flood fill on `Int32` images,
-  combined `GC_INIT_WITH_RECT | GC_INIT_WITH_MASK` initialization, exposing or
-  importing GrabCut models, mean-shift segmentation, and higher-level
+  mean-shift segmentation, and higher-level
   distance-transform marker-construction convenience;
 - advanced histogram capabilities: multi-image histograms, nonuniform bin
   boundaries, accumulation/update, `SparseMat` histograms, and EMD (a future
