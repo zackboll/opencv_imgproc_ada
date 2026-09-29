@@ -281,6 +281,45 @@ package OpenCV.Image_Processing is
    --  Nonempty results are zero-based; an empty result has range 1 .. 0.
    type Hough_Circle_Array is array (Natural range <>) of Hough_Circle;
 
+   --  A standard-Hough line with its accumulator vote count. Votes is
+   --  evidence for ranking, not a cross-version constant: raster-line votes
+   --  come from OpenCV's binary32 Vec3f output and point-set votes from its
+   --  Vec3d output, all integer accumulator counts promoted to Float64.
+   --  Raster counts above 2**24 may already have been rounded by binary32.
+   type Hough_Line_With_Votes is record
+      Rho           : OpenCV.Float32_Value;
+      Angle_Radians : OpenCV.Float32_Value;
+      Votes         : OpenCV.Float64_Value;
+   end record;
+
+   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   type Hough_Line_With_Votes_Array is
+     array (Natural range <>) of Hough_Line_With_Votes;
+
+   --  One degree in radians, the default point-set angle resolution.
+   Hough_Degree : constant := Ada.Numerics.Pi / 180.0;
+
+   --  Input points for Find_Hough_Lines_From_Points; any index bounds.
+   type Hough_Point_Array is array (Integer range <>) of OpenCV.Float32_Point;
+
+   --  A radius-finding gradient-Hough circle with the support count of its
+   --  estimated radius, from OpenCV's binary32 Vec4f output (counts above
+   --  2**24 may already have been rounded by binary32).
+   type Hough_Circle_With_Votes is record
+      Center : OpenCV.Float32_Point;
+      Radius : OpenCV.Float32_Value;
+      Votes  : OpenCV.Float64_Value;
+   end record;
+
+   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   type Hough_Circle_With_Votes_Array is
+     array (Natural range <>) of Hough_Circle_With_Votes;
+
+   --  Centers found by center-only gradient-Hough detection.
+   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   type Hough_Circle_Center_Array is
+     array (Natural range <>) of OpenCV.Float32_Point;
+
    type Component_Label is new Natural;
 
    Background_Label : constant Component_Label := 0;
@@ -1509,6 +1548,84 @@ package OpenCV.Image_Processing is
       Minimum_Radius          : OpenCV.Size_Coordinate := 0;
       Maximum_Radius          : OpenCV.Size_Coordinate)
       return Hough_Circle_Array;
+
+   --  Hough evidence. Votes are accumulator support counts. OpenCV keeps
+   --  only strict local maxima whose count exceeds the requested threshold,
+   --  so an accepted line or circle normally reports Votes > threshold.
+   --  Magnitudes and ordering may differ between OpenCV generations and
+   --  optional backends; use Votes for ranking and evidence, not as a
+   --  portable constant.
+
+   --  Find_Hough_Lines_With_Votes has exactly the contract of
+   --  Find_Hough_Lines and adds each line's accumulator votes. OpenCV's
+   --  optional IPP standard-Hough path is available only to the vote-free
+   --  output, so on IPP-enabled builds the two operations need not return
+   --  identical lines or ordering.
+   function Find_Hough_Lines_With_Votes
+     (Source                   : OpenCV.Core.Mat;
+      Distance_Resolution      : OpenCV.Float64_Value;
+      Angle_Resolution_Radians : OpenCV.Float64_Value;
+      Vote_Threshold           : Hough_Vote_Threshold;
+      Minimum_Angle_Radians    : OpenCV.Float64_Value := 0.0;
+      Maximum_Angle_Radians    : OpenCV.Float64_Value := Ada.Numerics.Pi)
+      return Hough_Line_With_Votes_Array;
+
+   --  Find_Hough_Lines_From_Points runs OpenCV's HoughLinesPointSet on an
+   --  explicit set of points (any bounds; may be empty; every coordinate
+   --  finite). Rho bins start at Minimum_Rho with width Distance_Resolution;
+   --  Minimum_Rho < Maximum_Rho is required, and every point must vote
+   --  inside the rho range for every searched angle, otherwise the request
+   --  is rejected (this makes OpenCV 4.1, which does not bounds-check votes,
+   --  behave safely). Angle bounds satisfy
+   --  0 <= Minimum_Angle_Radians < Maximum_Angle_Radians <= Pi, and each
+   --  resolution must yield at least one bin. At most Maximum_Lines results
+   --  are returned; an empty point set returns the empty result.
+   function Find_Hough_Lines_From_Points
+     (Points                   : Hough_Point_Array;
+      Maximum_Lines            : Positive;
+      Vote_Threshold           : Hough_Vote_Threshold;
+      Minimum_Rho              : OpenCV.Float64_Value;
+      Maximum_Rho              : OpenCV.Float64_Value;
+      Distance_Resolution      : OpenCV.Float64_Value;
+      Minimum_Angle_Radians    : OpenCV.Float64_Value := 0.0;
+      Maximum_Angle_Radians    : OpenCV.Float64_Value := Ada.Numerics.Pi;
+      Angle_Resolution_Radians : OpenCV.Float64_Value := Hough_Degree)
+      return Hough_Line_With_Votes_Array;
+
+   --  Find_Hough_Circle_Centers runs the classic gradient detector with the
+   --  same Source and parameter contract as Find_Hough_Circles, but skips
+   --  radius estimation and reports only candidate centers. Minimum_Radius
+   --  still limits how close to each edge pixel center votes are cast.
+   function Find_Hough_Circle_Centers
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate := 0)
+      return Hough_Circle_Center_Array;
+
+   --  Find_Hough_Circles_With_Votes mirror the two Find_Hough_Circles
+   --  overloads (automatic and explicit maximum radius) and add the support
+   --  count of each estimated radius. They always estimate radii.
+   function Find_Hough_Circles_With_Votes
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate := 0)
+      return Hough_Circle_With_Votes_Array;
+
+   function Find_Hough_Circles_With_Votes
+     (Source                  : OpenCV.Core.Mat;
+      Accumulator_Scale       : OpenCV.Float64_Value;
+      Minimum_Center_Distance : OpenCV.Float64_Value;
+      Canny_Threshold         : Hough_Circle_Threshold;
+      Accumulator_Threshold   : Hough_Circle_Threshold;
+      Minimum_Radius          : OpenCV.Size_Coordinate := 0;
+      Maximum_Radius          : OpenCV.Size_Coordinate)
+      return Hough_Circle_With_Votes_Array;
 
    --  Segmentation. Contract violations, native arithmetic limits, and
    --  OpenCV failures raise OpenCV.OpenCV_Error.

@@ -33,6 +33,11 @@ package body Hough_Detection_Tests is
    use type C_API.Hough_Segments_Handle;
    use type C_API.Hough_Circles_Handle;
    use type C_API.Hough_Line_Record;
+   use type C_API.Hough_Line_Evidence_Handle;
+   use type C_API.Hough_Circle_Evidence_Handle;
+   use type C_API.Hough_Line_Evidence_Record;
+   use type C_API.Hough_Line_Evidence_Record_Array;
+   use type IP.Hough_Point_Array;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
    package Caller is new AUnit.Test_Caller (Fixture);
@@ -1480,6 +1485,888 @@ package body Hough_Detection_Tests is
       C_API.Hough_Lines_Destroy (Lines);
    end Raw_Result_Handles;
 
+   --  Evidence-bearing results. Vote values are compared only with the
+   --  requested threshold and with pixel/point counts, never with exact
+   --  OpenCV-version-specific magnitudes.
+
+   function Bits_To_Float32 is new
+     Ada.Unchecked_Conversion (Interfaces.Unsigned_32, OpenCV.Float32_Value);
+
+   NaN_32_Bits : constant Interfaces.Unsigned_32 := 16#7FC0_0000#;
+   Inf_32_Bits : constant Interfaces.Unsigned_32 := 16#7F80_0000#;
+
+   function Non_Finite_32
+     (Bits : Interfaces.Unsigned_32) return OpenCV.Float32_Value
+   is
+      pragma Suppress (Range_Check);
+      pragma Suppress (Validity_Check);
+   begin
+      return Bits_To_Float32 (Bits);
+   end Non_Finite_32;
+
+   function Find_Evidence
+     (Lines              : IP.Hough_Line_With_Votes_Array;
+      Rho, Theta         : Float;
+      Rho_Tol, Theta_Tol : Float) return Integer is
+   begin
+      for Index in Lines'Range loop
+         if Near (Lines (Index).Rho, Rho, Rho_Tol)
+           and then Near (Lines (Index).Angle_Radians, Theta, Theta_Tol)
+         then
+            return Index;
+         end if;
+      end loop;
+      return -1;
+   end Find_Evidence;
+
+   function Find_Circle_Evidence
+     (Circles : IP.Hough_Circle_With_Votes_Array; X, Y, Radius : Float)
+      return Integer is
+   begin
+      for Index in Circles'Range loop
+         if Near (Circles (Index).Center.X, X, Center_Tolerance)
+           and then Near (Circles (Index).Center.Y, Y, Center_Tolerance)
+           and then Near (Circles (Index).Radius, Radius, Radius_Tolerance)
+         then
+            return Index;
+         end if;
+      end loop;
+      return -1;
+   end Find_Circle_Evidence;
+
+   function Has_Center
+     (Centers : IP.Hough_Circle_Center_Array; X, Y : Float) return Boolean is
+   begin
+      for Center of Centers loop
+         if Near (Center.X, X, Center_Tolerance)
+           and then Near (Center.Y, Y, Center_Tolerance)
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Has_Center;
+
+   function Evidence_Of
+     (Image : OpenCV.Core.Mat; Threshold : IP.Hough_Vote_Threshold)
+      return IP.Hough_Line_With_Votes_Array
+   is (IP.Find_Hough_Lines_With_Votes (Image, 1.0, Degree, Threshold));
+
+   --  Asserts a line near (Rho, Theta) whose votes exceed Threshold and do
+   --  not exceed the number of contributing pixels or points.
+   procedure Assert_Evidence
+     (Lines      : IP.Hough_Line_With_Votes_Array;
+      Rho, Theta : Float;
+      Threshold  : Natural;
+      Pixels     : Natural;
+      Message    : String;
+      Rho_Tol    : Float := Rho_Tolerance;
+      Theta_Tol  : Float := Theta_Tolerance)
+   is
+      Index : constant Integer :=
+        Find_Evidence (Lines, Rho, Theta, Rho_Tol, Theta_Tol);
+   begin
+      AUnit.Assertions.Assert (Index >= 0, Message & ": line not found");
+      AUnit.Assertions.Assert
+        (Lines (Index).Votes > OpenCV.Float64_Value (Threshold)
+         and then Lines (Index).Votes <= OpenCV.Float64_Value (Pixels),
+         Message & ": votes must exceed the threshold, not the support");
+   end Assert_Evidence;
+
+   procedure Evidence_Lines_Geometry (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Horizontal : OpenCV.Core.Mat := Blank (60, 80);
+      Vertical   : OpenCV.Core.Mat := Blank (60, 80);
+      Diagonal   : OpenCV.Core.Mat := Blank (60, 60);
+   begin
+      IP.Draw_Line (Horizontal, (X => 5, Y => 20), (X => 74, Y => 20), White);
+      IP.Draw_Line (Vertical, (X => 30, Y => 5), (X => 30, Y => 54), White);
+      IP.Draw_Line (Diagonal, (X => 5, Y => 5), (X => 54, Y => 54), White);
+      declare
+         Lines : constant IP.Hough_Line_With_Votes_Array :=
+           Evidence_Of (Horizontal, 50);
+      begin
+         AUnit.Assertions.Assert
+           (Lines'Length > 0 and then Lines'First = 0,
+            "a nonempty evidence result must be zero-based");
+         Assert_Evidence (Lines, 20.0, Pi / 2.0, 50, 70, "horizontal row 20");
+      end;
+      declare
+         Lines : constant IP.Hough_Line_With_Votes_Array :=
+           Evidence_Of (Vertical, 40);
+      begin
+         if Find_Evidence (Lines, 30.0, 0.0, Rho_Tolerance, Theta_Tolerance)
+           >= 0
+         then
+            Assert_Evidence (Lines, 30.0, 0.0, 40, 50, "vertical column 30");
+         else
+            Assert_Evidence (Lines, -30.0, Pi, 40, 50, "vertical (-30, Pi)");
+         end if;
+      end;
+      --  x - y = 0 is (Rho => 0, Angle => 3 Pi / 4).
+      Assert_Evidence
+        (Evidence_Of (Diagonal, 40), 0.0, 3.0 * Pi / 4.0, 40, 50, "diagonal");
+
+      --  The vote-free operation is unchanged; ordering is not compared.
+      AUnit.Assertions.Assert
+        (Has_Line
+           (Lines_Of (Horizontal, 50),
+            20.0,
+            Pi / 2.0,
+            Rho_Tolerance,
+            Theta_Tolerance),
+         "Find_Hough_Lines must still find the horizontal line");
+   end Evidence_Lines_Geometry;
+
+   procedure Evidence_Lines_Empty_Source_And_Region (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Flat   : constant OpenCV.Core.Mat := Blank (40, 40);
+      Parent : OpenCV.Core.Mat := Blank (50, 70);
+   begin
+      declare
+         Lines : constant IP.Hough_Line_With_Votes_Array :=
+           Evidence_Of (Flat, 10);
+      begin
+         AUnit.Assertions.Assert
+           (Lines'First = 1 and then Lines'Last = 0,
+            "an empty source image must return the null range 1 .. 0");
+      end;
+
+      IP.Draw_Line (Parent, (X => 0, Y => 5), (X => 69, Y => 5), White);
+      IP.Draw_Line (Parent, (X => 12, Y => 15), (X => 57, Y => 15), White);
+      declare
+         Before : constant OpenCV.Core.Mat := Parent.Clone;
+         View   : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 10, Y => 10, Width => 50, Height => 30));
+         Lines  : constant IP.Hough_Line_With_Votes_Array :=
+           Evidence_Of (View, 30);
+      begin
+         Assert_Evidence (Lines, 5.0, Pi / 2.0, 30, 50, "Region row 5");
+         AUnit.Assertions.Assert
+           (Find_Evidence (Lines, -5.0, Pi / 2.0, 3.0, Theta_Tolerance) < 0,
+            "pixels outside the Region must not contribute");
+         AUnit.Assertions.Assert
+           (Same_Pixels (Parent, Before),
+            "Find_Hough_Lines_With_Votes must preserve Source");
+      end;
+   end Evidence_Lines_Empty_Source_And_Region;
+
+   procedure Evidence_Lines_Invalid_Inputs (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image  : constant OpenCV.Core.Mat := Blank (8, 8);
+      Color  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.UInt8, 3));
+      Rho    : OpenCV.Float64_Value := 1.0;
+      Low    : OpenCV.Float64_Value := 0.0;
+      High   : OpenCV.Float64_Value := Pi;
+      Ignore : Natural := 0;
+
+      procedure Call is
+      begin
+         Ignore :=
+           IP.Find_Hough_Lines_With_Votes
+             (Image, Rho, Degree, 5, Low, High)'Length;
+      end Call;
+
+      procedure Call_Color is
+      begin
+         Ignore := Evidence_Of (Color, 5)'Length;
+      end Call_Color;
+   begin
+      Assert_Raises (Call_Color'Access, "a color source must be rejected");
+      Rho := 0.0;
+      Assert_Raises (Call'Access, "a zero distance resolution is rejected");
+      Rho := 1.0;
+      Low := 1.0;
+      High := 0.5;
+      Assert_Raises (Call'Access, "reversed angle bounds are rejected");
+      Low := 0.0;
+      High := 4.0;
+      Assert_Raises (Call'Access, "a maximum angle above Pi is rejected");
+   end Evidence_Lines_Invalid_Inputs;
+
+   --  Count points (X0 + K * DX, Y0 + K * DY), K = 0 .. Count - 1, stored
+   --  with lower bound First.
+   function Point_Line
+     (First : Integer; Count : Positive; X0, Y0, DX, DY : Float)
+      return IP.Hough_Point_Array
+   is
+      Points : IP.Hough_Point_Array (First .. First + Count - 1);
+   begin
+      for Index in Points'Range loop
+         Points (Index) :=
+           (X => OpenCV.Float32_Value (X0 + Float (Index - First) * DX),
+            Y => OpenCV.Float32_Value (Y0 + Float (Index - First) * DY));
+      end loop;
+      return Points;
+   end Point_Line;
+
+   --  One rho bin (1 pixel) and one angle bin (1 degree), plus half a bin.
+   Point_Rho_Tolerance   : constant Float := 1.5;
+   Point_Theta_Tolerance : constant Float := 1.5 * Degree;
+
+   function Point_Lines
+     (Points        : IP.Hough_Point_Array;
+      Threshold     : IP.Hough_Vote_Threshold;
+      Low, High     : OpenCV.Float64_Value;
+      Maximum_Lines : Positive := 10) return IP.Hough_Line_With_Votes_Array
+   is (IP.Find_Hough_Lines_From_Points
+         (Points, Maximum_Lines, Threshold, Low, High, 1.0));
+
+   procedure Point_Set_Geometry (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      --  (X, 20), X = 0 .. 59: rho 20, theta Pi / 2, 60 votes.
+      Horizontal : constant IP.Hough_Point_Array :=
+        Point_Line (0, 60, 0.0, 20.0, 1.0, 0.0);
+      --  (K, K + 10): -X + Y = 10, so rho 10 / sqrt 2 at 3 Pi / 4.
+      Diagonal   : constant IP.Hough_Point_Array :=
+        Point_Line (0, 50, 0.0, 10.0, 1.0, 1.0);
+      --  (-30 + K, -15): rho -15, theta Pi / 2; lower bound -7.
+      Negative   : constant IP.Hough_Point_Array :=
+        Point_Line (-7, 60, -30.0, -15.0, 1.0, 0.0);
+      --  (12, -20 + K) with lower bound 1000: rho 12, theta 0.
+      Offset     : constant IP.Hough_Point_Array :=
+        Point_Line (1_000, 45, 12.0, -20.0, 0.0, 1.0);
+   begin
+      declare
+         Lines : constant IP.Hough_Line_With_Votes_Array :=
+           Point_Lines (Horizontal, 30, -70.0, 70.0);
+      begin
+         AUnit.Assertions.Assert
+           (Lines'Length > 0 and then Lines'First = 0,
+            "a nonempty point-set result must be zero-based");
+         Assert_Evidence
+           (Lines,
+            20.0,
+            Pi / 2.0,
+            30,
+            60,
+            "horizontal point set",
+            Point_Rho_Tolerance,
+            Point_Theta_Tolerance);
+      end;
+      Assert_Evidence
+        (Point_Lines (Diagonal, 25, -80.0, 80.0),
+         7.071,
+         3.0 * Pi / 4.0,
+         25,
+         50,
+         "diagonal point set",
+         Point_Rho_Tolerance,
+         Point_Theta_Tolerance);
+      Assert_Evidence
+        (Point_Lines (Negative, 30, -40.0, 40.0),
+         -15.0,
+         Pi / 2.0,
+         30,
+         60,
+         "negative-coordinate point set",
+         Point_Rho_Tolerance,
+         Point_Theta_Tolerance);
+      Assert_Evidence
+        (Point_Lines (Offset, 20, -40.0, 40.0),
+         12.0,
+         0.0,
+         20,
+         45,
+         "nonzero Ada lower bound",
+         Point_Rho_Tolerance,
+         Point_Theta_Tolerance);
+   end Point_Set_Geometry;
+
+   procedure Point_Set_Cap_And_Empty (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Two   : constant IP.Hough_Point_Array :=
+        Point_Line (0, 60, 0.0, 20.0, 1.0, 0.0)
+        & Point_Line (60, 50, 10.0, 0.0, 0.0, 1.0);
+      None  : IP.Hough_Point_Array (5 .. 4);
+      Empty : constant IP.Hough_Line_With_Votes_Array :=
+        Point_Lines (None, 1, -10.0, 10.0);
+   begin
+      AUnit.Assertions.Assert
+        (Point_Lines (Two, 30, -80.0, 80.0)'Length >= 2,
+         "two strong point lines must both be reported without a cap");
+      AUnit.Assertions.Assert
+        (Point_Lines (Two, 30, -80.0, 80.0, Maximum_Lines => 1)'Length = 1,
+         "Maximum_Lines must cap the result length");
+      AUnit.Assertions.Assert
+        (Empty'First = 1 and then Empty'Last = 0,
+         "an empty point set must return the null range 1 .. 0");
+   end Point_Set_Cap_And_Empty;
+
+   procedure Point_Set_Invalid_Inputs (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Points     : IP.Hough_Point_Array :=
+        Point_Line (0, 10, 0.0, 5.0, 1.0, 0.0);
+      Low        : OpenCV.Float64_Value := -20.0;
+      High       : OpenCV.Float64_Value := 20.0;
+      Step       : OpenCV.Float64_Value := 1.0;
+      Angle_Low  : OpenCV.Float64_Value := 0.0;
+      Angle_High : OpenCV.Float64_Value := Pi;
+      Angle_Step : OpenCV.Float64_Value := Degree;
+      Ignore     : Natural := 0;
+
+      procedure Call is
+      begin
+         Ignore :=
+           IP.Find_Hough_Lines_From_Points
+             (Points,
+              5,
+              3,
+              Low,
+              High,
+              Step,
+              Angle_Low,
+              Angle_High,
+              Angle_Step)'Length;
+      end Call;
+
+      procedure Expect (Message : String) is
+      begin
+         Assert_Raises (Call'Access, Message);
+         Low := -20.0;
+         High := 20.0;
+         Step := 1.0;
+         Angle_Low := 0.0;
+         Angle_High := Pi;
+         Angle_Step := Degree;
+      end Expect;
+   begin
+      Call;
+      Points (3).X := Non_Finite_32 (NaN_32_Bits);
+      Expect ("a NaN X coordinate must be rejected");
+      Points (3).X := 3.0;
+      Points (4).Y := Non_Finite_32 (Inf_32_Bits);
+      Expect ("an infinite Y coordinate must be rejected");
+      Points (4).Y := 5.0;
+      Low := 20.0;
+      High := -20.0;
+      Expect ("reversed rho bounds must be rejected");
+      Low := Non_Finite (NaN_Bits);
+      Expect ("a NaN rho bound must be rejected");
+      Step := 0.0;
+      Expect ("a zero distance resolution must be rejected");
+      Step := 500.0;
+      Expect ("a distance resolution with no rho bin must be rejected");
+      Step := 1.0e-30;
+      Expect ("a tiny distance resolution must be rejected natively");
+      Angle_Step := 2.0 * Pi;
+      Expect ("an angle resolution with no angle bin must be rejected");
+      Angle_Step := -1.0;
+      Expect ("a negative angle resolution must be rejected");
+      Angle_Low := 1.0;
+      Angle_High := 0.5;
+      Expect ("reversed angle bounds must be rejected");
+      Angle_High := 4.0;
+      Expect ("a maximum angle above Pi must be rejected");
+      Angle_Low := -0.5;
+      Expect ("a negative minimum angle must be rejected");
+      Call;
+   end Point_Set_Invalid_Inputs;
+
+   --  OpenCV 4.1 HoughLinesPointSet increments its accumulator at an
+   --  unchecked vote column r. These requests would place r below 0 or above
+   --  numrho for some angle; they must be rejected before OpenCV runs, on
+   --  every OpenCV version, even though 4.10/5.0 would merely drop votes.
+   procedure Point_Set_Accumulator_Safety (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      --  (X, 20), X = 0 .. 59 votes rho = X cos + 20 sin over [0, Pi]:
+      --  at most hypot (59, 20) ~ 62.3 and at least -59 (X = 59 at Pi).
+      Points : constant IP.Hough_Point_Array :=
+        Point_Line (0, 60, 0.0, 20.0, 1.0, 0.0);
+      Low    : OpenCV.Float64_Value := -50.0;
+      High   : OpenCV.Float64_Value := 70.0;
+      Ignore : Natural := 0;
+
+      procedure Call is
+      begin
+         Ignore := Point_Lines (Points, 30, Low, High)'Length;
+      end Call;
+   begin
+      --  Low side only: -59 < -50 would give r < 0.
+      Assert_Raises (Call'Access, "a vote below Minimum_Rho is rejected");
+      --  High side only: 62.3 exceeds the last rho bin (about 51).
+      Low := -70.0;
+      High := 50.0;
+      Assert_Raises (Call'Access, "a vote above Maximum_Rho is rejected");
+      --  A narrow band around the true rho still fails: other angles vote
+      --  outside it.
+      Low := 15.0;
+      High := 25.0;
+      Assert_Raises (Call'Access, "a narrow band around the line is rejected");
+      --  A range containing every vote succeeds.
+      Low := -70.0;
+      High := 70.0;
+      Call;
+   end Point_Set_Accumulator_Safety;
+
+   --  Raw HoughLinesPointSet ABI: span validation, native-arithmetic guards
+   --  that need no large point set, and the OpenCV 4.1 vote-column guard.
+   procedure Raw_Point_Set (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Points  : aliased C_API.Point_F32_Array (0 .. 59);
+      Handle  : aliased C_API.Hough_Line_Evidence_Handle :=
+        C_API.Null_Hough_Line_Evidence_Handle;
+      Status  : C_API.Status;
+      Count   : Interfaces.Integer_32;
+      Lines   : Interfaces.Integer_32;
+      Votes   : Interfaces.Integer_32;
+      Low     : Interfaces.C.double;
+      High    : Interfaces.C.double;
+      Step    : Interfaces.C.double;
+      Use_Nil : Boolean;
+
+      procedure Reset is
+      begin
+         for Index in Points'Range loop
+            Points (Index) := (X => Interfaces.C.C_float (Index), Y => 20.0);
+         end loop;
+         Count := 60;
+         Lines := 10;
+         Votes := 30;
+         Low := -70.0;
+         High := 70.0;
+         Step := 1.0;
+         Use_Nil := False;
+      end Reset;
+
+      procedure Detect is
+      begin
+         Handle := C_API.Null_Hough_Line_Evidence_Handle;
+         Status :=
+           C_API.Hough_Lines_Point_Set
+             ((if Use_Nil then null else Points (0)'Access),
+              Count,
+              Lines,
+              Votes,
+              Low,
+              High,
+              Step,
+              0.0,
+              Pi,
+              Degree,
+              Handle'Access);
+      end Detect;
+
+      procedure Expect (Fragment, Message : String) is
+      begin
+         Detect;
+         Assert_Invalid (Status, Fragment, Message);
+         AUnit.Assertions.Assert
+           (Handle = C_API.Null_Hough_Line_Evidence_Handle,
+            Message & ": the output handle must be null on failure");
+         Reset;
+      end Expect;
+
+      procedure Expect_Rejected (Message : String) is
+      begin
+         Detect;
+         AUnit.Assertions.Assert
+           (Status /= C_API.Success
+            and then Handle = C_API.Null_Hough_Line_Evidence_Handle,
+            Message);
+         Reset;
+      end Expect_Rejected;
+   begin
+      Reset;
+      Count := -1;
+      Expect ("point span", "a negative point count must be rejected");
+      Use_Nil := True;
+      Expect ("point span", "a positive count with null points is rejected");
+      --  OpenCV itself rejects these before touching its accumulator.
+      Lines := 0;
+      Expect_Rejected ("a zero maximum-lines value must be rejected");
+      Votes := -1;
+      Expect_Rejected ("a negative threshold must be rejected");
+      Assert_Invalid
+        (C_API.Hough_Lines_Point_Set
+           (Points (0)'Access,
+            60,
+            10,
+            30,
+            -70.0,
+            70.0,
+            1.0,
+            0.0,
+            Pi,
+            Degree,
+            null),
+         "output pointer",
+         "a null result output pointer must be rejected");
+
+      --  Accumulator dimensions: about 2e9 rho bins times 181 angle bins
+      --  overflows the signed int index; no point set is needed.
+      Count := 0;
+      Low := -1.0e6;
+      High := 1.0e6;
+      Step := 1.0e-3;
+      Expect ("int indexing", "an accumulator product overflow is rejected");
+      Count := 0;
+      Low := -1.0e6;
+      High := 1.0e6;
+      Step := 1.0e-6;
+      Expect ("too many rho bins", "a numrho beyond int is rejected");
+      Count := 0;
+      Low := Interfaces.C.double (Non_Finite (NaN_Bits));
+      Expect ("finite binary32", "a NaN rho bound is rejected");
+
+      --  OpenCV 4.1 vote-column safety: these votes span about
+      --  [-59, 62.3], so [-50, 70] gives r < 0 and [-70, 50] r > numrho.
+      Low := -50.0;
+      Expect ("contain every vote", "a low-side vote column is rejected");
+      High := 50.0;
+      Expect ("contain every vote", "a high-side vote column is rejected");
+
+      --  An unsafe cvRound operand: x * cos * irho is far beyond int (and
+      --  near FLT_MAX), so the modelled binary32 arithmetic is rejected.
+      Points (5).X := 3.0e38;
+      Expect ("binary32 range", "an unsafe cvRound operand is rejected");
+      Points (5).X := 1.0e20;
+      Expect ("contain every vote", "an out-of-int vote operand is rejected");
+      Points (5).X := Interfaces.C.C_float (Non_Finite_32 (NaN_32_Bits));
+      Expect ("finite", "a NaN raw coordinate is rejected");
+
+      --  A valid call succeeds after all failures.
+      Detect;
+      AUnit.Assertions.Assert
+        (Status = C_API.Success
+         and then Handle /= C_API.Null_Hough_Line_Evidence_Handle,
+         "a valid raw point-set request must succeed after failures");
+      C_API.Hough_Line_Evidence_Destroy (Handle);
+
+      --  An empty span with a null pointer is valid and yields no lines.
+      Count := 0;
+      Use_Nil := True;
+      Detect;
+      declare
+         Found : aliased Interfaces.Integer_32 := -1;
+      begin
+         AUnit.Assertions.Assert
+           (Status = C_API.Success
+            and then C_API.Hough_Line_Evidence_Count (Handle, Found'Access)
+                     = C_API.Success
+            and then Found = 0,
+            "an empty raw point span must yield an empty result ("
+            & C_API.Last_Error_Message
+            & ")");
+      end;
+      C_API.Hough_Line_Evidence_Destroy (Handle);
+   end Raw_Point_Set;
+
+   procedure Circle_Centers_Detection (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        Ring (100, 100, (X => 50, Y => 50), 25);
+      Flat  : constant OpenCV.Core.Mat := Blank (60, 60);
+   begin
+      declare
+         Centers : constant IP.Hough_Circle_Center_Array :=
+           IP.Find_Hough_Circle_Centers (Image, 1.0, 40.0, 100, 20);
+      begin
+         --  The element type is a bare point: no radius is exposed.
+         AUnit.Assertions.Assert
+           (Centers'Length > 0 and then Centers'First = 0,
+            "a nonempty center result must be zero-based");
+         AUnit.Assertions.Assert
+           (Has_Center (Centers, 50.0, 50.0),
+            "the blurred disc center must be found near (50, 50)");
+      end;
+      --  Minimum_Radius only limits how close to each edge pixel votes are
+      --  cast; a range still containing the radius keeps the center.
+      AUnit.Assertions.Assert
+        (Has_Center
+           (IP.Find_Hough_Circle_Centers
+              (Image, 1.0, 40.0, 100, 20, Minimum_Radius => 15),
+            50.0,
+            50.0),
+         "a minimum radius below the true radius must keep the center");
+      --  Votes start beyond the disc, so no center accumulates there.
+      AUnit.Assertions.Assert
+        (not Has_Center
+               (IP.Find_Hough_Circle_Centers
+                  (Image, 1.0, 40.0, 100, 20, Minimum_Radius => 60),
+                50.0,
+                50.0),
+         "a minimum radius beyond the disc must remove its center");
+      declare
+         Centers : constant IP.Hough_Circle_Center_Array :=
+           IP.Find_Hough_Circle_Centers (Flat, 1.0, 20.0, 100, 20);
+      begin
+         AUnit.Assertions.Assert
+           (Centers'First = 1 and then Centers'Last = 0,
+            "a featureless image must return the null range 1 .. 0");
+      end;
+   end Circle_Centers_Detection;
+
+   procedure Circle_Centers_Source_And_Region (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent  : OpenCV.Core.Mat := Blank (120, 140);
+      Blurred : OpenCV.Core.Mat;
+      Empty   : OpenCV.Core.Mat;
+      Scale   : OpenCV.Float64_Value := 1.0;
+      Ignore  : Natural := 0;
+
+      procedure Call is
+      begin
+         Ignore :=
+           IP.Find_Hough_Circle_Centers (Parent, Scale, 40.0, 100, 20)'Length;
+      end Call;
+
+      procedure Call_Empty is
+      begin
+         Ignore :=
+           IP.Find_Hough_Circle_Centers (Empty, 1.0, 40.0, 100, 20)'Length;
+      end Call_Empty;
+   begin
+      IP.Fill_Circle (Parent, (X => 70, Y => 60), 25, White);
+      IP.Gaussian_Blur
+        (Parent, Blurred, (Width => 5, Height => 5), Sigma => 1.5);
+      Parent := Blurred;
+      declare
+         Before  : constant OpenCV.Core.Mat := Parent.Clone;
+         View    : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 20, Y => 10, Width => 100, Height => 100));
+         Centers : constant IP.Hough_Circle_Center_Array :=
+           IP.Find_Hough_Circle_Centers (View, 1.0, 40.0, 100, 20, 15);
+      begin
+         AUnit.Assertions.Assert
+           (Has_Center (Centers, 50.0, 50.0),
+            "Region centers must use Region-relative coordinates");
+         AUnit.Assertions.Assert
+           (Same_Pixels (Parent, Before),
+            "Find_Hough_Circle_Centers must preserve Source");
+      end;
+      Assert_Raises (Call_Empty'Access, "an empty source must be rejected");
+      Scale := 0.5;
+      Assert_Raises (Call'Access, "an accumulator scale below 1 is rejected");
+   end Circle_Centers_Source_And_Region;
+
+   procedure Circle_Votes_Detection (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image  : constant OpenCV.Core.Mat :=
+        Ring (100, 100, (X => 50, Y => 50), 25);
+      Before : constant OpenCV.Core.Mat := Image.Clone;
+      --  The disc circumference is about 2 * Pi * 25 ~ 157 edge pixels.
+      Edge   : constant OpenCV.Float64_Value := 400.0;
+
+      procedure Check
+        (Circles : IP.Hough_Circle_With_Votes_Array; Message : String)
+      is
+         Index : constant Integer :=
+           Find_Circle_Evidence (Circles, 50.0, 50.0, 25.0);
+      begin
+         AUnit.Assertions.Assert (Index >= 0, Message & ": circle not found");
+         AUnit.Assertions.Assert
+           (Circles'First = 0
+            and then Circles (Index).Votes > 20.0
+            and then Circles (Index).Votes <= Edge,
+            Message & ": votes must exceed the support threshold");
+      end Check;
+   begin
+      Check
+        (IP.Find_Hough_Circles_With_Votes (Image, 1.0, 40.0, 100, 20, 10),
+         "automatic radius");
+      Check
+        (IP.Find_Hough_Circles_With_Votes
+           (Image,
+            1.0,
+            40.0,
+            100,
+            20,
+            Minimum_Radius => 15,
+            Maximum_Radius => 35),
+         "explicit radius");
+      AUnit.Assertions.Assert
+        (Find_Circle_Evidence
+           (IP.Find_Hough_Circles_With_Votes
+              (Image,
+               1.0,
+               40.0,
+               100,
+               20,
+               Minimum_Radius => 5,
+               Maximum_Radius => 12),
+            50.0,
+            50.0,
+            25.0)
+         < 0,
+         "a radius range excluding the circle must not report it");
+      AUnit.Assertions.Assert
+        (Same_Pixels (Image, Before),
+         "Find_Hough_Circles_With_Votes must preserve Source");
+      --  The vote-free detector is unchanged.
+      AUnit.Assertions.Assert
+        (Has_Circle
+           (IP.Find_Hough_Circles (Image, 1.0, 40.0, 100, 20, 10),
+            50.0,
+            50.0,
+            25.0,
+            Center_Tolerance,
+            Radius_Tolerance),
+         "Find_Hough_Circles must still find the circle");
+   end Circle_Votes_Detection;
+
+   --  Raw circle modes: the vote-bearing entry refuses centers-only (whose
+   --  native fourth component is an index); centers-only skips only the
+   --  radius-estimation guards and never accepts a raw sentinel.
+   procedure Raw_Circle_Modes (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image    : constant OpenCV.Core.Mat :=
+        Ring (100, 100, (X => 50, Y => 50), 25);
+      Evidence : aliased C_API.Hough_Circle_Evidence_Handle :=
+        C_API.Null_Hough_Circle_Evidence_Handle;
+      Circles  : aliased C_API.Hough_Circles_Handle :=
+        C_API.Null_Hough_Circles_Handle;
+      Status   : C_API.Status;
+      Mode     : Interfaces.Integer_32;
+      Scale    : Interfaces.C.double := 1.0;
+      Maximum  : Interfaces.Integer_32 := 0;
+
+      procedure Detect_Evidence
+        (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Evidence := C_API.Null_Hough_Circle_Evidence_Handle;
+         Status :=
+           C_API.Hough_Circles_With_Votes
+             (Source, 1.0, 40.0, 100, 20, Mode, 0, Maximum, Evidence'Access);
+      end Detect_Evidence;
+
+      procedure Detect_Circles
+        (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Circles := C_API.Null_Hough_Circles_Handle;
+         Status :=
+           C_API.Hough_Circles
+             (Source, Scale, 40.0, 100, 20, Mode, 0, Maximum, Circles'Access);
+      end Detect_Circles;
+   begin
+      Mode := C_API.Hough_Radius_Centers_Only;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Image, Detect_Evidence'Access);
+      Assert_Invalid
+        (Status, "radius-finding", "votes must refuse centers-only mode");
+      AUnit.Assertions.Assert
+        (Evidence = C_API.Null_Hough_Circle_Evidence_Handle,
+         "the evidence handle must be null after refusal");
+      Mode := 9;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Image, Detect_Evidence'Access);
+      Assert_Invalid (Status, "radius-finding", "an unknown mode is refused");
+
+      Mode := C_API.Hough_Radius_Centers_Only;
+      Maximum := -1;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Image, Detect_Circles'Access);
+      Assert_Invalid
+        (Status, "max_radius 0", "a raw -1 sentinel must never be accepted");
+      --  A scale that leaves the radius histogram with zero bins is fatal
+      --  only to radius estimation; centers-only never builds it.
+      Maximum := 0;
+      Scale := 1.0e6;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Image, Detect_Circles'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Success,
+         "centers-only must not require radius histogram bins ("
+         & C_API.Last_Error_Message
+         & ")");
+      C_API.Hough_Circles_Destroy (Circles);
+      Mode := C_API.Hough_Radius_Automatic;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Image, Detect_Circles'Access);
+      Assert_Invalid
+        (Status, "empty", "radius finding still needs histogram bins");
+   end Raw_Circle_Modes;
+
+   procedure Raw_Evidence_Handles (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat := Blank (60, 80);
+      Lines  : aliased C_API.Hough_Line_Evidence_Handle :=
+        C_API.Null_Hough_Line_Evidence_Handle;
+      Count  : aliased Interfaces.Integer_32 := -1;
+      Status : C_API.Status;
+
+      procedure Detect (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+      begin
+         Status :=
+           C_API.Hough_Lines_With_Votes
+             (Source, 1.0, Degree, 40, 0.0, Pi, Lines'Access);
+      end Detect;
+   begin
+      Assert_Invalid
+        (C_API.Hough_Line_Evidence_Count
+           (C_API.Null_Hough_Line_Evidence_Handle, Count'Access),
+         "arguments",
+         "a null line evidence result must be rejected by count");
+      Assert_Invalid
+        (C_API.Hough_Line_Evidence_Copy
+           (C_API.Null_Hough_Line_Evidence_Handle, null, 0),
+         "result",
+         "a null line evidence result must be rejected by copy");
+      Assert_Invalid
+        (C_API.Hough_Circle_Evidence_Count
+           (C_API.Null_Hough_Circle_Evidence_Handle, Count'Access),
+         "arguments",
+         "a null circle evidence result must be rejected by count");
+      Assert_Invalid
+        (C_API.Hough_Circle_Evidence_Copy
+           (C_API.Null_Hough_Circle_Evidence_Handle, null, 0),
+         "result",
+         "a null circle evidence result must be rejected by copy");
+      C_API.Hough_Line_Evidence_Destroy
+        (C_API.Null_Hough_Line_Evidence_Handle);
+      C_API.Hough_Circle_Evidence_Destroy
+        (C_API.Null_Hough_Circle_Evidence_Handle);
+
+      IP.Draw_Line (Image, (X => 5, Y => 20), (X => 74, Y => 20), White);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Detect'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Success, "raw evidence detection must succeed");
+      Status := C_API.Hough_Line_Evidence_Count (Lines, Count'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Success and then Count > 0,
+         "a detected evidence result must report a positive count");
+      Assert_Invalid
+        (C_API.Hough_Line_Evidence_Count (Lines, null),
+         "arguments",
+         "a null count output must be rejected");
+      declare
+         Marker : constant C_API.Hough_Line_Evidence_Record :=
+           (Rho => -7.0, Theta => -7.0, Votes => -7.0);
+         Buffer :
+           C_API.Hough_Line_Evidence_Record_Array (0 .. Natural (Count)) :=
+             (others => Marker);
+      begin
+         Assert_Invalid
+           (C_API.Hough_Line_Evidence_Copy (Lines, Buffer (0)'Access, -1),
+            "capacity",
+            "a negative capacity must be rejected");
+         Assert_Invalid
+           (C_API.Hough_Line_Evidence_Copy
+              (Lines, Buffer (0)'Access, Count - 1),
+            "capacity",
+            "an insufficient capacity must be rejected");
+         AUnit.Assertions.Assert
+           (Buffer = (Buffer'Range => Marker),
+            "a rejected copy must not write any record");
+         Assert_Invalid
+           (C_API.Hough_Line_Evidence_Copy (Lines, null, Count),
+            "buffer",
+            "a null buffer with a nonzero count must be rejected");
+         Status :=
+           C_API.Hough_Line_Evidence_Copy
+             (Lines, Buffer (0)'Access, Count + 1);
+         AUnit.Assertions.Assert
+           (Status = C_API.Success
+            and then Buffer (Natural (Count)) = Marker
+            and then Buffer (0) /= Marker
+            and then Buffer (0).Votes > 40.0,
+            "a larger capacity must copy exactly Count records");
+      end;
+      C_API.Hough_Line_Evidence_Destroy (Lines);
+   end Raw_Evidence_Handles;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
       procedure Add (Name : String; Routine : Caller.Test_Method) is
       begin
@@ -1526,6 +2413,31 @@ package body Hough_Detection_Tests is
          Raw_Lines_Nonzero_Product'Access);
       Add ("Hough raw C ABI source validation", Raw_Source_Validation'Access);
       Add ("Hough raw C ABI result handles", Raw_Result_Handles'Access);
+      Add
+        ("Hough lines with votes geometry and unchanged vote-free API",
+         Evidence_Lines_Geometry'Access);
+      Add
+        ("Hough lines with votes empty, source preservation and Region",
+         Evidence_Lines_Empty_Source_And_Region'Access);
+      Add
+        ("Hough lines with votes invalid inputs",
+         Evidence_Lines_Invalid_Inputs'Access);
+      Add ("Hough point-set line geometry", Point_Set_Geometry'Access);
+      Add
+        ("Hough point-set maximum lines and empty input",
+         Point_Set_Cap_And_Empty'Access);
+      Add ("Hough point-set invalid inputs", Point_Set_Invalid_Inputs'Access);
+      Add
+        ("Hough point-set OpenCV 4.1 accumulator safety",
+         Point_Set_Accumulator_Safety'Access);
+      Add ("Hough raw C ABI point set", Raw_Point_Set'Access);
+      Add ("Hough circle centers only", Circle_Centers_Detection'Access);
+      Add
+        ("Hough circle centers source preservation and Region",
+         Circle_Centers_Source_And_Region'Access);
+      Add ("Hough circles with votes", Circle_Votes_Detection'Access);
+      Add ("Hough raw C ABI circle modes", Raw_Circle_Modes'Access);
+      Add ("Hough raw C ABI evidence handles", Raw_Evidence_Handles'Access);
       return Result'Access;
    end Suite;
 

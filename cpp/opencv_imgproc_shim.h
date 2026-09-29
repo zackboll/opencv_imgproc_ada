@@ -15,12 +15,39 @@ typedef struct opencv_imgproc_hough_segments_handle
     opencv_imgproc_hough_segments_handle;
 typedef struct opencv_imgproc_hough_circles_handle
     opencv_imgproc_hough_circles_handle;
+typedef struct opencv_imgproc_hough_line_evidence_handle
+    opencv_imgproc_hough_line_evidence_handle;
+typedef struct opencv_imgproc_hough_circle_evidence_handle
+    opencv_imgproc_hough_circle_evidence_handle;
 typedef struct opencv_imgproc_pyramid_handle opencv_imgproc_pyramid_handle;
 
 typedef struct {
     int32_t x;
     int32_t y;
 } opencv_imgproc_point_i32;
+
+typedef struct {
+    float x;
+    float y;
+} opencv_imgproc_point_f32;
+
+/* Polar Hough line with accumulator votes, normalized to (rho, theta,
+ * votes) for both raster (native Vec3f) and point-set (native Vec3d
+ * (votes, rho, theta)) results. */
+typedef struct {
+    double rho;
+    double theta;
+    double votes;
+} opencv_imgproc_hough_line_evidence;
+
+/* Radius-finding gradient-Hough circle with its native Vec4f support
+ * count. Never produced by centers-only detection. */
+typedef struct {
+    float x;
+    float y;
+    float radius;
+    float votes;
+} opencv_imgproc_hough_circle_evidence;
 
 /* Polar standard-Hough line: rho in pixels, theta in radians. */
 typedef struct {
@@ -465,6 +492,7 @@ opencv_imgproc_contour_hierarchy(
 
 #define OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC ((int32_t)0)
 #define OPENCV_IMGPROC_HOUGH_RADIUS_EXPLICIT  ((int32_t)1)
+#define OPENCV_IMGPROC_HOUGH_RADIUS_CENTERS_ONLY ((int32_t)2)
 
 opencv_imgproc_status
 opencv_imgproc_hough_lines(
@@ -516,10 +544,65 @@ opencv_imgproc_hough_segments_copy(
     int32_t capacity);
 
 /*
+ * Standard Hough lines with accumulator votes. Same source and geometry
+ * contract as opencv_imgproc_hough_lines, but OpenCV is asked for a fixed
+ * Vec3f (rho, theta, votes) output, which never takes the Vec2f-only IPP
+ * branch; results may therefore differ in order or content from
+ * opencv_imgproc_hough_lines on IPP-enabled builds.
+ */
+opencv_imgproc_status
+opencv_imgproc_hough_lines_with_votes(
+    const opencv_core_mat_handle *source,
+    double rho,
+    double theta,
+    int32_t threshold,
+    double min_theta,
+    double max_theta,
+    opencv_imgproc_hough_line_evidence_handle **out_result);
+
+/*
+ * cv::HoughLinesPointSet over point_count binary32 points. point_count must
+ * be nonnegative and points non-null when point_count > 0. Before OpenCV
+ * runs, every point/angle vote is checked to land inside the rho
+ * accumulator (OpenCV 4.1 performs no such check), so a rho range that does
+ * not contain every vote is rejected.
+ */
+opencv_imgproc_status
+opencv_imgproc_hough_lines_point_set(
+    const opencv_imgproc_point_f32 *points,
+    int32_t point_count,
+    int32_t maximum_lines,
+    int32_t threshold,
+    double min_rho,
+    double max_rho,
+    double rho_step,
+    double min_theta,
+    double max_theta,
+    double theta_step,
+    opencv_imgproc_hough_line_evidence_handle **out_result);
+
+void
+opencv_imgproc_hough_line_evidence_destroy(
+    opencv_imgproc_hough_line_evidence_handle *result);
+
+opencv_imgproc_status
+opencv_imgproc_hough_line_evidence_count(
+    const opencv_imgproc_hough_line_evidence_handle *result,
+    int32_t *out_count);
+
+opencv_imgproc_status
+opencv_imgproc_hough_line_evidence_copy(
+    const opencv_imgproc_hough_line_evidence_handle *result,
+    opencv_imgproc_hough_line_evidence *lines,
+    int32_t capacity);
+
+/*
  * radius_mode OPENCV_IMGPROC_HOUGH_RADIUS_AUTOMATIC requires max_radius == 0
  * and lets OpenCV use max(rows, cols). OPENCV_IMGPROC_HOUGH_RADIUS_EXPLICIT
- * requires max_radius > min_radius. OpenCV's negative centers-only sentinel
- * is not reachable through this ABI.
+ * requires max_radius > min_radius. OPENCV_IMGPROC_HOUGH_RADIUS_CENTERS_ONLY
+ * requires max_radius == 0 and privately passes OpenCV's negative
+ * centers-only sentinel; each result radius is then 0 and carries no
+ * meaning. The sentinel itself is never accepted through this ABI.
  */
 opencv_imgproc_status
 opencv_imgproc_hough_circles(
@@ -546,6 +629,39 @@ opencv_imgproc_status
 opencv_imgproc_hough_circles_copy(
     const opencv_imgproc_hough_circles_handle *result,
     opencv_imgproc_hough_circle *circles,
+    int32_t capacity);
+
+/*
+ * Radius-finding gradient Hough circles with native Vec4f support counts.
+ * Accepts only the AUTOMATIC and EXPLICIT radius modes: in centers-only mode
+ * OpenCV stores an accumulator index, not a vote count, in the fourth
+ * component.
+ */
+opencv_imgproc_status
+opencv_imgproc_hough_circles_with_votes(
+    const opencv_core_mat_handle *source,
+    double dp,
+    double min_dist,
+    int32_t canny_threshold,
+    int32_t accumulator_threshold,
+    int32_t radius_mode,
+    int32_t min_radius,
+    int32_t max_radius,
+    opencv_imgproc_hough_circle_evidence_handle **out_result);
+
+void
+opencv_imgproc_hough_circle_evidence_destroy(
+    opencv_imgproc_hough_circle_evidence_handle *result);
+
+opencv_imgproc_status
+opencv_imgproc_hough_circle_evidence_count(
+    const opencv_imgproc_hough_circle_evidence_handle *result,
+    int32_t *out_count);
+
+opencv_imgproc_status
+opencv_imgproc_hough_circle_evidence_copy(
+    const opencv_imgproc_hough_circle_evidence_handle *result,
+    opencv_imgproc_hough_circle_evidence *circles,
     int32_t capacity);
 
 opencv_imgproc_status
