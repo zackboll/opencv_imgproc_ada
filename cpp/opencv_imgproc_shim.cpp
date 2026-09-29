@@ -31,6 +31,12 @@ struct opencv_imgproc_hough_circles_handle {
     std::vector<cv::Vec3f> circles;
 };
 
+// Owned buildPyramid result. levels[0] may be a shallow header over the
+// shim-local logical source; copy_level always publishes deep clones.
+struct opencv_imgproc_pyramid_handle {
+    std::vector<cv::Mat> levels;
+};
+
 namespace {
 
 void clear_error() noexcept;
@@ -846,12 +852,34 @@ bool pyramid_ipp_type(const cv::Mat &src) noexcept
            src.type() == CV_32FC1 || src.type() == CV_32FC3;
 }
 
-opencv_imgproc_status pyramid_down_preflight(const cv::Mat &src,
-                                              const cv::Mat &dst, int border)
+// Number of distinct natural Gaussian levels, including level 0: halve each
+// extent with (n+1)/2 until both reach 1. Extents are at most INT_MAX, so the
+// result never exceeds 32.
+int pyramid_distinct_level_count(std::uint64_t cols, std::uint64_t rows) noexcept
 {
-    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
-    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
-    const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
+    int count = 1;
+    while (cols > 1 || rows > 1) {
+        cols = (cols + 1) / 2;
+        rows = (rows + 1) / 2;
+        ++count;
+    }
+    return count;
+}
+
+// OpenVX pyrDown in 4.1/4.10 accepts CV_8UC1, REPLICATE and natural size;
+// createAddressing narrows Mat row steps to vx_int32. OpenCV 5.0 has no
+// OpenVX path: retain this restriction as portable binding policy.
+bool pyramid_down_may_use_openvx(int type, int border) noexcept
+{
+    return type == CV_8UC1 && border == cv::BORDER_REPLICATE;
+}
+
+// Scalar pyrDown_ arithmetic for one natural cols x rows -> ceil-half step.
+// Shared by Pyramid_Down and every buildPyramid transition.
+opencv_imgproc_status pyramid_down_extent_preflight(std::uint64_t cols,
+                                                     std::uint64_t rows,
+                                                     std::uint64_t cn)
+{
     // ABI safety: pyrDown constructs Size((cols+1)/2, (rows+1)/2);
     // pyrDown_ doubles output extents and computes y*2+2 in its ring fill.
     // Its vertical ring selector reaches y*2+4; the horizontal border table
@@ -872,14 +900,28 @@ opencv_imgproc_status pyramid_down_preflight(const cv::Mat &src,
     if (source_width > pyramid_int_max || scaled_width > pyramid_int_max ||
         pyramid_align_16(scaled_width) * 5 + 16 > pyramid_int_max)
         return invalid_argument("pyrDown channel width or ring buffer overflows native int");
+    return OPENCV_IMGPROC_OK;
+}
 
-    // OpenVX pyrDown in 4.1/4.10 accepts CV_8UC1, REPLICATE and natural
-    // size; createAddressing narrows Mat row steps to vx_int32. OpenCV 5.0
-    // has no OpenVX path: retain this restriction as portable binding policy
-    // across supported builds. 4.1/4.10 ipp_pyrdown's step casts are behind
+opencv_imgproc_status pyramid_down_preflight(const cv::Mat &src,
+                                              const cv::Mat &dst, int border)
+{
+    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
+    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
+    const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
+    const opencv_imgproc_status extent =
+        pyramid_down_extent_preflight(cols, rows, cn);
+    if (extent != OPENCV_IMGPROC_OK)
+        return extent;
+    const std::uint64_t down_width = (cols + 1) / 2;
+    const std::uint64_t down_height = (rows + 1) / 2;
+    const std::uint64_t scaled_width = down_width * cn;
+
+    // 4.1/4.10 ipp_pyrdown's step casts are behind
     // dsz == Size(src.cols*2, src.rows*2), unreachable for natural downsize;
-    // 5.0 has no direct ipp_pyrdown. buildPyramid's IPP path is not bound.
-    if (src.type() == CV_8UC1 && border == cv::BORDER_REPLICATE) {
+    // 5.0 has no direct ipp_pyrdown. buildPyramid's IPP path is covered by
+    // build_pyramid_preflight.
+    if (pyramid_down_may_use_openvx(src.type(), border)) {
         // ABI safety: native OpenVX row-step casts truncate size_t.
         const bool reused_destination =
             dst.size() == cv::Size(static_cast<int>(down_width),
@@ -893,40 +935,121 @@ opencv_imgproc_status pyramid_down_preflight(const cv::Mat &src,
     return OPENCV_IMGPROC_OK;
 }
 
+// Validates the whole native buildPyramid chain before any level is created.
+// level_count has already been bounded to the distinct natural level count.
+opencv_imgproc_status build_pyramid_preflight(const cv::Mat &src,
+                                               int level_count, int border)
+{
+    std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
+    std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
+    const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
+    const std::uint64_t element_size =
+        static_cast<std::uint64_t>(src.elemSize());
+    const bool openvx = pyramid_down_may_use_openvx(src.type(), border);
+    // ipp_buildpyramid (identical in 4.1/4.10/5.0) runs for BORDER_DEFAULT
+    // (REFLECT_101) on a non-submatrix CV_8UC1/8UC3/32FC1/32FC3 source; the
+    // source handed to buildPyramid here is never a submatrix. It stores
+    // gPyr->pStep[0] = (int)src.step and, per level, (int)dst.step of a
+    // freshly created packed level. ippiPyramidInitAlloc receives
+    // maxlevel + 1 == level_count (<= 32) and srcRoi from int cols/rows;
+    // ippiGetPyramidDownROI only shrinks positive int extents. Stock builds
+    // define IPP_DISABLE_PYRAMIDS_BUILD, but distributors may re-enable it.
+    const bool ipp =
+        border == cv::BORDER_REFLECT_101 && pyramid_ipp_type(src);
+
+    // ABI safety: OpenVX createAddressing and ipp_buildpyramid narrow the
+    // level-0 row step (a Region clone's packed step) to signed int.
+    if ((openvx || ipp) && src.step[0] > pyramid_int_max)
+        return invalid_argument(
+            "buildPyramid source byte step overflows signed int");
+
+    for (int level = 1; level < level_count; ++level) {
+        // ABI safety: every transition is a native pyrDown with the same
+        // signed pyrDown_ ring, border-table, and buffer arithmetic.
+        const opencv_imgproc_status extent =
+            pyramid_down_extent_preflight(cols, rows, cn);
+        if (extent != OPENCV_IMGPROC_OK)
+            return extent;
+        cols = (cols + 1) / 2;
+        rows = (rows + 1) / 2;
+        // ABI safety: generated levels are packed, so their narrowed OpenVX
+        // or IPP row step is cols * elemSize; level i is also the source of
+        // transition i + 1.
+        if ((openvx || ipp) && cols * element_size > pyramid_int_max)
+            return invalid_argument(
+                "buildPyramid level byte step overflows signed int");
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
+// pyrUp to target_width x target_height; the natural call passes 2x extents.
 opencv_imgproc_status pyramid_up_preflight(const cv::Mat &src,
-                                            const cv::Mat &dst)
+                                            const cv::Mat &dst,
+                                            std::uint64_t target_width,
+                                            std::uint64_t target_height)
 {
     const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
     const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
     const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
-    const std::uint64_t up_width = cols * 2;
-    // ABI safety: pyrUp constructs Size(src.cols*2, src.rows*2), and
-    // pyrUp_ doubles source height in borderInterpolate and y-side indexing.
-    if (up_width > pyramid_int_max || rows * 2 > pyramid_int_max)
+    // ABI safety: pyrUp computes Size(src.cols*2, src.rows*2) for the natural
+    // size; pyrUp_'s assert computes ssize.width*2 / ssize.height*2 for every
+    // size; borderInterpolate(sy*2, ssize.height*2) and _dst.ptr(y*2) double
+    // source rows. Target extents must be positive signed ints.
+    if (cols * 2 > pyramid_int_max || rows * 2 > pyramid_int_max ||
+        target_width == 0 || target_height == 0 ||
+        target_width > pyramid_int_max || target_height > pyramid_int_max)
         return invalid_argument("pyrUp dimensions would overflow signed int");
 
     const std::uint64_t source_width = cols * cn;
-    const std::uint64_t scaled_width = up_width * cn;
-    const std::uint64_t raw_bufstep = (up_width + 1) * cn;
+    const std::uint64_t scaled_width = target_width * cn;
+    const std::uint64_t raw_bufstep = (target_width + 1) * cn;
     // ABI safety: pyrUp_ multiplies both widths by cn, allocates its int
     // dtab(ssize.width*cn), and computes alignSize((dsize.width+1)*cn,16)
-    // before casting bufstep to int and allocating bufstep*3+16.
+    // before casting bufstep to int and allocating bufstep*3+16, all before
+    // its CV_Assert on the destination geometry.
     if (source_width > pyramid_int_max || scaled_width > pyramid_int_max ||
         raw_bufstep > pyramid_int_max ||
         pyramid_align_16(raw_bufstep) * 3 + 16 > pyramid_int_max)
         return invalid_argument("pyrUp channel width or ring buffer overflows native int");
 
     // IPP excludes unisolated Regions; the public call is never isolated.
-    if (!src.isSubmatrix() && pyramid_ipp_type(src)) {
+    // 4.1/4.10/5.0 reach ipp_pyrup only for dsz == Size(cols*2, rows*2); odd
+    // explicit targets use the (5.0: HAL, then) scalar pyrUp_ path.
+    const bool exact_double =
+        target_width == cols * 2 && target_height == rows * 2;
+    if (exact_double && !src.isSubmatrix() && pyramid_ipp_type(src)) {
         // ABI safety: ipp_pyrup casts src.step and dst.step to signed int.
         const bool reused_destination =
-            dst.size() == cv::Size(static_cast<int>(up_width),
-                                   static_cast<int>(rows * 2)) &&
+            dst.size() == cv::Size(static_cast<int>(target_width),
+                                   static_cast<int>(target_height)) &&
             dst.type() == src.type();
         if (src.step[0] > pyramid_int_max ||
             scaled_width * src.elemSize1() > pyramid_int_max ||
             (reused_destination && dst.step[0] > pyramid_int_max))
             return invalid_argument("pyrUp IPP byte step overflows signed int");
+    }
+    return OPENCV_IMGPROC_OK;
+}
+
+// ABI safety: OpenCV pyramid kernels access src as a 2-D image and use typed
+// pointer arithmetic before fully rejecting empty or higher-dimensional Mats;
+// HAL/dispatch selects typed neighborhood access from depth before rejecting
+// unsupported depths.
+opencv_imgproc_status validate_pyramid_source(const cv::Mat &src)
+{
+    if (src.empty()) {
+        return invalid_argument("pyramid source must be nonempty");
+    }
+
+    if (src.dims != 2) {
+        return invalid_argument("pyramid source must be two-dimensional");
+    }
+
+    const int depth = src.depth();
+    if (depth != CV_8U && depth != CV_16U && depth != CV_16S
+        && depth != CV_32F && depth != CV_64F) {
+        return invalid_argument(
+            "pyramid requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
     }
     return OPENCV_IMGPROC_OK;
 }
@@ -951,24 +1074,10 @@ opencv_imgproc_status resolve_pyramid_source_and_destination(
         return invalid_argument("invalid destination Mat");
     }
 
-    // ABI safety: OpenCV pyramid kernels access src as a 2-D image and
-    // use typed pointer arithmetic before fully rejecting empty or
-    // higher-dimensional Mats.
-    if ((*src)->empty()) {
-        return invalid_argument("pyramid source must be nonempty");
-    }
-
-    if ((*src)->dims != 2) {
-        return invalid_argument("pyramid source must be two-dimensional");
-    }
-
-    // ABI safety: OpenCV pyramid HAL/dispatch uses src depth to select
-    // typed neighborhood access before rejecting unsupported depths.
-    const int depth = (*src)->depth();
-    if (depth != CV_8U && depth != CV_16U && depth != CV_16S
-        && depth != CV_32F && depth != CV_64F) {
-        return invalid_argument(
-            "pyramid requires CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F");
+    const opencv_imgproc_status source_status =
+        validate_pyramid_source(**src);
+    if (source_status != OPENCV_IMGPROC_OK) {
+        return source_status;
     }
 
     // ABI safety: writing dst while reading the same buffer is undefined
@@ -4845,12 +4954,209 @@ opencv_imgproc_pyr_up(
             return resolved;
         }
 
-        const opencv_imgproc_status preflight = pyramid_up_preflight(*src, *dst);
+        const opencv_imgproc_status preflight = pyramid_up_preflight(
+            *src, *dst,
+            static_cast<std::uint64_t>(src->cols) * 2,
+            static_cast<std::uint64_t>(src->rows) * 2);
         if (preflight != OPENCV_IMGPROC_OK)
             return preflight;
 
         cv::pyrUp(*src, *dst, cv::Size(), cv::BORDER_DEFAULT);
 
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_pyr_up_sized(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    int32_t width,
+    int32_t height)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK
+            || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        const opencv_imgproc_status source_status =
+            validate_pyramid_source(*src);
+        if (source_status != OPENCV_IMGPROC_OK)
+            return source_status;
+
+        // ABI safety: pyrUp_ allocates its ring from (width+1)*cn and runs
+        // its geometry CV_Assert afterward. Only d == 2s and d == 2s-1 are
+        // accepted: native also accepts 2s+1, but 4.1-4.6 leave that extra
+        // multichannel column uninitialized and every release skips it for
+        // one-column sources, publishing uninitialized pixels.
+        const std::int64_t twice_cols =
+            static_cast<std::int64_t>(src->cols) * 2;
+        const std::int64_t twice_rows =
+            static_cast<std::int64_t>(src->rows) * 2;
+        if ((width != twice_cols && width != twice_cols - 1) ||
+            (height != twice_rows && height != twice_rows - 1)) {
+            return invalid_argument(
+                "pyrUp explicit size must be 2 * source or 2 * source - 1");
+        }
+
+        // Fresh local result: no source/destination alias is possible, and
+        // destination is untouched unless native pyrUp succeeds.
+        cv::Mat local;
+        const opencv_imgproc_status preflight = pyramid_up_preflight(
+            *src, local,
+            static_cast<std::uint64_t>(width),
+            static_cast<std::uint64_t>(height));
+        if (preflight != OPENCV_IMGPROC_OK)
+            return preflight;
+
+        cv::pyrUp(*src, local, cv::Size(width, height), cv::BORDER_DEFAULT);
+        *dst = std::move(local);
+
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_build_pyramid(
+    const opencv_core_mat_handle *source,
+    int32_t level_count,
+    int32_t border,
+    opencv_imgproc_pyramid_handle **out_result)
+{
+    clear_error();
+
+    if (out_result == nullptr) {
+        return invalid_argument("null pyramid result output pointer");
+    }
+    *out_result = nullptr;
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+
+        const opencv_imgproc_status source_status =
+            validate_pyramid_source(*src);
+        if (source_status != OPENCV_IMGPROC_OK)
+            return source_status;
+
+        if (border == OPENCV_IMGPROC_BORDER_CONSTANT) {
+            // ABI safety: as for pyrDown, native neighborhood tables are
+            // built before BORDER_CONSTANT is rejected.
+            return invalid_argument(
+                "buildPyramid does not support Constant_Border");
+        }
+        int opencv_border = 0;
+        if (!to_opencv_pyramid_down_border(border, opencv_border)) {
+            return invalid_argument("unsupported buildPyramid border");
+        }
+
+        // ABI safety: buildPyramid computes maxlevel + 1 and then indexes
+        // level 0, so level_count < 1 is an out-of-bounds access. The upper
+        // bound keeps the level vector and every geometry small (<= 32)
+        // before any native allocation.
+        if (level_count < 1 ||
+            level_count > pyramid_distinct_level_count(
+                static_cast<std::uint64_t>(src->cols),
+                static_cast<std::uint64_t>(src->rows))) {
+            return invalid_argument(
+                "buildPyramid level count exceeds distinct natural levels");
+        }
+
+        // Region semantics: level 0 and every pyrDown must see only the
+        // logical image; OpenCV 5 pyrDown can route submatrices through
+        // cv_hal_pyrdown_offset using parent pixels.
+        const cv::Mat logical_source =
+            src->isSubmatrix() ? src->clone() : *src;
+
+        const opencv_imgproc_status preflight = build_pyramid_preflight(
+            logical_source, level_count, opencv_border);
+        if (preflight != OPENCV_IMGPROC_OK)
+            return preflight;
+
+        auto *result = new opencv_imgproc_pyramid_handle;
+        try {
+            // count/copy_level bound every access by levels.size().
+            cv::buildPyramid(
+                logical_source, result->levels, level_count - 1,
+                opencv_border);
+            *out_result = result;
+            return OPENCV_IMGPROC_OK;
+        } catch (...) {
+            delete result;
+            throw;
+        }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+void
+opencv_imgproc_pyramid_destroy(opencv_imgproc_pyramid_handle *result)
+{
+    delete result;
+}
+
+opencv_imgproc_status
+opencv_imgproc_pyramid_count(
+    const opencv_imgproc_pyramid_handle *result,
+    int32_t *out_count)
+{
+    clear_error();
+    if (result == nullptr || out_count == nullptr) {
+        return invalid_argument("invalid pyramid count arguments");
+    }
+    if (!fits_int32(result->levels.size())) {
+        return invalid_argument("pyramid level count exceeds C ABI range");
+    }
+    *out_count = static_cast<int32_t>(result->levels.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_pyramid_copy_level(
+    const opencv_imgproc_pyramid_handle *result,
+    int32_t index,
+    opencv_core_mat_handle *destination)
+{
+    clear_error();
+
+    try {
+        if (result == nullptr) {
+            return invalid_argument("invalid pyramid result");
+        }
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK
+            || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+        // ABI safety: the shim itself indexes the level vector.
+        if (index < 0
+            || static_cast<std::size_t>(index) >= result->levels.size()) {
+            return invalid_argument("pyramid level index is out of range");
+        }
+
+        // Native level 0 is a shallow header over the source; publish a deep
+        // clone of every level so no returned Mat shares storage with the
+        // source or another level. Destination is rebound only on success.
+        cv::Mat copy =
+            result->levels[static_cast<std::size_t>(index)].clone();
+        *dst = std::move(copy);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

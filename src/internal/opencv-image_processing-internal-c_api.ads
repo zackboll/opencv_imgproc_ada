@@ -201,6 +201,10 @@ package OpenCV.Image_Processing.Internal.C_API is
    Null_Hough_Circles_Handle : constant Hough_Circles_Handle :=
      Hough_Circles_Handle (System.Null_Address);
 
+   type Pyramid_Handle is new System.Address;
+   Null_Pyramid_Handle : constant Pyramid_Handle :=
+     Pyramid_Handle (System.Null_Address);
+
    Hough_Radius_Automatic : constant Interfaces.Integer_32 := 0;
    Hough_Radius_Explicit  : constant Interfaces.Integer_32 := 1;
 
@@ -736,6 +740,49 @@ package OpenCV.Image_Processing.Internal.C_API is
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_pyr_up";
+
+   function Pyramid_Up_Sized
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Width       : Interfaces.Integer_32;
+      Height      : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_pyr_up_sized";
+
+   function Build_Pyramid
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Level_Count : Interfaces.Integer_32;
+      Border      : Interfaces.Integer_32;
+      Result      : access Pyramid_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_build_pyramid";
+
+   procedure Pyramid_Destroy (Result : Pyramid_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_pyramid_destroy";
+
+   function Pyramid_Count
+     (Result : Pyramid_Handle; Count : access Interfaces.Integer_32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_pyramid_count";
+
+   function Pyramid_Copy_Level
+     (Result      : Pyramid_Handle;
+      Index       : Interfaces.Integer_32;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_pyramid_copy_level";
 
    function Match_Template
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;

@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **423 AUnit tests**
+> **Current registered test baseline:** **441 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -108,7 +108,9 @@ The current public surface includes:
 - Gaussian blur;
 - Gaussian kernel generation;
 - Sobel and Scharr derivative kernel generation;
-- Gaussian pyramid downsampling and upsampling;
+- Gaussian pyramid downsampling and upsampling (natural and explicit size);
+- multi-level Gaussian pyramids and floating-point Laplacian pyramid
+  decomposition and reconstruction;
 - unmasked template matching;
 - affine warping;
 - perspective warping;
@@ -196,7 +198,9 @@ The table below summarizes the current public operations.
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
 | Filtering | `Get_Gaussian_Kernel` | odd positive size | automatic or explicit sigma; Float32/Float64 `N x 1` C1 kernel; usable with `Sep_Filter_2D` |
 | Derivatives | `Get_Derivative_Kernels`, `Get_Scharr_Kernels` | odd Sobel size 1/3/5/7 or Scharr axis | Float32/Float64 `N x 1` C1 pair; Kernel_1 may differ in X/Y length; usable with `Sep_Filter_2D` |
-| Pyramids | `Pyramid_Down`, `Pyramid_Up` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | natural half/double size; arbitrary channels; Down accepts Wrap and rejects Constant; Up has no Border; in-place unsupported |
+| Pyramids | `Pyramid_Down`, `Pyramid_Up` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | natural half/double size; explicit `Pyramid_Up` size of `2N` or `2N - 1` per axis; arbitrary channels; Down accepts Wrap and rejects Constant; Up has no Border; in-place unsupported |
+| Pyramids | `Build_Gaussian_Pyramid`, `Maximum_Pyramid_Level_Count` | as `Pyramid_Down`; `Level_Count` <= distinct natural levels | zero-based `Mat_Array`; level 0 is an independent clone; every level owns storage; Region-local; Constant rejected |
+| Pyramids | `Build_Laplacian_Pyramid`, `Reconstruct_Laplacian_Pyramid` | as `Build_Gaussian_Pyramid`; reconstruction needs a Float32/Float64 natural-geometry `Mat_Array` | Float32/Float64 working depth; editable residuals; low-frequency last level; reconstruction stays floating |
 | Matching | `Match_Template` | nonempty 2-D; `UInt8` or `Float32`; C1..C4; matching Source/Template type | Float32 C1 score map; Template must fit in Source; SQDIFF min / others max; Destination must not share input storage |
 | Warping | `Warp_Affine` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 2x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
 | Warping | `Warp_Perspective` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64`; C1..C4 | 3x3 Float32/Float64 C1 Transform; requested Output_Size; Nearest/Linear; Constant/Replicate; Destination must not share input storage |
@@ -497,7 +501,148 @@ including overlapping Regions. Extreme geometries are rejected before native
 signed-int pyramid intermediate arithmetic can overflow.
 
 `Pyramid_Up(Pyramid_Down(Image))` is generally a smoothed reconstruction, not
-the original image. `buildPyramid` is not bound.
+the original image.
+
+### Explicit-size upsampling
+
+```ada
+procedure Pyramid_Up
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Output_Size : OpenCV.Size);
+```
+
+The explicit-size overload calls native `pyrUp` with the requested size, so
+odd previous-level geometry can be recovered exactly (for example
+`9 -> 5 -> 9` and `7 -> 4 -> 7`). Each extent must be `2 * Source` or
+`2 * Source - 1`; other sizes are rejected in Ada before any native work.
+OpenCV also accepts `2 * Source + 1`, but its extra **column** is not
+portable: OpenCV 4.1-4.6 index it incorrectly for multichannel images, and
+every reviewed release leaves it unwritten for one-column sources, so the
+binding does not expose that size. (The scalar path does explicitly fill a
+`2 * Source + 1` extra row; the column is the problem.) A one-row target
+from a one-row source (`1 -> 1`) is legal `2 * Source - 1` geometry; there
+OpenCV 4.1 aliases its even and odd destination rows, which is benign because
+both formulas coincide for a single source row, and the tests pin the result
+to row 0 of the two-row request for integer depths. The result is computed
+into fresh storage and bound to Destination only on success; a failed call
+leaves Destination unchanged. Signed native ring-buffer arithmetic is checked
+against the requested size, and IPP's signed row-step narrowing is checked
+for the exact-double size, the only size that reaches IPP.
+
+### Gaussian pyramids
+
+```ada
+function Maximum_Pyramid_Level_Count
+  (Source : OpenCV.Core.Mat) return Positive;
+
+function Build_Gaussian_Pyramid
+  (Source      : OpenCV.Core.Mat;
+   Level_Count : Positive;
+   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
+   return OpenCV.Core.Mat_Array;
+```
+
+`Level_Count` is the total number of returned images, **including level 0**.
+The result is indexed `0 .. Level_Count - 1`: level 0 is an independent copy
+of Source and level `I` is `Pyramid_Down` of level `I - 1`.
+
+`Maximum_Pyramid_Level_Count` counts distinct natural levels by repeatedly
+applying `(N + 1) / 2` to both extents until both are 1:
+
+```text
+1 x 1 -> 1 level
+2 x 2 -> 2 levels
+3 x 3 -> 3 levels   3 -> 2 -> 1
+8 x 8 -> 4 levels   8 -> 4 -> 2 -> 1
+9 x 7 -> 5 levels   9x7 -> 5x4 -> 3x2 -> 2x1 -> 1x1
+```
+
+Larger `Level_Count` values are rejected before native allocation, so
+duplicate 1 x 1 levels are never produced and the native level vector is at
+most 32 entries.
+
+Native `cv::buildPyramid` stores level 0 as a shallow header of its input.
+The binding never exposes that alias: every returned level, including level
+0, owns independent storage shared with neither Source nor another level. The
+native result lives in a private shim handle that is destroyed after the
+levels are copied, including on every error path.
+
+Source follows the `Pyramid_Down` contract (`UInt8`, `UInt16`, `Int16`,
+`Float32`, `Float64`; any channel count). `Replicate`, `Reflect`,
+`Reflect_101`, and `Wrap` are supported; `Constant_Border` is rejected. A
+Region is processed as its own logical image: it is cloned before native
+`buildPyramid`, so parent pixels never influence any level. The whole chain
+is checked for signed-int overflow before native execution, including the
+per-level `pyrDown_` arithmetic, the OpenCV 4.x OpenVX row-step narrowing,
+and the `ipp_buildpyramid` row-step narrowing for default-border
+`UInt8`/`Float32` C1/C3 sources.
+
+### Laplacian pyramids
+
+```ada
+type Laplacian_Precision is
+  (Automatic_Precision, Float32_Precision, Float64_Precision);
+
+function Build_Laplacian_Pyramid
+  (Source      : OpenCV.Core.Mat;
+   Level_Count : Positive;
+   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101;
+   Precision   : Laplacian_Precision := Automatic_Precision)
+   return OpenCV.Core.Mat_Array;
+
+function Reconstruct_Laplacian_Pyramid
+  (Pyramid : OpenCV.Core.Mat_Array) return OpenCV.Core.Mat;
+```
+
+Residuals are never computed in an integer type, where negative detail would
+saturate. Source is first converted to a floating working depth:
+
+| Precision | Working depth |
+| --- | --- |
+| `Automatic_Precision` | `Float64` for a Float64 Source, otherwise `Float32` |
+| `Float32_Precision` | `Float32` |
+| `Float64_Precision` | `Float64` |
+
+With Gaussian levels `G (0 .. N)` of the working image:
+
+```text
+L(i) = G(i) - Pyramid_Up(G(i + 1), Output_Size => size of G(i))   for i < N
+L(N) = G(N)                                                        low-frequency base
+```
+
+The last level is the low-frequency base, not a high-pass residual. Every
+level has the working depth, Source's channel count, and independent storage.
+Source, Region, border, and `Level_Count` rules match
+`Build_Gaussian_Pyramid`.
+
+Reconstruction runs from the coarsest level up:
+
+```text
+Current := clone(last)
+for each preceding level, finest last:
+   Current := Pyramid_Up(Current, Output_Size => size of level) + level
+```
+
+The whole `Mat_Array` is validated first. It must be non-empty; every level
+must be non-empty and two-dimensional, share one `Float32` or `Float64` depth
+and one channel count, and follow the natural geometry
+`next = (current + 1) / 2` in both extents. Arrays with any index bounds are
+accepted; iteration order is fine-to-coarse. Input levels are never modified.
+
+The result keeps the floating working depth and is **not** narrowed to the
+original integer type. Callers that want `UInt8` convert explicitly:
+
+```ada
+Restored : constant OpenCV.Core.Mat :=
+  Image_Processing.Reconstruct_Laplacian_Pyramid (Pyramid)
+    .Convert_To (OpenCV.Core.UInt8);
+```
+
+An unmodified pyramid reconstructs the working copy of Source to normal
+floating-point tolerance, including odd sizes. Because the result is an
+ordinary `Mat_Array`, residuals can be edited before reconstruction, for
+example zeroing or scaling `Pyramid (0)` to remove or boost fine detail.
 
 ---
 
@@ -3351,7 +3496,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **423-test** baseline is:
+The current **441-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3361,6 +3506,7 @@ The current **423-test** baseline is:
 | Gaussian kernel | 8 |
 | Derivative kernels | 10 |
 | Image pyramids | 18 |
+| Pyramid construction (Gaussian / Laplacian) | 18 |
 | Template matching | 10 |
 | Affine warping | 13 |
 | Perspective warping | 13 |
@@ -3390,7 +3536,7 @@ The current **423-test** baseline is:
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **423** |
+| **Total** | **441** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -3828,6 +3974,7 @@ opencv_imgproc_ada/
 │       ├── gaussian_kernel_tests.*
 │       ├── derivative_kernel_tests.*
 │       ├── pyramid_tests.*
+│       ├── pyramid_construction_tests.*
 │       ├── template_matching_tests.*
 │       ├── warp_affine_tests.*
 │       ├── warp_perspective_tests.*
@@ -4002,7 +4149,6 @@ Notable Imgproc families that are not yet broadly bound include:
 - deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;
 - relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
   calibration/undistortion map generation in the appropriate module;
-- Laplacian pyramids and `buildPyramid`;
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
   (`use_edgeval`) Hough, `HoughLinesPointSet`, `HOUGH_GRADIENT_ALT`,
   centers-only circle output, and optional accumulator votes;
