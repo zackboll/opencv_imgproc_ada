@@ -729,6 +729,25 @@ opencv_imgproc_build_pyramid(
     int32_t border,
     opencv_imgproc_pyramid_handle **result);
 
+/* cv::pyrMeanShiftFiltering on a private packed clone of a nonempty 2-D
+ * CV_8UC3 source, always with MAX_ITER | EPS termination. The result is
+ * computed into fresh storage and bound to destination only on success, so
+ * destination may alias or overlap source and is unchanged on failure.
+ * maximum_pyramid_level must lie in 0 .. 8 and every generated level must
+ * remain at least 2 x 2; maximum_iterations in 1 .. 100; epsilon finite and
+ * nonnegative; radii finite. Requests whose native signed-int radius
+ * rounding, row offsets, accumulators, or stop expression could overflow are
+ * rejected before native execution. */
+opencv_imgproc_status
+opencv_imgproc_pyr_mean_shift_filter(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double spatial_radius,
+    double color_radius,
+    int32_t maximum_pyramid_level,
+    int32_t maximum_iterations,
+    double epsilon);
+
 /* Null-safe. */
 void
 opencv_imgproc_pyramid_destroy(opencv_imgproc_pyramid_handle *result);

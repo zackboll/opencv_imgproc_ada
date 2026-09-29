@@ -995,15 +995,14 @@ opencv_imgproc_status build_pyramid_preflight(const cv::Mat &src,
     return OPENCV_IMGPROC_OK;
 }
 
-// pyrUp to target_width x target_height; the natural call passes 2x extents.
-opencv_imgproc_status pyramid_up_preflight(const cv::Mat &src,
-                                            const cv::Mat &dst,
-                                            std::uint64_t target_width,
-                                            std::uint64_t target_height)
+// Scalar pyrUp_ arithmetic for cols x rows -> target_width x target_height.
+// Shared by Pyramid_Up and every pyrMeanShiftFiltering propagation step.
+opencv_imgproc_status pyramid_up_extent_preflight(std::uint64_t cols,
+                                                   std::uint64_t rows,
+                                                   std::uint64_t cn,
+                                                   std::uint64_t target_width,
+                                                   std::uint64_t target_height)
 {
-    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
-    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
-    const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
     // ABI safety: pyrUp computes Size(src.cols*2, src.rows*2) for the natural
     // size; pyrUp_'s assert computes ssize.width*2 / ssize.height*2 for every
     // size; borderInterpolate(sy*2, ssize.height*2) and _dst.ptr(y*2) double
@@ -1024,6 +1023,23 @@ opencv_imgproc_status pyramid_up_preflight(const cv::Mat &src,
         raw_bufstep > pyramid_int_max ||
         pyramid_align_16(raw_bufstep) * 3 + 16 > pyramid_int_max)
         return invalid_argument("pyrUp channel width or ring buffer overflows native int");
+    return OPENCV_IMGPROC_OK;
+}
+
+// pyrUp to target_width x target_height; the natural call passes 2x extents.
+opencv_imgproc_status pyramid_up_preflight(const cv::Mat &src,
+                                            const cv::Mat &dst,
+                                            std::uint64_t target_width,
+                                            std::uint64_t target_height)
+{
+    const std::uint64_t cols = static_cast<std::uint64_t>(src.cols);
+    const std::uint64_t rows = static_cast<std::uint64_t>(src.rows);
+    const std::uint64_t cn = static_cast<std::uint64_t>(src.channels());
+    const opencv_imgproc_status extent = pyramid_up_extent_preflight(
+        cols, rows, cn, target_width, target_height);
+    if (extent != OPENCV_IMGPROC_OK)
+        return extent;
+    const std::uint64_t scaled_width = target_width * cn;
 
     // IPP excludes unisolated Regions; the public call is never isolated.
     // 4.1/4.10/5.0 reach ipp_pyrup only for dsz == Size(cols*2, rows*2); odd
@@ -1041,6 +1057,110 @@ opencv_imgproc_status pyramid_up_preflight(const cv::Mat &src,
             (reused_destination && dst.step[0] > pyramid_int_max))
             return invalid_argument("pyrUp IPP byte step overflows signed int");
     }
+    return OPENCV_IMGPROC_OK;
+}
+
+// pyrMeanShiftFiltering (segmentation.cpp) is identical in OpenCV 4.10 and
+// 5.0; 4.1 differs only in legacy error-macro spellings and comments.
+constexpr int mean_shift_max_level = 8;
+constexpr int mean_shift_max_iterations = 100;
+// Bound on |x0 +/- sp| for the Float32 operands of native cvRound. Float32
+// spacing at 2^30 is 128 and rounding is monotonic, so no rounded operand
+// can reach 2^31.
+constexpr double mean_shift_round_limit = 1073741824.0;
+// Largest squared RGB distance: 3 * 255 * 255.
+constexpr std::uint64_t mean_shift_max_color_distance = 195075;
+
+// Conservative bound on max(round(x0 + sp) - x0, x0 - round(x0 - sp)) for
+// the level's native Float32 sp: ceil(sp) + 1 covers cvRound half-steps and
+// the last term covers Float32 rounding of x0 +/- sp (ulp <= magnitude/2^23).
+std::uint64_t mean_shift_radius_envelope(float sp, std::uint64_t extent)
+{
+    const double radius = static_cast<double>(sp);
+    const double float_error =
+        std::ceil((radius + static_cast<double>(extent)) / 4194304.0);
+    return static_cast<std::uint64_t>(std::ceil(radius)) + 1 +
+           static_cast<std::uint64_t>(float_error);
+}
+
+// Largest sum of `window` consecutive indices within 0 .. extent - 1 (the
+// last-positioned window): window * (2 * extent - window - 1) / 2.
+std::uint64_t mean_shift_coordinate_sum(std::uint64_t window,
+                                        std::uint64_t extent)
+{
+    return window * (2 * extent - window - 1) / 2;
+}
+
+// ABI safety: validates native scalar arithmetic that OpenCV performs
+// before (sr * sr rounding) or without (spatial rounding, int accumulators,
+// propagation pointers) any overflow check.
+opencv_imgproc_status mean_shift_radius_preflight(double spatial_radius,
+                                                  double color_radius)
+{
+    // ABI safety: native evaluates cvRound(sr * sr) into an int before it
+    // validates the source; a NaN/Inf or >= INT_MAX operand is undefined
+    // for the int conversion.
+    if (!std::isfinite(color_radius))
+        return invalid_argument("mean shift color radius must be finite");
+    const double squared_color = color_radius * color_radius;
+    if (!std::isfinite(squared_color) ||
+        squared_color > static_cast<double>(pyramid_int_max) - 1.0)
+        return invalid_argument(
+            "mean shift squared color radius overflows native int rounding");
+
+    // ABI safety: native converts sp0 / (1 << level) to float (undefined
+    // beyond FLT_MAX) and passes x0 +/- sp to cvRound -> int.
+    if (!std::isfinite(spatial_radius) ||
+        std::fabs(spatial_radius) > mean_shift_round_limit)
+        return invalid_argument(
+            "mean shift spatial radius overflows native int rounding");
+    return OPENCV_IMGPROC_OK;
+}
+
+// ABI safety: bounds the signed-int mean-shift arithmetic of one level of
+// width x height packed CV_8UC3 pixels for the level's Float32 radius.
+opencv_imgproc_status mean_shift_level_preflight(std::uint64_t width,
+                                                 std::uint64_t height,
+                                                 float sp)
+{
+    // ABI safety: native narrows the packed row step to int and forms
+    // (miny - i) * sstep, (minx - j) * 3, sstep - window * 3 and
+    // dstep - width * 3 in int; the IPP pyrUp path also narrows the packed
+    // steps of this level. Requiring the packed RGB span to fit bounds all.
+    if (width > pyramid_int_max / 3 ||
+        width * 3 > pyramid_int_max / height)
+        return invalid_argument(
+            "mean shift level byte span overflows signed int");
+
+    // ABI safety: the stop test adds |x1 - x0| + |y1 - y0| and a squared
+    // color distance of at most 195075 in int.
+    if ((width - 1) + (height - 1) + mean_shift_max_color_distance >
+        pyramid_int_max)
+        return invalid_argument(
+            "mean shift stop expression overflows signed int");
+
+    const std::uint64_t extent = std::max(width, height);
+    // ABI safety: cvRound(x0 +/- sp) converts a float operand to int.
+    if (static_cast<double>(sp) + static_cast<double>(extent) >
+        mean_shift_round_limit)
+        return invalid_argument(
+            "mean shift spatial window overflows native int rounding");
+
+    // ABI safety: every iteration accumulates count, s0/s1/s2 (<= 255 per
+    // sample), sx += x and sy += y * row_count in signed int over the
+    // clipped window. Bound the largest possible window on this level.
+    const std::uint64_t envelope = mean_shift_radius_envelope(sp, extent);
+    const std::uint64_t window_width = std::min(width, 2 * envelope + 1);
+    const std::uint64_t window_height = std::min(height, 2 * envelope + 1);
+    const std::uint64_t count = window_width * window_height;
+    const std::uint64_t x_sum = mean_shift_coordinate_sum(window_width, width);
+    const std::uint64_t y_sum =
+        mean_shift_coordinate_sum(window_height, height);
+    if (count > pyramid_int_max / 255 ||
+        x_sum > pyramid_int_max / window_height ||
+        y_sum > pyramid_int_max / window_width)
+        return invalid_argument(
+            "mean shift window accumulator overflows signed int");
     return OPENCV_IMGPROC_OK;
 }
 
@@ -5376,6 +5496,127 @@ opencv_imgproc_build_pyramid(
             delete result;
             throw;
         }
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_pyr_mean_shift_filter(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *destination,
+    double spatial_radius,
+    double color_radius,
+    int32_t maximum_pyramid_level,
+    int32_t maximum_iterations,
+    double epsilon)
+{
+    clear_error();
+
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK
+            || src == nullptr) {
+            return invalid_argument("invalid source Mat");
+        }
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK
+            || dst == nullptr) {
+            return invalid_argument("invalid destination Mat");
+        }
+
+        // ABI safety: the shim clones src as a 2-D image and its arithmetic
+        // preflight models packed 3-byte pixels; an empty, N-D, or other
+        // layout would make that model (and the geometry read from rows and
+        // cols) meaningless before native execution.
+        if (src->empty() || src->dims != 2 || src->type() != CV_8UC3) {
+            return invalid_argument(
+                "mean shift source must be nonempty 2-D CV_8UC3");
+        }
+
+        // ABI safety: the preflight loop computes 1 << level (undefined for
+        // negative or >= 31 shifts) and sizes its pyramid walk from it.
+        if (maximum_pyramid_level < 0 ||
+            maximum_pyramid_level > mean_shift_max_level) {
+            return invalid_argument(
+                "mean shift maximum pyramid level must be in 0 .. 8");
+        }
+
+        // ABI safety: reserved as malformed C input. Native clamps the count
+        // into 1 .. 100 and epsilon to >= 0, silently changing the requested
+        // termination criteria that this ABI always passes explicitly.
+        if (maximum_iterations < 1 ||
+            maximum_iterations > mean_shift_max_iterations) {
+            return invalid_argument(
+                "mean shift maximum iterations must be in 1 .. 100");
+        }
+        if (!std::isfinite(epsilon) || epsilon < 0.0) {
+            return invalid_argument(
+                "mean shift epsilon must be finite and nonnegative");
+        }
+
+        opencv_imgproc_status status =
+            mean_shift_radius_preflight(spatial_radius, color_radius);
+        if (status != OPENCV_IMGPROC_OK)
+            return status;
+        // Radius signs are public policy: native clamps each level's sp to at
+        // least 1 and uses only sr * sr, so neither sign is unsafe here.
+
+        std::uint64_t width = static_cast<std::uint64_t>(src->cols);
+        std::uint64_t height = static_cast<std::uint64_t>(src->rows);
+        for (int level = 0; level <= maximum_pyramid_level; ++level) {
+            if (level > 0) {
+                // ABI safety: every level is a natural native pyrDown of the
+                // previous packed CV_8UC3 level.
+                status = pyramid_down_extent_preflight(width, height, 3);
+                if (status != OPENCV_IMGPROC_OK)
+                    return status;
+                const std::uint64_t parent_width = width;
+                const std::uint64_t parent_height = height;
+                width = (width + 1) / 2;
+                height = (height + 1) / 2;
+
+                // ABI safety: propagation forms dst_pyramid[level].ptr() +
+                // step + 3 before testing its interior loop bounds (past
+                // one-past-the-end for a one-row level) and its interior
+                // loop advances by step - (width - 2) * 3, which is unsafe
+                // for degenerate one-column levels. Require >= 2 x 2.
+                if (width < 2 || height < 2) {
+                    return invalid_argument(
+                        "mean shift pyramid level would be smaller than 2 x 2");
+                }
+
+                // ABI safety: propagation runs pyrUp(level -> level - 1) to
+                // the exact parent size, always 2N or 2N - 1 here.
+                status = pyramid_up_extent_preflight(
+                    width, height, 3, parent_width, parent_height);
+                if (status != OPENCV_IMGPROC_OK)
+                    return status;
+            }
+
+            // Exactly native: float sp = (float)(sp0 / (1 << level));
+            // sp = MAX(sp, 1).
+            float sp = static_cast<float>(
+                spatial_radius / static_cast<double>(1 << level));
+            sp = std::max(sp, 1.0f);
+            status = mean_shift_level_preflight(width, height, sp);
+            if (status != OPENCV_IMGPROC_OK)
+                return status;
+        }
+
+        // Logical snapshot: always a packed clone, so Region parents never
+        // reach native pyrDown, native row steps are exactly cols * 3, and
+        // Destination may alias or overlap Source.
+        const cv::Mat logical_source = src->clone();
+        cv::Mat result;
+        cv::pyrMeanShiftFiltering(
+            logical_source, result, spatial_radius, color_radius,
+            maximum_pyramid_level,
+            cv::TermCriteria(
+                cv::TermCriteria::MAX_ITER | cv::TermCriteria::EPS,
+                maximum_iterations, epsilon));
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();
     }

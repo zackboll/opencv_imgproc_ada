@@ -579,6 +579,58 @@ package OpenCV.Image_Processing is
    function Reconstruct_Laplacian_Pyramid
      (Pyramid : OpenCV.Core.Mat_Array) return OpenCV.Core.Mat;
 
+   --  Highest Gaussian pyramid level processed by Pyramid_Mean_Shift_Filter;
+   --  0 filters Source directly without a pyramid.
+   subtype Mean_Shift_Pyramid_Level is Natural range 0 .. 8;
+
+   subtype Mean_Shift_Iteration_Limit is Positive range 1 .. 100;
+
+   --  Per-pixel mean-shift stopping rule. Iteration stops after
+   --  Maximum_Iterations or once the combined spatial/color shift is at
+   --  most Epsilon. Both criteria are always active. Epsilon must be finite
+   --  and nonnegative.
+   type Mean_Shift_Termination is record
+      Maximum_Iterations : Mean_Shift_Iteration_Limit := 5;
+      Epsilon            : OpenCV.Float64_Value := 1.0;
+   end record;
+
+   --  Pyramid_Mean_Shift_Filter performs OpenCV's mean-shift filtering
+   --  (posterization) stage of mean-shift segmentation. Each pixel is
+   --  replaced by the color at which a joint spatial/color mean-shift
+   --  converges: pixels within Spatial_Radius in space and Color_Radius in
+   --  RGB distance are averaged repeatedly. The result is a filtered color
+   --  image; it does not produce connected-region labels.
+   --
+   --  Source must be a non-empty two-dimensional UInt8 C3 Mat. Destination
+   --  receives Source's rows and columns as UInt8 C3. Spatial_Radius must be
+   --  finite and positive (OpenCV raises each level's effective radius to at
+   --  least 1). Color_Radius must be finite and nonnegative; 0 admits only
+   --  identical colors. With Maximum_Pyramid_Level > 0, OpenCV first filters
+   --  a natural Gaussian pyramid from its top level and propagates results
+   --  downward, halving Spatial_Radius per level; results may differ from
+   --  level-0 filtering. Every generated level must stay at least 2 x 2:
+   --  requests whose top level would be narrower are rejected (never
+   --  silently reduced) because OpenCV's propagation performs invalid
+   --  pointer arithmetic on such tiny levels.
+   --
+   --  Source is snapshotted into a private packed copy, so a Region is its
+   --  own logical image and parent pixels never participate; Source is not
+   --  modified. The result is computed into fresh storage and bound to
+   --  Destination only on success; on failure Destination is unchanged.
+   --  Destination may be Source itself or share its storage. Requests whose
+   --  native signed-int radius rounding, row offsets, window accumulators,
+   --  or stopping expression could overflow are rejected before native
+   --  execution. Contract violations and failures reported by OpenCV raise
+   --  OpenCV.OpenCV_Error.
+   procedure Pyramid_Mean_Shift_Filter
+     (Source                : OpenCV.Core.Mat;
+      Destination           : in out OpenCV.Core.Mat;
+      Spatial_Radius        : OpenCV.Float64_Value;
+      Color_Radius          : OpenCV.Float64_Value;
+      Maximum_Pyramid_Level : Mean_Shift_Pyramid_Level := 1;
+      Termination           : Mean_Shift_Termination :=
+        (Maximum_Iterations => 5, Epsilon => 1.0));
+
    --  Match_Template slides Template over Source and writes a score map to
    --  Destination. Source and Template must each be a non-empty
    --  two-dimensional Mat of depth UInt8 or Float32 with 1 to 4 channels, and

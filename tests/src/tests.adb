@@ -26,6 +26,7 @@ with Drawing_Annotation_Tests;
 with Distance_Transform_Tests;
 with Integral_Image_Tests;
 with Laplacian_Tests;
+with Mean_Shift_Tests;
 with Median_Blur_Tests;
 with Morphology_Tests;
 with Pyramid_Construction_Tests;
@@ -89,6 +90,7 @@ begin
    Suite.Add_Test (Drawing_Annotation_Tests.Suite);
    Suite.Add_Test (Hough_Detection_Tests.Suite);
    Suite.Add_Test (Segmentation_Tests.Suite);
+   Suite.Add_Test (Mean_Shift_Tests.Suite);
    Suite.Add_Test (Histogram_Analysis_Tests.Suite);
    Suite.Add_Test (Distance_Transform_Tests.Suite);
    Suite.Add_Test (Integral_Image_Tests.Suite);
