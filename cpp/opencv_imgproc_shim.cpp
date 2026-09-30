@@ -2927,12 +2927,17 @@ const char *grabcut_mode_preflight(
 // setSize in core/matrix.cpp.
 
 // Native storage for one calcHist / calcBackProject call. Every pointer in
-// ranges refers into range_storage and dies with this object.
+// ranges refers into range_storage and dies with this object. channels holds
+// OpenCV's flattened channel numbers.
 struct native_histogram_request {
     std::vector<int> channels;
     std::vector<int> sizes;
     std::vector<std::array<float, 2>> range_storage;
     std::vector<const float *> ranges;
+    // Per-dimension source index and channel within that source. The Float32
+    // scanner uses these so repeated and cross-source selections are exact.
+    std::vector<int> sample_sources;
+    std::vector<int> sample_channels;
 };
 
 // Largest magnitude OpenCV may convert to int with cvFloor / cvRound.
@@ -2973,11 +2978,69 @@ const char *histogram_source_preflight(const cv::Mat &src) noexcept
     }
     if (src.step[0] / src.elemSize1() > native_int_max) {
         // ABI safety: histPrepareImages narrows step / elemSize1 into the
-        // int row delta used for pointer advances.
+        // int row delta used for pointer advances. That same bound dominates
+        // (step / elemSize1 - width * channels): width * channels is the
+        // continuous row length and cannot exceed a valid row step, and both
+        // operands are nonnegative and at most INT_MAX, so their difference
+        // fits in signed int.
         return "histogram source step exceeds native int";
     }
     return nullptr;
 }
+
+// Validates one uniform range and folds its bin count into total.
+const char *histogram_dimension_range(
+    int32_t bin_count, float lower_bound, float upper_bound, int depth,
+    std::uint64_t &total)
+{
+    if (bin_count <= 0) {
+        // ABI safety: OpenCV 5.0 setSize accepts negative extents, and a
+        // zero-bin axis makes 4.10+ clamp bin indices to -1 before the
+        // increment.
+        return "histogram bin counts must be positive";
+    }
+    const double lower = lower_bound;
+    const double upper = upper_bound;
+    if (!std::isfinite(lower) || !std::isfinite(upper) || !(lower < upper)) {
+        // ABI safety: an infinite bound makes the bin offset
+        // -(bins / (upper - lower)) * lower NaN (0 * inf), which cvFloor
+        // converts to int with undefined behavior.
+        return "histogram ranges must be finite with lower < upper";
+    }
+    total *= static_cast<std::uint64_t>(bin_count);
+    if (total > native_int_max) {
+        // ABI safety: OpenCV 5.0 setSize multiplies size_t steps without
+        // an overflow check, so a wrapping bin product under-allocates
+        // the dense histogram; the bound also keeps compareHist's int
+        // plane length and native int bin indices exact.
+        return "histogram bin product exceeds native int";
+    }
+    const double sample_limit = histogram_sample_limit(depth);
+    if (sample_limit > 0.0) {
+        const double scale = bin_count / (upper - lower);
+        const double offset = -scale * lower;
+        const double high = sample_limit * scale + offset;
+        if (!(std::fabs(offset) < native_int_limit)
+            || !(std::fabs(high) < native_int_limit)) {
+            // ABI safety: the UInt8 lookup table evaluates
+            // cvFloor(j * scale + offset) for every j in 0 .. 255 and
+            // UInt16 code does so for every sample before any range
+            // test; values outside int are undefined conversions.
+            return "histogram range scaling exceeds the native int range";
+        }
+    }
+    return nullptr;
+}
+
+void histogram_finish_ranges(native_histogram_request &request)
+{
+    request.ranges.clear();
+    for (const std::array<float, 2> &range : request.range_storage) {
+        request.ranges.push_back(range.data());
+    }
+}
+
+const char *histogram_mask_preflight(const cv::Mat &source, const cv::Mat *mask);
 
 // Validates the raw dimension records and builds the native call arrays.
 const char *histogram_request(
@@ -3000,7 +3063,6 @@ const char *histogram_request(
         return message;
     }
 
-    const double sample_limit = histogram_sample_limit(src.depth());
     std::uint64_t total = 1;
     for (int32_t index = 0; index < count; ++index) {
         const opencv_imgproc_histogram_dimension &dimension = dimensions[index];
@@ -3009,58 +3071,33 @@ const char *histogram_request(
             // directly before histPrepareImages can check it.
             return "invalid histogram channel";
         }
-        if (dimension.bin_count <= 0) {
-            // ABI safety: OpenCV 5.0 setSize accepts negative extents, and a
-            // zero-bin axis makes 4.10+ clamp bin indices to -1 before the
-            // increment.
-            return "histogram bin counts must be positive";
-        }
-        const double lower = dimension.lower_bound;
-        const double upper = dimension.upper_bound;
-        if (!std::isfinite(lower) || !std::isfinite(upper) || !(lower < upper)) {
-            // ABI safety: an infinite bound makes the bin offset
-            // -(bins / (upper - lower)) * lower NaN (0 * inf), which cvFloor
-            // converts to int with undefined behavior.
-            return "histogram ranges must be finite with lower < upper";
-        }
-        total *= static_cast<std::uint64_t>(dimension.bin_count);
-        if (total > native_int_max) {
-            // ABI safety: OpenCV 5.0 setSize multiplies size_t steps without
-            // an overflow check, so a wrapping bin product under-allocates
-            // the dense histogram; the bound also keeps compareHist's int
-            // plane length and native int bin indices exact.
-            return "histogram bin product exceeds native int";
-        }
-        if (sample_limit > 0.0) {
-            const double scale = dimension.bin_count / (upper - lower);
-            const double offset = -scale * lower;
-            const double high = sample_limit * scale + offset;
-            if (!(std::fabs(offset) < native_int_limit)
-                || !(std::fabs(high) < native_int_limit)) {
-                // ABI safety: the UInt8 lookup table evaluates
-                // cvFloor(j * scale + offset) for every j in 0 .. 255 and
-                // UInt16 code does so for every sample before any range
-                // test; values outside int are undefined conversions.
-                return "histogram range scaling exceeds the native int range";
-            }
+        message = histogram_dimension_range(
+            dimension.bin_count, dimension.lower_bound, dimension.upper_bound,
+            src.depth(), total);
+        if (message != nullptr) {
+            return message;
         }
         request.channels.push_back(static_cast<int>(dimension.channel));
+        request.sample_sources.push_back(0);
+        request.sample_channels.push_back(static_cast<int>(dimension.channel));
         request.sizes.push_back(static_cast<int>(dimension.bin_count));
         request.range_storage.push_back(
             {dimension.lower_bound, dimension.upper_bound});
     }
-    for (const std::array<float, 2> &range : request.range_storage) {
-        request.ranges.push_back(range.data());
-    }
+    histogram_finish_ranges(request);
     return nullptr;
 }
 
 // Inspect only samples that the native histogram will evaluate. Each logical
-// dimension has its own transform, even when channels are repeated.
+// dimension has its own source, channel and transform. Repeated selections
+// are checked again with that dimension's scale.
 const char *histogram_float_samples_preflight(
-    const cv::Mat &src, const cv::Mat *mask,
+    const std::vector<const cv::Mat *> &images, const cv::Mat *mask,
     const native_histogram_request &request)
 {
+    if (images.empty() || images[0] == nullptr) {
+        return "invalid histogram source";
+    }
     std::vector<double> scales;
     std::vector<double> offsets;
     for (std::size_t i = 0; i < request.sizes.size(); ++i) {
@@ -3070,16 +3107,22 @@ const char *histogram_float_samples_preflight(
         scales.push_back(scale);
         offsets.push_back(-scale * lower);
     }
-    for (int row = 0; row < src.rows; ++row) {
-        const float *pixels = src.ptr<float>(row);
-        const uchar *selected = mask == nullptr ? nullptr : mask->ptr<uchar>(row);
-        for (int col = 0; col < src.cols; ++col) {
+    const cv::Mat &geometry = *images[0];
+    for (int row = 0; row < geometry.rows; ++row) {
+        const uchar *selected =
+            mask == nullptr ? nullptr : mask->ptr<uchar>(row);
+        for (int col = 0; col < geometry.cols; ++col) {
             if (selected != nullptr && selected[col] == 0) {
                 continue;
             }
             for (std::size_t i = 0; i < request.sizes.size(); ++i) {
+                const std::size_t source =
+                    static_cast<std::size_t>(request.sample_sources[i]);
+                const cv::Mat &image = *images[source];
+                const float *pixels = image.ptr<float>(row);
                 const float sample = pixels[static_cast<std::size_t>(col)
-                    * src.channels() + request.channels[i]];
+                    * static_cast<std::size_t>(image.channels())
+                    + static_cast<std::size_t>(request.sample_channels[i])];
                 if (!std::isfinite(sample)) {
                     return "nonfinite Float32 histogram sample";
                 }
@@ -3168,24 +3211,166 @@ const char *histogram_inputs(
             || msk == nullptr)) {
         return "invalid histogram mask";
     }
-    if (msk != nullptr && (msk->type() != CV_8UC1 || msk->dims != 2
-                           || msk->size != src->size)) {
+    const char *message =
+        histogram_request(*src, dimensions, dimension_count, request);
+    if (message == nullptr) {
+        message = histogram_mask_preflight(*src, msk);
+    }
+    if (message == nullptr && src->depth() == CV_32F) {
+        message = histogram_float_samples_preflight(
+            std::vector<const cv::Mat *>{src}, msk, request);
+    }
+    return message;
+}
+
+// prefix[i] is the channel count of every source before i.
+const char *histogram_channel_prefix(
+    const std::vector<const cv::Mat *> &images,
+    std::vector<std::int64_t> &prefix)
+{
+    if (images.empty() || images[0] == nullptr) {
+        return "invalid histogram source";
+    }
+    if (const char *message = histogram_source_preflight(*images[0])) {
+        return message;
+    }
+    prefix.assign(images.size() + 1, 0);
+    std::int64_t total_channels = 0;
+    const cv::Mat &first = *images[0];
+    for (std::size_t index = 0; index < images.size(); ++index) {
+        const cv::Mat *image = images[index];
+        if (image == nullptr) {
+            // ABI safety: histPrepareImages dereferences images[j].
+            return "invalid histogram source";
+        }
+        if (index > 0) {
+            if (const char *message = histogram_source_preflight(*image)) {
+                return message;
+            }
+            if (image->rows != first.rows || image->cols != first.cols
+                || image->depth() != first.depth()) {
+                // ABI safety: histPrepareImages asserts size and depth against
+                // images[0], then advances every image with images[0]'s
+                // element size.
+                return "histogram sources must share rows, columns, and depth";
+            }
+        }
+        prefix[index] = total_channels;
+        total_channels += static_cast<std::int64_t>(image->channels());
+        if (total_channels > static_cast<std::int64_t>(native_int_max)) {
+            // ABI safety: histPrepareImages subtracts channel counts from the
+            // flattened channel using signed int.
+            return "histogram native channel exceeds native int";
+        }
+    }
+    prefix[images.size()] = total_channels;
+    return nullptr;
+}
+
+const char *histogram_native_channel(
+    const std::vector<const cv::Mat *> &images,
+    const std::vector<std::int64_t> &prefix, int32_t source_position,
+    int32_t channel, int &native_channel)
+{
+    if (source_position < 0
+        || static_cast<std::size_t>(source_position) >= images.size()) {
+        // ABI safety: an out-of-range source position makes histPrepareImages
+        // read past the image span while subtracting channel counts.
+        return "invalid histogram source position";
+    }
+    const cv::Mat &selected =
+        *images[static_cast<std::size_t>(source_position)];
+    if (channel < 0 || channel >= selected.channels()) {
+        // ABI safety: the Float32 scanner and histPrepareImages index this
+        // channel inside the selected source.
+        return "invalid histogram channel";
+    }
+    const std::int64_t flattened =
+        prefix[static_cast<std::size_t>(source_position)]
+        + static_cast<std::int64_t>(channel);
+    if (flattened > static_cast<std::int64_t>(native_int_max)) {
+        // ABI safety: the flattened channel is stored as int before OpenCV
+        // walks it.
+        return "histogram native channel exceeds native int";
+    }
+    native_channel = static_cast<int>(flattened);
+    return nullptr;
+}
+
+const char *histogram_multi_request(
+    const std::vector<const cv::Mat *> &images,
+    const opencv_imgproc_histogram_source_dimension *dimensions,
+    int32_t count, native_histogram_request &request)
+{
+    if (count < 1 || count > OPENCV_IMGPROC_HISTOGRAM_MAX_DIMENSIONS) {
+        // ABI safety: OpenCV 5.0 Mat stores at most MatShape::MAX_DIMS (10)
+        // extents in a fixed array, and the shim sizes its native arrays
+        // from count.
+        return "histogram dimension count must be in 1 .. 10";
+    }
+    if (dimensions == nullptr) {
+        return "histogram dimensions must not be null";
+    }
+    std::vector<std::int64_t> prefix;
+    const char *message = histogram_channel_prefix(images, prefix);
+    if (message != nullptr) {
+        return message;
+    }
+    std::uint64_t total = 1;
+    for (int32_t index = 0; index < count; ++index) {
+        const opencv_imgproc_histogram_source_dimension &dimension =
+            dimensions[index];
+        int native = 0;
+        message = histogram_native_channel(
+            images, prefix, dimension.source_position, dimension.channel,
+            native);
+        if (message != nullptr) {
+            return message;
+        }
+        message = histogram_dimension_range(
+            dimension.bin_count, dimension.lower_bound, dimension.upper_bound,
+            images[0]->depth(), total);
+        if (message != nullptr) {
+            return message;
+        }
+        request.channels.push_back(native);
+        request.sample_sources.push_back(dimension.source_position);
+        request.sample_channels.push_back(dimension.channel);
+        request.sizes.push_back(static_cast<int>(dimension.bin_count));
+        request.range_storage.push_back(
+            {dimension.lower_bound, dimension.upper_bound});
+    }
+    histogram_finish_ranges(request);
+    return nullptr;
+}
+
+const char *histogram_mask_preflight(
+    const cv::Mat &source, const cv::Mat *mask)
+{
+    if (mask == nullptr) {
+        return nullptr;
+    }
+    if (mask->type() != CV_8UC1 || mask->dims != 2 || mask->size != source.size) {
         // ABI safety: the Float32 scanner reads mask rows as UInt8 C1 at
         // source coordinates; other layouts could be read out of bounds.
         return "histogram mask must be matching 2-D UInt8 C1";
     }
-    const char *message =
-        histogram_request(*src, dimensions, dimension_count, request);
-    if (message == nullptr && msk != nullptr && msk->dims == 2
-        && msk->step[0] > native_int_max) {
+    if (mask->step[0] > native_int_max) {
         // ABI safety: histPrepareImages narrows the UInt8 mask row step into
         // an int pointer delta.
-        message = "histogram mask step exceeds native int";
+        return "histogram mask step exceeds native int";
     }
-    if (message == nullptr && src->depth() == CV_32F) {
-        message = histogram_float_samples_preflight(*src, msk, request);
+    return nullptr;
+}
+
+void histogram_publish_shape(cv::Mat &result, int32_t dimension_count,
+                             const native_histogram_request &request)
+{
+    if (dimension_count == 1 && result.dims != 2) {
+        // OpenCV 5.0 creates a genuine 1-D Mat where 4.x creates
+        // bins x 1; publish the 4.x shape on every release.
+        result = cv::Mat(request.sizes[0], 1, CV_32F, result.data).clone();
     }
-    return message;
 }
 
 opencv_imgproc_status calc_hist_impl(
@@ -3228,16 +3413,69 @@ opencv_imgproc_status calc_hist_impl(
                 static_cast<int>(dimension_count), request.sizes.data(),
                 request.ranges.data(), true, false);
         }
-        if (dimension_count == 1 && result.dims != 2) {
-            // OpenCV 5.0 creates a genuine 1-D Mat where 4.x creates
-            // bins x 1; publish the 4.x shape on every release.
-            result = cv::Mat(request.sizes[0], 1, CV_32F, result.data).clone();
-        }
+        histogram_publish_shape(result, dimension_count, request);
         *dst = result;
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+// Resolves the raw source span before any image metadata is read. The span
+// itself is dereferenced by this function, so a null pointer or a null
+// element is an ABI fault rather than an OpenCV semantic rejection.
+const char *histogram_resolve_sources(
+    const opencv_core_mat_handle *const *sources, int32_t source_count,
+    std::vector<const cv::Mat *> &images)
+{
+    if (source_count <= 0) {
+        // ABI safety: histPrepareImages reads images[0] with no nimages check
+        // on OpenCV 4.1, and a nonpositive count would form an empty span.
+        return "histogram source count must be positive";
+    }
+    if (sources == nullptr) {
+        // ABI safety: the shim indexes sources[i] before OpenCV sees it.
+        return "histogram sources must not be null";
+    }
+    images.clear();
+    images.reserve(static_cast<std::size_t>(source_count));
+    for (int32_t index = 0; index < source_count; ++index) {
+        const cv::Mat *image = nullptr;
+        if (opencv_core_module_input_mat(sources[index], &image) != OPENCV_CORE_OK
+            || image == nullptr) {
+            // ABI safety: a missing handle would be passed to histPrepareImages
+            // as a Mat reference.
+            return "invalid histogram source";
+        }
+        images.push_back(image);
+    }
+    return nullptr;
+}
+
+// OpenCV treats any 2-D histogram with a unit axis as 1-D (4.x: size[1] == 1;
+// 5.0: rows or cols == 1). A trailing one-bin axis repeating the first
+// dimension's native channel and range keeps every real axis and filters
+// nothing extra.
+void histogram_back_project_workaround(native_histogram_request &request,
+                                       cv::Mat &native)
+{
+    if (request.sizes.size() == 2
+        && (request.sizes[0] == 1 || request.sizes[1] == 1)) {
+        const int sizes[3] = {request.sizes[0], request.sizes[1], 1};
+        native = native.reshape(1, 3, sizes);
+        request.channels.push_back(request.channels[0]);
+        request.ranges.push_back(request.ranges[0]);
+    }
+}
+
+const char *histogram_back_project_scale(double scale)
+{
+    if (!std::isfinite(scale) || std::fabs(scale) > FLT_MAX) {
+        // ABI safety: calcBackProject narrows scale to float, which is
+        // undefined for values outside the float range.
+        return "back projection scale must be finite in the float range";
+    }
+    return nullptr;
 }
 
 // Clamp for pre-scaled integer back projection. saturate_cast<uchar/ushort>
@@ -8292,32 +8530,280 @@ opencv_imgproc_calc_back_project(
                 "back projection histogram must be Float32 C1 matching the"
                 " dimension bin counts");
         }
-        if (!std::isfinite(scale) || std::fabs(scale) > FLT_MAX) {
-            // ABI safety: calcBackProject narrows scale to float, which is
-            // undefined for values outside the float range.
-            return invalid_argument(
-                "back projection scale must be finite in the float range");
+        if (const char *scale_message = histogram_back_project_scale(scale)) {
+            return invalid_argument(scale_message);
         }
+        (void)dimension_count;
 
         float native_scale = 1.0f;
         cv::Mat native = back_project_histogram(
             *hist, src->depth(), static_cast<float>(scale), native_scale);
-        if (dimension_count == 2
-            && (request.sizes[0] == 1 || request.sizes[1] == 1)) {
-            // OpenCV treats any 2-D histogram with a unit axis as 1-D (4.x:
-            // size[1] == 1; 5.0: rows or cols == 1) and would drop the
-            // second channel. A trailing one-bin axis that repeats the first
-            // dimension keeps both channels and filters nothing extra.
-            const int sizes[3] = {request.sizes[0], request.sizes[1], 1};
-            native = native.reshape(1, 3, sizes);
-            request.channels.push_back(request.channels[0]);
-            request.ranges.push_back(request.ranges[0]);
-        }
+        histogram_back_project_workaround(request, native);
         cv::Mat result;
         cv::calcBackProject(
             src, 1, request.channels.data(), native, result,
             request.ranges.data(), native_scale, true);
         *dst = result;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status calc_hist_multi_impl(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_core_mat_handle *mask,
+    bool masked,
+    const opencv_imgproc_histogram_source_dimension *dimensions,
+    int32_t dimension_count,
+    opencv_core_mat_handle *histogram)
+{
+    clear_error();
+    try {
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_output_mat(histogram, &dst) != OPENCV_CORE_OK
+            || dst == nullptr) {
+            return invalid_argument("invalid histogram output");
+        }
+        std::vector<const cv::Mat *> images;
+        const char *message =
+            histogram_resolve_sources(sources, source_count, images);
+        if (message != nullptr) {
+            return invalid_argument(message);
+        }
+        std::vector<cv::Mat> owned;
+        owned.reserve(images.size());
+        for (const cv::Mat *image : images) {
+            owned.push_back(*image);
+        }
+        const cv::Mat *msk = nullptr;
+        if (masked
+            && (opencv_core_module_input_mat(mask, &msk) != OPENCV_CORE_OK
+                || msk == nullptr)) {
+            return invalid_argument("invalid histogram mask");
+        }
+        native_histogram_request request;
+        message = histogram_multi_request(
+            images, dimensions, dimension_count, request);
+        if (message == nullptr) {
+            message = histogram_mask_preflight(*images[0], msk);
+        }
+        if (message == nullptr && images[0]->depth() == CV_32F) {
+            message = histogram_float_samples_preflight(images, msk, request);
+        }
+        if (message != nullptr) {
+            return invalid_argument(message);
+        }
+
+        // Fresh storage: native accumulate=true is never used. OpenCV 5
+        // would reallocate a portable 1-D N x 1 histogram and then silently
+        // clear it, and every reviewed release accumulates through signed int.
+        cv::Mat result;
+        if (msk != nullptr) {
+            cv::calcHist(
+                owned.data(), static_cast<int>(owned.size()),
+                request.channels.data(), *msk, result,
+                static_cast<int>(dimension_count), request.sizes.data(),
+                request.ranges.data(), true, false);
+        } else {
+            cv::calcHist(
+                owned.data(), static_cast<int>(owned.size()),
+                request.channels.data(), cv::noArray(), result,
+                static_cast<int>(dimension_count), request.sizes.data(),
+                request.ranges.data(), true, false);
+        }
+        histogram_publish_shape(result, dimension_count, request);
+        *dst = result;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_calc_hist_multi(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_imgproc_histogram_source_dimension *dimensions,
+    int32_t dimension_count,
+    opencv_core_mat_handle *histogram)
+{
+    return calc_hist_multi_impl(
+        sources, source_count, nullptr, false, dimensions, dimension_count,
+        histogram);
+}
+
+opencv_imgproc_status
+opencv_imgproc_calc_hist_multi_masked(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_core_mat_handle *mask,
+    const opencv_imgproc_histogram_source_dimension *dimensions,
+    int32_t dimension_count,
+    opencv_core_mat_handle *histogram)
+{
+    return calc_hist_multi_impl(
+        sources, source_count, mask, true, dimensions, dimension_count,
+        histogram);
+}
+
+opencv_imgproc_status
+opencv_imgproc_calc_back_project_multi(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_core_mat_handle *histogram,
+    const opencv_imgproc_histogram_source_dimension *dimensions,
+    int32_t dimension_count,
+    double scale,
+    opencv_core_mat_handle *destination)
+{
+    clear_error();
+    try {
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK
+            || dst == nullptr) {
+            return invalid_argument("invalid back projection destination");
+        }
+        const cv::Mat *hist = nullptr;
+        if (opencv_core_module_input_mat(histogram, &hist) != OPENCV_CORE_OK
+            || hist == nullptr) {
+            return invalid_argument("invalid back projection histogram");
+        }
+        std::vector<const cv::Mat *> images;
+        const char *message =
+            histogram_resolve_sources(sources, source_count, images);
+        if (message != nullptr) {
+            return invalid_argument(message);
+        }
+        std::vector<cv::Mat> owned;
+        owned.reserve(images.size());
+        for (const cv::Mat *image : images) {
+            owned.push_back(*image);
+        }
+        native_histogram_request request;
+        message = histogram_multi_request(
+            images, dimensions, dimension_count, request);
+        if (message != nullptr) {
+            return invalid_argument(message);
+        }
+        if (images[0]->depth() == CV_32F) {
+            message =
+                histogram_float_samples_preflight(images, nullptr, request);
+            if (message != nullptr) {
+                return invalid_argument(message);
+            }
+        }
+        if (hist->type() != CV_32FC1
+            || !histogram_shape_matches(*hist, request.sizes)) {
+            // ABI safety: calcBackProj_ reads bins through hist.step with
+            // indices bounded only by the supplied bin counts, and
+            // reinterprets the data as float.
+            return invalid_argument(
+                "back projection histogram must be Float32 C1 matching the"
+                " dimension bin counts");
+        }
+        if (const char *scale_message = histogram_back_project_scale(scale)) {
+            return invalid_argument(scale_message);
+        }
+        float native_scale = 1.0f;
+        cv::Mat native = back_project_histogram(
+            *hist, images[0]->depth(), static_cast<float>(scale),
+            native_scale);
+        histogram_back_project_workaround(request, native);
+        cv::Mat result;
+        cv::calcBackProject(
+            owned.data(), static_cast<int>(owned.size()),
+            request.channels.data(), native, result, request.ranges.data(),
+            native_scale, true);
+        *dst = result;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+bool histogram_values_addable(const cv::Mat &hist, const char *&message)
+{
+    if (hist.empty() || hist.type() != CV_32FC1) {
+        // ABI safety: addition reinterprets every element as float.
+        message = "histogram addition requires nonempty Float32 C1";
+        return false;
+    }
+    if (hist.total() > native_int_max) {
+        // ABI safety: the dense-histogram contract bounds the element count
+        // by signed int; a larger Mat would walk past that allocation model.
+        message = "histogram bin product exceeds native int";
+        return false;
+    }
+    const cv::Mat continuous = hist.isContinuous() ? hist : hist.clone();
+    const float *values = continuous.ptr<float>();
+    for (std::size_t index = 0; index < continuous.total(); ++index) {
+        const float value = values[index];
+        if (!std::isfinite(value)) {
+            message = "histogram bin must be finite";
+            return false;
+        }
+        if (value < 0.0f) {
+            message = "histogram bin must be nonnegative";
+            return false;
+        }
+    }
+    message = nullptr;
+    return true;
+}
+
+opencv_imgproc_status
+opencv_imgproc_add_histograms(
+    const opencv_core_mat_handle *base,
+    const opencv_core_mat_handle *increment,
+    opencv_core_mat_handle *result)
+{
+    clear_error();
+    try {
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_output_mat(result, &dst) != OPENCV_CORE_OK
+            || dst == nullptr) {
+            return invalid_argument("invalid histogram output");
+        }
+        const cv::Mat *left = nullptr;
+        const cv::Mat *right = nullptr;
+        if (opencv_core_module_input_mat(base, &left) != OPENCV_CORE_OK
+            || left == nullptr
+            || opencv_core_module_input_mat(increment, &right) != OPENCV_CORE_OK
+            || right == nullptr) {
+            return invalid_argument("invalid histogram");
+        }
+        const char *message = nullptr;
+        if (!histogram_values_addable(*left, message)
+            || !histogram_values_addable(*right, message)) {
+            return invalid_argument(message);
+        }
+        if (left->dims != right->dims || left->size != right->size) {
+            // ABI safety: mismatched shapes would read past the shorter Mat
+            // while pairing bins.
+            return invalid_argument("histogram shapes must match");
+        }
+        const cv::Mat a = left->isContinuous() ? *left : left->clone();
+        const cv::Mat b = right->isContinuous() ? *right : right->clone();
+        cv::Mat sum(a.dims, a.size.p, CV_32F);
+        const float *left_values = a.ptr<float>();
+        const float *right_values = b.ptr<float>();
+        float *out = sum.ptr<float>();
+        for (std::size_t index = 0; index < a.total(); ++index) {
+            const long double widened =
+                static_cast<long double>(left_values[index])
+                + static_cast<long double>(right_values[index]);
+            const long double float_max = static_cast<long double>(
+                std::numeric_limits<float>::max());
+            if (!std::isfinite(widened) || widened > float_max) {
+                // Nothing is published: sum is still local.
+                return invalid_argument(
+                    "histogram sum is not a finite Float32 value");
+            }
+            out[index] = static_cast<float>(widened);
+        }
+        *dst = sum;
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

@@ -1857,11 +1857,11 @@ package OpenCV.Image_Processing is
 
    subtype Histogram_Bin_Count is Positive range 1 .. 2_147_483_647;
 
-   --  One uniform histogram axis. Channel is zero-based relative to the
-   --  Source Mat. Bin_Count equal-width bins cover the half-open range
-   --  [Lower_Bound, Upper_Bound); samples below Lower_Bound or at or above
-   --  Upper_Bound are not counted. Both bounds must be finite with
-   --  Lower_Bound < Upper_Bound.
+   --  One uniform histogram axis of a single source. Channel is zero-based
+   --  relative to that Source Mat. Bin_Count equal-width bins cover the
+   --  half-open range [Lower_Bound, Upper_Bound); samples below Lower_Bound
+   --  or at or above Upper_Bound are not counted. Both bounds must be finite
+   --  with Lower_Bound < Upper_Bound. Internally this is source position 0.
    type Histogram_Dimension is record
       Channel     : Natural;
       Bin_Count   : Histogram_Bin_Count;
@@ -1873,18 +1873,42 @@ package OpenCV.Image_Processing is
    type Histogram_Dimension_Array is
      array (Positive range <>) of Histogram_Dimension;
 
+   --  One uniform axis of a multi-source histogram. Source_Position is the
+   --  zero-based position in Mat_Array iteration order, independent of the
+   --  array's lower bound: position 0 is Sources'First. Channel is
+   --  zero-based within that selected source. Native concatenated channel
+   --  numbers are not part of this type.
+   type Histogram_Source_Dimension is record
+      Source_Position : Natural;
+      Channel         : Natural;
+      Bin_Count       : Histogram_Bin_Count;
+      Lower_Bound     : OpenCV.Float32_Value;
+      Upper_Bound     : OpenCV.Float32_Value;
+   end record;
+
+   --  Dimension order is iteration order; any index lower bound is accepted.
+   type Histogram_Source_Dimension_Array is
+     array (Positive range <>) of Histogram_Source_Dimension;
+
    --  A dense uniform histogram of Float32 bin counts together with the
-   --  dimension metadata it was calculated with. A Histogram is immutable:
-   --  copies are independent values and no operation exposes its storage.
-   --  A default-initialized Histogram is empty (zero dimensions) and is
-   --  rejected by Compare_Histograms and Back_Project.
+   --  source, channel, and range metadata it was calculated with. A
+   --  Histogram is immutable: copies share no mutable state and no operation
+   --  exposes its storage. A default-initialized Histogram is empty (zero
+   --  dimensions) and is rejected by Compare_Histograms, Back_Project, and
+   --  Accumulate_Histogram.
    type Histogram is private;
 
    function Histogram_Dimension_Count (Value : Histogram) return Natural;
 
    --  Index is 1 .. Histogram_Dimension_Count; others raise OpenCV_Error.
+   --  The returned dimension does not include Source_Position.
    function Get_Histogram_Dimension
      (Value : Histogram; Index : Positive) return Histogram_Dimension;
+
+   --  Zero-based source position stored for Index. Single-source histograms
+   --  always report 0. Index outside 1 .. Dimension_Count raises OpenCV_Error.
+   function Get_Histogram_Source_Position
+     (Value : Histogram; Index : Positive) return Natural;
 
    --  Returns an independent deep copy of the Float32 C1 bin counts. A
    --  one-dimensional histogram is a Bin_Count x 1 Mat, a two-dimensional
@@ -1897,7 +1921,8 @@ package OpenCV.Image_Processing is
    --  normalization). Source must be a nonempty two-dimensional UInt8,
    --  UInt16 or Float32 Mat, every Channel must be below Source.Channels,
    --  and Dimensions'Length must be 1 .. Maximum_Histogram_Dimensions. A
-   --  Region is treated as the whole image. Source is not modified.
+   --  Region is treated as the whole image. Source is not modified. Every
+   --  stored source position is 0.
    function Calculate_Histogram
      (Source : OpenCV.Core.Mat; Dimensions : Histogram_Dimension_Array)
       return Histogram;
@@ -1909,6 +1934,27 @@ package OpenCV.Image_Processing is
      (Source     : OpenCV.Core.Mat;
       Mask       : OpenCV.Core.Mat;
       Dimensions : Histogram_Dimension_Array) return Histogram;
+
+   --  Joint histogram of every Sources element. Sources must be nonempty and
+   --  may have any array bounds. Each element must be a nonempty 2-D UInt8,
+   --  UInt16 or Float32 Mat; every element must share the first element's
+   --  rows, columns and depth. Channel counts may differ. Each dimension's
+   --  Source_Position is a zero-based iteration position (not the Ada index)
+   --  and must be below Sources'Length; its Channel must exist on that
+   --  source. Dimensions'Length is 1 .. Maximum_Histogram_Dimensions. No
+   --  source is modified. A Region is its logical view.
+   function Calculate_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Dimensions : Histogram_Source_Dimension_Array) return Histogram;
+
+   --  As above, counting only locations whose Mask value is nonzero. Mask
+   --  must be a nonempty 2-D UInt8 C1 Mat with the common source geometry.
+   --  It is applied at the same (row, column) of every source and may share
+   --  storage with a source. Mask is not modified.
+   function Calculate_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Mask       : OpenCV.Core.Mat;
+      Dimensions : Histogram_Source_Dimension_Array) return Histogram;
 
    --  OpenCV comparison metrics. None is a normalized similarity score.
    --  Correlation: larger is more similar; identical histograms give 1.
@@ -1928,7 +1974,9 @@ package OpenCV.Image_Processing is
       Kullback_Leibler_Divergence);
 
    --  Left and Right must have the same dimension count and, per dimension,
-   --  the same Bin_Count, Lower_Bound and Upper_Bound. Channels may differ.
+   --  the same Bin_Count, Lower_Bound and Upper_Bound. Source positions and
+   --  channels may differ: comparison is of bin geometry and counts, not of
+   --  sample provenance.
    function Compare_Histograms
      (Left   : Histogram;
       Right  : Histogram;
@@ -1937,15 +1985,52 @@ package OpenCV.Image_Processing is
    --  Returns a new Mat with Source's rows and columns and depth and one
    --  channel, holding for each pixel the Distribution bin value of its
    --  selected channels multiplied by Scale (saturated for UInt8 and
-   --  UInt16), or 0 when a sample lies outside a range. The channels and
-   --  ranges stored in Distribution are used. Source must be a nonempty
-   --  two-dimensional UInt8, UInt16 or Float32 Mat containing every stored
-   --  channel; Scale must be finite. A Region is back-projected in view
-   --  coordinates. Source and Distribution are not modified.
+   --  UInt16), or 0 when a sample lies outside a range. Every stored source
+   --  position must be 0; a histogram that selects another source raises
+   --  OpenCV_Error. Source must be a nonempty two-dimensional UInt8, UInt16
+   --  or Float32 Mat containing every stored channel; Scale must be finite.
+   --  A Region is back-projected in view coordinates. Source and
+   --  Distribution are not modified.
    function Back_Project
      (Source       : OpenCV.Core.Mat;
       Distribution : Histogram;
       Scale        : OpenCV.Float64_Value := 1.0) return OpenCV.Core.Mat;
+
+   --  Back-projects Sources through the source positions and channels stored
+   --  in Distribution. Sources must be nonempty, share rows, columns and a
+   --  supported depth, and contain every stored Source_Position. The result
+   --  has the first source's rows, columns and depth, and one channel.
+   --  Sources and Distribution are not modified. Array bounds do not affect
+   --  stored positions: position 0 is Sources'First.
+   function Back_Project
+     (Sources      : OpenCV.Core.Mat_Array;
+      Distribution : Histogram;
+      Scale        : OpenCV.Float64_Value := 1.0) return OpenCV.Core.Mat;
+
+   --  Returns a new histogram with Base's metadata and the Float32 sum of
+   --  Base's bins and a fresh histogram of Source using those dimensions.
+   --  Base must already be calculated, and every stored source position must
+   --  be 0. Base, Source and (when present) Mask are not modified. The sum
+   --  is checked in a wider type; a nonfinite, negative or non-Float32 sum
+   --  rejects the whole update. Counts above 2**24 may lose integer-unit
+   --  precision because storage is Float32. This does not call native
+   --  calcHist with accumulate=true.
+   function Accumulate_Histogram
+     (Base : Histogram; Source : OpenCV.Core.Mat) return Histogram;
+   function Accumulate_Histogram
+     (Base : Histogram; Source : OpenCV.Core.Mat; Mask : OpenCV.Core.Mat)
+      return Histogram;
+
+   --  As above, using Base's stored source positions and channels. Sources
+   --  within this call must share geometry and depth. Separate accumulation
+   --  calls need not share geometry with each other or with the images that
+   --  produced Base.
+   function Accumulate_Histogram
+     (Base : Histogram; Sources : OpenCV.Core.Mat_Array) return Histogram;
+   function Accumulate_Histogram
+     (Base    : Histogram;
+      Sources : OpenCV.Core.Mat_Array;
+      Mask    : OpenCV.Core.Mat) return Histogram;
 
 private
    type Morphology_Border_Value is record
@@ -1995,12 +2080,13 @@ private
    package Histogram_Dimension_Vectors is new
      Ada.Containers.Vectors
        (Index_Type   => Positive,
-        Element_Type => Histogram_Dimension);
+        Element_Type => Histogram_Source_Dimension);
 
    --  Values is the dense Float32 histogram produced by this package and
    --  referenced by no other header; Mat assignment is shallow, but no
    --  operation mutates or exposes it, so sharing between copies is never
-   --  observable. Dimensions is the authoritative Ada-owned metadata.
+   --  observable. Dimensions is the authoritative Ada-owned metadata,
+   --  including each axis's source position. Single-source axes store 0.
    type Histogram is record
       Values     : OpenCV.Core.Mat;
       Dimensions : Histogram_Dimension_Vectors.Vector;

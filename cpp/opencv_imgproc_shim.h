@@ -1079,13 +1079,25 @@ opencv_imgproc_mat_storage_overlap(
     uint8_t *overlap);
 
 /* One uniform histogram dimension: zero-based source channel, positive bin
- * count, and the half-open range [lower_bound, upper_bound). */
+ * count, and the half-open range [lower_bound, upper_bound). Source position
+ * is implicitly 0. */
 typedef struct {
     int32_t channel;
     int32_t bin_count;
     float lower_bound;
     float upper_bound;
 } opencv_imgproc_histogram_dimension;
+
+/* One uniform axis of a multi-source histogram. source_position is the
+ * zero-based index into the source-handle span (iteration order). channel is
+ * zero-based within that source, not a concatenated native channel number. */
+typedef struct {
+    int32_t source_position;
+    int32_t channel;
+    int32_t bin_count;
+    float lower_bound;
+    float upper_bound;
+} opencv_imgproc_histogram_source_dimension;
 
 /* Portable dense-histogram dimensionality: OpenCV 4.x allows CV_MAX_DIM
  * (32) Mat dimensions, but OpenCV 5.0 limits Mat to MatShape::MAX_DIMS
@@ -1123,6 +1135,31 @@ opencv_imgproc_calc_hist_masked(
     int32_t dimension_count,
     opencv_core_mat_handle *histogram);
 
+/*
+ * Dense uniform joint histogram of source_count images. Every source must
+ * share rows, columns and depth (UInt8, UInt16 or Float32); channel counts
+ * may differ. Each dimension selects (source_position, channel). The Float32
+ * C1 result replaces *histogram only on success. accumulate is always false.
+ */
+opencv_imgproc_status
+opencv_imgproc_calc_hist_multi(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_imgproc_histogram_source_dimension *dimensions,
+    int32_t dimension_count,
+    opencv_core_mat_handle *histogram);
+
+/* As opencv_imgproc_calc_hist_multi, counting only locations whose UInt8 C1
+ * mask (common source geometry) is nonzero. */
+opencv_imgproc_status
+opencv_imgproc_calc_hist_multi_masked(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_core_mat_handle *mask,
+    const opencv_imgproc_histogram_source_dimension *dimensions,
+    int32_t dimension_count,
+    opencv_core_mat_handle *histogram);
+
 /* cv::compareHist on two dense Float32 histograms. *result is 0 on
  * failure. */
 opencv_imgproc_status
@@ -1146,6 +1183,34 @@ opencv_imgproc_calc_back_project(
     int32_t dimension_count,
     double scale,
     opencv_core_mat_handle *destination);
+
+/*
+ * Back projection of a source span through the same source/channel records
+ * used by opencv_imgproc_calc_hist_multi. The result has sources[0]'s rows,
+ * columns and depth, and one channel. It replaces *destination only on
+ * success.
+ */
+opencv_imgproc_status
+opencv_imgproc_calc_back_project_multi(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_core_mat_handle *histogram,
+    const opencv_imgproc_histogram_source_dimension *dimensions,
+    int32_t dimension_count,
+    double scale,
+    opencv_core_mat_handle *destination);
+
+/*
+ * Elementwise Float32 sum of two nonempty C1 histograms with identical exact
+ * shape. Every bin must be finite and nonnegative, and every widened sum must
+ * be a finite Float32. *result is bound only after every bin succeeds.
+ * This is the portable substitute for calcHist(..., accumulate=true).
+ */
+opencv_imgproc_status
+opencv_imgproc_add_histograms(
+    const opencv_core_mat_handle *base,
+    const opencv_core_mat_handle *increment,
+    opencv_core_mat_handle *result);
 
 #ifdef __cplusplus
 }

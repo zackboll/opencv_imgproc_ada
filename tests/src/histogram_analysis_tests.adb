@@ -1400,6 +1400,608 @@ package body Histogram_Analysis_Tests is
       end;
    end Float32_Index_Preflight;
 
+   function Source_Dimension
+     (Position, Channel : Natural;
+      Bins              : Positive;
+      Lower, Upper      : OpenCV.Float32_Value)
+      return IP.Histogram_Source_Dimension
+   is ((Source_Position => Position,
+        Channel         => Channel,
+        Bin_Count       => Bins,
+        Lower_Bound     => Lower,
+        Upper_Bound     => Upper));
+
+   function Bin2
+     (Value : IP.Histogram; Row, Column : Natural) return Long_Float
+   is (Long_Float (F32.Get (IP.Histogram_Values (Value), Row, Column)));
+
+   procedure Multi_Source_Calculation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Left    : constant OpenCV.Core.Mat := Row8 ((10, 200, 10, 40));
+      Right   : constant OpenCV.Core.Mat := Row8 ((10, 10, 200, 40));
+      Joint   : constant IP.Histogram :=
+        IP.Calculate_Histogram
+          ((Left, Right),
+           (Source_Dimension (0, 0, 2, 0.0, 256.0),
+            Source_Dimension (1, 0, 2, 0.0, 256.0)));
+      Color   : constant OpenCV.Core.Mat :=
+        Row_C3 (((10, 20, 30), (200, 20, 30), (10, 200, 30)));
+      Extra   : constant OpenCV.Core.Mat := Row8 ((1, 1, 200));
+      Shifted : OpenCV.Core.Mat_Array (10 .. 11);
+      Wide    : OpenCV.Core.Mat := Filled (1, 2, (OpenCV.Core.UInt16, 1));
+      Real    : OpenCV.Core.Mat := Filled (1, 2, (OpenCV.Core.Float32, 1));
+      Mate    : OpenCV.Core.Mat;
+   begin
+      AUnit.Assertions.Assert
+        (Bin2 (Joint, 0, 0) = 2.0
+         and then Bin2 (Joint, 0, 1) = 1.0
+         and then Bin2 (Joint, 1, 0) = 1.0
+         and then Bin2 (Joint, 1, 1) = 0.0,
+         "two C1 sources form an exact 2-D joint histogram");
+      AUnit.Assertions.Assert
+        (IP.Get_Histogram_Source_Position (Joint, 2) = 1
+         and then IP.Get_Histogram_Dimension (Joint, 2).Channel = 0,
+         "joint metadata stores the selected source and channel");
+
+      Shifted (10) := Color;
+      Shifted (11) := Extra;
+      declare
+         Cross : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             (Shifted,
+              (Source_Dimension (0, 2, 2, 0.0, 256.0),
+               Source_Dimension (1, 0, 2, 0.0, 128.0)));
+      begin
+         AUnit.Assertions.Assert
+           (IP.Get_Histogram_Source_Position (Cross, 1) = 0
+            and then IP.Get_Histogram_Source_Position (Cross, 2) = 1
+            and then IP.Get_Histogram_Dimension (Cross, 1).Channel = 2
+            and then Bin2 (Cross, 0, 0) = 2.0
+            and then Bin2 (Cross, 0, 1) = 0.0,
+            "C3 plus C1 selects channels across iteration positions");
+      end;
+
+      declare
+         Repeated : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             ((Left, Right),
+              (Source_Dimension (0, 0, 2, 0.0, 256.0),
+               Source_Dimension (0, 0, 2, 0.0, 128.0)));
+      begin
+         AUnit.Assertions.Assert
+           (Bin2 (Repeated, 0, 0) = 3.0 and then Bin2 (Repeated, 0, 1) = 0.0,
+            "repeated source and channel selections are legal");
+      end;
+
+      U16.Set (Wide, 0, 0, 100);
+      U16.Set (Wide, 0, 1, 40_000);
+      declare
+         H16 : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             (OpenCV.Core.Mat_Array'(Wide, Wide),
+              (Source_Dimension (0, 0, 2, 0.0, 65536.0),
+               Source_Dimension (1, 0, 2, 0.0, 65536.0)));
+      begin
+         AUnit.Assertions.Assert
+           (Bin2 (H16, 0, 0) = 1.0 and then Bin2 (H16, 1, 1) = 1.0,
+            "UInt16 multi-source calculation keeps exact bins");
+      end;
+
+      F32.Set (Real, 0, 0, 0.25);
+      F32.Set (Real, 0, 1, 0.75);
+      Mate := Real.Clone;
+      F32.Set (Mate, 0, 1, 0.25);
+      declare
+         H32 : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             ((Real, Mate),
+              (Source_Dimension (0, 0, 2, 0.0, 1.0),
+               Source_Dimension (1, 0, 2, 0.0, 1.0)));
+      begin
+         AUnit.Assertions.Assert
+           (Bin2 (H32, 0, 0) = 1.0 and then Bin2 (H32, 1, 0) = 1.0,
+            "Float32 multi-source calculation keeps exact bins");
+      end;
+      AUnit.Assertions.Assert
+        (IP.Get_Histogram_Source_Position
+           (IP.Calculate_Histogram (Left, (1 => Quarters)), 1)
+         = 0,
+         "a single-source histogram reports source position 0");
+   end Multi_Source_Calculation;
+
+   procedure Multi_Source_Mask_And_Rejection (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Left  : constant OpenCV.Core.Mat := Row8 ((10, 200, 10, 40));
+      Right : constant OpenCV.Core.Mat := Row8 ((10, 10, 200, 40));
+      Mask  : OpenCV.Core.Mat := Filled (1, 4, (OpenCV.Core.UInt8, 1));
+      Axes  : constant IP.Histogram_Source_Dimension_Array :=
+        (Source_Dimension (0, 0, 2, 0.0, 256.0),
+         Source_Dimension (1, 0, 2, 0.0, 256.0));
+      Empty : OpenCV.Core.Mat_Array (1 .. 0);
+
+      procedure Empty_Sources is
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Histogram (Empty, Axes);
+      begin
+         null;
+      end Empty_Sources;
+
+      procedure Bad_Position is
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             ((Left, Right), (1 => Source_Dimension (2, 0, 2, 0.0, 256.0)));
+      begin
+         null;
+      end Bad_Position;
+
+      procedure Bad_Channel is
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             ((Left, Right), (1 => Source_Dimension (0, 1, 2, 0.0, 256.0)));
+      begin
+         null;
+      end Bad_Channel;
+
+      procedure Bad_Rows is
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             ((Left, Filled (2, 4, (OpenCV.Core.UInt8, 1))), Axes);
+      begin
+         null;
+      end Bad_Rows;
+
+      procedure Bad_Depth is
+         Wide   : constant OpenCV.Core.Mat :=
+           Filled (1, 4, (OpenCV.Core.UInt16, 1));
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Histogram ((Left, Wide), Axes);
+      begin
+         null;
+      end Bad_Depth;
+
+      procedure Bad_Type is
+         Signed : constant OpenCV.Core.Mat :=
+           Filled (1, 4, (OpenCV.Core.Int16, 1));
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Histogram ((Signed, Signed), Axes);
+      begin
+         null;
+      end Bad_Type;
+
+      procedure Bad_Mask is
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             ((Left, Right), Filled (1, 3, (OpenCV.Core.UInt8, 1)), Axes);
+      begin
+         null;
+      end Bad_Mask;
+   begin
+      U8.Set (Mask, 0, 0, 1);
+      U8.Set (Mask, 0, 3, 1);
+      declare
+         Masked : constant IP.Histogram :=
+           IP.Calculate_Histogram ((Left, Right), Mask, Axes);
+      begin
+         AUnit.Assertions.Assert
+           (Bin2 (Masked, 0, 0) = 2.0 and then Bin2 (Masked, 1, 0) = 0.0,
+            "a multi-source mask selects the same locations in every source");
+      end;
+      Assert_Raises (Empty_Sources'Access, "empty Sources is rejected");
+      Assert_Raises
+        (Bad_Position'Access, "a source position past Length fails");
+      Assert_Raises
+        (Bad_Channel'Access, "a missing channel of a source fails");
+      Assert_Raises (Bad_Rows'Access, "mismatched rows are rejected");
+      Assert_Raises (Bad_Depth'Access, "mismatched depths are rejected");
+      Assert_Raises
+        (Bad_Type'Access, "an unsupported source depth is rejected");
+      Assert_Raises (Bad_Mask'Access, "a mismatched multi-source mask fails");
+   end Multi_Source_Mask_And_Rejection;
+
+   function Source_Record
+     (Position, Channel, Bins : Interfaces.Integer_32;
+      Lower, Upper            : Interfaces.C.C_float)
+      return C_API.Histogram_Source_Dimension_Record
+   is ((Source_Position => Position,
+        Channel         => Channel,
+        Bin_Count       => Bins,
+        Lower_Bound     => Lower,
+        Upper_Bound     => Upper));
+
+   procedure Raw_Multi_Validation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Left   : constant OpenCV.Core.Mat := Row8 ((10, 200));
+      Right  : constant OpenCV.Core.Mat := Row8 ((10, 10));
+      Output : OpenCV.Core.Mat := Marker;
+      Good   : aliased constant C_API.Histogram_Source_Dimension_Records :=
+        (Source_Record (0, 0, 2, 0.0, 256.0),
+         Source_Record (1, 0, 2, 0.0, 256.0));
+      Status : C_API.Status := C_API.Success;
+
+      procedure Expect (Fragment, Message : String) is
+      begin
+         Assert_Invalid (Status, Fragment, Message);
+         AUnit.Assertions.Assert
+           (Is_Marker (Output), Message & ": output must be unchanged");
+         Output := Marker;
+      end Expect;
+
+      procedure On_Output
+        (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           C_API.Calc_Hist_Multi
+             (null, 1, Good (Good'First)'Access, 2, Output_Handle);
+      end On_Output;
+
+      procedure With_Left
+        (Left_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         Handles : aliased C_API.Mat_Handle_Array :=
+           (0 => Left_Handle, 1 => Left_Handle);
+
+         procedure With_Right
+           (Right_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Publish
+              (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Handles (1) := Right_Handle;
+               Status :=
+                 C_API.Calc_Hist_Multi
+                   (Handles (0)'Access,
+                    0,
+                    Good (Good'First)'Access,
+                    2,
+                    Output_Handle);
+            end Publish;
+
+            procedure Null_Handle
+              (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               function To_Handle is new
+                 Ada.Unchecked_Conversion
+                   (System.Address,
+                    OpenCV.Core.Module_Interop.Input_Mat_Handle);
+            begin
+               Handles (1) := To_Handle (System.Null_Address);
+               Status :=
+                 C_API.Calc_Hist_Multi
+                   (Handles (0)'Access,
+                    2,
+                    Good (Good'First)'Access,
+                    2,
+                    Output_Handle);
+            end Null_Handle;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Output, Publish'Access);
+            Expect ("positive", "a raw source count of 0 is rejected");
+            Status := C_API.Success;
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Output, Null_Handle'Access);
+            Expect ("invalid histogram source", "a null source handle fails");
+         end With_Right;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Right, With_Right'Access);
+      end With_Left;
+   begin
+      OpenCV.Core.Module_Interop.With_Output_Handle (Output, On_Output'Access);
+      Expect ("null", "a null source span with a positive count fails");
+      OpenCV.Core.Module_Interop.With_Input_Handle (Left, With_Left'Access);
+      declare
+         procedure Negative
+           (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              C_API.Calc_Hist_Multi
+                (null, -1, Good (Good'First)'Access, 2, Output_Handle);
+         end Negative;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Output, Negative'Access);
+         Expect ("positive", "a negative raw source count is rejected");
+      end;
+   end Raw_Multi_Validation;
+
+   procedure Multi_Source_Regions (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Parent_A : constant OpenCV.Core.Mat :=
+        Filled (4, 6, (OpenCV.Core.UInt8, 1), Gray (255.0));
+      Parent_B : constant OpenCV.Core.Mat :=
+        Filled (4, 6, (OpenCV.Core.UInt8, 1), Gray (255.0));
+      View_A   : OpenCV.Core.Mat;
+      View_B   : OpenCV.Core.Mat;
+      Axes     : constant IP.Histogram_Source_Dimension_Array :=
+        (Source_Dimension (0, 0, 2, 0.0, 256.0),
+         Source_Dimension (1, 0, 2, 0.0, 256.0));
+   begin
+      View_A :=
+        OpenCV.Core.Region
+          (Parent_A, (X => 1, Y => 1, Width => 2, Height => 2));
+      View_B :=
+        OpenCV.Core.Region
+          (Parent_B, (X => 3, Y => 0, Width => 2, Height => 2));
+      OpenCV.Core.Set_To (View_A, Gray (10.0));
+      OpenCV.Core.Set_To (View_B, Gray (200.0));
+      declare
+         From_Views  : constant IP.Histogram :=
+           IP.Calculate_Histogram ((View_A, View_B), Axes);
+         From_Clones : constant IP.Histogram :=
+           IP.Calculate_Histogram ((View_A.Clone, View_B.Clone), Axes);
+      begin
+         AUnit.Assertions.Assert
+           (Same
+              (IP.Histogram_Values (From_Views),
+               IP.Histogram_Values (From_Clones))
+            and then Bin2 (From_Views, 0, 1) = 4.0,
+            "Region sources match clones and ignore parent pixels");
+      end;
+      AUnit.Assertions.Assert
+        (U8.Get (Parent_A, 0, 0) = 255 and then U8.Get (Parent_B, 3, 5) = 255,
+         "parent pixels outside either Region are unchanged");
+   end Multi_Source_Regions;
+
+   procedure Multi_Source_Back_Project (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Left    : constant OpenCV.Core.Mat := Row8 ((10, 10, 10));
+      Right   : constant OpenCV.Core.Mat := Row8 ((10, 200, 200));
+      Axes    : constant IP.Histogram_Source_Dimension_Array :=
+        (Source_Dimension (0, 0, 2, 0.0, 256.0),
+         Source_Dimension (1, 0, 2, 0.0, 256.0));
+      Model   : constant IP.Histogram :=
+        IP.Calculate_Histogram ((Left, Right), Axes);
+      Mapped  : constant OpenCV.Core.Mat :=
+        IP.Back_Project ((Left, Right), Model);
+      Shifted : OpenCV.Core.Mat_Array (4 .. 5);
+   begin
+      AUnit.Assertions.Assert
+        (Mapped.Rows = 1
+         and then Mapped.Columns = 3
+         and then Mapped.Depth = OpenCV.Core.UInt8
+         and then Mapped.Channels = 1,
+         "joint back projection geometry is source rows, columns, depth, C1");
+      AUnit.Assertions.Assert
+        (U8.Get (Mapped, 0, 0) = 1
+         and then U8.Get (Mapped, 0, 1) = 2
+         and then U8.Get (Mapped, 0, 2) = 2,
+         "joint pixels map both source positions");
+      Shifted (4) := Left;
+      Shifted (5) := Right;
+      AUnit.Assertions.Assert
+        (Same (IP.Back_Project (Shifted, Model), Mapped),
+         "back projection uses iteration position, not Ada bounds");
+
+      declare
+         procedure Single is
+            Unused : constant OpenCV.Core.Mat := IP.Back_Project (Left, Model);
+         begin
+            null;
+         end Single;
+      begin
+         Assert_Raises
+           (Single'Access,
+            "single-source Back_Project rejects a histogram needing source 1");
+      end;
+
+      declare
+         Legacy : constant IP.Histogram :=
+           IP.Calculate_Histogram (Left, (1 => Quarters));
+         Again  : constant OpenCV.Core.Mat := IP.Back_Project (Left, Legacy);
+      begin
+         AUnit.Assertions.Assert
+           (Again.Channels = 1 and then U8.Get (Again, 0, 0) = 3,
+            "legacy single-source back projection is unchanged");
+      end;
+
+      declare
+         Parent : constant OpenCV.Core.Mat :=
+           Filled (3, 5, (OpenCV.Core.UInt8, 1), Gray (255.0));
+         View   : OpenCV.Core.Mat;
+         Other  : constant OpenCV.Core.Mat := Row8 ((10, 10));
+      begin
+         View :=
+           OpenCV.Core.Region
+             (Parent, (X => 1, Y => 1, Width => 2, Height => 1));
+         OpenCV.Core.Set_To (View, Gray (10.0));
+         declare
+            Regional  : constant IP.Histogram :=
+              IP.Calculate_Histogram ((View, Other), Axes);
+            Projected : constant OpenCV.Core.Mat :=
+              IP.Back_Project ((View, Other), Regional);
+            Cloned    : constant OpenCV.Core.Mat :=
+              IP.Back_Project ((View.Clone, Other.Clone), Regional);
+         begin
+            AUnit.Assertions.Assert
+              (Same (Projected, Cloned) and then Projected.Columns = 2,
+               "Region back projection matches independent clones");
+         end;
+      end;
+
+      declare
+         Source  : constant OpenCV.Core.Mat :=
+           Row_C3 (((10, 20, 0), (10, 200, 0), (200, 20, 0)));
+         Extra   : constant OpenCV.Core.Mat := Row8 ((0, 0, 0));
+         Joint   : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             ((Source, Extra),
+              (Source_Dimension (0, 0, 2, 0.0, 256.0),
+               Source_Dimension (0, 1, 1, 0.0, 128.0)));
+         Leading : constant IP.Histogram :=
+           IP.Calculate_Histogram
+             ((Source, Extra),
+              (Source_Dimension (0, 0, 1, 0.0, 128.0),
+               Source_Dimension (0, 1, 2, 0.0, 256.0)));
+         First   : constant OpenCV.Core.Mat :=
+           IP.Back_Project ((Source, Extra), Joint);
+         Second  : constant OpenCV.Core.Mat :=
+           IP.Back_Project ((Source, Extra), Leading);
+      begin
+         AUnit.Assertions.Assert
+           (U8.Get (First, 0, 0) = 1
+            and then U8.Get (First, 0, 1) = 0
+            and then U8.Get (First, 0, 2) = 1
+            and then U8.Get (Second, 0, 0) = 1
+            and then U8.Get (Second, 0, 1) = 1
+            and then U8.Get (Second, 0, 2) = 0,
+            "a multi-source one-bin axis still filters its channel");
+      end;
+   end Multi_Source_Back_Project;
+
+   procedure Histogram_Accumulation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Batch_A : constant OpenCV.Core.Mat := Row8 ((10, 20, 200));
+      Batch_B : constant OpenCV.Core.Mat := Row8 ((30, 40, 10));
+      Tall    : constant OpenCV.Core.Mat :=
+        Filled (2, 2, (OpenCV.Core.UInt8, 1), Gray (10.0));
+      Axis    : constant IP.Histogram_Dimension_Array :=
+        (1 => Dimension (2, 0.0, 256.0));
+      Base    : constant IP.Histogram :=
+        IP.Calculate_Histogram (Batch_A, Axis);
+      Once    : constant IP.Histogram :=
+        IP.Accumulate_Histogram (Base, Batch_B);
+      Twice   : constant IP.Histogram :=
+        IP.Accumulate_Histogram (Once, Batch_B);
+      Mask    : OpenCV.Core.Mat := Filled (1, 3, (OpenCV.Core.UInt8, 1));
+      Before  : constant OpenCV.Core.Mat := IP.Histogram_Values (Base);
+   begin
+      AUnit.Assertions.Assert
+        (Bin (Once, 0) = 5.0 and then Bin (Once, 1) = 1.0,
+         "accumulation adds a second batch to the first");
+      AUnit.Assertions.Assert
+        (Bin (Twice, 0) = 8.0 and then Bin (Twice, 1) = 1.0,
+         "a second accumulation adds the batch mass again");
+      AUnit.Assertions.Assert
+        (Same (IP.Histogram_Values (Base), Before)
+         and then IP.Get_Histogram_Dimension (Once, 1)
+                  = IP.Get_Histogram_Dimension (Base, 1)
+         and then IP.Get_Histogram_Source_Position (Once, 1) = 0,
+         "Base is unchanged and the result keeps its metadata");
+      U8.Set (Mask, 0, 2, 1);
+      declare
+         Masked : constant IP.Histogram :=
+           IP.Accumulate_Histogram (Base, Batch_B, Mask);
+      begin
+         AUnit.Assertions.Assert
+           (Bin (Masked, 0) = 3.0,
+            "masked accumulation adds only the selected pixel");
+      end;
+      declare
+         Other_Shape : constant IP.Histogram :=
+           IP.Accumulate_Histogram (Base, Tall);
+      begin
+         AUnit.Assertions.Assert
+           (Bin (Other_Shape, 0) = 6.0,
+            "a later batch may have different geometry from Base");
+      end;
+
+      declare
+         Left  : constant OpenCV.Core.Mat := Row8 ((10, 200));
+         Right : constant OpenCV.Core.Mat := Row8 ((200, 10));
+         Axes  : constant IP.Histogram_Source_Dimension_Array :=
+           (Source_Dimension (0, 0, 2, 0.0, 256.0),
+            Source_Dimension (1, 0, 2, 0.0, 256.0));
+         Joint : constant IP.Histogram :=
+           IP.Calculate_Histogram ((Left, Right), Axes);
+         Added : constant IP.Histogram :=
+           IP.Accumulate_Histogram (Joint, (Right, Left));
+      begin
+         AUnit.Assertions.Assert
+           (Bin2 (Added, 0, 1) = 2.0
+            and then Bin2 (Added, 1, 0) = 2.0
+            and then IP.Get_Histogram_Source_Position (Added, 2) = 1,
+            "multi-source accumulation adds joint mass and keeps mapping");
+      end;
+
+      declare
+         procedure Empty_Base is
+            Unused_Base : IP.Histogram;
+            Unused      : constant IP.Histogram :=
+              IP.Accumulate_Histogram (Unused_Base, Batch_A);
+         begin
+            null;
+         end Empty_Base;
+      begin
+         Assert_Raises
+           (Empty_Base'Access, "an uninitialized histogram cannot accumulate");
+      end;
+   end Histogram_Accumulation;
+
+   procedure Raw_Histogram_Addition (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Base   : constant OpenCV.Core.Mat :=
+        IP.Histogram_Values
+          (IP.Calculate_Histogram
+             (Row8 ((10, 20, 30, 200)), (1 => Dimension (2, 0.0, 256.0))));
+      Output : OpenCV.Core.Mat := Marker;
+      Status : C_API.Status := C_API.Success;
+
+      procedure Add (Left, Right : OpenCV.Core.Mat) is
+         procedure With_Left
+           (Left_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure With_Right
+              (Right_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure With_Output
+                 (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+               is
+               begin
+                  Status :=
+                    C_API.Add_Histograms
+                      (Left_Handle, Right_Handle, Output_Handle);
+               end With_Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Output, With_Output'Access);
+            end With_Right;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Right, With_Right'Access);
+         end With_Left;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle (Left, With_Left'Access);
+      end Add;
+
+      procedure Expect (Fragment, Message : String) is
+      begin
+         Assert_Invalid (Status, Fragment, Message);
+         AUnit.Assertions.Assert
+           (Is_Marker (Output), Message & ": output must be unchanged");
+         Output := Marker;
+      end Expect;
+   begin
+      Add (Base, Filled (2, 2, (OpenCV.Core.Float32, 1)));
+      Expect ("shapes", "mismatched histogram shapes are rejected");
+      Add (Base, Filled (4, 1, (OpenCV.Core.Float64, 1)));
+      Expect ("Float32", "a non-Float32 histogram is rejected");
+
+      declare
+         Bad : OpenCV.Core.Mat := Base.Clone;
+      begin
+         F32.Set (Bad, 0, 0, NaN32);
+         Add (Base, Bad);
+         Expect ("finite", "a NaN bin is rejected");
+         F32.Set (Bad, 0, 0, Infinity32);
+         Add (Base, Bad);
+         Expect ("finite", "an infinite bin is rejected");
+         F32.Set (Bad, 0, 0, -1.0);
+         Add (Base, Bad);
+         Expect ("nonnegative", "a negative bin is rejected");
+         F32.Set (Bad, 0, 0, OpenCV.Float32_Value'Last);
+         F32.Set (Bad, 1, 0, OpenCV.Float32_Value'Last);
+         Add (Bad, Bad);
+         Expect ("finite Float32", "a Float32 overflow is not published");
+      end;
+      Add (Base, Base);
+      AUnit.Assertions.Assert
+        (Status = C_API.Success
+         and then F32.Get (Output, 0, 0) = 6.0
+         and then F32.Get (Output, 1, 0) = 2.0,
+         "a valid addition succeeds after earlier rejections");
+   end Raw_Histogram_Addition;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
       procedure Add (Name : String; Routine : Caller.Test_Method) is
       begin
@@ -1438,6 +2040,19 @@ package body Histogram_Analysis_Tests is
       Add ("Back projection raw C ABI", Raw_Back_Project_Validation'Access);
       Add
         ("Float32 histogram index preflight", Float32_Index_Preflight'Access);
+      Add
+        ("Multi-source histogram calculation",
+         Multi_Source_Calculation'Access);
+      Add
+        ("Multi-source histogram mask and rejection",
+         Multi_Source_Mask_And_Rejection'Access);
+      Add ("Multi-source histogram raw span", Raw_Multi_Validation'Access);
+      Add ("Multi-source histogram Regions", Multi_Source_Regions'Access);
+      Add
+        ("Multi-source histogram back projection",
+         Multi_Source_Back_Project'Access);
+      Add ("Histogram accumulation", Histogram_Accumulation'Access);
+      Add ("Histogram raw addition", Raw_Histogram_Addition'Access);
       return Result'Access;
    end Suite;
 
