@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **460 AUnit tests**
+> **Current registered test baseline:** **476 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -65,6 +65,7 @@ Ada package, and built libraries serve different roles.
 
 - [Box blur](#box-blur)
 - [Bilateral filter](#bilateral-filter)
+- [Mean-shift filtering](#mean-shift-filtering)
 - [Filter 2D](#filter-2d)
 - [Sep Filter 2D](#sep-filter-2d)
 - [Morphology](#morphology)
@@ -210,6 +211,7 @@ The table below summarizes the current public operations.
 
 | Filtering | `Box_Blur` | nonempty 2-D; supported numeric depths | positive width/height; even and non-square kernels valid; arbitrary channels; centered anchor; Wrap rejected; in-place supported |
 | Filtering | `Bilateral_Filter` | nonempty 2-D; `UInt8` or `Float32`; 1 or 3 channels | automatic or explicit diameter; positive finite sigmas; Wrap rejected; in-place unsupported |
+| Filtering | `Pyramid_Mean_Shift_Filter` | nonempty 2-D `UInt8` C3; every generated pyramid level >= 2 x 2 | mean-shift posterization (not region labeling); positive spatial / nonnegative color radius; level 0 .. 8; explicit 1 .. 100 iterations and epsilon; Region-local snapshot; Destination rebound only on success; aliasing supported |
 | Filtering | `Filter_2D` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | correlation, not convolution; single-channel Float32/Float64 kernel; destination-depth matrix; Wrap rejected; Same_Depth in-place supported |
 | Filtering | `Sep_Filter_2D` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | Kernel_X then Kernel_Y; 1-D Float32/Float64 vectors of matching depth; destination-depth matrix; Wrap rejected; Same_Depth in-place supported |
 | Morphology | `Erode`, `Dilate` | nonempty 2-D; supported numeric depths | rectangle/cross/ellipse, positive iterations, in-place supported |
@@ -1427,6 +1429,105 @@ Bilateral_Filter (Image, Image, 5, 25.0, 25.0);
 ```
 
 When Destination is distinct, Source remains unchanged.
+
+---
+
+## Mean-shift filtering
+
+API:
+
+```ada
+subtype Mean_Shift_Pyramid_Level is Natural range 0 .. 8;
+
+subtype Mean_Shift_Iteration_Limit is Positive range 1 .. 100;
+
+type Mean_Shift_Termination is record
+   Maximum_Iterations : Mean_Shift_Iteration_Limit := 5;
+   Epsilon            : OpenCV.Float64_Value := 1.0;
+end record;
+
+procedure Pyramid_Mean_Shift_Filter
+  (Source                : OpenCV.Core.Mat;
+   Destination           : in out OpenCV.Core.Mat;
+   Spatial_Radius        : OpenCV.Float64_Value;
+   Color_Radius          : OpenCV.Float64_Value;
+   Maximum_Pyramid_Level : Mean_Shift_Pyramid_Level := 1;
+   Termination           : Mean_Shift_Termination :=
+     (Maximum_Iterations => 5, Epsilon => 1.0));
+```
+
+`Pyramid_Mean_Shift_Filter` binds `cv::pyrMeanShiftFiltering`: the
+**filtering / posterization** stage of mean-shift segmentation. Every pixel is
+moved in joint (x, y, R, G, B) space to the mean of the pixels within
+`Spatial_Radius` spatially and `Color_Radius` in RGB distance, repeatedly,
+and receives the color at which that process converges. Fine texture is
+flattened while strong color edges survive. The result is a filtered
+UInt8 C3 image; it is **not** a region-label map. Connected-region labeling
+of the posterized result is a separate step.
+
+Requirements:
+
+- Source is nonempty, two-dimensional, `UInt8`, and exactly 3 channels;
+- `Spatial_Radius` is finite and strictly positive (OpenCV additionally
+  raises each pyramid level's effective radius to at least 1);
+- `Color_Radius` is finite and nonnegative; `0` admits only identical
+  colors into each neighborhood;
+- `Termination.Maximum_Iterations` is `1 .. 100`, and `Termination.Epsilon`
+  is finite and nonnegative.
+
+Termination always enables both OpenCV criteria (`MAX_ITER | EPS`). The
+default is 5 iterations / epsilon 1, matching OpenCV's own default. No native
+flag or clamping behavior is exposed or relied upon.
+
+### Pyramid levels
+
+`Maximum_Pyramid_Level = 0` filters Source directly. For `N > 0`, OpenCV
+builds a natural Gaussian pyramid of `N` further ceil-half levels, filters the
+top level with `Spatial_Radius / 2 ** N`, and propagates each result down with
+`pyrUp`, refining only pixels near color changes. Pyramid processing is
+faster for large radii but can produce **different results** from level-0
+filtering.
+
+Portable restriction: every generated level `1 .. N` must remain at least
+`2 x 2`. OpenCV's propagation step forms a pointer one row past the start of
+each smaller level before checking its loop bounds, and advances through an
+interior loop whose arithmetic is invalid for one-row or one-column levels.
+Such requests are rejected; the level is never silently reduced. For example,
+a `2 x 2` Source at level 1 (child `1 x 1`) or a `40 x 3` Source at level 2
+(child `10 x 1`) is rejected, while the same Sources succeed at level 0 or 1
+respectively.
+
+### Source, Regions, and Destination
+
+The operation snapshots Source into a private packed clone before filtering:
+
+- Source is never modified;
+- a Region is a complete logical image; parent pixels outside it never
+  influence pyramid construction, filtering, or propagation;
+- Destination is computed into fresh storage and rebound **only on
+  success**; on any failure it keeps its previous header and data;
+- Destination may be Source itself, or a view overlapping Source, and still
+  produces the same result as a distinct Destination.
+
+### Native arithmetic safety
+
+OpenCV evaluates `cvRound(sr * sr)`, `cvRound(x0 +/- sp)`, signed-int row
+offsets, signed-int window accumulators (`count`, color sums, and the
+coordinate sums `sx` / `sy`), and a signed-int stopping expression without
+overflow checks. Before native execution the binding validates the whole
+requested pyramid with widened arithmetic and rejects requests whose values
+could overflow. In particular, a very wide window can overflow the
+coordinate sum even on a small image: a `1 x 100_000` Source with a
+spatial radius spanning the row is rejected. Every `pyrDown` / `pyrUp`
+transition reuses the same checks as `Pyramid_Down` / `Pyramid_Up`.
+
+```ada
+Posterized : Mat;
+...
+Pyramid_Mean_Shift_Filter
+  (Photo, Posterized, Spatial_Radius => 12.0, Color_Radius => 30.0,
+   Maximum_Pyramid_Level => 2);
+```
 
 ---
 
@@ -3627,7 +3728,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **460-test** baseline is:
+The current **476-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3664,10 +3765,11 @@ The current **460-test** baseline is:
 | Drawing annotations | 14 |
 | Hough detection | 37 |
 | Segmentation (flood fill, watershed, GrabCut) | 35 |
+| Mean-shift filtering | 16 |
 | Histogram analysis (calculation, comparison, back projection) | 26 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **460** |
+| **Total** | **476** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4282,9 +4384,8 @@ Notable Imgproc families that are not yet broadly bound include:
   calibration/undistortion map generation in the appropriate module;
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
   (`use_edgeval`) Hough, and `HOUGH_GRADIENT_ALT`;
-- deferred segmentation capabilities: flood fill on `Int32` images,
-  mean-shift segmentation, and higher-level
-  distance-transform marker-construction convenience;
+- deferred segmentation capabilities: flood fill on `Int32` images and
+  higher-level distance-transform marker-construction convenience;
 - advanced histogram capabilities: multi-image histograms, nonuniform bin
   boundaries, accumulation/update, `SparseMat` histograms, and EMD (a future
   sparse-histogram abstraction may revisit the dense 10-dimension limit);

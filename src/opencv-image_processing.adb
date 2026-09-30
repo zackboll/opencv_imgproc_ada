@@ -7911,4 +7911,113 @@ package body OpenCV.Image_Processing is
       end;
    end Back_Project;
 
+   procedure Validate_Pyramid_Mean_Shift_Filter
+     (Source                : OpenCV.Core.Mat;
+      Spatial_Radius        : OpenCV.Float64_Value;
+      Color_Radius          : OpenCV.Float64_Value;
+      Maximum_Pyramid_Level : Mean_Shift_Pyramid_Level;
+      Termination           : Mean_Shift_Termination)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Float64_Value;
+
+      Columns : Long_Long_Integer;
+      Rows    : Long_Long_Integer;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth /= OpenCV.Core.UInt8
+        or else Source.Channels /= 3
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Pyramid_Mean_Shift_Filter requires a non-empty two-dimensional"
+            & " UInt8 C3 source Mat");
+      end if;
+
+      if not Is_Finite (Spatial_Radius) or else Spatial_Radius <= 0.0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Pyramid_Mean_Shift_Filter Spatial_Radius must be finite and"
+            & " positive");
+      end if;
+
+      if not Is_Finite (Color_Radius) or else Color_Radius < 0.0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Pyramid_Mean_Shift_Filter Color_Radius must be finite and"
+            & " nonnegative");
+      end if;
+
+      if not Is_Finite (Termination.Epsilon) or else Termination.Epsilon < 0.0
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Pyramid_Mean_Shift_Filter Epsilon must be finite and"
+            & " nonnegative");
+      end if;
+
+      --  Portable policy: every generated level must remain at least 2 x 2.
+      Columns := Long_Long_Integer (Source.Columns);
+      Rows := Long_Long_Integer (Source.Rows);
+      for Level in 1 .. Maximum_Pyramid_Level loop
+         Columns := (Columns + 1) / 2;
+         Rows := (Rows + 1) / 2;
+         if Columns < 2 or else Rows < 2 then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Pyramid_Mean_Shift_Filter pyramid level"
+               & Level'Image
+               & " would be smaller than 2 x 2");
+         end if;
+      end loop;
+   end Validate_Pyramid_Mean_Shift_Filter;
+
+   procedure Pyramid_Mean_Shift_Filter
+     (Source                : OpenCV.Core.Mat;
+      Destination           : in out OpenCV.Core.Mat;
+      Spatial_Radius        : OpenCV.Float64_Value;
+      Color_Radius          : OpenCV.Float64_Value;
+      Maximum_Pyramid_Level : Mean_Shift_Pyramid_Level := 1;
+      Termination           : Mean_Shift_Termination :=
+        (Maximum_Iterations => 5, Epsilon => 1.0))
+   is
+      use Internal.C_API;
+
+      Status : Internal.C_API.Status := Success;
+
+      procedure Filter_Input
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Filter_Output
+           (Destination_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Pyramid_Mean_Shift_Filter
+                (Source_Handle,
+                 Destination_Handle,
+                 Interfaces.C.double (Spatial_Radius),
+                 Interfaces.C.double (Color_Radius),
+                 Interfaces.Integer_32 (Maximum_Pyramid_Level),
+                 Interfaces.Integer_32 (Termination.Maximum_Iterations),
+                 Interfaces.C.double (Termination.Epsilon));
+         end Filter_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Filter_Output'Access);
+      end Filter_Input;
+   begin
+      Validate_Pyramid_Mean_Shift_Filter
+        (Source,
+         Spatial_Radius,
+         Color_Radius,
+         Maximum_Pyramid_Level,
+         Termination);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Filter_Input'Access);
+      Raise_On_Error (Status, "Pyramid_Mean_Shift_Filter");
+   end Pyramid_Mean_Shift_Filter;
+
 end OpenCV.Image_Processing;

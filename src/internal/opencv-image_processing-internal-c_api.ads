@@ -885,6 +885,19 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_pyr_up_sized";
 
+   function Pyramid_Mean_Shift_Filter
+     (Source                : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination           : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Spatial_Radius        : Interfaces.C.double;
+      Color_Radius          : Interfaces.C.double;
+      Maximum_Pyramid_Level : Interfaces.Integer_32;
+      Maximum_Iterations    : Interfaces.Integer_32;
+      Epsilon               : Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_pyr_mean_shift_filter";
+
    function Build_Pyramid
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Level_Count : Interfaces.Integer_32;
