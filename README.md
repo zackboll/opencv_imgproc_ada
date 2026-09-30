@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **483 AUnit tests**
+> **Current registered test baseline:** **489 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -237,8 +237,8 @@ The table below summarizes the current public operations.
 | Segmentation | `Flood_Fill`, `Flood_Fill_With_Mask` | nonempty 2-D `UInt8`/`Float32`, C1/C3; mask `UInt8` C1 `(rows + 2) x (cols + 2)` | in place; floating/fixed range; 4/8 connectivity; area and bounds; mask fill value and mask-only mode |
 | Segmentation | `Watershed` | `UInt8` C3 source; `Int32` C1 markers of the same size | markers mutated in place (`-1` boundaries); source preserved; nonnegative input markers; overlap rejected |
 | Segmentation | `Initialize_GrabCut`, `Restore_GrabCut_State`, `Clone_GrabCut_State`, `Refine_GrabCut`, `Refine_GrabCut_Frozen_Model` | `UInt8` C3 source; rectangle and/or 0..3 label mask; imported Float64 C1 1 x 65 models | limited private state; masks and models exported as deep clones; restored models validated before evaluation |
-| Histogram analysis | `Calculate_Histogram` | one Mat, or several Mats of the same rows, columns, and `UInt8`/`UInt16`/`Float32` depth; per-axis channel or `(Source_Position, Channel)`; optional `UInt8` C1 mask | dense uniform 1..10-D Float32 counts; `[lower, upper)` ranges; private `Histogram` stores source position, channel, and range |
-| Histogram analysis | `Compare_Histograms` | two histograms with identical bin counts and ranges | six OpenCV metrics; source positions and channels may differ |
+| Histogram analysis | `Calculate_Histogram`, `Calculate_Nonuniform_Histogram` | one Mat, or several Mats of the same rows, columns, and `UInt8`/`UInt16`/`Float32` depth; per-axis channel or `(Source_Position, Channel)`; optional `UInt8` C1 mask | dense 1..10-D Float32 counts; one binning mode per histogram, either uniform `[lower, upper)` bins or explicit nonuniform edges |
+| Histogram analysis | `Compare_Histograms` | two histograms with the same binning mode and identical bin geometry | six OpenCV metrics; source positions and channels may differ; nonuniform comparison requires the exact edge sequence |
 | Histogram analysis | `Back_Project` | one Mat when every stored source position is 0, or enough same-geometry sources for the stored positions | fresh C1 Mat of the first source's size and depth; finite scale |
 | Histogram analysis | `Accumulate_Histogram` | a calculated histogram plus a compatible source or source array, optional mask | new histogram; Base is unchanged; Float32 bin sums, not native `accumulate=true` |
 
@@ -3051,14 +3051,34 @@ obvious foreground.
 
 ## Histogram analysis
 
-Dense uniform histograms of one image or several images, their comparison,
-histogram back projection, and immutable accumulation. The design was checked
-against OpenCV 4.1.0, 4.10.0, and 5.0.0 `imgproc.hpp` and `histogram.cpp`
-(`calcHist`, `calcBackProject`, `compareHist`, `histPrepareImages`). All three
+Dense uniform or nonuniform histograms of one image or several images, their
+comparison, histogram back projection, and immutable accumulation. The design
+was checked against OpenCV 4.1.0, 4.10.0, and 5.0.0 `imgproc.hpp` and
+`histogram.cpp` (`calcHist`, `calcBackProject`, `compareHist`,
+`histPrepareImages`, `calcHistLookupTables_8u`, `ipp_calchist`). All three
 releases share the low-level `calcHist(const Mat*, int nimages, const int*
 channels, ...)` and `calcBackProject(const Mat*, int nimages, const int*
-channels, ...)` signatures. The shim calls them with `uniform = true` and
-`accumulate = false`.
+channels, ...)` signatures. A histogram uses one `uniform` flag for every
+axis. Uniform calls pass `uniform = true`; nonuniform calls pass
+`uniform = false`. Every call passes `accumulate = false`.
+
+OpenCV has no mixed uniform/nonuniform call. This binding therefore does not
+put both kinds of axis in one histogram, and it does not expand a uniform
+axis into explicit edges.
+
+When `uniform` is false, each axis supplies `Bin_Count + 1` strictly
+increasing Float32 edges `E0 .. EN`. The bins are `[E0, E1)`, `[E1, E2)`,
+through `[E(N-1), EN)`. A sample below the first edge, or at or above the
+final edge, is not counted. Back projection uses the same edges. On every
+reviewed release the nonuniform UInt8 lookup passes every edge to `cvCeil`.
+OpenCV 4.10 and 5.0 also evaluate `cvFloor` on the first edge inside
+`ipp_calchist` before that function can decline the request. `ipp_calcHistParallel`
+computes `histSize + 1` in signed int and, for the UInt8/UInt16/Float32 C1
+types it actually executes, narrows the source byte step with `(int)m_src.step`.
+OpenCV 5 adds a HAL `cv_hal_calcHist` for the same one-source, one-dimension,
+channel-0, unmasked shape. Its reference implementation returns not-implemented;
+its arguments are a `size_t` step, an `int` width and height, an `int` bin
+count, and `const float **` ranges, so it needs no extra narrowing guard.
 
 `histPrepareImages` is the same on all three releases: `nimages` must be
 positive, every image must match `images[0]` in size and depth, and channel
@@ -3095,15 +3115,33 @@ type Histogram_Source_Dimension is record
    Lower_Bound     : OpenCV.Float32_Value;
    Upper_Bound     : OpenCV.Float32_Value;
 end record;
+
+type Histogram_Bin_Boundary_Array is
+  array (Positive range <>) of OpenCV.Float32_Value;
+
+function Nonuniform_Histogram_Dimension
+  (Channel : Natural; Boundaries : Histogram_Bin_Boundary_Array)
+   return Histogram_Nonuniform_Dimension;
+
+function Nonuniform_Histogram_Source_Dimension
+  (Source_Position : Natural;
+   Channel         : Natural;
+   Boundaries      : Histogram_Bin_Boundary_Array)
+   return Histogram_Nonuniform_Dimension;
 ```
 
 `Histogram_Dimension` selects a channel of one source and is stored with
 source position 0. `Source_Position` is the position in `Mat_Array` iteration
 order, not the Ada index: for `Sources (10 .. 11)`, position 0 is
-`Sources (10)`. Native concatenated channel numbers are not exposed. Each axis
-divides `[Lower_Bound, Upper_Bound)` into equal bins. A pixel is counted only
-when every selected sample is in range. The same source and channel may be
-selected more than once.
+`Sources (10)`. Native concatenated channel numbers are not exposed. A
+uniform axis divides `[Lower_Bound, Upper_Bound)` into equal bins. A
+nonuniform descriptor owns a copy of its edges, so the caller's array may
+change afterwards. At least two finite, strictly increasing edges are
+required; `N` edges define `N - 1` bins `[edge (I), edge (I + 1))`. Edges are
+not required to lie inside the source depth's numeric range. A pixel is
+counted only when every selected sample falls in a bin. The same source and
+channel may be selected more than once. Every axis of one histogram uses the
+same binning mode.
 
 **Why at most 10 dimensions.** OpenCV 4.x supports dense Mat dimensionality up
 to `CV_MAX_DIM` (32), but OpenCV 5.0 limits `Mat` to `MatShape::MAX_DIMS`
@@ -3119,29 +3157,47 @@ function Calculate_Histogram
 function Calculate_Histogram
   (Sources    : OpenCV.Core.Mat_Array;
    Dimensions : Histogram_Source_Dimension_Array) return Histogram;
+
+function Calculate_Nonuniform_Histogram
+  (Source     : OpenCV.Core.Mat;
+   Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
+
+function Calculate_Nonuniform_Histogram
+  (Sources    : OpenCV.Core.Mat_Array;
+   Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
 ```
 
-Both have masked overloads. A single source, and every element of `Sources`,
-must be a nonempty 2-D `UInt8`, `UInt16`, or `Float32` Mat. Within one
-multi-source call every element shares the first element's rows, columns, and
-depth; channel counts may differ. `Sources` must be nonempty and may use any
-bounds. The optional mask is 2-D `UInt8` C1 of that common geometry and is
-applied at the same location in every source. Sources and the mask are only
-read. A Region is its logical view; parent pixels outside it are not sampled.
+All four have masked overloads. A single source, and every element of
+`Sources`, must be a nonempty 2-D `UInt8`, `UInt16`, or `Float32` Mat. A
+single-source nonuniform call requires every stored source position to be 0.
+Within one multi-source call every element shares the first element's rows,
+columns, and depth; channel counts may differ. `Sources` must be nonempty and
+may use any bounds. The optional mask is 2-D `UInt8` C1 of that common
+geometry and is applied at the same location in every source. Sources and the
+mask are only read. A Region is its logical view; parent pixels outside it
+are not sampled.
 
 ### The Histogram type
 
-`Get_Histogram_Dimension` returns channel, bin count, and range.
-`Get_Histogram_Source_Position` returns the stored position; single-source
-histograms return 0. `Histogram_Values` returns a deep Float32 clone. A
-one-dimensional histogram is published as `Bin_Count x 1` on every OpenCV
-release, including OpenCV 5 where the native result is genuinely 1-D.
+`Histogram_Binning` reports `Uniform_Binning` or `Nonuniform_Binning`. An
+empty histogram reports `Uniform_Binning`. `Get_Histogram_Dimension` returns
+channel, bin count, and the uniform range or, for a nonuniform axis, the
+first and last edges as its envelope. That envelope is not a claim of equal
+spacing. `Get_Histogram_Bin_Boundaries` returns the two uniform endpoints or
+every stored nonuniform edge, as a new array. `Get_Histogram_Source_Position`
+returns the stored position; single-source histograms return 0.
+`Histogram_Values` returns a deep Float32 clone. A one-dimensional histogram
+is published as `Bin_Count x 1` on every OpenCV release, including OpenCV 5
+where the native result is genuinely 1-D.
 
 ### Comparison
 
-Comparison requires the same dimension count and, per axis, the same bin count
-and range. Source position and channel are provenance, not bin geometry, so a
-red histogram may be compared with a blue one.
+Uniform comparison requires the same dimension count and, per axis, the same
+bin count and both endpoints. Nonuniform comparison requires both histograms
+to be nonuniform and, per axis, the same bin count and the exact stored
+Float32 edge sequence. Matching only the outer endpoints is not enough, and a
+uniform histogram is not compared with a nonuniform one. Source position and
+channel are provenance, not bin geometry.
 
 ### Back projection
 
@@ -3159,9 +3215,12 @@ The single-source overload requires every stored position to be 0 and
 otherwise raises `OpenCV.OpenCV_Error`. The array overload requires enough
 sources for every stored position, with the same geometry and depth contract
 as calculation. The result is a fresh C1 Mat with the first source's rows,
-columns, and depth. A 2-D histogram with a one-bin axis is given a trailing
-one-bin axis before `calcBackProject`, repeating that axis's native channel
-and range, so OpenCV does not collapse it to 1-D.
+columns, and depth. Both overloads use the edges stored in `Distribution`;
+callers do not resupply nonuniform edges. A nonuniform distribution is passed
+to OpenCV with `uniform = false`. A 2-D histogram with a one-bin axis is
+given a trailing one-bin axis before `calcBackProject`, repeating that
+one-bin axis's native channel and complete edge sequence, so OpenCV does not
+collapse it to 1-D.
 
 ### Accumulation
 
@@ -3174,8 +3233,10 @@ function Accumulate_Histogram
 ```
 
 Masked overloads use the same mask contract. The operation calculates a fresh
-delta with `accumulate = false`, checks every finite nonnegative bin, and adds
-the widened sums into a new Float32 histogram. It does not call native
+delta with `accumulate = false`, using Base's stored source positions,
+channels, binning mode, and complete edge sequence. It checks every finite
+nonnegative bin and adds the widened sums into a new Float32 histogram. The
+result keeps Base's exact edges. It does not call native
 `calcHist(..., accumulate=true)`: passing the portable `N x 1` shape back to
 OpenCV 5 reallocates and silently clears the base, and the native path
 accumulates through signed `int`. Base and the sources are not modified.
@@ -3199,11 +3260,16 @@ independently rejects:
   `cvFloor` outside `int` for some `UInt8`/`UInt16` sample;
 - unsupported source depths and raw channel indices before inspecting selected
   pixels;
-- nonfinite selected Float32 samples (NaN or Infinity) and finite samples
-  whose per-dimension uniform-bin coordinate `sample * scale - lower * scale`
-  is outside the native `cvFloor` int range. Ordinary finite samples outside
-  `[lower, upper)` remain legal when this conversion is safe; masked histogram
-  calculation does not inspect masked-out pixels;
+- nonfinite selected Float32 samples. For a uniform axis, a finite sample is
+  also rejected when `sample * scale - lower * scale` is outside the native
+  `cvFloor` int range. A nonuniform axis compares the sample directly with its
+  Float32 edges and does not apply that uniform transform. Ordinary finite
+  samples outside the bins remain legal; masked calculation does not inspect
+  masked-out pixels;
+- every nonuniform UInt8 edge that `cvCeil` cannot convert, and, when the
+  request matches the `ipp_calchist` call (one source, one dimension, channel
+  0, no mask), a first edge that `cvFloor` cannot convert or a UInt8/UInt16/
+  Float32 C1 byte step that does not fit in signed int;
 - non-2-D sources and source/mask strides that `histPrepareImages` narrows to
   `int`;
 - comparison of empty, non-Float32, or differently shaped histograms (the
@@ -3721,7 +3787,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **476-test** baseline is:
+The current **489-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3759,10 +3825,10 @@ The current **476-test** baseline is:
 | Hough detection | 37 |
 | Segmentation (flood fill, watershed, GrabCut) | 35 |
 | Mean-shift filtering | 16 |
-| Histogram analysis (calculation, comparison, back projection, accumulation) | 33 |
+| Histogram analysis (calculation, comparison, back projection, accumulation) | 39 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **483** |
+| **Total** | **489** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4379,9 +4445,8 @@ Notable Imgproc families that are not yet broadly bound include:
   (`use_edgeval`) Hough, and `HOUGH_GRADIENT_ALT`;
 - deferred segmentation capabilities: flood fill on `Int32` images and
   higher-level distance-transform marker-construction convenience;
-- advanced histogram capabilities: nonuniform bin boundaries, `SparseMat`
-  histograms, and EMD (a future sparse-histogram abstraction may revisit the
-  dense 10-dimension limit);
+- advanced histogram capabilities: `SparseMat` histograms and EMD (a future
+  sparse-histogram abstraction may revisit the dense 10-dimension limit);
 - custom/user-defined distance masks (not part of the portable foundation);
 - custom OpenCV 5 font faces and FreeType/arbitrary font loading;
 - `drawFrameAxes` (calibration-dependent);

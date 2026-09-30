@@ -1322,6 +1322,24 @@ package OpenCV.Image_Processing.Internal.C_API is
      array (Positive range <>) of aliased Histogram_Source_Dimension_Record
    with Convention => C;
 
+   --  Mirrors opencv_imgproc_histogram_nonuniform_dimension. Boundary_Offset
+   --  indexes the flat Float32 edge buffer passed with the call.
+   type Histogram_Nonuniform_Dimension_Record is record
+      Source_Position : Interfaces.Integer_32;
+      Channel         : Interfaces.Integer_32;
+      Bin_Count       : Interfaces.Integer_32;
+      Boundary_Offset : Interfaces.Unsigned_64;
+   end record
+   with Convention => C;
+
+   type Histogram_Nonuniform_Dimension_Records is
+     array (Positive range <>) of aliased Histogram_Nonuniform_Dimension_Record
+   with Convention => C;
+
+   type Histogram_Boundary_Values is
+     array (Natural range <>) of aliased Interfaces.C.C_float
+   with Convention => C;
+
    type Mat_Handle_Array is
      array (Natural range <>)
      of aliased OpenCV.Core.Module_Interop.Input_Mat_Handle
@@ -1382,6 +1400,40 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_calc_hist_multi_masked";
+
+   function Calc_Hist_Nonuniform
+     (Sources         :
+        access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Source_Count    : Interfaces.Integer_32;
+      Mask            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Masked          : Interfaces.Unsigned_8;
+      Dimensions      : access constant Histogram_Nonuniform_Dimension_Record;
+      Dimension_Count : Interfaces.Integer_32;
+      Boundaries      : access constant Interfaces.C.C_float;
+      Boundary_Count  : Interfaces.Unsigned_64;
+      Histogram       : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_calc_hist_nonuniform";
+
+   function Calc_Back_Project_Nonuniform
+     (Sources         :
+        access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Source_Count    : Interfaces.Integer_32;
+      Histogram       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Dimensions      : access constant Histogram_Nonuniform_Dimension_Record;
+      Dimension_Count : Interfaces.Integer_32;
+      Boundaries      : access constant Interfaces.C.C_float;
+      Boundary_Count  : Interfaces.Unsigned_64;
+      Scale           : Interfaces.C.double;
+      Destination     : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_calc_back_project_nonuniform";
 
    function Compare_Hist
      (Left   : OpenCV.Core.Module_Interop.Input_Mat_Handle;

@@ -40,6 +40,7 @@ package body Histogram_Analysis_Tests is
    package F32 renames OpenCV.Core.Float32_Access;
    use type C_API.Status;
    use type IP.Histogram_Dimension;
+   use type IP.Histogram_Binning_Mode;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
    package Caller is new AUnit.Test_Caller (Fixture);
@@ -2002,6 +2003,605 @@ package body Histogram_Analysis_Tests is
          "a valid addition succeeds after earlier rejections");
    end Raw_Histogram_Addition;
 
+   function Edges
+     (Values : IP.Histogram_Bin_Boundary_Array)
+      return IP.Histogram_Nonuniform_Dimension
+   is (IP.Nonuniform_Histogram_Dimension (0, Values));
+
+   function Source_Edges
+     (Position : Natural;
+      Channel  : Natural;
+      Values   : IP.Histogram_Bin_Boundary_Array)
+      return IP.Histogram_Nonuniform_Dimension
+   is (IP.Nonuniform_Histogram_Source_Dimension (Position, Channel, Values));
+
+   Unequal : constant IP.Histogram_Bin_Boundary_Array :=
+     (0.0, 10.0, 100.0, 256.0);
+
+   function Row16 (Values : OpenCV.Core.Dimension_Array) return OpenCV.Core.Mat
+   is
+      Image  : OpenCV.Core.Mat :=
+        Filled (1, Values'Length, (OpenCV.Core.UInt16, 1));
+      Column : Natural := 0;
+   begin
+      for Value of Values loop
+         U16.Set (Image, 0, Column, Interfaces.Unsigned_16 (Value));
+         Column := Column + 1;
+      end loop;
+      return Image;
+   end Row16;
+
+   function Row32
+     (Values : IP.Histogram_Bin_Boundary_Array) return OpenCV.Core.Mat
+   is
+      Image  : OpenCV.Core.Mat :=
+        Filled (1, Values'Length, (OpenCV.Core.Float32, 1));
+      Column : Natural := 0;
+   begin
+      for Value of Values loop
+         F32.Set (Image, 0, Column, Value);
+         Column := Column + 1;
+      end loop;
+      return Image;
+   end Row32;
+
+   procedure Nonuniform_Calculation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Samples : constant OpenCV.Core.Mat := Row8 ((0, 9, 10, 99, 100, 255));
+      H       : constant IP.Histogram :=
+        IP.Calculate_Nonuniform_Histogram (Samples, (1 => Edges (Unequal)));
+      Outside : constant IP.Histogram :=
+        IP.Calculate_Nonuniform_Histogram
+          (Row8 ((0, 5, 9, 10)), (1 => Edges ((-100.0, 0.0, 10.0, 500.0))));
+      Mask    : OpenCV.Core.Mat :=
+        Filled (1, 6, (OpenCV.Core.UInt8, 1), Gray (255.0));
+      Masked  : IP.Histogram;
+      Wide    : constant IP.Histogram :=
+        IP.Calculate_Nonuniform_Histogram
+          (Row16 ((0, 9, 10, 99, 100, 1_000)),
+           (1 => Edges ((0.0, 10.0, 100.0, 2_000.0))));
+      Real    : constant IP.Histogram :=
+        IP.Calculate_Nonuniform_Histogram
+          (Row32 ((0.0, 0.4, 0.5, 1.5, 2.0)),
+           (1 => Edges ((0.0, 0.5, 2.0, 3.0))));
+   begin
+      AUnit.Assertions.Assert
+        (Bin (H, 0) = 2.0 and then Bin (H, 1) = 2.0 and then Bin (H, 2) = 2.0,
+         "unequal UInt8 bins are lower-inclusive and upper-exclusive");
+      AUnit.Assertions.Assert
+        (Bin (Outside, 0) = 0.0
+         and then Bin (Outside, 1) = 3.0
+         and then Bin (Outside, 2) = 1.0,
+         "samples below the first edge are excluded and the first edge is"
+         & " inclusive");
+      U8.Set (Mask, 0, 0, 0);
+      U8.Set (Mask, 0, 2, 0);
+      Masked :=
+        IP.Calculate_Nonuniform_Histogram
+          (Samples, Mask, (1 => Edges (Unequal)));
+      AUnit.Assertions.Assert
+        (Bin (Masked, 0) = 1.0
+         and then Bin (Masked, 1) = 1.0
+         and then Bin (Masked, 2) = 2.0,
+         "a mask excludes selected nonuniform samples");
+      AUnit.Assertions.Assert
+        (Bin (Wide, 0) = 2.0
+         and then Bin (Wide, 1) = 2.0
+         and then Bin (Wide, 2) = 2.0,
+         "UInt16 nonuniform bins follow the same edges");
+      AUnit.Assertions.Assert
+        (Bin (Real, 0) = 2.0
+         and then Bin (Real, 1) = 2.0
+         and then Bin (Real, 2) = 1.0,
+         "Float32 nonuniform bins compare samples with the edges");
+   end Nonuniform_Calculation;
+
+   procedure Nonuniform_Joint_And_Region (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Left     : constant OpenCV.Core.Mat := Row8 ((0, 20, 200));
+      Right    : constant OpenCV.Core.Mat := Row8 ((5, 80, 200));
+      Axes     : constant IP.Histogram_Nonuniform_Dimension_Array (10 .. 11) :=
+        (10 => Source_Edges (0, 0, (0.0, 10.0, 256.0)),
+         11 => Source_Edges (1, 0, (0.0, 50.0, 256.0)));
+      Shifted  : constant OpenCV.Core.Mat_Array (5 .. 6) := (Left, Right);
+      Joint    : constant IP.Histogram :=
+        IP.Calculate_Nonuniform_Histogram (Shifted, Axes);
+      Repeated : constant IP.Histogram :=
+        IP.Calculate_Nonuniform_Histogram
+          (Left, (Edges (Unequal), Edges (Unequal)));
+      Parent   : OpenCV.Core.Mat := Filled (3, 5, (OpenCV.Core.UInt8, 1));
+      View     : OpenCV.Core.Mat;
+      Region_H : IP.Histogram;
+      Clone_H  : IP.Histogram;
+   begin
+      AUnit.Assertions.Assert
+        (Bin2 (Joint, 0, 0) = 1.0
+         and then Bin2 (Joint, 1, 1) = 2.0
+         and then IP.Get_Histogram_Source_Position (Joint, 2) = 1,
+         "multi-source nonuniform bins use iteration positions, not Ada"
+         & " indexes");
+      AUnit.Assertions.Assert
+        (Bin2 (Repeated, 0, 0) = 1.0
+         and then Bin2 (Repeated, 1, 1) = 1.0
+         and then Bin2 (Repeated, 2, 2) = 1.0,
+         "a repeated nonuniform channel is a joint of the same samples");
+      View :=
+        OpenCV.Core.Region (Parent, (X => 1, Y => 1, Width => 3, Height => 1));
+      U8.Set (View, 0, 0, 0);
+      U8.Set (View, 0, 1, 10);
+      U8.Set (View, 0, 2, 200);
+      U8.Set (Parent, 0, 0, 255);
+      Region_H :=
+        IP.Calculate_Nonuniform_Histogram (View, (1 => Edges (Unequal)));
+      Clone_H :=
+        IP.Calculate_Nonuniform_Histogram (View.Clone, (1 => Edges (Unequal)));
+      AUnit.Assertions.Assert
+        (Bin (Region_H, 0) = 1.0
+         and then Bin (Region_H, 1) = 1.0
+         and then Bin (Region_H, 2) = 1.0
+         and then Bin (Clone_H, 0) = Bin (Region_H, 0)
+         and then Bin (Clone_H, 2) = Bin (Region_H, 2)
+         and then U8.Get (Parent, 0, 0) = 255,
+         "a Region histogram matches its clone and ignores parent pixels");
+   end Nonuniform_Joint_And_Region;
+
+   function Same_Edges
+     (Left, Right : IP.Histogram_Bin_Boundary_Array) return Boolean is
+   begin
+      if Left'Length /= Right'Length then
+         return False;
+      end if;
+      for Offset in 0 .. Left'Length - 1 loop
+         if Left (Left'First + Offset) /= Right (Right'First + Offset) then
+            return False;
+         end if;
+      end loop;
+      return True;
+   end Same_Edges;
+
+   procedure Nonuniform_Metadata_And_Comparison (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Uniform  : constant IP.Histogram :=
+        IP.Calculate_Histogram
+          (Row8 ((0, 10)), (1 => Dimension (2, 0.0, 256.0)));
+      Mutable  : IP.Histogram_Bin_Boundary_Array := Unequal;
+      Axis     : constant IP.Histogram_Nonuniform_Dimension := Edges (Mutable);
+      H        : IP.Histogram;
+      Other    : IP.Histogram;
+      Envelope : IP.Histogram_Dimension;
+      Stored   : IP.Histogram_Bin_Boundary_Array (1 .. 4);
+   begin
+      Mutable (2) := 40.0;
+      H :=
+        IP.Calculate_Nonuniform_Histogram
+          (Row_C3 (((0, 0, 10), (0, 0, 10))), (1 => Axis));
+      AUnit.Assertions.Assert
+        (IP.Histogram_Binning (H) = IP.Nonuniform_Binning
+         and then IP.Histogram_Binning (Uniform) = IP.Uniform_Binning,
+         "binning mode distinguishes uniform and nonuniform histograms");
+      Envelope := IP.Get_Histogram_Dimension (H, 1);
+      Stored := IP.Get_Histogram_Bin_Boundaries (H, 1);
+      AUnit.Assertions.Assert
+        (Envelope.Bin_Count = 3
+         and then Envelope.Lower_Bound = 0.0
+         and then Envelope.Upper_Bound = 256.0
+         and then Same_Edges (Stored, Unequal)
+         and then Bin (H, 0) = 2.0,
+         "metadata is the envelope plus the owned edge copy");
+      Other :=
+        IP.Calculate_Nonuniform_Histogram
+          (Row_C3 (((0, 0, 200), (0, 0, 200))),
+           (1 => IP.Nonuniform_Histogram_Dimension (2, Unequal)));
+      AUnit.Assertions.Assert
+        (Compare (H, Other, IP.Intersection) = 0.0
+         and then IP.Get_Histogram_Source_Position (Other, 1) = 0,
+         "identical nonuniform edges compare even when channels differ");
+
+      declare
+         procedure Different_Internal is
+            Unused : constant Long_Float :=
+              Compare
+                (H,
+                 IP.Calculate_Nonuniform_Histogram
+                   (Row_C3 (((0, 0, 0), (0, 0, 0))),
+                    (1 => Edges ((0.0, 50.0, 256.0)))),
+                 IP.Intersection);
+         begin
+            null;
+         end Different_Internal;
+
+         procedure Mixed is
+            Unused : constant Long_Float :=
+              Compare (H, Uniform, IP.Intersection);
+         begin
+            null;
+         end Mixed;
+      begin
+         Assert_Raises
+           (Different_Internal'Access,
+            "a different internal edge is incompatible");
+         Assert_Raises
+           (Mixed'Access, "uniform and nonuniform are incompatible");
+      end;
+   end Nonuniform_Metadata_And_Comparison;
+
+   procedure Nonuniform_Back_Project_And_Accumulate (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Samples  : constant OpenCV.Core.Mat := Row8 ((0, 9, 10, 99, 100, 255));
+      Model    : constant IP.Histogram :=
+        IP.Calculate_Nonuniform_Histogram (Samples, (1 => Edges (Unequal)));
+      Query    : constant OpenCV.Core.Mat := Row8 ((0, 10, 200));
+      Mapped   : constant OpenCV.Core.Mat := IP.Back_Project (Query, Model);
+      Wide     : OpenCV.Core.Mat := Filled (1, 3, (OpenCV.Core.UInt16, 1));
+      Real     : OpenCV.Core.Mat := Filled (1, 3, (OpenCV.Core.Float32, 1));
+      H16      : IP.Histogram;
+      H32      : IP.Histogram;
+      Out16    : OpenCV.Core.Mat;
+      Out32    : OpenCV.Core.Mat;
+      Parent   : constant OpenCV.Core.Mat :=
+        Filled (3, 4, (OpenCV.Core.UInt8, 1));
+      View     : OpenCV.Core.Mat;
+      Source   : constant OpenCV.Core.Mat :=
+        Row_C3 (((0, 0, 0), (0, 50, 0), (0, 200, 0)));
+      Leading  : IP.Histogram;
+      Trailing : IP.Histogram;
+      Left     : constant OpenCV.Core.Mat := Row8 ((0, 20));
+      Right    : constant OpenCV.Core.Mat := Row8 ((5, 80));
+      Joint    : IP.Histogram;
+      Added    : IP.Histogram;
+      Again    : IP.Histogram;
+      Mask     : OpenCV.Core.Mat := Filled (1, 6, (OpenCV.Core.UInt8, 1));
+      Masked   : IP.Histogram;
+   begin
+      AUnit.Assertions.Assert
+        (U8.Get (Mapped, 0, 0) = 2
+         and then U8.Get (Mapped, 0, 1) = 2
+         and then U8.Get (Mapped, 0, 2) = 2
+         and then Mapped.Depth = OpenCV.Core.UInt8
+         and then Mapped.Channels = 1,
+         "nonuniform back projection uses the stored edges");
+      U16.Set (Wide, 0, 0, 0);
+      U16.Set (Wide, 0, 1, 10);
+      U16.Set (Wide, 0, 2, 1_000);
+      H16 :=
+        IP.Calculate_Nonuniform_Histogram
+          (Wide, (1 => Edges ((0.0, 10.0, 100.0, 2_000.0))));
+      Out16 := IP.Back_Project (Wide, H16);
+      F32.Set (Real, 0, 0, 0.0);
+      F32.Set (Real, 0, 1, 0.5);
+      F32.Set (Real, 0, 2, 3.0);
+      H32 :=
+        IP.Calculate_Nonuniform_Histogram
+          (Real, (1 => Edges ((0.0, 0.5, 2.0, 4.0))));
+      Out32 := IP.Back_Project (Real, H32);
+      AUnit.Assertions.Assert
+        (Out16.Depth = OpenCV.Core.UInt16
+         and then U16.Get (Out16, 0, 0) = 1
+         and then U16.Get (Out16, 0, 1) = 1
+         and then U16.Get (Out16, 0, 2) = 1
+         and then Out32.Depth = OpenCV.Core.Float32
+         and then F32.Get (Out32, 0, 0) = 1.0
+         and then F32.Get (Out32, 0, 1) = 1.0
+         and then F32.Get (Out32, 0, 2) = 1.0,
+         "UInt16 and Float32 nonuniform back projection keep depth");
+      Leading :=
+        IP.Calculate_Nonuniform_Histogram
+          (Source,
+           (Edges ((0.0, 256.0)),
+            IP.Nonuniform_Histogram_Dimension (1, (0.0, 100.0, 256.0))));
+      Trailing :=
+        IP.Calculate_Nonuniform_Histogram
+          (Source,
+           (IP.Nonuniform_Histogram_Dimension (1, (0.0, 100.0, 256.0)),
+            Edges ((0.0, 256.0))));
+      AUnit.Assertions.Assert
+        (U8.Get (IP.Back_Project (Source, Leading), 0, 0) = 2
+         and then U8.Get (IP.Back_Project (Source, Leading), 0, 1) = 2
+         and then U8.Get (IP.Back_Project (Source, Leading), 0, 2) = 1
+         and then U8.Get (IP.Back_Project (Source, Trailing), 0, 2) = 1,
+         "a one-bin nonuniform axis does not collapse the other axis");
+      View :=
+        OpenCV.Core.Region (Parent, (X => 1, Y => 1, Width => 2, Height => 1));
+      U8.Set (View, 0, 0, 0);
+      U8.Set (View, 0, 1, 200);
+      AUnit.Assertions.Assert
+        (IP.Back_Project (View, Model).Columns = 2
+         and then U8.Get (IP.Back_Project (View, Model), 0, 1) = 2,
+         "a Region is back-projected in its own geometry");
+      Joint :=
+        IP.Calculate_Nonuniform_Histogram
+          ((Left, Right),
+           (Source_Edges (0, 0, (0.0, 10.0, 256.0)),
+            Source_Edges (1, 0, (0.0, 50.0, 256.0))));
+      Added := IP.Accumulate_Histogram (Joint, (Left, Right));
+      Again := IP.Accumulate_Histogram (Added, (Left, Right));
+      OpenCV.Core.Set_To (Mask, Gray (255.0));
+      U8.Set (Mask, 0, 0, 0);
+      Masked := IP.Accumulate_Histogram (Model, Samples, Mask);
+      AUnit.Assertions.Assert
+        (Bin2 (Added, 0, 0) = 2.0
+         and then Bin2 (Joint, 0, 0) = 1.0
+         and then Bin2 (Again, 0, 0) = 3.0
+         and then IP.Histogram_Binning (Added) = IP.Nonuniform_Binning
+         and then Same_Edges
+                    (IP.Get_Histogram_Bin_Boundaries (Added, 1),
+                     (0.0, 10.0, 256.0))
+         and then Bin (Masked, 0) = 3.0
+         and then Bin (Model, 0) = 2.0,
+         "nonuniform accumulation preserves edges and leaves Base unchanged");
+   end Nonuniform_Back_Project_And_Accumulate;
+
+   procedure Nonuniform_Invalid_Inputs (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Row8 ((0, 1, 2, 3));
+
+      procedure Try (Axis : IP.Histogram_Nonuniform_Dimension) is
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Nonuniform_Histogram (Source, (1 => Axis));
+      begin
+         null;
+      end Try;
+
+      procedure One_Edge is
+      begin
+         Try (Edges ((1 => 0.0)));
+      end One_Edge;
+
+      procedure NaN_Edge is
+      begin
+         Try (Edges ((0.0, NaN32, 2.0)));
+      end NaN_Edge;
+
+      procedure Infinite_Edge is
+      begin
+         Try (Edges ((0.0, Infinity32)));
+      end Infinite_Edge;
+
+      procedure Duplicate_Edge is
+      begin
+         Try (Edges ((0.0, 1.0, 1.0)));
+      end Duplicate_Edge;
+
+      procedure Decreasing_Edge is
+      begin
+         Try (Edges ((0.0, 2.0, 1.0)));
+      end Decreasing_Edge;
+
+      procedure Bad_Position is
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Nonuniform_Histogram
+             ((Source, Source), (1 => Source_Edges (2, 0, Unequal)));
+      begin
+         null;
+      end Bad_Position;
+
+      procedure Bad_Channel is
+      begin
+         Try (IP.Nonuniform_Histogram_Dimension (1, Unequal));
+      end Bad_Channel;
+
+      procedure Eleven is
+         Axes   : constant IP.Histogram_Nonuniform_Dimension_Array (1 .. 11) :=
+           (others => Edges ((0.0, 1.0, 2.0)));
+         Unused : constant IP.Histogram :=
+           IP.Calculate_Nonuniform_Histogram (Source, Axes);
+      begin
+         null;
+      end Eleven;
+
+      procedure Huge_Product is
+         Wide   : constant IP.Histogram_Bin_Boundary_Array (1 .. 50_000) :=
+           (others => 0.0);
+         First  : IP.Histogram_Bin_Boundary_Array := Wide;
+         Second : IP.Histogram_Bin_Boundary_Array := Wide;
+         Unused : IP.Histogram;
+      begin
+         for Index in First'Range loop
+            First (Index) := OpenCV.Float32_Value (Index);
+            Second (Index) := OpenCV.Float32_Value (Index);
+         end loop;
+         Unused :=
+           IP.Calculate_Nonuniform_Histogram
+             (Source, (Edges (First), Edges (Second)));
+      end Huge_Product;
+   begin
+      Assert_Raises (One_Edge'Access, "one boundary is rejected");
+      Assert_Raises (NaN_Edge'Access, "a NaN boundary is rejected");
+      Assert_Raises (Infinite_Edge'Access, "an infinite boundary is rejected");
+      Assert_Raises (Duplicate_Edge'Access, "equal boundaries are rejected");
+      Assert_Raises
+        (Decreasing_Edge'Access, "decreasing boundaries are rejected");
+      Assert_Raises
+        (Bad_Position'Access, "an invalid source position is rejected");
+      Assert_Raises (Bad_Channel'Access, "an invalid channel is rejected");
+      Assert_Raises
+        (Eleven'Access, "eleven nonuniform dimensions are rejected");
+      Assert_Raises
+        (Huge_Product'Access,
+         "a nonuniform bin product beyond int is rejected");
+   end Nonuniform_Invalid_Inputs;
+
+   function Raw_Nonuniform
+     (Source          : OpenCV.Core.Mat;
+      Records         : C_API.Histogram_Nonuniform_Dimension_Records;
+      Count           : Interfaces.Integer_32;
+      Boundaries      : C_API.Histogram_Boundary_Values;
+      Output          : in out OpenCV.Core.Mat;
+      Null_Dimensions : Boolean := False;
+      Null_Boundaries : Boolean := False) return C_API.Status
+   is
+      Local_Records :
+        aliased constant C_API.Histogram_Nonuniform_Dimension_Records :=
+          Records;
+      Local_Edges   : aliased constant C_API.Histogram_Boundary_Values :=
+        Boundaries;
+      Status        : C_API.Status := C_API.Success;
+      Handles       : aliased C_API.Mat_Handle_Array (0 .. 0);
+
+      function Dimensions
+         return access constant C_API.Histogram_Nonuniform_Dimension_Record
+      is (if Null_Dimensions or else Local_Records'Length = 0
+          then null
+          else Local_Records (Local_Records'First)'Access);
+
+      function Edges return access constant Interfaces.C.C_float
+      is (if Null_Boundaries or else Local_Edges'Length = 0
+          then null
+          else Local_Edges (Local_Edges'First)'Access);
+
+      procedure On_Source
+        (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure On_Mask
+           (Mask_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure On_Output
+              (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Handles (0) := Source_Handle;
+               Status :=
+                 C_API.Calc_Hist_Nonuniform
+                   (Handles (0)'Access,
+                    1,
+                    Mask_Handle,
+                    0,
+                    Dimensions,
+                    Count,
+                    Edges,
+                    Interfaces.Unsigned_64 (Local_Edges'Length),
+                    Output_Handle);
+            end On_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Output, On_Output'Access);
+         end On_Mask;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle (No_Mat, On_Mask'Access);
+      end On_Source;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, On_Source'Access);
+      return Status;
+   end Raw_Nonuniform;
+
+   function One_Nonuniform
+     (Bins     : Interfaces.Integer_32;
+      Offset   : Interfaces.Unsigned_64;
+      Edges    : C_API.Histogram_Boundary_Values;
+      Source   : OpenCV.Core.Mat;
+      Output   : in out OpenCV.Core.Mat;
+      Channel  : Interfaces.Integer_32 := 0;
+      Position : Interfaces.Integer_32 := 0) return C_API.Status
+   is
+      Record_Value : constant C_API.Histogram_Nonuniform_Dimension_Record :=
+        (Source_Position => Position,
+         Channel         => Channel,
+         Bin_Count       => Bins,
+         Boundary_Offset => Offset);
+   begin
+      return Raw_Nonuniform (Source, (1 => Record_Value), 1, Edges, Output);
+   end One_Nonuniform;
+
+   procedure Raw_Nonuniform_Validation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source    : constant OpenCV.Core.Mat := Row8 ((0, 9, 10));
+      Wide      : constant OpenCV.Core.Mat := Row16 ((0, 10, 100));
+      Real      : constant OpenCV.Core.Mat := Row32 ((0.0, 1.0, 2.0));
+      Output    : OpenCV.Core.Mat := Marker;
+      Good      : constant C_API.Histogram_Boundary_Values :=
+        (0.0, 10.0, 100.0, 256.0);
+      Huge      : constant OpenCV.Float32_Value :=
+        OpenCV.Float32_Value (2.0**31);
+      Huge_C    : constant Interfaces.C.C_float := Interfaces.C.C_float (Huge);
+      Huge_Next : constant Interfaces.C.C_float :=
+        Interfaces.C.C_float (Huge * 2.0);
+      Huge_Last : constant Interfaces.C.C_float :=
+        Interfaces.C.C_float (Huge * 4.0);
+
+      procedure Expect (Status : C_API.Status; Fragment, Message : String) is
+      begin
+         Assert_Invalid (Status, Fragment, Message);
+         AUnit.Assertions.Assert
+           (Is_Marker (Output), Message & ": output must be unchanged");
+         Output := Marker;
+      end Expect;
+   begin
+      Expect
+        (Raw_Nonuniform
+           (Source, (1 .. 0 => <>), 1, Good, Output, Null_Dimensions => True),
+         "null",
+         "null nonuniform dimensions");
+      Expect
+        (Raw_Nonuniform
+           (Source,
+            (1 => (0, 0, 3, 0)),
+            1,
+            Good,
+            Output,
+            Null_Boundaries => True),
+         "null",
+         "null boundary storage");
+      Expect
+        (One_Nonuniform (3, 1, Good, Source, Output),
+         "span",
+         "a boundary offset past the buffer");
+      Expect
+        (One_Nonuniform (4, 0, Good, Source, Output),
+         "span",
+         "a boundary span longer than the buffer");
+      Expect
+        (One_Nonuniform
+           (Interfaces.Integer_32'Last,
+            Interfaces.Unsigned_64'Last,
+            Good,
+            Source,
+            Output),
+         "span",
+         "boundary span arithmetic that would wrap");
+      Expect
+        (One_Nonuniform (2, 0, (0.0, NaN_F, 2.0), Source, Output),
+         "finite",
+         "a nonfinite edge");
+      Expect
+        (One_Nonuniform (2, 0, (0.0, 1.0, 1.0), Source, Output),
+         "increasing",
+         "an equal edge");
+      Expect
+        (One_Nonuniform (2, 0, (0.0, 2.0, 1.0), Source, Output),
+         "increasing",
+         "a decreasing edge");
+      Expect
+        (One_Nonuniform (2, 0, (0.0, 1.0, 2.0), Source, Output, Position => 1),
+         "position",
+         "an invalid source position");
+      Expect
+        (One_Nonuniform (2, 0, (0.0, 1.0, 2.0), Source, Output, Channel => 1),
+         "channel",
+         "an invalid channel");
+      Expect
+        (One_Nonuniform (2, 0, (Huge_C, Huge_Next, Huge_Last), Source, Output),
+         "cvCeil",
+         "a UInt8 edge outside native cvCeil range");
+      Expect
+        (One_Nonuniform (2, 0, (Huge_C, Huge_Next, Huge_Last), Wide, Output),
+         "cvFloor",
+         "the IPP first-boundary probe rejects an unsafe UInt16 edge");
+      Expect
+        (One_Nonuniform (2, 0, (Huge_C, Huge_Next, Huge_Last), Real, Output),
+         "cvFloor",
+         "the IPP first-boundary probe rejects an unsafe Float32 edge");
+      AUnit.Assertions.Assert
+        (IP.Histogram_Dimension_Count
+           (IP.Calculate_Nonuniform_Histogram
+              ((Wide, Wide),
+               (1 => Source_Edges (1, 0, (Huge, Huge * 2.0, Huge * 4.0)))))
+         = 1,
+         "a large finite edge is accepted when the IPP predicate is false");
+      AUnit.Assertions.Assert
+        (One_Nonuniform (3, 0, Good, Source, Output) = C_API.Success
+         and then F32.Get (Output, 0, 0) = 2.0,
+         "a valid nonuniform call succeeds after earlier rejections");
+   end Raw_Nonuniform_Validation;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
       procedure Add (Name : String; Routine : Caller.Test_Method) is
       begin
@@ -2053,6 +2653,20 @@ package body Histogram_Analysis_Tests is
          Multi_Source_Back_Project'Access);
       Add ("Histogram accumulation", Histogram_Accumulation'Access);
       Add ("Histogram raw addition", Raw_Histogram_Addition'Access);
+      Add ("Nonuniform histogram calculation", Nonuniform_Calculation'Access);
+      Add
+        ("Nonuniform histogram joint and Region",
+         Nonuniform_Joint_And_Region'Access);
+      Add
+        ("Nonuniform histogram metadata and comparison",
+         Nonuniform_Metadata_And_Comparison'Access);
+      Add
+        ("Nonuniform back projection and accumulation",
+         Nonuniform_Back_Project_And_Accumulate'Access);
+      Add
+        ("Nonuniform histogram invalid inputs",
+         Nonuniform_Invalid_Inputs'Access);
+      Add ("Nonuniform histogram raw C ABI", Raw_Nonuniform_Validation'Access);
       return Result'Access;
    end Suite;
 
