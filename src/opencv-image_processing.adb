@@ -7599,10 +7599,50 @@ package body OpenCV.Image_Processing is
       end loop;
    end Validate_Histogram_Source;
 
+   procedure Validate_Histogram_Mask
+     (Mask : OpenCV.Core.Mat; Rows, Columns : Natural; Operation : String)
+   is
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Mask.Is_Empty
+        or else Mask.Dimension_Count /= 2
+        or else Mask.Depth /= OpenCV.Core.UInt8
+        or else Mask.Channels /= 1
+      then
+         Histogram_Error
+           (Operation & " requires a two-dimensional UInt8 C1 Mask");
+      elsif Mask.Rows /= Rows or else Mask.Columns /= Columns then
+         Histogram_Error
+           (Operation & " requires Mask with the source rows and columns");
+      end if;
+   end Validate_Histogram_Mask;
+
+   procedure Validate_Bin_Geometry
+     (Bin_Count   : Histogram_Bin_Count;
+      Lower_Bound : OpenCV.Float32_Value;
+      Upper_Bound : OpenCV.Float32_Value;
+      Total       : in out Long_Long_Integer;
+      Operation   : String)
+   is
+      use type OpenCV.Float32_Value;
+   begin
+      if not Is_Finite_32 (Lower_Bound) or else not Is_Finite_32 (Upper_Bound)
+      then
+         Histogram_Error (Operation & " requires finite dimension bounds");
+      elsif not (Lower_Bound < Upper_Bound) then
+         Histogram_Error (Operation & " requires Lower_Bound < Upper_Bound");
+      end if;
+      Total := Total * Long_Long_Integer (Bin_Count);
+      if Total > Long_Long_Integer (Interfaces.Integer_32'Last) then
+         Histogram_Error
+           (Operation & " bin count product exceeds 2_147_483_647");
+      end if;
+   end Validate_Bin_Geometry;
+
    procedure Validate_Histogram_Dimensions
      (Dimensions : Histogram_Dimension_Array)
    is
-      use type OpenCV.Float32_Value;
       Total : Long_Long_Integer := 1;
    begin
       if Dimensions'Length = 0
@@ -7612,22 +7652,120 @@ package body OpenCV.Image_Processing is
            ("Calculate_Histogram requires 1 .. 10 histogram dimensions");
       end if;
       for Dimension of Dimensions loop
-         if not Is_Finite_32 (Dimension.Lower_Bound)
-           or else not Is_Finite_32 (Dimension.Upper_Bound)
-         then
-            Histogram_Error
-              ("Calculate_Histogram requires finite dimension bounds");
-         elsif not (Dimension.Lower_Bound < Dimension.Upper_Bound) then
-            Histogram_Error
-              ("Calculate_Histogram requires Lower_Bound < Upper_Bound");
-         end if;
-         Total := Total * Long_Long_Integer (Dimension.Bin_Count);
-         if Total > Long_Long_Integer (Interfaces.Integer_32'Last) then
-            Histogram_Error
-              ("Calculate_Histogram bin count product exceeds 2_147_483_647");
-         end if;
+         Validate_Bin_Geometry
+           (Dimension.Bin_Count,
+            Dimension.Lower_Bound,
+            Dimension.Upper_Bound,
+            Total,
+            "Calculate_Histogram");
       end loop;
    end Validate_Histogram_Dimensions;
+
+   procedure Validate_Source_Dimensions
+     (Dimensions : Histogram_Source_Dimension_Array; Operation : String)
+   is
+      Total : Long_Long_Integer := 1;
+   begin
+      if Dimensions'Length = 0
+        or else Dimensions'Length > Maximum_Histogram_Dimensions
+      then
+         Histogram_Error
+           (Operation & " requires 1 .. 10 histogram dimensions");
+      end if;
+      for Dimension of Dimensions loop
+         Validate_Bin_Geometry
+           (Dimension.Bin_Count,
+            Dimension.Lower_Bound,
+            Dimension.Upper_Bound,
+            Total,
+            Operation);
+      end loop;
+   end Validate_Source_Dimensions;
+
+   --  Every source is nonempty and 2-D, shares the first source's rows,
+   --  columns and supported depth, and may have its own channel count.
+   procedure Validate_Histogram_Sources
+     (Sources : OpenCV.Core.Mat_Array; Operation : String)
+   is
+      use type OpenCV.Core.Depth_Type;
+      First : OpenCV.Core.Mat;
+   begin
+      if Sources'Length = 0 then
+         Histogram_Error (Operation & " requires a non-empty Sources array");
+      end if;
+      First := Sources (Sources'First);
+      if First.Is_Empty then
+         Histogram_Error (Operation & " requires a non-empty Source");
+      elsif First.Dimension_Count /= 2 then
+         Histogram_Error (Operation & " requires a two-dimensional Source");
+      elsif First.Depth /= OpenCV.Core.UInt8
+        and then First.Depth /= OpenCV.Core.UInt16
+        and then First.Depth /= OpenCV.Core.Float32
+      then
+         Histogram_Error
+           (Operation & " requires a UInt8, UInt16 or Float32 Source");
+      end if;
+      for Source of Sources loop
+         if Source.Is_Empty then
+            Histogram_Error (Operation & " requires a non-empty Source");
+         elsif Source.Dimension_Count /= 2 then
+            Histogram_Error (Operation & " requires a two-dimensional Source");
+         elsif Source.Depth /= First.Depth
+           or else Source.Rows /= First.Rows
+           or else Source.Columns /= First.Columns
+         then
+            Histogram_Error
+              (Operation
+               & " requires every Source to share rows, columns, and depth");
+         end if;
+      end loop;
+   end Validate_Histogram_Sources;
+
+   procedure Validate_Source_Selection
+     (Sources    : OpenCV.Core.Mat_Array;
+      Dimensions : Histogram_Source_Dimension_Array;
+      Operation  : String)
+   is
+      Position : Natural;
+   begin
+      for Dimension of Dimensions loop
+         if Dimension.Source_Position >= Sources'Length then
+            Histogram_Error
+              (Operation
+               & " selects a source position that Sources does not have");
+         end if;
+         Position := Sources'First + Dimension.Source_Position;
+         if Dimension.Channel >= Natural (Sources (Position).Channels) then
+            Histogram_Error
+              (Operation
+               & " selects a channel that the chosen Source does not have");
+         end if;
+      end loop;
+   end Validate_Source_Selection;
+
+   function To_Stored
+     (Dimension : Histogram_Dimension) return Histogram_Source_Dimension
+   is ((Source_Position => 0,
+        Channel         => Dimension.Channel,
+        Bin_Count       => Dimension.Bin_Count,
+        Lower_Bound     => Dimension.Lower_Bound,
+        Upper_Bound     => Dimension.Upper_Bound));
+
+   function To_Public
+     (Dimension : Histogram_Source_Dimension) return Histogram_Dimension
+   is ((Channel     => Dimension.Channel,
+        Bin_Count   => Dimension.Bin_Count,
+        Lower_Bound => Dimension.Lower_Bound,
+        Upper_Bound => Dimension.Upper_Bound));
+
+   function To_C_Source
+     (Dimension : Histogram_Source_Dimension)
+      return Internal.C_API.Histogram_Source_Dimension_Record
+   is ((Source_Position => Interfaces.Integer_32 (Dimension.Source_Position),
+        Channel         => Interfaces.Integer_32 (Dimension.Channel),
+        Bin_Count       => Interfaces.Integer_32 (Dimension.Bin_Count),
+        Lower_Bound     => Interfaces.C.C_float (Dimension.Lower_Bound),
+        Upper_Bound     => Interfaces.C.C_float (Dimension.Upper_Bound)));
 
    function To_C_Histogram_Dimensions
      (Dimensions : Histogram_Dimension_Array)
@@ -7648,6 +7786,22 @@ package body OpenCV.Image_Processing is
       return Result;
    end To_C_Histogram_Dimensions;
 
+   function To_C_Source_Dimensions
+     (Dimensions : Histogram_Source_Dimension_Array)
+      return Internal.C_API.Histogram_Source_Dimension_Records
+   is
+      Result :
+        Internal.C_API.Histogram_Source_Dimension_Records
+          (1 .. Dimensions'Length);
+      Target : Positive := Result'First;
+   begin
+      for Dimension of Dimensions loop
+         Result (Target) := To_C_Source (Dimension);
+         Target := Target + 1;
+      end loop;
+      return Result;
+   end To_C_Source_Dimensions;
+
    function Stored_Dimensions
      (Value : Histogram) return Histogram_Dimension_Array
    is
@@ -7655,10 +7809,33 @@ package body OpenCV.Image_Processing is
         Histogram_Dimension_Array (1 .. Natural (Value.Dimensions.Length));
    begin
       for Index in Result'Range loop
-         Result (Index) := Value.Dimensions.Element (Index);
+         Result (Index) := To_Public (Value.Dimensions.Element (Index));
       end loop;
       return Result;
    end Stored_Dimensions;
+
+   function Stored_Source_Dimensions
+     (Value : Histogram) return Histogram_Source_Dimension_Array
+   is
+      Result :
+        Histogram_Source_Dimension_Array
+          (1 .. Natural (Value.Dimensions.Length));
+   begin
+      for Index in Result'Range loop
+         Result (Index) := Value.Dimensions.Element (Index);
+      end loop;
+      return Result;
+   end Stored_Source_Dimensions;
+
+   function All_Source_Positions_Are_Zero (Value : Histogram) return Boolean is
+   begin
+      for Dimension of Value.Dimensions loop
+         if Dimension.Source_Position /= 0 then
+            return False;
+         end if;
+      end loop;
+      return True;
+   end All_Source_Positions_Are_Zero;
 
    function Histogram_Dimension_Count (Value : Histogram) return Natural
    is (Natural (Value.Dimensions.Length));
@@ -7670,8 +7847,18 @@ package body OpenCV.Image_Processing is
          Histogram_Error
            ("Get_Histogram_Dimension index exceeds the dimension count");
       end if;
-      return Value.Dimensions.Element (Index);
+      return To_Public (Value.Dimensions.Element (Index));
    end Get_Histogram_Dimension;
+
+   function Get_Histogram_Source_Position
+     (Value : Histogram; Index : Positive) return Natural is
+   begin
+      if Index > Natural (Value.Dimensions.Length) then
+         Histogram_Error
+           ("Get_Histogram_Source_Position index exceeds the dimension count");
+      end if;
+      return Value.Dimensions.Element (Index).Source_Position;
+   end Get_Histogram_Source_Position;
 
    function Histogram_Values (Value : Histogram) return OpenCV.Core.Mat
    is (Value.Values.Clone);
@@ -7729,7 +7916,7 @@ package body OpenCV.Image_Processing is
       return Result : Histogram do
          Result.Values := Values;
          for Dimension of Dimensions loop
-            Result.Dimensions.Append (Dimension);
+            Result.Dimensions.Append (To_Stored (Dimension));
          end loop;
       end return;
    end Build_Histogram;
@@ -7748,27 +7935,137 @@ package body OpenCV.Image_Processing is
    function Calculate_Histogram
      (Source     : OpenCV.Core.Mat;
       Mask       : OpenCV.Core.Mat;
-      Dimensions : Histogram_Dimension_Array) return Histogram
-   is
-      use type OpenCV.Core.Channel_Count;
-      use type OpenCV.Core.Depth_Type;
+      Dimensions : Histogram_Dimension_Array) return Histogram is
    begin
       Validate_Histogram_Dimensions (Dimensions);
       Validate_Histogram_Source (Source, Dimensions, "Calculate_Histogram");
-      if Mask.Is_Empty
-        or else Mask.Dimension_Count /= 2
-        or else Mask.Depth /= OpenCV.Core.UInt8
-        or else Mask.Channels /= 1
-      then
-         Histogram_Error
-           ("Calculate_Histogram requires a two-dimensional UInt8 C1 Mask");
-      elsif Mask.Rows /= Source.Rows or else Mask.Columns /= Source.Columns
-      then
-         Histogram_Error
-           ("Calculate_Histogram requires Mask with the Source rows and"
-            & " columns");
-      end if;
+      Validate_Histogram_Mask
+        (Mask, Source.Rows, Source.Columns, "Calculate_Histogram");
       return Build_Histogram (Source, Mask, True, Dimensions);
+   end Calculate_Histogram;
+
+   --  Borrows every Sources element through a nested With_Input_Handle. No
+   --  handle is stored: each callback remains active until Invoke runs at the
+   --  deepest level, and the temporary handle array dies with that call.
+   --  Sources must already be nonempty. Index is the zero-based iteration
+   --  position, independent of Sources'First.
+   procedure With_Source_Handles
+     (Sources : OpenCV.Core.Mat_Array;
+      Invoke  :
+        not null access procedure
+          (Handles :
+             access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+           Count   : Interfaces.Integer_32))
+   is
+      Handles :
+        aliased Internal.C_API.Mat_Handle_Array (0 .. Sources'Length - 1);
+
+      procedure Enter (Index : Natural) is
+         procedure Capture
+           (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         begin
+            Handles (Index) := Handle;
+            if Index + 1 = Sources'Length then
+               Invoke
+                 (Handles (0)'Access, Interfaces.Integer_32 (Sources'Length));
+            else
+               Enter (Index + 1);
+            end if;
+         end Capture;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Sources (Sources'First + Index), Capture'Access);
+      end Enter;
+   begin
+      Enter (0);
+   end With_Source_Handles;
+
+   function Build_Multi_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Mask       : OpenCV.Core.Mat;
+      Masked     : Boolean;
+      Dimensions : Histogram_Source_Dimension_Array) return Histogram
+   is
+      Records :
+        aliased constant Internal.C_API.Histogram_Source_Dimension_Records :=
+          To_C_Source_Dimensions (Dimensions);
+      Values  : OpenCV.Core.Mat;
+      Status  : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure Invoke
+        (Handles : access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+         Count   : Interfaces.Integer_32)
+      is
+         procedure With_Output
+           (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            procedure With_Mask
+              (Mask_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Calc_Hist_Multi_Masked
+                   (Handles,
+                    Count,
+                    Mask_Handle,
+                    Records (Records'First)'Access,
+                    Records'Length,
+                    Output_Handle);
+            end With_Mask;
+         begin
+            if Masked then
+               OpenCV.Core.Module_Interop.With_Input_Handle
+                 (Mask, With_Mask'Access);
+            else
+               Status :=
+                 Internal.C_API.Calc_Hist_Multi
+                   (Handles,
+                    Count,
+                    Records (Records'First)'Access,
+                    Records'Length,
+                    Output_Handle);
+            end if;
+         end With_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Values, With_Output'Access);
+      end Invoke;
+   begin
+      With_Source_Handles (Sources, Invoke'Access);
+      Raise_On_Error (Status, "Calculate_Histogram");
+      return Result : Histogram do
+         Result.Values := Values;
+         for Dimension of Dimensions loop
+            Result.Dimensions.Append (Dimension);
+         end loop;
+      end return;
+   end Build_Multi_Histogram;
+
+   function Calculate_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Dimensions : Histogram_Source_Dimension_Array) return Histogram
+   is
+      No_Mask : OpenCV.Core.Mat;
+   begin
+      Validate_Source_Dimensions (Dimensions, "Calculate_Histogram");
+      Validate_Histogram_Sources (Sources, "Calculate_Histogram");
+      Validate_Source_Selection (Sources, Dimensions, "Calculate_Histogram");
+      return Build_Multi_Histogram (Sources, No_Mask, False, Dimensions);
+   end Calculate_Histogram;
+
+   function Calculate_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Mask       : OpenCV.Core.Mat;
+      Dimensions : Histogram_Source_Dimension_Array) return Histogram is
+   begin
+      Validate_Source_Dimensions (Dimensions, "Calculate_Histogram");
+      Validate_Histogram_Sources (Sources, "Calculate_Histogram");
+      Validate_Source_Selection (Sources, Dimensions, "Calculate_Histogram");
+      Validate_Histogram_Mask
+        (Mask,
+         Sources (Sources'First).Rows,
+         Sources (Sources'First).Columns,
+         "Calculate_Histogram");
+      return Build_Multi_Histogram (Sources, Mask, True, Dimensions);
    end Calculate_Histogram;
 
    function To_C_Histogram_Comparison
@@ -7831,8 +8128,9 @@ package body OpenCV.Image_Processing is
       end if;
       for Index in 1 .. Natural (Left.Dimensions.Length) loop
          declare
-            L : constant Histogram_Dimension := Left.Dimensions (Index);
-            R : constant Histogram_Dimension := Right.Dimensions (Index);
+            L : constant Histogram_Source_Dimension := Left.Dimensions (Index);
+            R : constant Histogram_Source_Dimension :=
+              Right.Dimensions (Index);
          begin
             if L.Bin_Count /= R.Bin_Count
               or else L.Lower_Bound /= R.Lower_Bound
@@ -7861,6 +8159,10 @@ package body OpenCV.Image_Processing is
    begin
       if Dimensions'Length = 0 then
          Histogram_Error ("Back_Project requires a calculated histogram");
+      elsif not All_Source_Positions_Are_Zero (Distribution) then
+         Histogram_Error
+           ("Back_Project Source requires every histogram source position to"
+            & " be 0; use the Sources overload");
       elsif not Is_Finite (Scale)
         or else abs Scale > OpenCV.Float64_Value (OpenCV.Float32_Value'Last)
       then
@@ -7910,6 +8212,182 @@ package body OpenCV.Image_Processing is
          return Output;
       end;
    end Back_Project;
+
+   function Back_Project
+     (Sources      : OpenCV.Core.Mat_Array;
+      Distribution : Histogram;
+      Scale        : OpenCV.Float64_Value := 1.0) return OpenCV.Core.Mat
+   is
+      use type OpenCV.Float64_Value;
+      Dimensions : constant Histogram_Source_Dimension_Array :=
+        Stored_Source_Dimensions (Distribution);
+      Output     : OpenCV.Core.Mat;
+      Status     : Internal.C_API.Status := Internal.C_API.Success;
+   begin
+      if Dimensions'Length = 0 then
+         Histogram_Error ("Back_Project requires a calculated histogram");
+      elsif not Is_Finite (Scale)
+        or else abs Scale > OpenCV.Float64_Value (OpenCV.Float32_Value'Last)
+      then
+         Histogram_Error
+           ("Back_Project requires a finite Float32-range Scale");
+      end if;
+      Validate_Histogram_Sources (Sources, "Back_Project");
+      Validate_Source_Selection (Sources, Dimensions, "Back_Project");
+
+      declare
+         Records :
+           aliased constant Internal
+                              .C_API
+                              .Histogram_Source_Dimension_Records :=
+             To_C_Source_Dimensions (Dimensions);
+
+         procedure Invoke
+           (Handles :
+              access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+            Count   : Interfaces.Integer_32)
+         is
+            procedure With_Histogram
+              (Histogram_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure With_Output
+                 (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+               is
+               begin
+                  Status :=
+                    Internal.C_API.Calc_Back_Project_Multi
+                      (Handles,
+                       Count,
+                       Histogram_Handle,
+                       Records (Records'First)'Access,
+                       Records'Length,
+                       Interfaces.C.double (Scale),
+                       Output_Handle);
+               end With_Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Output, With_Output'Access);
+            end With_Histogram;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Distribution.Values, With_Histogram'Access);
+         end Invoke;
+      begin
+         With_Source_Handles (Sources, Invoke'Access);
+      end;
+      Raise_On_Error (Status, "Back_Project");
+      return Output;
+   end Back_Project;
+
+   --  Adds a fresh delta histogram onto a clone of Base. Base is never
+   --  passed to native calcHist, so OpenCV cannot reallocate it or convert
+   --  its Float32 bins through signed int. The result is published only when
+   --  every widened bin sum is a finite Float32.
+   function Add_Histogram_Values
+     (Base : Histogram; Increment : Histogram) return Histogram
+   is
+      Sum    : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure With_Base
+        (Base_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure With_Increment
+           (Increment_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure With_Sum
+              (Sum_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Add_Histograms
+                   (Base_Handle, Increment_Handle, Sum_Handle);
+            end With_Sum;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Sum, With_Sum'Access);
+         end With_Increment;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Increment.Values, With_Increment'Access);
+      end With_Base;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Base.Values, With_Base'Access);
+      Raise_On_Error (Status, "Accumulate_Histogram");
+      return Result : Histogram do
+         Result.Values := Sum;
+         Result.Dimensions := Base.Dimensions;
+      end return;
+   end Add_Histogram_Values;
+
+   function Accumulate_Histogram
+     (Base : Histogram; Source : OpenCV.Core.Mat) return Histogram
+   is
+      Dimensions : constant Histogram_Dimension_Array :=
+        Stored_Dimensions (Base);
+   begin
+      if Dimensions'Length = 0 then
+         Histogram_Error
+           ("Accumulate_Histogram requires a calculated histogram");
+      elsif not All_Source_Positions_Are_Zero (Base) then
+         Histogram_Error
+           ("Accumulate_Histogram Source requires every histogram source"
+            & " position to be 0; use the Sources overload");
+      end if;
+      return
+        Add_Histogram_Values (Base, Calculate_Histogram (Source, Dimensions));
+   end Accumulate_Histogram;
+
+   function Accumulate_Histogram
+     (Base : Histogram; Source : OpenCV.Core.Mat; Mask : OpenCV.Core.Mat)
+      return Histogram
+   is
+      Dimensions : constant Histogram_Dimension_Array :=
+        Stored_Dimensions (Base);
+   begin
+      if Dimensions'Length = 0 then
+         Histogram_Error
+           ("Accumulate_Histogram requires a calculated histogram");
+      elsif not All_Source_Positions_Are_Zero (Base) then
+         Histogram_Error
+           ("Accumulate_Histogram Source requires every histogram source"
+            & " position to be 0; use the Sources overload");
+      end if;
+      return
+        Add_Histogram_Values
+          (Base, Calculate_Histogram (Source, Mask, Dimensions));
+   end Accumulate_Histogram;
+
+   function Accumulate_Histogram
+     (Base : Histogram; Sources : OpenCV.Core.Mat_Array) return Histogram
+   is
+      Dimensions : constant Histogram_Source_Dimension_Array :=
+        Stored_Source_Dimensions (Base);
+   begin
+      if Dimensions'Length = 0 then
+         Histogram_Error
+           ("Accumulate_Histogram requires a calculated histogram");
+      end if;
+      return
+        Add_Histogram_Values (Base, Calculate_Histogram (Sources, Dimensions));
+   end Accumulate_Histogram;
+
+   function Accumulate_Histogram
+     (Base    : Histogram;
+      Sources : OpenCV.Core.Mat_Array;
+      Mask    : OpenCV.Core.Mat) return Histogram
+   is
+      Dimensions : constant Histogram_Source_Dimension_Array :=
+        Stored_Source_Dimensions (Base);
+   begin
+      if Dimensions'Length = 0 then
+         Histogram_Error
+           ("Accumulate_Histogram requires a calculated histogram");
+      end if;
+      return
+        Add_Histogram_Values
+          (Base, Calculate_Histogram (Sources, Mask, Dimensions));
+   end Accumulate_Histogram;
 
    procedure Validate_Pyramid_Mean_Shift_Filter
      (Source                : OpenCV.Core.Mat;

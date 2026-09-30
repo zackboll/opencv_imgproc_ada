@@ -1295,7 +1295,7 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_mat_storage_overlap";
 
-   --  Mirrors opencv_imgproc_histogram_dimension.
+   --  Mirrors opencv_imgproc_histogram_dimension. Source position is 0.
    type Histogram_Dimension_Record is record
       Channel     : Interfaces.Integer_32;
       Bin_Count   : Interfaces.Integer_32;
@@ -1306,6 +1306,25 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Histogram_Dimension_Records is
      array (Positive range <>) of aliased Histogram_Dimension_Record
+   with Convention => C;
+
+   --  Mirrors opencv_imgproc_histogram_source_dimension.
+   type Histogram_Source_Dimension_Record is record
+      Source_Position : Interfaces.Integer_32;
+      Channel         : Interfaces.Integer_32;
+      Bin_Count       : Interfaces.Integer_32;
+      Lower_Bound     : Interfaces.C.C_float;
+      Upper_Bound     : Interfaces.C.C_float;
+   end record
+   with Convention => C;
+
+   type Histogram_Source_Dimension_Records is
+     array (Positive range <>) of aliased Histogram_Source_Dimension_Record
+   with Convention => C;
+
+   type Mat_Handle_Array is
+     array (Natural range <>)
+     of aliased OpenCV.Core.Module_Interop.Input_Mat_Handle
    with Convention => C;
 
    Histogram_Maximum_Dimensions : constant := 10;
@@ -1337,6 +1356,33 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_calc_hist_masked";
 
+   function Calc_Hist_Multi
+     (Sources         :
+        access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Source_Count    : Interfaces.Integer_32;
+      Dimensions      : access constant Histogram_Source_Dimension_Record;
+      Dimension_Count : Interfaces.Integer_32;
+      Histogram       : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_calc_hist_multi";
+
+   function Calc_Hist_Multi_Masked
+     (Sources         :
+        access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Source_Count    : Interfaces.Integer_32;
+      Mask            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Dimensions      : access constant Histogram_Source_Dimension_Record;
+      Dimension_Count : Interfaces.Integer_32;
+      Histogram       : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_calc_hist_multi_masked";
+
    function Compare_Hist
      (Left   : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Right  : OpenCV.Core.Module_Interop.Input_Mat_Handle;
@@ -1359,6 +1405,30 @@ package OpenCV.Image_Processing.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_imgproc_calc_back_project";
+
+   function Calc_Back_Project_Multi
+     (Sources         :
+        access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Source_Count    : Interfaces.Integer_32;
+      Histogram       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Dimensions      : access constant Histogram_Source_Dimension_Record;
+      Dimension_Count : Interfaces.Integer_32;
+      Scale           : Interfaces.C.double;
+      Destination     : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_calc_back_project_multi";
+
+   function Add_Histograms
+     (Base      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Increment : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Result    : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_add_histograms";
 
    function Last_Error_Message return String;
 
