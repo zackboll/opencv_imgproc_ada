@@ -41,6 +41,32 @@ package OpenCV.Image_Processing.Internal.C_API is
    Error_Unknown          : constant Status := 3;
    Error_Invalid_Argument : constant Status := 4;
 
+   EMD_Manhattan  : constant Interfaces.Integer_32 := 0;
+   EMD_Euclidean  : constant Interfaces.Integer_32 := 1;
+   EMD_Chessboard : constant Interfaces.Integer_32 := 2;
+   EMD_User_Cost  : constant Interfaces.Integer_32 := 3;
+
+   function Earth_Mover_Distance
+     (Signature_1, Signature_2 : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Metric                   : Interfaces.Integer_32;
+      Cost                     : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Distance                 : access Interfaces.C.C_float) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_earth_mover_distance";
+   function Earth_Mover_Distance_Flow
+     (Signature_1, Signature_2 : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Metric                   : Interfaces.Integer_32;
+      Cost                     : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Distance                 : access Interfaces.C.C_float;
+      Flow                     : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_earth_mover_distance_flow";
+
    function Distance_Transform_F32
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Method      : Interfaces.Integer_32;

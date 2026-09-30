@@ -24,6 +24,7 @@ with Derivative_Kernel_Tests;
 with Drawing_Tests;
 with Drawing_Annotation_Tests;
 with Distance_Transform_Tests;
+with Earth_Mover_Tests;
 with Integral_Image_Tests;
 with Laplacian_Tests;
 with Mean_Shift_Tests;
@@ -93,6 +94,7 @@ begin
    Suite.Add_Test (Mean_Shift_Tests.Suite);
    Suite.Add_Test (Histogram_Analysis_Tests.Suite);
    Suite.Add_Test (Distance_Transform_Tests.Suite);
+   Suite.Add_Test (Earth_Mover_Tests.Suite);
    Suite.Add_Test (Integral_Image_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);

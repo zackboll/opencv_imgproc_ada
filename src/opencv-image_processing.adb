@@ -1,11 +1,13 @@
 with Ada.Containers;
 with Ada.Exceptions;
+with Ada.Numerics.Long_Elementary_Functions;
 with Ada.Unchecked_Deallocation;
 with Interfaces;
 with Interfaces.C;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Int32_Access;
+with OpenCV.Core.Float32_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Image_Processing.Internal.C_API;
 with System;
@@ -14,6 +16,258 @@ package body OpenCV.Image_Processing is
 
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
+   function Is_Finite_32 (Value : OpenCV.Float32_Value) return Boolean;
+   procedure Validate_EMD
+     (First, Second, Cost : OpenCV.Core.Mat;
+      User_Cost           : Boolean;
+      Metric              : Earth_Mover_Metric);
+
+   function Solve_EMD
+     (First, Second, Cost  : OpenCV.Core.Mat;
+      User_Cost, With_Flow : Boolean;
+      Metric               : Earth_Mover_Metric) return Earth_Mover_Result
+   is
+      Result   : Earth_Mover_Result;
+      Value    : aliased Interfaces.C.C_float := 0.0;
+      Status   : Internal.C_API.Status := Internal.C_API.Success;
+      Selector : constant Interfaces.Integer_32 :=
+        (if User_Cost
+         then Internal.C_API.EMD_User_Cost
+         else Earth_Mover_Metric'Pos (Metric));
+      procedure With_First (A : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure With_Second
+           (B : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure With_Cost
+              (C : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure With_Output
+                 (F : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Earth_Mover_Distance_Flow
+                      (A, B, Selector, C, Value'Access, F);
+               end With_Output;
+            begin
+               if With_Flow then
+                  OpenCV.Core.Module_Interop.With_Output_Handle
+                    (Result.Flow, With_Output'Access);
+               else
+                  Status :=
+                    Internal.C_API.Earth_Mover_Distance
+                      (A, B, Selector, C, Value'Access);
+               end if;
+            end With_Cost;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Cost, With_Cost'Access);
+         end With_Second;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Second, With_Second'Access);
+      end With_First;
+   begin
+      Validate_EMD (First, Second, Cost, User_Cost, Metric);
+      OpenCV.Core.Module_Interop.With_Input_Handle (First, With_First'Access);
+      Raise_On_Error (Status, "Earth_Mover_Distance");
+      Result.Distance := OpenCV.Float32_Value (Value);
+      return Result;
+   end Solve_EMD;
+
+   function Earth_Mover_Distance
+     (Signature_1, Signature_2 : OpenCV.Core.Mat;
+      Metric                   : Earth_Mover_Metric := Euclidean_EMD)
+      return OpenCV.Float32_Value
+   is
+      Empty_Cost : OpenCV.Core.Mat;
+   begin
+      return
+        Solve_EMD (Signature_1, Signature_2, Empty_Cost, False, False, Metric)
+          .Distance;
+   end Earth_Mover_Distance;
+
+   function Earth_Mover_Distance_With_Flow
+     (Signature_1, Signature_2 : OpenCV.Core.Mat;
+      Metric                   : Earth_Mover_Metric := Euclidean_EMD)
+      return Earth_Mover_Result
+   is
+      Empty_Cost : OpenCV.Core.Mat;
+   begin
+      return
+        Solve_EMD (Signature_1, Signature_2, Empty_Cost, False, True, Metric);
+   end Earth_Mover_Distance_With_Flow;
+
+   function Earth_Mover_Distance_With_Cost
+     (Signature_1, Signature_2, Cost : OpenCV.Core.Mat)
+      return OpenCV.Float32_Value is
+   begin
+      return
+        Solve_EMD (Signature_1, Signature_2, Cost, True, False, Euclidean_EMD)
+          .Distance;
+   end Earth_Mover_Distance_With_Cost;
+
+   function Earth_Mover_Distance_With_Cost_And_Flow
+     (Signature_1, Signature_2, Cost : OpenCV.Core.Mat)
+      return Earth_Mover_Result is
+   begin
+      return
+        Solve_EMD (Signature_1, Signature_2, Cost, True, True, Euclidean_EMD);
+   end Earth_Mover_Distance_With_Cost_And_Flow;
+
+   procedure Validate_EMD
+     (First, Second, Cost : OpenCV.Core.Mat;
+      User_Cost           : Boolean;
+      Metric              : Earth_Mover_Metric)
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Mat_Size;
+      use type OpenCV.Float32_Value;
+      package Pixels renames OpenCV.Core.Float32_Access;
+
+      procedure Check_Signature (S : OpenCV.Core.Mat) is
+         Total        : Long_Float := 0.0;
+         Native_Total : OpenCV.Float32_Value := 0.0;
+      begin
+         if S.Is_Empty
+           or else S.Dimension_Count /= 2
+           or else S.Depth /= OpenCV.Core.Float32
+           or else S.Channels /= 1
+           or else S.Columns < (if User_Cost then 1 else 2)
+         then
+            raise OpenCV.OpenCV_Error
+              with "Invalid EMD signature shape or type";
+         end if;
+         for R in 0 .. S.Rows - 1 loop
+            declare
+               W : constant OpenCV.Float32_Value := Pixels.Get (S, R, 0);
+            begin
+               if not Is_Finite_32 (W) or else W < 0.0 then
+                  raise OpenCV.OpenCV_Error with "Invalid EMD weight";
+               end if;
+               Total := Total + Long_Float (W);
+               if Total > Long_Float (OpenCV.Float32_Value'Last)
+                 or else Long_Float (Native_Total) + Long_Float (W)
+                         > Long_Float (OpenCV.Float32_Value'Last)
+               then
+                  raise OpenCV.OpenCV_Error
+                    with "EMD Float32 weight sum overflows";
+               end if;
+               Native_Total := Native_Total + W;
+            end;
+            if not User_Cost then
+               for C in 1 .. S.Columns - 1 loop
+                  if not Is_Finite_32 (Pixels.Get (S, R, C)) then
+                     raise OpenCV.OpenCV_Error with "Invalid EMD coordinate";
+                  end if;
+               end loop;
+            end if;
+         end loop;
+         if Total <= 0.0 or else Total > Long_Float (OpenCV.Float32_Value'Last)
+         then
+            raise OpenCV.OpenCV_Error with "Invalid EMD total weight";
+         end if;
+      end Check_Signature;
+
+      Limit : constant Long_Float := Long_Float (1.0e20);
+   begin
+      Check_Signature (First);
+      Check_Signature (Second);
+      if First.Columns /= Second.Columns then
+         raise OpenCV.OpenCV_Error
+           with "EMD signatures must have equal columns";
+      end if;
+      if User_Cost then
+         if Cost.Is_Empty
+           or else Cost.Dimension_Count /= 2
+           or else Cost.Depth /= OpenCV.Core.Float32
+           or else Cost.Channels /= 1
+           or else Cost.Rows /= First.Rows
+           or else Cost.Columns /= Second.Rows
+         then
+            raise OpenCV.OpenCV_Error with "Invalid EMD cost shape or type";
+         end if;
+         for R in 0 .. Cost.Rows - 1 loop
+            for C in 0 .. Cost.Columns - 1 loop
+               declare
+                  V : constant OpenCV.Float32_Value := Pixels.Get (Cost, R, C);
+               begin
+                  if not Is_Finite_32 (V)
+                    or else V < 0.0
+                    or else Long_Float (V) >= Limit
+                  then
+                     raise OpenCV.OpenCV_Error
+                       with "Invalid EMD transport cost";
+                  end if;
+               end;
+            end loop;
+         end loop;
+      else
+         --  The native metric subtracts Float32 operands before widening its
+         --  difference to double; L2 casts its squared sum back to Float32
+         --  before sqrt. Model both narrowing points, not just real distance.
+         for R in 0 .. First.Rows - 1 loop
+            if Pixels.Get (First, R, 0) > 0.0 then
+               for S in 0 .. Second.Rows - 1 loop
+                  if Pixels.Get (Second, S, 0) > 0.0 then
+                     declare
+                        L1       : Long_Float := 0.0;
+                        L2       : Long_Float := 0.0;
+                        Max_Diff : Long_Float := 0.0;
+                     begin
+                        for C in 1 .. First.Columns - 1 loop
+                           declare
+                              Wide : constant Long_Float :=
+                                Long_Float (Pixels.Get (First, R, C))
+                                - Long_Float (Pixels.Get (Second, S, C));
+                           begin
+                              if abs Wide
+                                > Long_Float (OpenCV.Float32_Value'Last)
+                              then
+                                 raise OpenCV.OpenCV_Error
+                                   with
+                                     "EMD coordinate difference overflows Float32";
+                              end if;
+                              declare
+                                 Diff : constant Long_Float :=
+                                   abs Long_Float
+                                         (OpenCV.Float32_Value (Wide));
+                              begin
+                                 L1 := L1 + Diff;
+                                 L2 := L2 + Diff * Diff;
+                                 Max_Diff := Long_Float'Max (Max_Diff, Diff);
+                              end;
+                           end;
+                        end loop;
+                        if (case Metric is
+                              when Manhattan_EMD  =>
+                                L1 > Long_Float (OpenCV.Float32_Value'Last)
+                                or else Long_Float (OpenCV.Float32_Value (L1))
+                                        >= Limit,
+                              when Chessboard_EMD => Max_Diff >= Limit,
+                              when Euclidean_EMD  =>
+                                L2 > Long_Float (OpenCV.Float32_Value'Last)
+                                or else Long_Float
+                                          (OpenCV.Float32_Value
+                                             (Ada
+                                                .Numerics
+                                                .Long_Elementary_Functions
+                                                .Sqrt
+                                                   (Long_Float
+                                                      (OpenCV.Float32_Value
+                                                         (L2)))))
+                                        >= Limit)
+                        then
+                           raise OpenCV.OpenCV_Error
+                             with "EMD native cost exceeds solver limit";
+                        end if;
+                     end;
+                  end if;
+               end loop;
+            end if;
+         end loop;
+      end if;
+   end Validate_EMD;
 
    procedure Validate_Integral
      (Source        : OpenCV.Core.Mat;
