@@ -7563,6 +7563,13 @@ package body OpenCV.Image_Processing is
       Ada.Exceptions.Raise_Exception (OpenCV.OpenCV_Error'Identity, Message);
    end Histogram_Error;
 
+   function Boundary_Equal (Left, Right : OpenCV.Float32_Value) return Boolean
+   is
+      use type OpenCV.Float32_Value;
+   begin
+      return Left = Right;
+   end Boundary_Equal;
+
    function Is_Finite_32 (Value : OpenCV.Float32_Value) return Boolean is
       use type OpenCV.Float32_Value;
    begin
@@ -7743,20 +7750,43 @@ package body OpenCV.Image_Processing is
       end loop;
    end Validate_Source_Selection;
 
-   function To_Stored
-     (Dimension : Histogram_Dimension) return Histogram_Source_Dimension
-   is ((Source_Position => 0,
-        Channel         => Dimension.Channel,
-        Bin_Count       => Dimension.Bin_Count,
-        Lower_Bound     => Dimension.Lower_Bound,
-        Upper_Bound     => Dimension.Upper_Bound));
+   function To_Stored (Dimension : Histogram_Dimension) return Histogram_Axis
+   is
+      Axis : Histogram_Axis;
+   begin
+      Axis.Source_Position := 0;
+      Axis.Channel := Dimension.Channel;
+      Axis.Bin_Count := Dimension.Bin_Count;
+      Axis.Boundaries.Append (Dimension.Lower_Bound);
+      Axis.Boundaries.Append (Dimension.Upper_Bound);
+      return Axis;
+   end To_Stored;
 
-   function To_Public
-     (Dimension : Histogram_Source_Dimension) return Histogram_Dimension
-   is ((Channel     => Dimension.Channel,
-        Bin_Count   => Dimension.Bin_Count,
-        Lower_Bound => Dimension.Lower_Bound,
-        Upper_Bound => Dimension.Upper_Bound));
+   function To_Stored
+     (Dimension : Histogram_Source_Dimension) return Histogram_Axis
+   is
+      Axis : Histogram_Axis;
+   begin
+      Axis.Source_Position := Dimension.Source_Position;
+      Axis.Channel := Dimension.Channel;
+      Axis.Bin_Count := Dimension.Bin_Count;
+      Axis.Boundaries.Append (Dimension.Lower_Bound);
+      Axis.Boundaries.Append (Dimension.Upper_Bound);
+      return Axis;
+   end To_Stored;
+
+   function To_Public (Axis : Histogram_Axis) return Histogram_Dimension
+   is ((Channel     => Axis.Channel,
+        Bin_Count   => Axis.Bin_Count,
+        Lower_Bound => Axis.Boundaries.First_Element,
+        Upper_Bound => Axis.Boundaries.Last_Element));
+
+   function To_Source (Axis : Histogram_Axis) return Histogram_Source_Dimension
+   is ((Source_Position => Axis.Source_Position,
+        Channel         => Axis.Channel,
+        Bin_Count       => Axis.Bin_Count,
+        Lower_Bound     => Axis.Boundaries.First_Element,
+        Upper_Bound     => Axis.Boundaries.Last_Element));
 
    function To_C_Source
      (Dimension : Histogram_Source_Dimension)
@@ -7805,11 +7835,10 @@ package body OpenCV.Image_Processing is
    function Stored_Dimensions
      (Value : Histogram) return Histogram_Dimension_Array
    is
-      Result :
-        Histogram_Dimension_Array (1 .. Natural (Value.Dimensions.Length));
+      Result : Histogram_Dimension_Array (1 .. Natural (Value.Axes.Length));
    begin
       for Index in Result'Range loop
-         Result (Index) := To_Public (Value.Dimensions.Element (Index));
+         Result (Index) := To_Public (Value.Axes.Element (Index));
       end loop;
       return Result;
    end Stored_Dimensions;
@@ -7818,19 +7847,18 @@ package body OpenCV.Image_Processing is
      (Value : Histogram) return Histogram_Source_Dimension_Array
    is
       Result :
-        Histogram_Source_Dimension_Array
-          (1 .. Natural (Value.Dimensions.Length));
+        Histogram_Source_Dimension_Array (1 .. Natural (Value.Axes.Length));
    begin
       for Index in Result'Range loop
-         Result (Index) := Value.Dimensions.Element (Index);
+         Result (Index) := To_Source (Value.Axes.Element (Index));
       end loop;
       return Result;
    end Stored_Source_Dimensions;
 
    function All_Source_Positions_Are_Zero (Value : Histogram) return Boolean is
    begin
-      for Dimension of Value.Dimensions loop
-         if Dimension.Source_Position /= 0 then
+      for Axis of Value.Axes loop
+         if Axis.Source_Position /= 0 then
             return False;
          end if;
       end loop;
@@ -7838,27 +7866,97 @@ package body OpenCV.Image_Processing is
    end All_Source_Positions_Are_Zero;
 
    function Histogram_Dimension_Count (Value : Histogram) return Natural
-   is (Natural (Value.Dimensions.Length));
+   is (Natural (Value.Axes.Length));
+
+   function Histogram_Binning (Value : Histogram) return Histogram_Binning_Mode
+   is (Value.Binning);
+
+   function To_Nonuniform
+     (Source_Position : Natural;
+      Channel         : Natural;
+      Boundaries      : Histogram_Bin_Boundary_Array)
+      return Histogram_Nonuniform_Dimension
+   is
+      use type OpenCV.Float32_Value;
+      Dimension : Histogram_Nonuniform_Dimension;
+      Total     : Long_Long_Integer;
+   begin
+      if Boundaries'Length < 2 then
+         Histogram_Error
+           ("Nonuniform histogram dimension requires at least two boundaries");
+      end if;
+      Total := Long_Long_Integer (Boundaries'Length - 1);
+      if Total > Long_Long_Integer (Interfaces.Integer_32'Last) then
+         Histogram_Error
+           ("Nonuniform histogram dimension bin count exceeds 2_147_483_647");
+      end if;
+      Dimension.Source_Position := Source_Position;
+      Dimension.Channel := Channel;
+      for Edge of Boundaries loop
+         if not Is_Finite_32 (Edge) then
+            Histogram_Error ("Nonuniform histogram boundaries must be finite");
+         elsif not Dimension.Boundaries.Is_Empty
+           and then not (Dimension.Boundaries.Last_Element < Edge)
+         then
+            Histogram_Error
+              ("Nonuniform histogram boundaries must be strictly increasing");
+         end if;
+         Dimension.Boundaries.Append (Edge);
+      end loop;
+      return Dimension;
+   end To_Nonuniform;
+
+   function Nonuniform_Histogram_Dimension
+     (Channel : Natural; Boundaries : Histogram_Bin_Boundary_Array)
+      return Histogram_Nonuniform_Dimension
+   is (To_Nonuniform (0, Channel, Boundaries));
+
+   function Nonuniform_Histogram_Source_Dimension
+     (Source_Position : Natural;
+      Channel         : Natural;
+      Boundaries      : Histogram_Bin_Boundary_Array)
+      return Histogram_Nonuniform_Dimension
+   is (To_Nonuniform (Source_Position, Channel, Boundaries));
 
    function Get_Histogram_Dimension
      (Value : Histogram; Index : Positive) return Histogram_Dimension is
    begin
-      if Index > Natural (Value.Dimensions.Length) then
+      if Index > Natural (Value.Axes.Length) then
          Histogram_Error
            ("Get_Histogram_Dimension index exceeds the dimension count");
       end if;
-      return To_Public (Value.Dimensions.Element (Index));
+      return To_Public (Value.Axes.Element (Index));
    end Get_Histogram_Dimension;
 
    function Get_Histogram_Source_Position
      (Value : Histogram; Index : Positive) return Natural is
    begin
-      if Index > Natural (Value.Dimensions.Length) then
+      if Index > Natural (Value.Axes.Length) then
          Histogram_Error
            ("Get_Histogram_Source_Position index exceeds the dimension count");
       end if;
-      return Value.Dimensions.Element (Index).Source_Position;
+      return Value.Axes.Element (Index).Source_Position;
    end Get_Histogram_Source_Position;
+
+   function Get_Histogram_Bin_Boundaries
+     (Value : Histogram; Index : Positive) return Histogram_Bin_Boundary_Array
+   is
+   begin
+      if Index > Natural (Value.Axes.Length) then
+         Histogram_Error
+           ("Get_Histogram_Bin_Boundaries index exceeds the dimension count");
+      end if;
+      declare
+         Stored : constant Histogram_Boundary_Vectors.Vector :=
+           Value.Axes.Element (Index).Boundaries;
+         Result : Histogram_Bin_Boundary_Array (1 .. Natural (Stored.Length));
+      begin
+         for Offset in Result'Range loop
+            Result (Offset) := Stored.Element (Offset);
+         end loop;
+         return Result;
+      end;
+   end Get_Histogram_Bin_Boundaries;
 
    function Histogram_Values (Value : Histogram) return OpenCV.Core.Mat
    is (Value.Values.Clone);
@@ -7915,8 +8013,9 @@ package body OpenCV.Image_Processing is
       Raise_On_Error (Status, "Calculate_Histogram");
       return Result : Histogram do
          Result.Values := Values;
+         Result.Binning := Uniform_Binning;
          for Dimension of Dimensions loop
-            Result.Dimensions.Append (To_Stored (Dimension));
+            Result.Axes.Append (To_Stored (Dimension));
          end loop;
       end return;
    end Build_Histogram;
@@ -8034,8 +8133,9 @@ package body OpenCV.Image_Processing is
       Raise_On_Error (Status, "Calculate_Histogram");
       return Result : Histogram do
          Result.Values := Values;
+         Result.Binning := Uniform_Binning;
          for Dimension of Dimensions loop
-            Result.Dimensions.Append (Dimension);
+            Result.Axes.Append (To_Stored (Dimension));
          end loop;
       end return;
    end Build_Multi_Histogram;
@@ -8067,6 +8167,299 @@ package body OpenCV.Image_Processing is
          "Calculate_Histogram");
       return Build_Multi_Histogram (Sources, Mask, True, Dimensions);
    end Calculate_Histogram;
+
+   function Axis_Of
+     (Dimension : Histogram_Nonuniform_Dimension) return Histogram_Axis
+   is
+      Axis : Histogram_Axis;
+   begin
+      Axis.Source_Position := Dimension.Source_Position;
+      Axis.Channel := Dimension.Channel;
+      Axis.Bin_Count :=
+        Histogram_Bin_Count (Natural (Dimension.Boundaries.Length) - 1);
+      Axis.Boundaries := Dimension.Boundaries;
+      return Axis;
+   end Axis_Of;
+
+   function Nonuniform_As_Uniform
+     (Dimensions : Histogram_Nonuniform_Dimension_Array)
+      return Histogram_Dimension_Array
+   is
+      Result : Histogram_Dimension_Array (1 .. Dimensions'Length);
+      Target : Positive := Result'First;
+   begin
+      for Dimension of Dimensions loop
+         Result (Target) :=
+           (Channel     => Dimension.Channel,
+            Bin_Count   =>
+              Histogram_Bin_Count (Natural (Dimension.Boundaries.Length) - 1),
+            Lower_Bound => Dimension.Boundaries.First_Element,
+            Upper_Bound => Dimension.Boundaries.Last_Element);
+         Target := Target + 1;
+      end loop;
+      return Result;
+   end Nonuniform_As_Uniform;
+
+   procedure Validate_Nonuniform_Product
+     (Dimensions : Histogram_Nonuniform_Dimension_Array; Operation : String)
+   is
+      Total : Long_Long_Integer := 1;
+   begin
+      if Dimensions'Length = 0
+        or else Dimensions'Length > Maximum_Histogram_Dimensions
+      then
+         Histogram_Error
+           (Operation & " requires 1 .. 10 histogram dimensions");
+      end if;
+      for Dimension of Dimensions loop
+         Total :=
+           Total * (Long_Long_Integer (Dimension.Boundaries.Length) - 1);
+         if Total > Long_Long_Integer (Interfaces.Integer_32'Last) then
+            Histogram_Error
+              (Operation & " bin count product exceeds 2_147_483_647");
+         end if;
+      end loop;
+   end Validate_Nonuniform_Product;
+
+   function Boundary_Count
+     (Dimensions : Histogram_Nonuniform_Dimension_Array) return Natural
+   is
+      Total : Natural := 0;
+   begin
+      for Dimension of Dimensions loop
+         Total := Total + Natural (Dimension.Boundaries.Length);
+      end loop;
+      return Total;
+   end Boundary_Count;
+
+   procedure Flatten_Nonuniform
+     (Dimensions : Histogram_Nonuniform_Dimension_Array;
+      Records    : out Internal.C_API.Histogram_Nonuniform_Dimension_Records;
+      Boundaries : out Internal.C_API.Histogram_Boundary_Values)
+   is
+      Offset : Interfaces.Unsigned_64 := 0;
+      Target : Positive := Records'First;
+      Edge   : Natural := Boundaries'First;
+   begin
+      for Dimension of Dimensions loop
+         Records (Target) :=
+           (Source_Position =>
+              Interfaces.Integer_32 (Dimension.Source_Position),
+            Channel         => Interfaces.Integer_32 (Dimension.Channel),
+            Bin_Count       =>
+              Interfaces.Integer_32
+                (Natural (Dimension.Boundaries.Length) - 1),
+            Boundary_Offset => Offset);
+         for Boundary of Dimension.Boundaries loop
+            Boundaries (Edge) := Interfaces.C.C_float (Boundary);
+            Edge := Edge + 1;
+         end loop;
+         declare
+            Next_Offset : constant Natural :=
+              Natural (Offset) + Natural (Dimension.Boundaries.Length);
+         begin
+            Offset := Interfaces.Unsigned_64 (Next_Offset);
+         end;
+         Target := Target + 1;
+      end loop;
+   end Flatten_Nonuniform;
+
+   function Calculate_Nonuniform
+     (Sources    : OpenCV.Core.Mat_Array;
+      Mask_Image : OpenCV.Core.Mat;
+      Masked     : Boolean;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram
+   is
+      Records    :
+        aliased Internal.C_API.Histogram_Nonuniform_Dimension_Records
+                  (1 .. Dimensions'Length);
+      Boundaries :
+        aliased Internal.C_API.Histogram_Boundary_Values
+                  (0 .. Boundary_Count (Dimensions) - 1);
+      Values     : OpenCV.Core.Mat;
+      Status     : Internal.C_API.Status := Internal.C_API.Success;
+      No_Mask    : OpenCV.Core.Mat;
+
+      procedure Invoke
+        (Handles : access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+         Count   : Interfaces.Integer_32)
+      is
+         procedure Dispatch
+           (Mask_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure With_Output
+              (Output_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Calc_Hist_Nonuniform
+                   (Handles,
+                    Count,
+                    Mask_Handle,
+                    (if Masked then 1 else 0),
+                    Records (Records'First)'Access,
+                    Records'Length,
+                    Boundaries (Boundaries'First)'Access,
+                    Interfaces.Unsigned_64 (Boundaries'Length),
+                    Output_Handle);
+            end With_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Values, With_Output'Access);
+         end Dispatch;
+      begin
+         if Masked then
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Mask_Image, Dispatch'Access);
+         else
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (No_Mask, Dispatch'Access);
+         end if;
+      end Invoke;
+   begin
+      Flatten_Nonuniform (Dimensions, Records, Boundaries);
+      With_Source_Handles (Sources, Invoke'Access);
+      Raise_On_Error (Status, "Calculate_Histogram");
+      return Result : Histogram do
+         Result.Values := Values;
+         Result.Binning := Nonuniform_Binning;
+         for Dimension of Dimensions loop
+            Result.Axes.Append (Axis_Of (Dimension));
+         end loop;
+      end return;
+   end Calculate_Nonuniform;
+
+   function Stored_Nonuniform
+     (Value : Histogram) return Histogram_Nonuniform_Dimension_Array
+   is
+      Result :
+        Histogram_Nonuniform_Dimension_Array
+          (1 .. Natural (Value.Axes.Length));
+   begin
+      for Index in Result'Range loop
+         declare
+            Axis      : constant Histogram_Axis := Value.Axes.Element (Index);
+            Dimension : Histogram_Nonuniform_Dimension;
+         begin
+            Dimension.Source_Position := Axis.Source_Position;
+            Dimension.Channel := Axis.Channel;
+            Dimension.Boundaries := Axis.Boundaries;
+            Result (Index) := Dimension;
+         end;
+      end loop;
+      return Result;
+   end Stored_Nonuniform;
+
+   procedure Require_Nonuniform_Positions
+     (Dimensions : Histogram_Nonuniform_Dimension_Array; Operation : String) is
+   begin
+      for Dimension of Dimensions loop
+         if Dimension.Source_Position /= 0 then
+            Histogram_Error
+              (Operation
+               & " Source requires every histogram source position to be 0;"
+               & " use the Sources overload");
+         end if;
+      end loop;
+   end Require_Nonuniform_Positions;
+
+   function Calculate_Nonuniform_Histogram
+     (Source     : OpenCV.Core.Mat;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram
+   is
+      No_Mask : OpenCV.Core.Mat;
+      Sources : constant OpenCV.Core.Mat_Array (0 .. 0) := (0 => Source);
+   begin
+      Validate_Nonuniform_Product (Dimensions, "Calculate_Histogram");
+      Validate_Histogram_Source
+        (Source, Nonuniform_As_Uniform (Dimensions), "Calculate_Histogram");
+      Require_Nonuniform_Positions (Dimensions, "Calculate_Histogram");
+      for Dimension of Dimensions loop
+         if Dimension.Channel >= Natural (Source.Channels) then
+            Histogram_Error
+              ("Calculate_Histogram selects a channel that Source does not"
+               & " have");
+         end if;
+      end loop;
+      return Calculate_Nonuniform (Sources, No_Mask, False, Dimensions);
+   end Calculate_Nonuniform_Histogram;
+
+   function Calculate_Nonuniform_Histogram
+     (Source     : OpenCV.Core.Mat;
+      Mask       : OpenCV.Core.Mat;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram
+   is
+      Sources : constant OpenCV.Core.Mat_Array (0 .. 0) := (0 => Source);
+   begin
+      Validate_Nonuniform_Product (Dimensions, "Calculate_Histogram");
+      Validate_Histogram_Source
+        (Source, Nonuniform_As_Uniform (Dimensions), "Calculate_Histogram");
+      Require_Nonuniform_Positions (Dimensions, "Calculate_Histogram");
+      for Dimension of Dimensions loop
+         if Dimension.Channel >= Natural (Source.Channels) then
+            Histogram_Error
+              ("Calculate_Histogram selects a channel that Source does not"
+               & " have");
+         end if;
+      end loop;
+      Validate_Histogram_Mask
+        (Mask, Source.Rows, Source.Columns, "Calculate_Histogram");
+      return Calculate_Nonuniform (Sources, Mask, True, Dimensions);
+   end Calculate_Nonuniform_Histogram;
+
+   function Calculate_Nonuniform_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram
+   is
+      No_Mask  : OpenCV.Core.Mat;
+      Position : Natural;
+   begin
+      Validate_Nonuniform_Product (Dimensions, "Calculate_Histogram");
+      Validate_Histogram_Sources (Sources, "Calculate_Histogram");
+      for Dimension of Dimensions loop
+         if Dimension.Source_Position >= Sources'Length then
+            Histogram_Error
+              ("Calculate_Histogram selects a source position that Sources"
+               & " does not have");
+         end if;
+         Position := Sources'First + Dimension.Source_Position;
+         if Dimension.Channel >= Natural (Sources (Position).Channels) then
+            Histogram_Error
+              ("Calculate_Histogram selects a channel that the chosen Source"
+               & " does not have");
+         end if;
+      end loop;
+      return Calculate_Nonuniform (Sources, No_Mask, False, Dimensions);
+   end Calculate_Nonuniform_Histogram;
+
+   function Calculate_Nonuniform_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Mask       : OpenCV.Core.Mat;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram
+   is
+      Position : Natural;
+   begin
+      Validate_Nonuniform_Product (Dimensions, "Calculate_Histogram");
+      Validate_Histogram_Sources (Sources, "Calculate_Histogram");
+      for Dimension of Dimensions loop
+         if Dimension.Source_Position >= Sources'Length then
+            Histogram_Error
+              ("Calculate_Histogram selects a source position that Sources"
+               & " does not have");
+         end if;
+         Position := Sources'First + Dimension.Source_Position;
+         if Dimension.Channel >= Natural (Sources (Position).Channels) then
+            Histogram_Error
+              ("Calculate_Histogram selects a channel that the chosen Source"
+               & " does not have");
+         end if;
+      end loop;
+      Validate_Histogram_Mask
+        (Mask,
+         Sources (Sources'First).Rows,
+         Sources (Sources'First).Columns,
+         "Calculate_Histogram");
+      return Calculate_Nonuniform (Sources, Mask, True, Dimensions);
+   end Calculate_Nonuniform_Histogram;
 
    function To_C_Histogram_Comparison
      (Method : Histogram_Comparison_Method) return Interfaces.Integer_32 is
@@ -8120,26 +8513,36 @@ package body OpenCV.Image_Processing is
            (Right.Values, With_Right'Access);
       end With_Left;
    begin
-      if Left.Dimensions.Is_Empty or else Right.Dimensions.Is_Empty then
+      if Left.Axes.Is_Empty or else Right.Axes.Is_Empty then
          Histogram_Error ("Compare_Histograms requires calculated histograms");
-      elsif Left.Dimensions.Length /= Right.Dimensions.Length then
+      elsif Left.Binning /= Right.Binning then
+         Histogram_Error
+           ("Compare_Histograms requires both histograms to use the same"
+            & " binning mode");
+      elsif Left.Axes.Length /= Right.Axes.Length then
          Histogram_Error
            ("Compare_Histograms requires the same number of dimensions");
       end if;
-      for Index in 1 .. Natural (Left.Dimensions.Length) loop
+      for Index in 1 .. Natural (Left.Axes.Length) loop
          declare
-            L : constant Histogram_Source_Dimension := Left.Dimensions (Index);
-            R : constant Histogram_Source_Dimension :=
-              Right.Dimensions (Index);
+            L : constant Histogram_Axis := Left.Axes.Element (Index);
+            R : constant Histogram_Axis := Right.Axes.Element (Index);
          begin
             if L.Bin_Count /= R.Bin_Count
-              or else L.Lower_Bound /= R.Lower_Bound
-              or else L.Upper_Bound /= R.Upper_Bound
+              or else L.Boundaries.Length /= R.Boundaries.Length
             then
                Histogram_Error
                  ("Compare_Histograms requires identical bin counts and"
                   & " ranges in every dimension");
             end if;
+            for Edge in 1 .. Natural (L.Boundaries.Length) loop
+               if L.Boundaries.Element (Edge) /= R.Boundaries.Element (Edge)
+               then
+                  Histogram_Error
+                    ("Compare_Histograms requires identical bin counts and"
+                     & " ranges in every dimension");
+               end if;
+            end loop;
          end;
       end loop;
       OpenCV.Core.Module_Interop.With_Input_Handle
@@ -8170,6 +8573,62 @@ package body OpenCV.Image_Processing is
            ("Back_Project requires a finite Float32-range Scale");
       end if;
       Validate_Histogram_Source (Source, Dimensions, "Back_Project");
+
+      if Distribution.Binning = Nonuniform_Binning then
+         declare
+            Nonuniform : constant Histogram_Nonuniform_Dimension_Array :=
+              Stored_Nonuniform (Distribution);
+            Records    :
+              aliased Internal.C_API.Histogram_Nonuniform_Dimension_Records
+                        (1 .. Nonuniform'Length);
+            Boundaries :
+              aliased Internal.C_API.Histogram_Boundary_Values
+                        (0 .. Boundary_Count (Nonuniform) - 1);
+            Output     : OpenCV.Core.Mat;
+            Status     : Internal.C_API.Status := Internal.C_API.Success;
+            Sources    : constant OpenCV.Core.Mat_Array (0 .. 0) :=
+              (0 => Source);
+
+            procedure Invoke
+              (Handles :
+                 access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+               Count   : Interfaces.Integer_32)
+            is
+               procedure With_Histogram
+                 (Histogram_Handle :
+                    OpenCV.Core.Module_Interop.Input_Mat_Handle)
+               is
+                  procedure With_Output
+                    (Output_Handle :
+                       OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+                  begin
+                     Status :=
+                       Internal.C_API.Calc_Back_Project_Nonuniform
+                         (Handles,
+                          Count,
+                          Histogram_Handle,
+                          Records (Records'First)'Access,
+                          Records'Length,
+                          Boundaries (Boundaries'First)'Access,
+                          Interfaces.Unsigned_64 (Boundaries'Length),
+                          Interfaces.C.double (Scale),
+                          Output_Handle);
+                  end With_Output;
+               begin
+                  OpenCV.Core.Module_Interop.With_Output_Handle
+                    (Output, With_Output'Access);
+               end With_Histogram;
+            begin
+               OpenCV.Core.Module_Interop.With_Input_Handle
+                 (Distribution.Values, With_Histogram'Access);
+            end Invoke;
+         begin
+            Flatten_Nonuniform (Nonuniform, Records, Boundaries);
+            With_Source_Handles (Sources, Invoke'Access);
+            Raise_On_Error (Status, "Back_Project");
+            return Output;
+         end;
+      end if;
 
       declare
          Records :
@@ -8234,6 +8693,58 @@ package body OpenCV.Image_Processing is
       end if;
       Validate_Histogram_Sources (Sources, "Back_Project");
       Validate_Source_Selection (Sources, Dimensions, "Back_Project");
+
+      if Distribution.Binning = Nonuniform_Binning then
+         declare
+            Nonuniform : constant Histogram_Nonuniform_Dimension_Array :=
+              Stored_Nonuniform (Distribution);
+            Records    :
+              aliased Internal.C_API.Histogram_Nonuniform_Dimension_Records
+                        (1 .. Nonuniform'Length);
+            Boundaries :
+              aliased Internal.C_API.Histogram_Boundary_Values
+                        (0 .. Boundary_Count (Nonuniform) - 1);
+
+            procedure Invoke
+              (Handles :
+                 access constant OpenCV.Core.Module_Interop.Input_Mat_Handle;
+               Count   : Interfaces.Integer_32)
+            is
+               procedure With_Histogram
+                 (Histogram_Handle :
+                    OpenCV.Core.Module_Interop.Input_Mat_Handle)
+               is
+                  procedure With_Output
+                    (Output_Handle :
+                       OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+                  begin
+                     Status :=
+                       Internal.C_API.Calc_Back_Project_Nonuniform
+                         (Handles,
+                          Count,
+                          Histogram_Handle,
+                          Records (Records'First)'Access,
+                          Records'Length,
+                          Boundaries (Boundaries'First)'Access,
+                          Interfaces.Unsigned_64 (Boundaries'Length),
+                          Interfaces.C.double (Scale),
+                          Output_Handle);
+                  end With_Output;
+               begin
+                  OpenCV.Core.Module_Interop.With_Output_Handle
+                    (Output, With_Output'Access);
+               end With_Histogram;
+            begin
+               OpenCV.Core.Module_Interop.With_Input_Handle
+                 (Distribution.Values, With_Histogram'Access);
+            end Invoke;
+         begin
+            Flatten_Nonuniform (Nonuniform, Records, Boundaries);
+            With_Source_Handles (Sources, Invoke'Access);
+         end;
+         Raise_On_Error (Status, "Back_Project");
+         return Output;
+      end if;
 
       declare
          Records :
@@ -8316,7 +8827,8 @@ package body OpenCV.Image_Processing is
       Raise_On_Error (Status, "Accumulate_Histogram");
       return Result : Histogram do
          Result.Values := Sum;
-         Result.Dimensions := Base.Dimensions;
+         Result.Binning := Base.Binning;
+         Result.Axes := Base.Axes;
       end return;
    end Add_Histogram_Values;
 
@@ -8333,6 +8845,13 @@ package body OpenCV.Image_Processing is
          Histogram_Error
            ("Accumulate_Histogram Source requires every histogram source"
             & " position to be 0; use the Sources overload");
+      end if;
+      if Base.Binning = Nonuniform_Binning then
+         return
+           Add_Histogram_Values
+             (Base,
+              Calculate_Nonuniform_Histogram
+                (Source, Stored_Nonuniform (Base)));
       end if;
       return
         Add_Histogram_Values (Base, Calculate_Histogram (Source, Dimensions));
@@ -8353,6 +8872,13 @@ package body OpenCV.Image_Processing is
            ("Accumulate_Histogram Source requires every histogram source"
             & " position to be 0; use the Sources overload");
       end if;
+      if Base.Binning = Nonuniform_Binning then
+         return
+           Add_Histogram_Values
+             (Base,
+              Calculate_Nonuniform_Histogram
+                (Source, Mask, Stored_Nonuniform (Base)));
+      end if;
       return
         Add_Histogram_Values
           (Base, Calculate_Histogram (Source, Mask, Dimensions));
@@ -8367,6 +8893,13 @@ package body OpenCV.Image_Processing is
       if Dimensions'Length = 0 then
          Histogram_Error
            ("Accumulate_Histogram requires a calculated histogram");
+      end if;
+      if Base.Binning = Nonuniform_Binning then
+         return
+           Add_Histogram_Values
+             (Base,
+              Calculate_Nonuniform_Histogram
+                (Sources, Stored_Nonuniform (Base)));
       end if;
       return
         Add_Histogram_Values (Base, Calculate_Histogram (Sources, Dimensions));
@@ -8383,6 +8916,13 @@ package body OpenCV.Image_Processing is
       if Dimensions'Length = 0 then
          Histogram_Error
            ("Accumulate_Histogram requires a calculated histogram");
+      end if;
+      if Base.Binning = Nonuniform_Binning then
+         return
+           Add_Histogram_Values
+             (Base,
+              Calculate_Nonuniform_Histogram
+                (Sources, Mask, Stored_Nonuniform (Base)));
       end if;
       return
         Add_Histogram_Values

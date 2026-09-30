@@ -1099,6 +1099,16 @@ typedef struct {
     float upper_bound;
 } opencv_imgproc_histogram_source_dimension;
 
+/* One nonuniform axis. boundary_offset is the index of this axis's first
+ * edge in the flat boundary buffer passed with the call. The axis consumes
+ * exactly bin_count + 1 strictly increasing Float32 edges. */
+typedef struct {
+    int32_t source_position;
+    int32_t channel;
+    int32_t bin_count;
+    uint64_t boundary_offset;
+} opencv_imgproc_histogram_nonuniform_dimension;
+
 /* Portable dense-histogram dimensionality: OpenCV 4.x allows CV_MAX_DIM
  * (32) Mat dimensions, but OpenCV 5.0 limits Mat to MatShape::MAX_DIMS
  * (10). */
@@ -1159,6 +1169,42 @@ opencv_imgproc_calc_hist_multi_masked(
     const opencv_imgproc_histogram_source_dimension *dimensions,
     int32_t dimension_count,
     opencv_core_mat_handle *histogram);
+
+/*
+ * Dense nonuniform histogram. uniform is false. Each dimension consumes
+ * bin_count + 1 edges from boundaries, starting at boundary_offset. The
+ * boundary pointer is borrowed only for the duration of the call. The
+ * Float32 C1 result replaces *histogram only on success. accumulate is
+ * always false.
+ */
+opencv_imgproc_status
+opencv_imgproc_calc_hist_nonuniform(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_core_mat_handle *mask,
+    uint8_t masked,
+    const opencv_imgproc_histogram_nonuniform_dimension *dimensions,
+    int32_t dimension_count,
+    const float *boundaries,
+    uint64_t boundary_count,
+    opencv_core_mat_handle *histogram);
+
+/*
+ * Nonuniform back projection. uniform is false. Boundaries are the edges
+ * stored with the histogram; callers do not resupply a separate range.
+ * The result has sources[0]'s rows, columns and depth, and one channel.
+ */
+opencv_imgproc_status
+opencv_imgproc_calc_back_project_nonuniform(
+    const opencv_core_mat_handle *const *sources,
+    int32_t source_count,
+    const opencv_core_mat_handle *histogram,
+    const opencv_imgproc_histogram_nonuniform_dimension *dimensions,
+    int32_t dimension_count,
+    const float *boundaries,
+    uint64_t boundary_count,
+    double scale,
+    opencv_core_mat_handle *destination);
 
 /* cv::compareHist on two dense Float32 histograms. *result is 0 on
  * failure. */

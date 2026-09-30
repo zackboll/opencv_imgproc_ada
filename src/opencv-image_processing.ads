@@ -1890,18 +1890,57 @@ package OpenCV.Image_Processing is
    type Histogram_Source_Dimension_Array is
      array (Positive range <>) of Histogram_Source_Dimension;
 
-   --  A dense uniform histogram of Float32 bin counts together with the
-   --  source, channel, and range metadata it was calculated with. A
-   --  Histogram is immutable: copies share no mutable state and no operation
-   --  exposes its storage. A default-initialized Histogram is empty (zero
-   --  dimensions) and is rejected by Compare_Histograms, Back_Project, and
-   --  Accumulate_Histogram.
+   --  Explicit nonuniform bin edges. Iteration order is the edge sequence;
+   --  the array's index bounds are irrelevant. N edges define N - 1 bins
+   --  [Edges (I), Edges (I + 1)). At least two edges are required.
+   type Histogram_Bin_Boundary_Array is
+     array (Positive range <>) of OpenCV.Float32_Value;
+
+   --  One nonuniform axis. The descriptor owns a copy of Boundaries, so the
+   --  caller's array may be modified or go out of scope afterwards. Edges
+   --  must be finite and strictly increasing. They are not required to lie
+   --  inside the numeric range of a particular source depth.
+   type Histogram_Nonuniform_Dimension is private;
+
+   function Nonuniform_Histogram_Dimension
+     (Channel : Natural; Boundaries : Histogram_Bin_Boundary_Array)
+      return Histogram_Nonuniform_Dimension;
+
+   function Nonuniform_Histogram_Source_Dimension
+     (Source_Position : Natural;
+      Channel         : Natural;
+      Boundaries      : Histogram_Bin_Boundary_Array)
+      return Histogram_Nonuniform_Dimension;
+
+   --  Dimension order is iteration order; any index lower bound is accepted.
+   --  Every axis of one histogram uses this nonuniform mode. Mixed uniform
+   --  and nonuniform axes are not supported.
+   type Histogram_Nonuniform_Dimension_Array is
+     array (Positive range <>) of Histogram_Nonuniform_Dimension;
+
+   --  Every axis of one Histogram uses one binning mode. Uniform axes divide
+   --  [Lower_Bound, Upper_Bound) into equal bins. Nonuniform axes use the
+   --  stored explicit edges.
+   type Histogram_Binning_Mode is (Uniform_Binning, Nonuniform_Binning);
+
+   --  A dense histogram of Float32 bin counts together with the source,
+   --  channel, and bin-boundary metadata it was calculated with. A Histogram
+   --  is immutable: copies share no mutable state and no operation exposes
+   --  its storage. A default-initialized Histogram is empty (zero dimensions,
+   --  Uniform_Binning) and is rejected by Compare_Histograms, Back_Project,
+   --  and Accumulate_Histogram.
    type Histogram is private;
 
    function Histogram_Dimension_Count (Value : Histogram) return Natural;
 
+   function Histogram_Binning
+     (Value : Histogram) return Histogram_Binning_Mode;
+
    --  Index is 1 .. Histogram_Dimension_Count; others raise OpenCV_Error.
-   --  The returned dimension does not include Source_Position.
+   --  The returned dimension does not include Source_Position. For a
+   --  nonuniform axis this is the envelope: Bin_Count is the number of
+   --  intervals, Lower_Bound is the first stored edge, and Upper_Bound is
+   --  the last. It is not a claim that the intervals are equal.
    function Get_Histogram_Dimension
      (Value : Histogram; Index : Positive) return Histogram_Dimension;
 
@@ -1909,6 +1948,13 @@ package OpenCV.Image_Processing is
    --  always report 0. Index outside 1 .. Dimension_Count raises OpenCV_Error.
    function Get_Histogram_Source_Position
      (Value : Histogram; Index : Positive) return Natural;
+
+   --  Exact stored edges for Index, in iteration order. A uniform axis
+   --  returns its two range endpoints. A nonuniform axis returns all
+   --  Bin_Count + 1 edges. The result is independent of the Histogram.
+   --  Index outside 1 .. Dimension_Count raises OpenCV_Error.
+   function Get_Histogram_Bin_Boundaries
+     (Value : Histogram; Index : Positive) return Histogram_Bin_Boundary_Array;
 
    --  Returns an independent deep copy of the Float32 C1 bin counts. A
    --  one-dimensional histogram is a Bin_Count x 1 Mat, a two-dimensional
@@ -1956,6 +2002,31 @@ package OpenCV.Image_Processing is
       Mask       : OpenCV.Core.Mat;
       Dimensions : Histogram_Source_Dimension_Array) return Histogram;
 
+   --  Dense nonuniform histogram of one source. Each axis supplies its own
+   --  strictly increasing edges; bin I is [edge I, edge I + 1). Every stored
+   --  source position must be 0. Otherwise as the uniform single-source
+   --  overload: nonempty 2-D UInt8, UInt16 or Float32 Source, 1 .. 10 axes,
+   --  and an optional matching UInt8 C1 Mask. Source and Mask are not
+   --  modified.
+   function Calculate_Nonuniform_Histogram
+     (Source     : OpenCV.Core.Mat;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
+   function Calculate_Nonuniform_Histogram
+     (Source     : OpenCV.Core.Mat;
+      Mask       : OpenCV.Core.Mat;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
+
+   --  Dense nonuniform joint histogram. Source_Position is the zero-based
+   --  position in Mat_Array iteration order, as for uniform multi-source
+   --  histograms. Every axis is nonuniform.
+   function Calculate_Nonuniform_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
+   function Calculate_Nonuniform_Histogram
+     (Sources    : OpenCV.Core.Mat_Array;
+      Mask       : OpenCV.Core.Mat;
+      Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
+
    --  OpenCV comparison metrics. None is a normalized similarity score.
    --  Correlation: larger is more similar; identical histograms give 1.
    --  Chi_Square: smaller is closer; asymmetric (Left is the denominator).
@@ -1973,10 +2044,14 @@ package OpenCV.Image_Processing is
       Alternative_Chi_Square,
       Kullback_Leibler_Divergence);
 
-   --  Left and Right must have the same dimension count and, per dimension,
-   --  the same Bin_Count, Lower_Bound and Upper_Bound. Source positions and
-   --  channels may differ: comparison is of bin geometry and counts, not of
-   --  sample provenance.
+   --  Uniform histograms must share dimension count and, per dimension, bin
+   --  count and both range endpoints. Nonuniform histograms must both be
+   --  nonuniform and share dimension count, bin count, and the exact stored
+   --  Float32 edge sequence of every axis; matching only the first and last
+   --  edges is not enough. Uniform and nonuniform histograms are never
+   --  compared, even when a nonuniform sequence happens to be equal-width.
+   --  Source positions and channels may differ: comparison is of bin geometry
+   --  and counts, not of sample provenance.
    function Compare_Histograms
      (Left   : Histogram;
       Right  : Histogram;
@@ -1985,12 +2060,13 @@ package OpenCV.Image_Processing is
    --  Returns a new Mat with Source's rows and columns and depth and one
    --  channel, holding for each pixel the Distribution bin value of its
    --  selected channels multiplied by Scale (saturated for UInt8 and
-   --  UInt16), or 0 when a sample lies outside a range. Every stored source
-   --  position must be 0; a histogram that selects another source raises
-   --  OpenCV_Error. Source must be a nonempty two-dimensional UInt8, UInt16
-   --  or Float32 Mat containing every stored channel; Scale must be finite.
-   --  A Region is back-projected in view coordinates. Source and
-   --  Distribution are not modified.
+   --  UInt16), or 0 when a sample lies outside a bin. Uniform and nonuniform
+   --  Distributions both use the edges stored in Distribution; callers do
+   --  not resupply them. Every stored source position must be 0; a histogram
+   --  that selects another source raises OpenCV_Error. Source must be a
+   --  nonempty two-dimensional UInt8, UInt16 or Float32 Mat containing every
+   --  stored channel; Scale must be finite. A Region is back-projected in
+   --  view coordinates. Source and Distribution are not modified.
    function Back_Project
      (Source       : OpenCV.Core.Mat;
       Distribution : Histogram;
@@ -2007,24 +2083,24 @@ package OpenCV.Image_Processing is
       Distribution : Histogram;
       Scale        : OpenCV.Float64_Value := 1.0) return OpenCV.Core.Mat;
 
-   --  Returns a new histogram with Base's metadata and the Float32 sum of
-   --  Base's bins and a fresh histogram of Source using those dimensions.
-   --  Base must already be calculated, and every stored source position must
-   --  be 0. Base, Source and (when present) Mask are not modified. The sum
-   --  is checked in a wider type; a nonfinite, negative or non-Float32 sum
-   --  rejects the whole update. Counts above 2**24 may lose integer-unit
-   --  precision because storage is Float32. This does not call native
-   --  calcHist with accumulate=true.
+   --  Returns a new histogram with Base's binning mode, source positions,
+   --  channels and exact stored edges, and the Float32 sum of Base's bins and
+   --  a fresh histogram of Source using those dimensions. Base must already
+   --  be calculated, and every stored source position must be 0. Base, Source
+   --  and (when present) Mask are not modified. The sum is checked in a wider
+   --  type; a nonfinite, negative or non-Float32 sum rejects the whole update.
+   --  Counts above 2**24 may lose integer-unit precision because storage is
+   --  Float32. This does not call native calcHist with accumulate=true.
    function Accumulate_Histogram
      (Base : Histogram; Source : OpenCV.Core.Mat) return Histogram;
    function Accumulate_Histogram
      (Base : Histogram; Source : OpenCV.Core.Mat; Mask : OpenCV.Core.Mat)
       return Histogram;
 
-   --  As above, using Base's stored source positions and channels. Sources
-   --  within this call must share geometry and depth. Separate accumulation
-   --  calls need not share geometry with each other or with the images that
-   --  produced Base.
+   --  As above, using Base's stored source positions, channels and complete
+   --  boundary sequences. Sources within this call must share geometry and
+   --  depth. Separate accumulation calls need not share geometry with each
+   --  other or with the images that produced Base.
    function Accumulate_Histogram
      (Base : Histogram; Sources : OpenCV.Core.Mat_Array) return Histogram;
    function Accumulate_Histogram
@@ -2077,18 +2153,50 @@ private
       Initialized      : Boolean := False;
    end record;
 
+   function Boundary_Equal (Left, Right : OpenCV.Float32_Value) return Boolean;
+
+   package Histogram_Boundary_Vectors is new
+     Ada.Containers.Vectors
+       (Index_Type   => Positive,
+        Element_Type => OpenCV.Float32_Value,
+        "="          => Boundary_Equal);
+
    package Histogram_Dimension_Vectors is new
      Ada.Containers.Vectors
        (Index_Type   => Positive,
         Element_Type => Histogram_Source_Dimension);
 
+   --  Owns the edge sequence. Uniform axes store exactly two endpoints.
+   --  Nonuniform axes store Bin_Count + 1 strictly increasing edges. The
+   --  Histogram that owns a vector of these records uses one binning mode
+   --  for every axis.
+   type Histogram_Axis is record
+      Source_Position : Natural := 0;
+      Channel         : Natural := 0;
+      Bin_Count       : Histogram_Bin_Count := 1;
+      Boundaries      : Histogram_Boundary_Vectors.Vector;
+   end record;
+
+   package Histogram_Axis_Vectors is new
+     Ada.Containers.Vectors
+       (Index_Type   => Positive,
+        Element_Type => Histogram_Axis);
+
+   type Histogram_Nonuniform_Dimension is record
+      Source_Position : Natural := 0;
+      Channel         : Natural := 0;
+      Boundaries      : Histogram_Boundary_Vectors.Vector;
+   end record;
+
    --  Values is the dense Float32 histogram produced by this package and
    --  referenced by no other header; Mat assignment is shallow, but no
    --  operation mutates or exposes it, so sharing between copies is never
-   --  observable. Dimensions is the authoritative Ada-owned metadata,
-   --  including each axis's source position. Single-source axes store 0.
+   --  observable. Axes is the authoritative Ada-owned metadata, including
+   --  each axis's source position and complete edge sequence. Single-source
+   --  axes store source position 0. Every axis uses the same binning mode.
    type Histogram is record
-      Values     : OpenCV.Core.Mat;
-      Dimensions : Histogram_Dimension_Vectors.Vector;
+      Values  : OpenCV.Core.Mat;
+      Binning : Histogram_Binning_Mode := Uniform_Binning;
+      Axes    : Histogram_Axis_Vectors.Vector;
    end record;
 end OpenCV.Image_Processing;
