@@ -7935,10 +7935,7 @@ package body OpenCV.Image_Processing is
    function Calculate_Histogram
      (Source     : OpenCV.Core.Mat;
       Mask       : OpenCV.Core.Mat;
-      Dimensions : Histogram_Dimension_Array) return Histogram
-   is
-      use type OpenCV.Core.Channel_Count;
-      use type OpenCV.Core.Depth_Type;
+      Dimensions : Histogram_Dimension_Array) return Histogram is
    begin
       Validate_Histogram_Dimensions (Dimensions);
       Validate_Histogram_Source (Source, Dimensions, "Calculate_Histogram");
