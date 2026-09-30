@@ -3071,10 +3071,11 @@ increasing Float32 edges `E0 .. EN`. The bins are `[E0, E1)`, `[E1, E2)`,
 through `[E(N-1), EN)`. A sample below the first edge, or at or above the
 final edge, is not counted. Back projection uses the same edges. On every
 reviewed release the nonuniform UInt8 lookup passes every edge to `cvCeil`.
-OpenCV 4.10 and 5.0 also evaluate `cvFloor` on the first edge inside
-`ipp_calchist` before that function can decline the request. `ipp_calcHistParallel`
-computes `histSize + 1` in signed int and, for the UInt8/UInt16/Float32 C1
-types it actually executes, narrows the source byte step with `(int)m_src.step`.
+On the qualifying `calcHist` path only, OpenCV 4.10 and 5.0 also evaluate
+`cvFloor` on the first edge inside `ipp_calchist` before that function can
+decline the request. `ipp_calcHistParallel` computes `histSize + 1` in signed
+int and, for the UInt8/UInt16/Float32 C1 types it actually executes, narrows
+the source byte step with `(int)m_src.step`. Back projection never enters IPP.
 OpenCV 5 adds a HAL `cv_hal_calcHist` for the same one-source, one-dimension,
 channel-0, unmasked shape. Its reference implementation returns not-implemented;
 its arguments are a `size_t` step, an `int` width and height, an `int` bin

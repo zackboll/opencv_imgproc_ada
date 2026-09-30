@@ -2227,31 +2227,43 @@ package body Histogram_Analysis_Tests is
 
    procedure Nonuniform_Back_Project_And_Accumulate (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Samples  : constant OpenCV.Core.Mat := Row8 ((0, 9, 10, 99, 100, 255));
-      Model    : constant IP.Histogram :=
+      Samples    : constant OpenCV.Core.Mat := Row8 ((0, 9, 10, 99, 100, 255));
+      Model      : constant IP.Histogram :=
         IP.Calculate_Nonuniform_Histogram (Samples, (1 => Edges (Unequal)));
-      Query    : constant OpenCV.Core.Mat := Row8 ((0, 10, 200));
-      Mapped   : constant OpenCV.Core.Mat := IP.Back_Project (Query, Model);
-      Wide     : OpenCV.Core.Mat := Filled (1, 3, (OpenCV.Core.UInt16, 1));
-      Real     : OpenCV.Core.Mat := Filled (1, 3, (OpenCV.Core.Float32, 1));
-      H16      : IP.Histogram;
-      H32      : IP.Histogram;
-      Out16    : OpenCV.Core.Mat;
-      Out32    : OpenCV.Core.Mat;
-      Parent   : constant OpenCV.Core.Mat :=
+      Query      : constant OpenCV.Core.Mat := Row8 ((0, 10, 200));
+      Mapped     : constant OpenCV.Core.Mat := IP.Back_Project (Query, Model);
+      Wide       : OpenCV.Core.Mat := Filled (1, 3, (OpenCV.Core.UInt16, 1));
+      Real       : OpenCV.Core.Mat := Filled (1, 3, (OpenCV.Core.Float32, 1));
+      H16        : IP.Histogram;
+      H32        : IP.Histogram;
+      Out16      : OpenCV.Core.Mat;
+      Out32      : OpenCV.Core.Mat;
+      Huge       : constant OpenCV.Float32_Value :=
+        OpenCV.Float32_Value (2.0**31);
+      Large      : constant IP.Histogram_Nonuniform_Dimension :=
+        Edges ((Huge, Huge * 2.0, Huge * 4.0));
+      Wide_Large : constant OpenCV.Core.Mat := Row16 ((0, 1, 2));
+      Real_Large : constant OpenCV.Core.Mat := Row32 ((0.0, 1.0, 2.0));
+      Full_Mask  : constant OpenCV.Core.Mat :=
+        Filled (1, 3, (OpenCV.Core.UInt8, 1), Gray (255.0));
+      Large16    : IP.Histogram;
+      Large32    : IP.Histogram;
+      Mapped16   : OpenCV.Core.Mat;
+      Mapped32   : OpenCV.Core.Mat;
+      Parent     : constant OpenCV.Core.Mat :=
         Filled (3, 4, (OpenCV.Core.UInt8, 1));
-      View     : OpenCV.Core.Mat;
-      Source   : constant OpenCV.Core.Mat :=
+      View       : OpenCV.Core.Mat;
+      Source     : constant OpenCV.Core.Mat :=
         Row_C3 (((0, 0, 0), (0, 50, 0), (0, 200, 0)));
-      Leading  : IP.Histogram;
-      Trailing : IP.Histogram;
-      Left     : constant OpenCV.Core.Mat := Row8 ((0, 20));
-      Right    : constant OpenCV.Core.Mat := Row8 ((5, 80));
-      Joint    : IP.Histogram;
-      Added    : IP.Histogram;
-      Again    : IP.Histogram;
-      Mask     : OpenCV.Core.Mat := Filled (1, 6, (OpenCV.Core.UInt8, 1));
-      Masked   : IP.Histogram;
+      Leading    : IP.Histogram;
+      Trailing   : IP.Histogram;
+      Left       : constant OpenCV.Core.Mat := Row8 ((0, 20));
+      Right      : constant OpenCV.Core.Mat := Row8 ((5, 80));
+      Joint      : IP.Histogram;
+      Added      : IP.Histogram;
+      Again      : IP.Histogram;
+      Mask       : OpenCV.Core.Mat := Filled (1, 6, (OpenCV.Core.UInt8, 1));
+      Masked     : IP.Histogram;
    begin
       AUnit.Assertions.Assert
         (U8.Get (Mapped, 0, 0) = 2
@@ -2284,6 +2296,38 @@ package body Histogram_Analysis_Tests is
          and then F32.Get (Out32, 0, 1) = 1.0
          and then F32.Get (Out32, 0, 2) = 1.0,
          "UInt16 and Float32 nonuniform back projection keep depth");
+      --  The mask disables calcHist's IPP path; the unmasked generic
+      --  back-projection path must not inherit its first-edge cvFloor probe.
+      Large16 :=
+        IP.Calculate_Nonuniform_Histogram
+          (Wide_Large, Full_Mask, (1 => Large));
+      Large32 :=
+        IP.Calculate_Nonuniform_Histogram
+          (Real_Large, Full_Mask, (1 => Large));
+      Mapped16 := IP.Back_Project (Wide_Large, Large16);
+      Mapped32 := IP.Back_Project (Real_Large, Large32);
+      AUnit.Assertions.Assert
+        (Bin (Large16, 0) = 0.0
+         and then Bin (Large16, 1) = 0.0
+         and then Mapped16.Depth = OpenCV.Core.UInt16
+         and then Mapped16.Channels = 1
+         and then Mapped16.Rows = 1
+         and then Mapped16.Columns = 3
+         and then U16.Get (Mapped16, 0, 0) = 0
+         and then U16.Get (Mapped16, 0, 1) = 0
+         and then U16.Get (Mapped16, 0, 2) = 0,
+         "UInt16 large-edge back projection bypasses calcHist IPP guards");
+      AUnit.Assertions.Assert
+        (Bin (Large32, 0) = 0.0
+         and then Bin (Large32, 1) = 0.0
+         and then Mapped32.Depth = OpenCV.Core.Float32
+         and then Mapped32.Channels = 1
+         and then Mapped32.Rows = 1
+         and then Mapped32.Columns = 3
+         and then F32.Get (Mapped32, 0, 0) = 0.0
+         and then F32.Get (Mapped32, 0, 1) = 0.0
+         and then F32.Get (Mapped32, 0, 2) = 0.0,
+         "Float32 large-edge back projection bypasses calcHist IPP guards");
       Leading :=
         IP.Calculate_Nonuniform_Histogram
           (Source,

@@ -3552,8 +3552,8 @@ bool histogram_ipp_executes(const cv::Mat &image) noexcept
         || image.type() == CV_32FC1;
 }
 
-const char *histogram_nonuniform_preflight(
-    const std::vector<const cv::Mat *> &images, const cv::Mat *mask,
+const char *histogram_nonuniform_common_preflight(
+    const std::vector<const cv::Mat *> &images,
     const native_histogram_request &request)
 {
     if (images.empty() || images[0] == nullptr) {
@@ -3573,6 +3573,13 @@ const char *histogram_nonuniform_preflight(
             }
         }
     }
+    return nullptr;
+}
+
+const char *histogram_nonuniform_calc_hist_preflight(
+    const std::vector<const cv::Mat *> &images, const cv::Mat *mask,
+    const native_histogram_request &request)
+{
     if (!histogram_reaches_ipp_calchist(images, mask, request)) {
         return nullptr;
     }
@@ -8974,7 +8981,10 @@ opencv_imgproc_calc_hist_nonuniform(
             message = histogram_mask_preflight(*images[0], msk);
         }
         if (message == nullptr) {
-            message = histogram_nonuniform_preflight(images, msk, request);
+            message = histogram_nonuniform_common_preflight(images, request);
+        }
+        if (message == nullptr) {
+            message = histogram_nonuniform_calc_hist_preflight(images, msk, request);
         }
         if (message == nullptr && images[0]->depth() == CV_32F) {
             message = histogram_float_samples_preflight(images, msk, request);
@@ -9046,7 +9056,7 @@ opencv_imgproc_calc_back_project_nonuniform(
         if (message != nullptr) {
             return invalid_argument(message);
         }
-        message = histogram_nonuniform_preflight(images, nullptr, request);
+        message = histogram_nonuniform_common_preflight(images, request);
         if (message == nullptr && images[0]->depth() == CV_32F) {
             message = histogram_float_samples_preflight(images, nullptr, request);
         }
