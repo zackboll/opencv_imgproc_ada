@@ -8,6 +8,43 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Status is new Interfaces.Integer_32;
 
+   type Corner_Point is record
+      X, Y : Interfaces.C.C_float;
+   end record
+   with Convention => C;
+   type Corner_Point_Buffer is array (Integer range <>) of aliased Corner_Point
+   with Convention => C;
+
+   function Corner_Response
+     (Source                     : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination                :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Mode, Block_Size, Aperture : Interfaces.Integer_32;
+      K                          : Interfaces.C.double;
+      Border                     : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_corner_response";
+
+   function Corner_Subpixel
+     (Source                                                       :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Points                                                       :
+        access constant Corner_Point;
+      Count                                                        :
+        Interfaces.Integer_32;
+      Result                                                       :
+        access Corner_Point;
+      Half_Width, Half_Height, Dead_Width, Dead_Height, Iterations :
+        Interfaces.Integer_32;
+      Epsilon                                                      :
+        Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_corner_subpixel";
+
    function Integral_Sum
      (Source    : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Sum_Depth : Interfaces.Integer_32;

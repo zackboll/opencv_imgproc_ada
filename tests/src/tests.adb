@@ -11,6 +11,7 @@ with Canny_Edge_Tests;
 with CLAHE_Tests;
 with Connected_Component_Tests;
 with Contour_Tests;
+with Corner_Analysis_Tests;
 with Draw_Contour_Tests;
 with Color_Conversion_Tests;
 with Filter_2D_Tests;
@@ -77,6 +78,7 @@ begin
    Suite.Add_Test (Laplacian_Tests.Suite);
    Suite.Add_Test (Morphology_Tests.Suite);
    Suite.Add_Test (Canny_Edge_Tests.Suite);
+   Suite.Add_Test (Corner_Analysis_Tests.Suite);
    Suite.Add_Test (Spatial_Derivative_Tests.Suite);
    Suite.Add_Test (Threshold_Tests.Suite);
    Suite.Add_Test (Automatic_Threshold_Tests.Suite);

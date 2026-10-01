@@ -78,6 +78,22 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_ERROR_UNKNOWN          ((opencv_imgproc_status)3)
 #define OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT ((opencv_imgproc_status)4)
 
+/* mode: 0=min eigenvalue, 1=Harris, 2=eigenvalues/vectors, 3=pre-corner.
+ * aperture is 3, 5 or 7; border is a semantic border selector. */
+opencv_imgproc_status opencv_imgproc_corner_response(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t mode, int32_t block_size, int32_t aperture, double k,
+    int32_t border);
+
+/* POD points are explicitly converted to native Point2f. Result is copied
+ * only after complete native success; count zero permits null buffers. */
+opencv_imgproc_status opencv_imgproc_corner_subpixel(
+    const opencv_core_mat_handle *source,
+    const opencv_imgproc_point_f32 *points, int32_t count,
+    opencv_imgproc_point_f32 *result, int32_t half_width,
+    int32_t half_height, int32_t dead_width, int32_t dead_height,
+    int32_t iterations, double epsilon);
+
 /* 0=L1, 1=L2, 2=chessboard, 3=explicit Float32 transport costs.
  * Built-in modes ignore cost (which may be null). Scalar and flow are
  * published only on success; a failed flow call leaves its Mat unchanged. */

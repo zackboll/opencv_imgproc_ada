@@ -141,6 +141,75 @@ package OpenCV.Image_Processing is
 
    type Sobel_Kernel_Size is (Kernel_1, Kernel_3, Kernel_5, Kernel_7);
 
+   --  Corner derivatives use 3, 5 or 7; pre-corner detection needs second
+   --  derivatives, so the Sobel Kernel_1 selector is not applicable.
+   type Corner_Aperture is (Aperture_3, Aperture_5, Aperture_7);
+   subtype Corner_Block_Size is Positive range 1 .. 2_147_483_647;
+   type Corner_Point_Array is array (Integer range <>) of OpenCV.Float32_Point;
+   subtype Corner_Iteration_Limit is Positive range 1 .. 100;
+   type Corner_Termination is record
+      Maximum_Iterations : Corner_Iteration_Limit := 30;
+      Epsilon            : OpenCV.Float64_Value := 0.01;
+   end record;
+   type Corner_Dead_Zone (Enabled : Boolean := False) is record
+      case Enabled is
+         when False =>
+            null;
+
+         when True =>
+            Half_Size : OpenCV.Size;
+      end case;
+   end record;
+
+   --  All response maps accept nonempty 2-D UInt8/Float32 C1 images, leave
+   --  Source unchanged, and treat Regions as independent images. Results are
+   --  fresh Float32 C1 Mats (C6 for eigenvalues/vectors). Block sizes must
+   --  be at least 2; Wrap borders are unsupported. Errors raise OpenCV_Error.
+   function Corner_Minimum_Eigenvalue
+     (Source     : OpenCV.Core.Mat;
+      Block_Size : Corner_Block_Size := 3;
+      Aperture   : Corner_Aperture := Aperture_3;
+      Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat;
+   function Harris_Corner_Response
+     (Source     : OpenCV.Core.Mat;
+      Block_Size : Corner_Block_Size := 3;
+      Aperture   : Corner_Aperture := Aperture_3;
+      K          : OpenCV.Float64_Value := 0.04;
+      Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat;
+   --  Six channels per pixel: (lambda1, lambda2, x1, y1, x2, y2).
+   function Corner_Eigenvalues_And_Vectors
+     (Source     : OpenCV.Core.Mat;
+      Block_Size : Corner_Block_Size := 3;
+      Aperture   : Corner_Aperture := Aperture_3;
+      Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat;
+   function Pre_Corner_Response
+     (Source   : OpenCV.Core.Mat;
+      Aperture : Corner_Aperture := Aperture_3;
+      Border   : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat;
+
+   --  Search_Window is a strictly positive half-size. The image must be at
+   --  least (2*Width+5) by (2*Height+5). Every initial point must be finite
+   --  and inside [0, Columns) x [0, Rows). Dead-zone half-sizes must be
+   --  smaller than the corresponding search half-sizes. Both termination
+   --  criteria are active; Epsilon must be finite and nonnegative. An empty
+   --  Float32 source samples must all be finite (including for empty Corners);
+   --  UInt8 sources need no scan. Nonfinite samples raise OpenCV_Error.
+   --  An empty array returns an empty array after image/window/criteria and
+   --  Float32 source validation.
+   --  Arbitrary Integer bounds are preserved. Inputs remain unchanged even
+   --  on failure; Region neighborhoods cannot see parent pixels.
+   function Refine_Corners_Subpixel
+     (Source        : OpenCV.Core.Mat;
+      Corners       : Corner_Point_Array;
+      Search_Window : OpenCV.Size;
+      Dead_Zone     : Corner_Dead_Zone := (Enabled => False);
+      Termination   : Corner_Termination :=
+        (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array;
+
    type Laplacian_Kernel_Size is range 1 .. 31;
 
    subtype Median_Kernel_Size is Positive range 3 .. 2_147_483_647;
