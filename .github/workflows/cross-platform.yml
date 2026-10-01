@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - release/opencv_imgproc-0.1.0
   pull_request:
   workflow_dispatch:
 
@@ -217,12 +218,14 @@ jobs:
         run: alr -n -C tests run
 
   # Windows/MSYS2 is expensive, so it runs after merge on main and on
-  # manual dispatch, but is skipped for pull-request review iterations.
+  # release branch and manual dispatch, but skipped for PR review iterations.
   windows-x86_64-msys2:
     name: Windows x86_64 (MSYS2)
     if: >
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      (github.event_name == 'push' &&
+       (github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/release/opencv_imgproc-0.1.0'))
     runs-on: windows-latest
     defaults:
       run:
