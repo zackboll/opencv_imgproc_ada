@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **489 AUnit tests**
+> **Current registered test baseline:** **522 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -81,6 +81,7 @@ Ada package, and built libraries serve different roles.
 - [Segmentation](#segmentation)
 - [Histogram analysis](#histogram-analysis)
 - [Earth mover distance](#earth-mover-distance)
+- [Corner analysis](#corner-analysis)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
 - [Architecture](#architecture)
@@ -99,6 +100,58 @@ Ada package, and built libraries serve different roles.
 ---
 
 ## Scope
+
+### Corner analysis
+
+`OpenCV.Image_Processing` now offers `Corner_Minimum_Eigenvalue`,
+`Harris_Corner_Response`, `Corner_Eigenvalues_And_Vectors`,
+`Pre_Corner_Response`, and `Refine_Corners_Subpixel`. The first four return
+fresh Float32 maps at the source geometry; the eigenvalue/vector map has six
+channels per pixel in OpenCV order `(lambda1, lambda2, x1, y1, x2, y2)`.
+All accept only nonempty two-dimensional UInt8 or Float32 single-channel
+sources. Responses require block size >= 2 (except pre-corner, which has no
+block size), apertures 3/5/7, and Constant, Replicate, Reflect or Reflect_101
+borders; Wrap is rejected. Harris k must be finite.
+
+The subpixel operation returns a new Ada-owned `Corner_Point_Array` with the
+same index bounds as the input; the input points are unchanged on success or
+failure. The positive search-window half-size must fit the image with a
+two-pixel halo (`Columns >= 2*Width+5`, `Rows >= 2*Height+5`). Optional
+`Corner_Dead_Zone` half-sizes must be strictly smaller than the window. Both
+termination criteria are active: 1..100 iterations and finite nonnegative
+epsilon. Every initial Float32 point must be finite and satisfy
+`0 <= X < Columns`, `0 <= Y < Rows`. An empty array returns an empty array
+after source and parameter validation. All five operations snapshot the
+source before native execution; a Region is its own image and cannot see
+pixels in the surrounding parent.
+
+```ada
+declare
+   use OpenCV.Image_Processing;
+   Initial : constant Corner_Point_Array (5 .. 5) :=
+     (5 => (X => 15.2, Y => 15.3));
+   Response : constant OpenCV.Core.Mat :=
+     Harris_Corner_Response (Image, Block_Size => 3);
+   Refined : constant Corner_Point_Array :=
+     Refine_Corners_Subpixel
+       (Image, Initial, Search_Window => (Width => 3, Height => 3));
+begin
+   --  Response is Float32 C1; Refined (5) is the new point.
+   null;
+end;
+```
+
+`goodFeaturesToTrack` is intentionally excluded: in OpenCV 5 it belongs to
+the separate native Features module, consistent with this crate's module
+boundary policy. This is not missing OpenCV 5 Imgproc functionality.
+
+| Corner slice tests | Count |
+| --- | ---: |
+| Prior baseline | 502 |
+| Corner analysis additions | 20 |
+| Current suite | 522 |
+
+### Current feature summary
 
 This crate owns **image-processing operations** that conceptually belong to
 OpenCV Imgproc and operate primarily on `OpenCV.Core.Mat`.
@@ -3829,7 +3882,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **502-test** baseline is:
+The previous **502-test** baseline (before the 20 corner-analysis tests) was:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3872,6 +3925,8 @@ The current **502-test** baseline is:
 | Distance transform | 6 |
 | Integral images | 7 |
 | **Total** | **502** |
+
+The focused corner-analysis suite adds 20 tests, for **522 total**.
 
 
 The suite covers more than simple success paths. It includes:

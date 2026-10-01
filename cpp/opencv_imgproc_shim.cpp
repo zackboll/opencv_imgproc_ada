@@ -6061,6 +6061,133 @@ opencv_imgproc_build_pyramid(
     }
 }
 
+opencv_imgproc_status opencv_imgproc_corner_response(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t mode, int32_t block_size, int32_t aperture, double k, int32_t border)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid corner Mat handle");
+        int native_border = 0;
+        if (mode < 0 || mode > 3 || !to_opencv_border(border, native_border) ||
+            border == OPENCV_IMGPROC_BORDER_WRAP ||
+            (aperture != 3 && aperture != 5 && aperture != 7))
+            return invalid_argument("invalid corner selector");
+        // ABI safety: cornerEigenValsVecs indexes the source as a 2-D
+        // single-channel image and uses its depth for native dispatch; the
+        // clone and widened stride preflight below assume this exact layout.
+        if (src->empty() || src->dims != 2 ||
+            (src->type() != CV_8UC1 && src->type() != CV_32FC1))
+            return invalid_argument("invalid corner source layout");
+        // ABI safety: the widened block-size division below requires a
+        // positive divisor; native boxFilter also performs signed kernel
+        // arithmetic on this value.
+        if (block_size < 1)
+            return invalid_argument("invalid corner block size");
+        const uint64_t cols = static_cast<uint64_t>(src->cols);
+        const uint64_t rows = static_cast<uint64_t>(src->rows);
+        const uint64_t limit = INT_MAX;
+        const uint64_t channels = mode == 2 ? 6 : 3;
+        // ABI safety: packed Float32 C6 output, C3 covariance, Sobel's
+        // Float32 derivatives and boxFilter scratch use signed row offsets;
+        // continuous calc* loops flatten width*height into signed int.
+        if (cols > limit / (channels * sizeof(float)) ||
+            rows > limit / (cols * channels) ||
+            cols > limit / static_cast<uint64_t>(block_size) ||
+            static_cast<uint64_t>(block_size) > limit / sizeof(float))
+            return invalid_argument("corner native dimensions overflow int");
+        // The clone packs Region rows before HAL/IPP sees the source step.
+        cv::Mat packed = src->clone();
+        cv::Mat output;
+        switch (mode) {
+        case 0: cv::cornerMinEigenVal(packed, output, block_size, aperture, native_border); break;
+        case 1: cv::cornerHarris(packed, output, block_size, aperture, k, native_border); break;
+        case 2: cv::cornerEigenValsAndVecs(packed, output, block_size, aperture, native_border); break;
+        default: cv::preCornerDetect(packed, output, aperture, native_border); break;
+        }
+        *dst = std::move(output);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status opencv_imgproc_corner_subpixel(
+    const opencv_core_mat_handle *source,
+    const opencv_imgproc_point_f32 *points, int32_t count,
+    opencv_imgproc_point_f32 *result, int32_t half_width,
+    int32_t half_height, int32_t dead_width, int32_t dead_height,
+    int32_t iterations, double epsilon)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src ||
+            count < 0 || (count > 0 && (!points || !result)))
+            return invalid_argument("invalid subpixel handle or point buffer");
+        // ABI safety: the shim copies the POD buffers using count as an index
+        // and native checkVector narrows vector length to signed int.
+        if (static_cast<uint64_t>(count) > SIZE_MAX / sizeof(cv::Point2f) ||
+            static_cast<uint64_t>(count) > SIZE_MAX / sizeof(opencv_imgproc_point_f32))
+            return invalid_argument("subpixel point count overflows buffer");
+        // ABI safety: native cornerSubPix forms 2*win+5 and allocates
+        // maskm(2*win+1) and subpix_buf(2*win+3) using signed int.
+        const int64_t width = 2LL * half_width + 5;
+        const int64_t height = 2LL * half_height + 5;
+        if (half_width <= 0 || half_height <= 0 || width > INT_MAX ||
+            height > INT_MAX || width < 0 || height < 0 ||
+            src->cols < width || src->rows < height)
+            return invalid_argument("subpixel window exceeds native dimensions");
+        // ABI safety: mask[i*win_w+j] and gradient k++ use signed int.
+        if ((width - 4) > INT_MAX / (height - 4) ||
+            width > INT_MAX / static_cast<int64_t>(sizeof(float)) ||
+            height > INT_MAX / static_cast<int64_t>(sizeof(float)))
+            return invalid_argument("subpixel scratch index overflows int");
+        // ABI safety: getRectSubPix uses signed source row offsets and
+        // destination Float32 row products (including the +2 halo). Native
+        // pixel dispatch requires a nonempty 2-D single-channel 8U/32F Mat.
+        if (src->empty() || src->dims != 2 ||
+            (src->type() != CV_8UC1 && src->type() != CV_32FC1) ||
+            static_cast<uint64_t>(src->cols) > INT_MAX / sizeof(float) ||
+            static_cast<uint64_t>(src->cols) * src->rows > INT_MAX ||
+            static_cast<uint64_t>(width - 2) * height > INT_MAX)
+            return invalid_argument("subpixel source or scratch layout overflow");
+        // ABI safety: unchecked native zero-zone products and mask indices.
+        if (!((dead_width == -1 && dead_height == -1) ||
+              (dead_width >= 0 && dead_height >= 0 &&
+               dead_width < half_width && dead_height < half_height)))
+            return invalid_argument("invalid subpixel dead zone");
+        if (iterations < 1 || iterations > 100 || !std::isfinite(epsilon) || epsilon < 0)
+            return invalid_argument("invalid subpixel termination");
+        std::vector<cv::Point2f> copy;
+        copy.reserve(static_cast<size_t>(count));
+        for (int32_t i = 0; i < count; ++i) {
+            const float x = points[i].x, y = points[i].y;
+            // ABI safety: 4.1 getRectSubPix converts initial coordinates to
+            // integer offsets without checking finite values or image bounds.
+            if (!std::isfinite(x) || !std::isfinite(y) || x < 0 || y < 0 ||
+                x >= src->cols || y >= src->rows)
+                return invalid_argument("invalid subpixel initial point");
+            copy.emplace_back(x, y);
+        }
+        if (count == 0) return OPENCV_IMGPROC_OK;
+        cv::Mat packed = src->clone();
+        cv::cornerSubPix(packed, copy, cv::Size(half_width, half_height),
+                         cv::Size(dead_width, dead_height),
+                         cv::TermCriteria(cv::TermCriteria::MAX_ITER |
+                                          cv::TermCriteria::EPS, iterations, epsilon));
+        if (copy.size() != static_cast<size_t>(count))
+            return invalid_argument("subpixel result count changed");
+        for (int32_t i = 0; i < count; ++i) {
+            result[i].x = copy[static_cast<size_t>(i)].x;
+            result[i].y = copy[static_cast<size_t>(i)].y;
+        }
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_imgproc_status
 opencv_imgproc_pyr_mean_shift_filter(
     const opencv_core_mat_handle *source,

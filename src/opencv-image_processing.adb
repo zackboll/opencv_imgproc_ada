@@ -14,9 +14,186 @@ with System;
 
 package body OpenCV.Image_Processing is
 
+   function To_C_Border
+     (Border : OpenCV.Border_Kind) return Interfaces.Integer_32;
+   function Is_Finite (Value : OpenCV.Float64_Value) return Boolean;
+   function Is_Finite_32 (Value : OpenCV.Float32_Value) return Boolean;
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
-   function Is_Finite_32 (Value : OpenCV.Float32_Value) return Boolean;
+
+   procedure Validate_Corner_Source (Source : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Channels /= 1
+        or else (Source.Depth /= OpenCV.Core.UInt8
+                 and then Source.Depth /= OpenCV.Core.Float32)
+      then
+         raise OpenCV.OpenCV_Error
+           with "Corner source must be nonempty 2-D UInt8 or Float32 C1";
+      end if;
+   end Validate_Corner_Source;
+
+   function Corner_Map
+     (Source     : OpenCV.Core.Mat;
+      Mode       : Interfaces.Integer_32;
+      Block_Size : Corner_Block_Size;
+      Aperture   : Corner_Aperture;
+      K          : OpenCV.Float64_Value;
+      Border     : OpenCV.Border_Kind) return OpenCV.Core.Mat
+   is
+      use type Interfaces.Integer_32;
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Corner_Response
+                (S,
+                 D,
+                 Mode,
+                 Interfaces.Integer_32 (Block_Size),
+                 Interfaces.Integer_32
+                   (3 + 2 * Corner_Aperture'Pos (Aperture)),
+                 Interfaces.C.double (K),
+                 To_C_Border (Border));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle (Result, Output'Access);
+      end Input;
+   begin
+      Validate_Corner_Source (Source);
+      if Block_Size < 2
+        or else Border = OpenCV.Wrap
+        or else (Mode = 1 and then not Is_Finite (K))
+      then
+         raise OpenCV.OpenCV_Error with "Invalid corner parameters";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Corner response");
+      return Result;
+   end Corner_Map;
+
+   function Corner_Minimum_Eigenvalue
+     (Source     : OpenCV.Core.Mat;
+      Block_Size : Corner_Block_Size := 3;
+      Aperture   : Corner_Aperture := Aperture_3;
+      Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat is
+   begin
+      return Corner_Map (Source, 0, Block_Size, Aperture, 0.0, Border);
+   end Corner_Minimum_Eigenvalue;
+
+   function Harris_Corner_Response
+     (Source     : OpenCV.Core.Mat;
+      Block_Size : Corner_Block_Size := 3;
+      Aperture   : Corner_Aperture := Aperture_3;
+      K          : OpenCV.Float64_Value := 0.04;
+      Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat is
+   begin
+      return Corner_Map (Source, 1, Block_Size, Aperture, K, Border);
+   end Harris_Corner_Response;
+
+   function Corner_Eigenvalues_And_Vectors
+     (Source     : OpenCV.Core.Mat;
+      Block_Size : Corner_Block_Size := 3;
+      Aperture   : Corner_Aperture := Aperture_3;
+      Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat is
+   begin
+      return Corner_Map (Source, 2, Block_Size, Aperture, 0.0, Border);
+   end Corner_Eigenvalues_And_Vectors;
+
+   function Pre_Corner_Response
+     (Source   : OpenCV.Core.Mat;
+      Aperture : Corner_Aperture := Aperture_3;
+      Border   : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat is
+   begin
+      return Corner_Map (Source, 3, 2, Aperture, 0.0, Border);
+   end Pre_Corner_Response;
+
+   function Refine_Corners_Subpixel
+     (Source        : OpenCV.Core.Mat;
+      Corners       : Corner_Point_Array;
+      Search_Window : OpenCV.Size;
+      Dead_Zone     : Corner_Dead_Zone := (Enabled => False);
+      Termination   : Corner_Termination :=
+        (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array
+   is
+      use type OpenCV.Float32_Value;
+      use type OpenCV.Float64_Value;
+      use type OpenCV.Size_Coordinate;
+      use type Interfaces.Integer_32;
+      Native : Internal.C_API.Corner_Point_Buffer (0 .. Corners'Length - 1);
+      Output : Internal.C_API.Corner_Point_Buffer (Native'Range);
+      Result : Corner_Point_Array (Corners'Range);
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Corner_Subpixel
+             (S,
+              (if Native'Length = 0 then null else Native (0)'Access),
+              Interfaces.Integer_32 (Native'Length),
+              (if Output'Length = 0 then null else Output (0)'Access),
+              Interfaces.Integer_32 (Search_Window.Width),
+              Interfaces.Integer_32 (Search_Window.Height),
+              (if Dead_Zone.Enabled
+               then Interfaces.Integer_32 (Dead_Zone.Half_Size.Width)
+               else -1),
+              (if Dead_Zone.Enabled
+               then Interfaces.Integer_32 (Dead_Zone.Half_Size.Height)
+               else -1),
+              Interfaces.Integer_32 (Termination.Maximum_Iterations),
+              Interfaces.C.double (Termination.Epsilon));
+      end Input;
+   begin
+      Validate_Corner_Source (Source);
+      if Search_Window.Width = 0
+        or else Search_Window.Height = 0
+        or else Long_Long_Integer (Search_Window.Width) * 2 + 5
+                > Long_Long_Integer (Source.Columns)
+        or else Long_Long_Integer (Search_Window.Height) * 2 + 5
+                > Long_Long_Integer (Source.Rows)
+        or else (Dead_Zone.Enabled
+                 and then (Dead_Zone.Half_Size.Width >= Search_Window.Width
+                           or else Dead_Zone.Half_Size.Height
+                                   >= Search_Window.Height))
+        or else not Is_Finite (Termination.Epsilon)
+        or else Termination.Epsilon < 0.0
+        or else Corners'Length > Interfaces.Integer_32'Last
+      then
+         raise OpenCV.OpenCV_Error with "Invalid subpixel parameters";
+      end if;
+      for I in Corners'Range loop
+         if not Is_Finite_32 (Corners (I).X)
+           or else not Is_Finite_32 (Corners (I).Y)
+           or else Corners (I).X < 0.0
+           or else Corners (I).Y < 0.0
+           or else Long_Float (Corners (I).X) >= Long_Float (Source.Columns)
+           or else Long_Float (Corners (I).Y) >= Long_Float (Source.Rows)
+         then
+            raise OpenCV.OpenCV_Error with "Invalid initial corner point";
+         end if;
+         Native (I - Corners'First) :=
+           (Interfaces.C.C_float (Corners (I).X),
+            Interfaces.C.C_float (Corners (I).Y));
+      end loop;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Refine_Corners_Subpixel");
+      for I in Corners'Range loop
+         Result (I) :=
+           (OpenCV.Float32_Value (Output (I - Corners'First).X),
+            OpenCV.Float32_Value (Output (I - Corners'First).Y));
+      end loop;
+      return Result;
+   end Refine_Corners_Subpixel;
+
    procedure Validate_EMD
      (First, Second, Cost : OpenCV.Core.Mat;
       User_Cost           : Boolean;
