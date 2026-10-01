@@ -121,7 +121,6 @@ package body OpenCV.Image_Processing is
    is
       use type OpenCV.Core.Depth_Type;
       use type OpenCV.Core.Channel_Count;
-      use type OpenCV.Core.Mat_Size;
       use type OpenCV.Float32_Value;
       package Pixels renames OpenCV.Core.Float32_Access;
 
@@ -226,7 +225,8 @@ package body OpenCV.Image_Processing is
                               then
                                  raise OpenCV.OpenCV_Error
                                    with
-                                     "EMD coordinate difference overflows Float32";
+                                     "EMD coordinate difference overflows "
+                                     & "Float32";
                               end if;
                               declare
                                  Diff : constant Long_Float :=

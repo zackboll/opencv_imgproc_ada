@@ -3835,6 +3835,7 @@ cv::Mat back_project_histogram(
 constexpr int native_distance_l1 = 1;
 constexpr int native_distance_l2 = 2;
 constexpr int native_distance_c = 3;
+constexpr int native_distance_user = -1;
 
 // ABI safety: 4.1's approximate passes narrow row strides to int and
 // multiply row indices by those strides; the padded temporary uses int
@@ -8797,8 +8798,9 @@ static opencv_imgproc_status emd_execute(
         const cv::Mat packed_a = a->clone(), packed_b = b->clone();
         const cv::Mat packed_c = c ? c->clone() : cv::Mat();
         cv::Mat local_flow;
-        const int native_metric = metric == 0 ? cv::DIST_L1 :
-            metric == 1 ? cv::DIST_L2 : metric == 2 ? cv::DIST_C : cv::DIST_USER;
+        const int native_metric = metric == 0 ? native_distance_l1 :
+            metric == 1 ? native_distance_l2 : metric == 2 ? native_distance_c :
+            native_distance_user;
         const float value = with_flow
             ? cv::EMD(packed_a, packed_b, native_metric, packed_c, nullptr, local_flow)
             : cv::EMD(packed_a, packed_b, native_metric, packed_c, nullptr);
