@@ -1,11 +1,13 @@
 with "config/tests_config.gpr";
 with "aunit";
 with "opencv_imgproc";
+with "../config/opencv_imgproc_install.gpr";
+with "opencv_core.gpr";
 
 project Tests is
 
-   for Languages use ("Ada");
-   for Source_Dirs use ("src/", "config/");
+   for Languages use ("Ada", "C++");
+   for Source_Dirs use ("src/", "config/", "cpp/");
    for Object_Dir use "obj/" & Tests_Config.Build_Profile;
    for Create_Missing_Dirs use "True";
    for Exec_Dir use "bin";
@@ -14,10 +16,36 @@ project Tests is
    package Compiler is
       for Default_Switches ("Ada") use
         Tests_Config.Ada_Compiler_Switches & ("-Werror");
+      for Driver ("C++") use OpenCV_Imgproc_Install.Cxx_Driver;
+      case OpenCV_Imgproc_Install.Cxx_Toolchain is
+         when "Apple_Clang" =>
+            for Default_Switches ("C++") use
+              ("-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
+               "-Wno-error=c11-extensions",
+               OpenCV_Imgproc_Install.Include_Switch,
+               "-I" & OpenCV_Core'Project_Dir & "cpp");
+            for Leading_Required_Switches ("C++") use
+              ("-c", "-x", "c++", "-isysroot",
+               OpenCV_Imgproc_Install.Cxx_Sysroot);
+            for Include_Switches ("C++") use ("-I");
+            for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
+         when "GNU" =>
+            for Default_Switches ("C++") use
+              ("-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
+               OpenCV_Imgproc_Install.Include_Switch,
+               "-I" & OpenCV_Core'Project_Dir & "cpp");
+      end case;
    end Compiler;
 
    package Binder is
       for Switches ("Ada") use ("-Es");
    end Binder;
+
+   package Linker is
+      for Linker_Options use
+        (OpenCV_Imgproc_Install.Library_Search_Switch,
+         OpenCV_Imgproc_Install.OpenCV_Core_Link_Option,
+         OpenCV_Imgproc_Install.Cxx_Runtime_Switch);
+   end Linker;
 
 end Tests;

@@ -315,9 +315,12 @@ jobs:
 
       - name: Run EMD signature index boundary test
         run: |
-          /mingw64/bin/g++.exe -std=c++17 -Wall -Wextra -Werror \
-            tests/emd_signature_index_test.cpp -o emd_signature_index_test.exe
-          PATH="/mingw64/bin:$PATH" ./emd_signature_index_test.exe
+          alr exec -- sh -c '
+            set -eu
+            /mingw64/bin/g++.exe -std=c++17 -Wall -Wextra -Werror \
+              tests/emd_signature_index_test.cpp -o emd_signature_index_test.exe
+            PATH="/mingw64/bin:$PATH" ./emd_signature_index_test.exe
+          '
 
       - name: Verify Imgproc Windows shim isolation
         run: |

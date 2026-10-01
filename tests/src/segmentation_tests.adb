@@ -11,12 +11,10 @@ with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Int32_Access;
-with OpenCV.Core.Int32_Buffer_Access;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
-with OpenCV.Core.UInt8_Vec3_Mat_View;
 with OpenCV.Image_Processing;
 with OpenCV.Image_Processing.Internal.C_API;
 with System;
@@ -1018,40 +1016,44 @@ package body Segmentation_Tests is
    end Raw_Watershed_Call;
 
    --  Rows x 3 Int32 markers (12 bytes per row) viewed as a Rows x 3 UInt8
-   --  C3 source with a four-pixel (12-byte) row stride: the two Mats have
-   --  identical geometry and address exactly the same bytes.
+   --  C3 source with a 12-byte row stride: distinct Core-owned Mat headers
+   --  have identical geometry and address exactly the same bytes.
    procedure With_Overlapping_Source
      (Markers : in out OpenCV.Core.Mat;
       Process : not null access procedure (Source : OpenCV.Core.Mat))
    is
-      Rows : constant Positive := Markers.Rows;
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Markers.Rows, Markers.Columns, (OpenCV.Core.UInt8, 3));
+      Status : Interfaces.Integer_32 := 1;
 
-      procedure On_Buffer
-        (Data : aliased in out OpenCV.Core.Int32_Buffer_Access.Buffer_Array)
+      function Alias_Markers
+        (Markers_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+         Source_Handle  : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         return Interfaces.Integer_32
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_imgproc_test_overlap_markers";
+
+      procedure On_Markers
+        (Markers_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
       is
-         Overlay :
-           aliased OpenCV.Core.UInt8_Vec3_Mat_View.Buffer_Array
-                     (0 .. 4 * Rows - 1)
-         with Import, Address => Data'Address;
-
-         --  GNAT's Unrestricted_Access yields an access-to-unconstrained
-         --  pointer to the constrained overlay (its bounds live as long as
-         --  this scope), so the dereference matches the aliased formal.
-         type Pixel_Access is
-           access all OpenCV.Core.UInt8_Vec3_Mat_View.Buffer_Array;
-         Pixels : constant Pixel_Access := Overlay'Unrestricted_Access;
-
-         procedure On_View (View : in out OpenCV.Core.Mat) is
+         procedure On_Source
+           (Source_Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
          begin
-            Process (View);
-         end On_View;
+            Status := Alias_Markers (Markers_Handle, Source_Handle);
+         end On_Source;
       begin
-         OpenCV.Core.UInt8_Vec3_Mat_View.With_Writable_Strided_Mat_View
-           (Pixels.all, Rows, 3, 4, On_View'Access);
-      end On_Buffer;
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Source, On_Source'Access);
+      end On_Markers;
    begin
-      OpenCV.Core.Int32_Buffer_Access.With_Writable_Buffer
-        (Markers, On_Buffer'Access);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Markers, On_Markers'Access);
+      AUnit.Assertions.Assert (Status = 0, "construct overlapping source");
+      --  Source references marker-owned bytes; finalize Source first.
+      Process (Source);
    end With_Overlapping_Source;
 
    procedure Watershed_Overlap_Rejected (Test : in out Fixture) is
@@ -1060,8 +1062,35 @@ package body Segmentation_Tests is
         Filled (6, 3, (OpenCV.Core.Int32, 1), Gray (0.0));
       Raised  : Boolean := False;
 
+      procedure Check_Overlap (Source : OpenCV.Core.Mat) is
+         Value  : aliased Interfaces.Unsigned_8 := 0;
+         Status : C_API.Status := C_API.Success;
+
+         procedure On_Source
+           (Source_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure On_Markers
+              (Markers_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            begin
+               Status :=
+                 C_API.Mat_Storage_Overlap
+                   (Source_Handle, Markers_Handle, Value'Access);
+            end On_Markers;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Markers, On_Markers'Access);
+         end On_Source;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source, On_Source'Access);
+         AUnit.Assertions.Assert
+           (Status = C_API.Success and then Value = 1,
+            "the distinct source and marker headers share physical storage");
+      end Check_Overlap;
+
       procedure Public (Source : OpenCV.Core.Mat) is
       begin
+         Check_Overlap (Source);
          IP.Watershed (Source, Markers);
       exception
          when OpenCV.OpenCV_Error =>
@@ -1070,6 +1099,7 @@ package body Segmentation_Tests is
 
       procedure Raw (Source : OpenCV.Core.Mat) is
       begin
+         Check_Overlap (Source);
          Raw_Watershed_Call (Source, Markers);
       end Raw;
    begin
