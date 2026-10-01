@@ -9,8 +9,6 @@ with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt16_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
-with OpenCV.Core.UInt8_Vec4;
-with OpenCV.Core.UInt8_Vec4_Access;
 with OpenCV.Image_Processing;
 with OpenCV.Image_Processing.Internal.C_API;
 
@@ -23,7 +21,6 @@ package body Draw_Contour_Tests is
    use type OpenCV.UInt16_Value;
    use type OpenCV.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
-   use type OpenCV.Core.UInt8_Vec4.Vector;
    use type IP.Contour_Index;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
@@ -299,9 +296,17 @@ package body Draw_Contour_Tests is
           Component_1 => 19.0,
           Component_2 => 31.0,
           Component_3 => 43.0));
-      AUnit.Assertions.Assert
-        (OpenCV.Core.UInt8_Vec4_Access.Get (Color4, 5, 5) = (7, 19, 31, 43),
-         "C4 channel order including alpha component");
+      declare
+         Channels : constant OpenCV.Core.Mat_Array :=
+           OpenCV.Core.Split (Color4);
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Channels (0), 5, 5) = 7
+            and then OpenCV.Core.UInt8_Access.Get (Channels (1), 5, 5) = 19
+            and then OpenCV.Core.UInt8_Access.Get (Channels (2), 5, 5) = 31
+            and then OpenCV.Core.UInt8_Access.Get (Channels (3), 5, 5) = 43,
+            "C4 channel order including alpha component");
+      end;
       Clear (Color);
       IP.Draw_Contours (Color, Set, White, Line_Style => IP.Anti_Aliased_Line);
    end Depth_Color_AA;

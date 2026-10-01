@@ -9,7 +9,6 @@ with OpenCV.Core.Module_Interop;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
-with OpenCV.Core.UInt8_Vec4_Access;
 with OpenCV.Image_Processing;
 with OpenCV.Image_Processing.Internal.C_API;
 with System;
@@ -537,13 +536,18 @@ package body Drawing_Annotation_Tests is
    begin
       OpenCV.Core.Set_To (C4, (others => 0.0));
       IP.Draw_Text (ROI, "A", (10, 40), White);
-      for Y in 10 .. 69 loop
-         for X in 10 .. 99 loop
-            if OpenCV.Core.UInt8_Vec4_Access.Get (C4, Y, X) (0) /= 0 then
-               Changed := True;
-            end if;
+      declare
+         Channel_0 : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Extract_Channel (C4, 0);
+      begin
+         for Y in 10 .. 69 loop
+            for X in 10 .. 99 loop
+               if OpenCV.Core.UInt8_Access.Get (Channel_0, Y, X) /= 0 then
+                  Changed := True;
+               end if;
+            end loop;
          end loop;
-      end loop;
+      end;
       AUnit.Assertions.Assert
         (Changed, "C4 Region text renders and retains its Mat");
       Expect_Error (Bad_U16'Access, "UInt16 text rejected");
