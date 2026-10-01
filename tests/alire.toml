@@ -9,6 +9,10 @@ licenses = "Apache-2.0"
 website = ""
 tags = []
 
+[[actions]]
+type = "pre-build"
+command = ["sh", "scripts/build_test_support.sh"]
+
 [[depends-on]]
 aunit = "^26.0.0"
 
