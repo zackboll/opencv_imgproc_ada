@@ -1,5 +1,6 @@
 #include "opencv_imgproc_shim.h"
 #include "opencv_core_module_bridge.hpp"
+#include "emd_signature_index_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 
@@ -8789,7 +8790,9 @@ static opencv_imgproc_status emd_execute(
         if (metric == 3 && (c->empty() || c->dims != 2 || c->type() != CV_32FC1 ||
                              c->rows != a->rows || c->cols != b->rows))
             return invalid_argument("Invalid EMD cost layout");
-        if (!emd_layout_fits(*a, *b, c))
+        if (!emd_signature_index_fits(a->rows, a->cols, metric != 3) ||
+            !emd_signature_index_fits(b->rows, b->cols, metric != 3) ||
+            !emd_layout_fits(*a, *b, c))
             return invalid_argument("EMD legacy buffer or signed stride overflows int");
         if (!emd_weights_safe(*a) || !emd_weights_safe(*b) ||
             !emd_costs_safe(*a, *b, metric, c))
