@@ -78,6 +78,19 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_ERROR_UNKNOWN          ((opencv_imgproc_status)3)
 #define OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT ((opencv_imgproc_status)4)
 
+/* 0=L1, 1=L2, 2=chessboard, 3=explicit Float32 transport costs.
+ * Built-in modes ignore cost (which may be null). Scalar and flow are
+ * published only on success; a failed flow call leaves its Mat unchanged. */
+opencv_imgproc_status opencv_imgproc_earth_mover_distance(
+    const opencv_core_mat_handle *signature1,
+    const opencv_core_mat_handle *signature2, int32_t metric,
+    const opencv_core_mat_handle *cost, float *distance);
+opencv_imgproc_status opencv_imgproc_earth_mover_distance_flow(
+    const opencv_core_mat_handle *signature1,
+    const opencv_core_mat_handle *signature2, int32_t metric,
+    const opencv_core_mat_handle *cost, float *distance,
+    opencv_core_mat_handle *flow);
+
 /* Semantic depths: sum 0=Int32, 1=Float32, 2=Float64;
  * square 0=Float32, 1=Float64. Outputs are borrowed Core Mat headers. */
 opencv_imgproc_status opencv_imgproc_integral_sum(

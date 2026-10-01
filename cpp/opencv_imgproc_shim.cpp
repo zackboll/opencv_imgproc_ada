@@ -1,5 +1,6 @@
 #include "opencv_imgproc_shim.h"
 #include "opencv_core_module_bridge.hpp"
+#include "emd_signature_index_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 
@@ -9,6 +10,7 @@
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
+#include <climits>
 #include <exception>
 #include <limits>
 #include <utility>
@@ -50,7 +52,112 @@ struct opencv_imgproc_pyramid_handle {
     std::vector<cv::Mat> levels;
 };
 
+// OpenCV 4.1 emd.cpp CvNode1D/CvNode2D allocation layouts (not solver state).
+struct emd_legacy_node1d_layout { float value; void *next; };
+struct emd_legacy_node2d_layout {
+    float value; void *next[2]; int i; int j;
+};
+
 namespace {
+
+// ABI safety: 4.1 icvInitEMD evaluates this allocation in signed int,
+// including *full* row counts (not only positive-weight rows). Each term is
+// widened before multiplication. Its bound also dominates the rewritten
+// solver's active (rows1+1)*(rows2+1), ssize+dsize+1 and ssize*dsize.
+bool emd_layout_fits(const cv::Mat &a, const cv::Mat &b, const cv::Mat *cost)
+{
+    const uint64_t limit = static_cast<uint64_t>(INT_MAX);
+    const uint64_t x = static_cast<uint64_t>(a.rows) + 1;
+    const uint64_t y = static_cast<uint64_t>(b.rows) + 1;
+    const uint64_t dims = static_cast<uint64_t>(a.cols - 1);
+    if (x > limit || y > limit || x + y > limit ||
+        dims > limit / (2 * sizeof(float)) ||
+        static_cast<uint64_t>(a.cols) > limit / sizeof(float) ||
+        static_cast<uint64_t>(b.cols) > limit / sizeof(float) ||
+        static_cast<uint64_t>(b.rows) > limit / sizeof(float) ||
+        (cost && static_cast<uint64_t>(cost->cols) > limit / sizeof(float)))
+        return false;
+    // OpenCV 4.1 buffer_size: (size1+1)*(size2+1) *
+    // (sizeof(float) + sizeof(char) + sizeof(float)) +
+    // (size1+size2+2) * (sizeof(CvNode2D) + sizeof(CvNode2D*) +
+    // sizeof(CvNode1D) + sizeof(float) + sizeof(int) + sizeof(CvNode2D*)) +
+    // (size1+1) * (sizeof(float*) + sizeof(char*) + sizeof(float*)) + 256.
+    const uint64_t cell = sizeof(float) * 2 + sizeof(char);
+    const uint64_t nodes = sizeof(emd_legacy_node2d_layout) +
+        sizeof(void *) + sizeof(emd_legacy_node1d_layout) +
+        sizeof(float) + sizeof(int) + sizeof(void *);
+    const uint64_t pointers = 3 * sizeof(void *);
+    // x*y is bounded before calculating the complete 4.1 buffer_size.
+    if (x > limit / y || x * y > limit / cell ||
+        x + y > limit / nodes || x > limit / pointers)
+        return false;
+    const uint64_t cells = x * y * cell;
+    const uint64_t tails = (x + y) * nodes + x * pointers + 256;
+    return tails <= limit && cells <= limit - tails;
+}
+
+// ABI/native safety: both solvers accumulate positive weights in float.
+bool emd_weights_safe(const cv::Mat &a)
+{
+    double total = 0.0;
+    float native_total = 0.0f;
+    for (int i = 0; i < a.rows; ++i) {
+        const float w = a.at<float>(i, 0);
+        if (!std::isfinite(w) || w < 0) return false;
+        total += w;
+        if (total > FLT_MAX || static_cast<double>(native_total) + w > FLT_MAX)
+            return false;
+        native_total += w;
+    }
+    return total > 0;
+}
+
+bool emd_costs_safe(const cv::Mat &a, const cv::Mat &b, int32_t metric,
+                    const cv::Mat *cost)
+{
+    constexpr float sentinel = 1e20f;
+    // ABI/native safety: nonfinite, negative or sentinel costs corrupt
+    // Russell's float max-cost/sentinel arithmetic before transport solving.
+    if (metric == 3) {
+        for (int i = 0; i < cost->rows; ++i)
+            for (int j = 0; j < cost->cols; ++j) {
+                const float v = cost->at<float>(i, j);
+                if (!std::isfinite(v) || v < 0 || v >= sentinel) return false;
+            }
+        return true;
+    }
+    // ABI/native safety: built-in metrics subtract in float, accumulate in
+    // double, then narrow L1 or squared L2 to float. CV_EMD_INF is 1e20f.
+    for (int i = 0; i < a.rows; ++i)
+        for (int k = 1; k < a.cols; ++k)
+            if (!std::isfinite(a.at<float>(i, k))) return false;
+    for (int j = 0; j < b.rows; ++j)
+        for (int k = 1; k < b.cols; ++k)
+            if (!std::isfinite(b.at<float>(j, k))) return false;
+    for (int i = 0; i < a.rows; ++i) {
+        if (a.at<float>(i, 0) == 0) continue;
+        for (int j = 0; j < b.rows; ++j) {
+            if (b.at<float>(j, 0) == 0) continue;
+            double acc = 0;
+            for (int k = 1; k < a.cols; ++k) {
+                const double wide = static_cast<double>(a.at<float>(i, k)) -
+                                    static_cast<double>(b.at<float>(j, k));
+                if (std::abs(wide) > FLT_MAX) return false;
+                const double diff = std::abs(static_cast<float>(wide));
+                if (metric == 0) acc += diff;
+                else if (metric == 1) acc += diff * diff;
+                else acc = std::max(acc, diff);
+                if (!std::isfinite(acc)) return false;
+            }
+            if (acc > FLT_MAX) return false;
+            const float value = static_cast<float>(acc);
+            if (!std::isfinite(value) ||
+                (metric == 1 ? std::sqrt(value) : value) >= sentinel)
+                return false;
+        }
+    }
+    return true;
+}
 
 void clear_error() noexcept;
 opencv_imgproc_status invalid_argument(const char *message) noexcept;
@@ -3729,6 +3836,7 @@ cv::Mat back_project_histogram(
 constexpr int native_distance_l1 = 1;
 constexpr int native_distance_l2 = 2;
 constexpr int native_distance_c = 3;
+constexpr int native_distance_user = -1;
 
 // ABI safety: 4.1's approximate passes narrow row strides to int and
 // multiply row indices by those strides; the padded temporary uses int
@@ -8649,6 +8757,81 @@ opencv_imgproc_calc_hist_masked(
 {
     return calc_hist_impl(
         source, mask, true, dimensions, dimension_count, histogram);
+}
+
+static opencv_imgproc_status emd_execute(
+    const opencv_core_mat_handle *signature1,
+    const opencv_core_mat_handle *signature2, int32_t metric,
+    const opencv_core_mat_handle *cost, float *distance,
+    opencv_core_mat_handle *flow, bool with_flow)
+{
+    clear_error();
+    if (!distance || (with_flow && !flow))
+        return invalid_argument("EMD output pointer is null");
+    try {
+        const cv::Mat *a = nullptr, *b = nullptr, *c = nullptr;
+        cv::Mat *out = nullptr;
+        if (opencv_core_module_input_mat(signature1, &a) != OPENCV_CORE_OK || !a ||
+            opencv_core_module_input_mat(signature2, &b) != OPENCV_CORE_OK || !b ||
+            (with_flow && (opencv_core_module_output_mat(flow, &out) != OPENCV_CORE_OK || !out)))
+            return invalid_argument("Invalid EMD Mat handle");
+        if (metric < 0 || metric > 3)
+            return invalid_argument("Invalid EMD metric selector");
+        if (metric == 3 &&
+            (opencv_core_module_input_mat(cost, &c) != OPENCV_CORE_OK || !c))
+            return invalid_argument("Invalid EMD cost handle");
+        // ABI safety: native signatures read Float32 rows and 4.1 reads them
+        // by packed offsets; shape/type must be checked before that access.
+        if (a->empty() || b->empty() || a->dims != 2 || b->dims != 2 ||
+            a->type() != CV_32FC1 || b->type() != CV_32FC1 ||
+            a->cols != b->cols || a->cols < (metric == 3 ? 1 : 2))
+            return invalid_argument("Invalid EMD signature layout");
+        // ABI safety: cv::EMD user costs index a Float32 rows1 x rows2 Mat.
+        if (metric == 3 && (c->empty() || c->dims != 2 || c->type() != CV_32FC1 ||
+                             c->rows != a->rows || c->cols != b->rows))
+            return invalid_argument("Invalid EMD cost layout");
+        if (!emd_signature_index_fits(a->rows, a->cols, metric != 3) ||
+            !emd_signature_index_fits(b->rows, b->cols, metric != 3) ||
+            !emd_layout_fits(*a, *b, c))
+            return invalid_argument("EMD legacy buffer or signed stride overflows int");
+        if (!emd_weights_safe(*a) || !emd_weights_safe(*b) ||
+            !emd_costs_safe(*a, *b, metric, c))
+            return invalid_argument("EMD native weight or cost is unsafe");
+        // Packed deep copies protect 4.1's step-blind signature indexing.
+        const cv::Mat packed_a = a->clone(), packed_b = b->clone();
+        const cv::Mat packed_c = c ? c->clone() : cv::Mat();
+        cv::Mat local_flow;
+        const int native_metric = metric == 0 ? native_distance_l1 :
+            metric == 1 ? native_distance_l2 : metric == 2 ? native_distance_c :
+            native_distance_user;
+        const float value = with_flow
+            ? cv::EMD(packed_a, packed_b, native_metric, packed_c, nullptr, local_flow)
+            : cv::EMD(packed_a, packed_b, native_metric, packed_c, nullptr);
+        if (!std::isfinite(value)) {
+            set_error("Native EMD returned a nonfinite distance");
+            return OPENCV_IMGPROC_ERROR_OPENCV;
+        }
+        if (with_flow) *out = std::move(local_flow);
+        *distance = value;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status opencv_imgproc_earth_mover_distance(
+    const opencv_core_mat_handle *signature1,
+    const opencv_core_mat_handle *signature2, int32_t metric,
+    const opencv_core_mat_handle *cost, float *distance)
+{
+    return emd_execute(signature1, signature2, metric, cost, distance, nullptr, false);
+}
+
+opencv_imgproc_status opencv_imgproc_earth_mover_distance_flow(
+    const opencv_core_mat_handle *signature1,
+    const opencv_core_mat_handle *signature2, int32_t metric,
+    const opencv_core_mat_handle *cost, float *distance,
+    opencv_core_mat_handle *flow)
+{
+    return emd_execute(signature1, signature2, metric, cost, distance, flow, true);
 }
 
 opencv_imgproc_status

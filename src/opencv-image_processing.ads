@@ -1847,6 +1847,46 @@ package OpenCV.Image_Processing is
      (State : GrabCut_State; Row : Natural; Column : Natural)
       return GrabCut_Label;
 
+   --  Earth mover distance -------------------------------------------------
+
+   type Earth_Mover_Metric is (Manhattan_EMD, Euclidean_EMD, Chessboard_EMD);
+   type Earth_Mover_Result is record
+      Distance : OpenCV.Float32_Value;
+      Flow     : OpenCV.Core.Mat;
+   end record;
+
+   --  Nonempty 2-D Float32 C1 signatures: each row is (weight, coordinates).
+   --  Built-in metrics require at least one coordinate and equal column
+   --  counts.
+   --  Explicit Cost permits weights-only signatures (one column); Cost is
+   --  Float32 C1, with Rows = Signature_1.Rows and Columns = Signature_2.Rows.
+   --  All weights are finite and nonnegative, each signature has positive
+   --  total mass, and its sum must remain finite in Float32. Built-in
+   --  coordinates are finite; relevant transport costs are nonnegative and
+   --  strictly less than the native 1.0e20 Float32 sentinel. All supplied
+   --  cost entries are checked, including entries for zero-weight rows.
+   --  Unequal total masses are balanced by an internal zero-cost dummy
+   --  cluster;
+   --  distance is normalized by the larger mass. Flow (when requested) is a
+   --  fresh Float32 C1 Rows_1 x Rows_2 Mat of real transported mass; dummy
+   --  mass is not represented. Inputs, including Regions, are deep-snapshotted
+   --  into packed storage before the native solve. No lower-bound shortcut is
+   --  used. Invalid inputs or native failures raise OpenCV_Error.
+   function Earth_Mover_Distance
+     (Signature_1, Signature_2 : OpenCV.Core.Mat;
+      Metric                   : Earth_Mover_Metric := Euclidean_EMD)
+      return OpenCV.Float32_Value;
+   function Earth_Mover_Distance_With_Flow
+     (Signature_1, Signature_2 : OpenCV.Core.Mat;
+      Metric                   : Earth_Mover_Metric := Euclidean_EMD)
+      return Earth_Mover_Result;
+   function Earth_Mover_Distance_With_Cost
+     (Signature_1, Signature_2, Cost : OpenCV.Core.Mat)
+      return OpenCV.Float32_Value;
+   function Earth_Mover_Distance_With_Cost_And_Flow
+     (Signature_1, Signature_2, Cost : OpenCV.Core.Mat)
+      return Earth_Mover_Result;
+
    --  Histogram analysis ---------------------------------------------------
 
    --  Maximum histogram dimensionality guaranteed on every supported OpenCV

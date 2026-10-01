@@ -66,6 +66,12 @@ jobs:
       - name: Build Imgproc with Core bridge
         run: alr -n build
 
+      - name: Run EMD signature index boundary test
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror \
+            tests/emd_signature_index_test.cpp -o emd_signature_index_test
+          ./emd_signature_index_test
+
       - name: Run Imgproc tests
         run: alr -n -C tests run
 
@@ -155,6 +161,12 @@ jobs:
 
       - name: Build Imgproc with Core bridge
         run: alr -n build
+
+      - name: Run EMD signature index boundary test
+        run: |
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror \
+            tests/emd_signature_index_test.cpp -o emd_signature_index_test
+          ./emd_signature_index_test
 
       - name: Verify Imgproc shim isolation
         run: |
@@ -297,6 +309,12 @@ jobs:
           grep -F \
             'Building External_Relocatable OpenCV Imgproc shim' \
             "${log}"
+
+      - name: Run EMD signature index boundary test
+        run: |
+          /mingw64/bin/g++.exe -std=c++17 -Wall -Wextra -Werror \
+            tests/emd_signature_index_test.cpp -o emd_signature_index_test.exe
+          PATH="/mingw64/bin:$PATH" ./emd_signature_index_test.exe
 
       - name: Verify Imgproc Windows shim isolation
         run: |

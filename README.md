@@ -80,6 +80,7 @@ Ada package, and built libraries serve different roles.
 - [Hough detection](#hough-detection)
 - [Segmentation](#segmentation)
 - [Histogram analysis](#histogram-analysis)
+- [Earth mover distance](#earth-mover-distance)
 - [Shared value types](#shared-value-types)
 - [Geometry is a separate module](#geometry-is-a-separate-module)
 - [Architecture](#architecture)
@@ -241,6 +242,7 @@ The table below summarizes the current public operations.
 | Histogram analysis | `Compare_Histograms` | two histograms with the same binning mode and identical bin geometry | six OpenCV metrics; source positions and channels may differ; nonuniform comparison requires the exact edge sequence |
 | Histogram analysis | `Back_Project` | one Mat when every stored source position is 0, or enough same-geometry sources for the stored positions | fresh C1 Mat of the first source's size and depth; finite scale |
 | Histogram analysis | `Accumulate_Histogram` | a calculated histogram plus a compatible source or source array, optional mask | new histogram; Base is unchanged; Float32 bin sums, not native `accumulate=true` |
+| Histogram analysis | `Earth_Mover_Distance`, `Earth_Mover_Distance_With_Flow`, `Earth_Mover_Distance_With_Cost`, `Earth_Mover_Distance_With_Cost_And_Flow` | nonempty 2-D Float32 C1 signatures; optional Float32 C1 transport-cost matrix | exact native EMD, optionally with fresh real-row transport Flow; packed snapshots for Region portability |
 
 The supported general-purpose Imgproc numeric depths are:
 
@@ -3332,6 +3334,45 @@ end;
 
 ---
 
+## Earth mover distance
+
+`Earth_Mover_Distance` computes exact `cv::EMD` from two nonempty 2-D
+`Float32` C1 signatures. Each row is `(weight, coordinate_1, ...)`, with at
+least one coordinate and matching column counts. Choose `Manhattan_EMD`
+(`DIST_L1`), `Euclidean_EMD` (`DIST_L2`, default), or `Chessboard_EMD`
+(`DIST_C`). `Earth_Mover_Distance_With_Flow` also returns a fresh `Float32` C1
+`Flow` Mat of size `Signature_1.Rows x Signature_2.Rows`; `Flow(i,j)` is the
+mass carried from source row `i` to destination row `j`. Zero-weight rows
+carry no flow.
+
+`Earth_Mover_Distance_With_Cost` and
+`Earth_Mover_Distance_With_Cost_And_Flow` use `DIST_USER` and an explicit
+`Float32` C1 cost matrix sized `Signature_1.Rows x Signature_2.Rows`. In
+this mode signatures can contain only weights (one column); when coordinate
+columns exist they are ignored for transport costs. The complete cost matrix
+is validated, including entries for zero-weight rows.
+
+Weights must be finite, nonnegative and have at least one positive entry per
+signature; positive-weight totals must fit finite Float32. Unequal totals are
+allowed: OpenCV adds an internal zero-cost dummy cluster to the lighter side
+and normalizes EMD by the larger total. Dummy rows/columns are not returned
+in Flow. Built-in coordinates must be finite. Each relevant pairwise native
+cost, or each explicit cost, must be nonnegative, finite and **strictly less
+than `1e20`** (OpenCV's `CV_EMD_INF` sentinel). Both native Float32
+subtraction and the L2 Float32 cast of the squared sum are preflighted.
+
+Inputs are never modified. Signatures and explicit costs, including
+non-contiguous Regions, are deep-cloned to packed private storage. This is
+essential for OpenCV 4.1: its legacy `cvCalcEMD2`/`icvInitEMD` reads signature
+rows with contiguous indexing rather than their Mat row step. OpenCV 4.10
+and 5.0 use the rewritten `EMDSolver`, which indexes Mat rows and sizes
+its buffers differently. The shim preflights the 4.1 signed-int work-buffer
+formula using full source row counts, and also bounds the rewritten solver's
+active-row signed products. No lower-bound threshold/early-exit shortcut is
+exposed: each successful call performs the native transport solve. Invalid
+input raises `OpenCV_Error`; the native scalar and flow are published only
+after success.
+
 ## Geometry is a separate module
 
 OpenCV 5 moved a substantial set of computational geometry APIs out of Imgproc
@@ -3788,7 +3829,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **489-test** baseline is:
+The current **502-test** baseline is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -3827,9 +3868,10 @@ The current **489-test** baseline is:
 | Segmentation (flood fill, watershed, GrabCut) | 35 |
 | Mean-shift filtering | 16 |
 | Histogram analysis (calculation, comparison, back projection, accumulation) | 39 |
+| Earth mover distance | 13 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **489** |
+| **Total** | **502** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4446,8 +4488,11 @@ Notable Imgproc families that are not yet broadly bound include:
   (`use_edgeval`) Hough, and `HOUGH_GRADIENT_ALT`;
 - deferred segmentation capabilities: flood fill on `Int32` images and
   higher-level distance-transform marker-construction convenience;
-- advanced histogram capabilities: `SparseMat` histograms and EMD (a future
-  sparse-histogram abstraction may revisit the dense 10-dimension limit);
+- `SparseMat` histograms remain deferred until Core supplies a deliberate
+  module-interoperability surface for sparse handles; Imgproc will not
+  duplicate Core's SparseMat ownership model;
+- EMD's input/output lower-bound threshold shortcut (which can skip the exact
+  transport solve) remains deferred;
 - custom/user-defined distance masks (not part of the portable foundation);
 - custom OpenCV 5 font faces and FreeType/arbitrary font loading;
 - `drawFrameAxes` (calibration-dependent);
