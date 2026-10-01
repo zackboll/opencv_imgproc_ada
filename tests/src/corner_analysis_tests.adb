@@ -487,6 +487,93 @@ package body Corner_Analysis_Tests is
       Must_Reject (Attempt'Access);
    end Empty_Still_Validates;
 
+   procedure Check_Nonfinite_Subpixel_Source (Bits : Interfaces.Unsigned_32) is
+      S     : OpenCV.Core.Mat := Scene (True);
+      P     : constant IP.Corner_Point_Array (7 .. 7) :=
+        (7 => (X => 15.2, Y => 15.3));
+      Empty : constant IP.Corner_Point_Array (3 .. 2) :=
+        (others => (0.0, 0.0));
+      Value : constant OpenCV.Float32_Value := Bits_To_Float (Bits);
+      procedure Attempt is
+         R : constant IP.Corner_Point_Array :=
+           IP.Refine_Corners_Subpixel (S, P, (3, 3));
+         pragma Unreferenced (R);
+      begin
+         null;
+      end Attempt;
+      procedure Attempt_Empty is
+         R : constant IP.Corner_Point_Array :=
+           IP.Refine_Corners_Subpixel (S, Empty, (3, 3));
+         pragma Unreferenced (R);
+      begin
+         null;
+      end Attempt_Empty;
+   begin
+      OpenCV.Core.Float32_Access.Set (S, 16, 16, Value);
+      Must_Reject (Attempt'Access);
+      Must_Reject (Attempt_Empty'Access);
+      AUnit.Assertions.Assert
+        (P (7).X = 15.2 and then P (7).Y = 15.3,
+         "nonfinite rejection preserves caller points");
+      AUnit.Assertions.Assert
+        (not (OpenCV.Core.Float32_Access.Get (S, 16, 16)
+              = OpenCV.Core.Float32_Access.Get (S, 16, 16))
+         or else OpenCV.Core.Float32_Access.Get (S, 16, 16)
+                 > OpenCV.Float32_Value'Last,
+         "nonfinite rejection preserves source sample");
+      OpenCV.Core.Float32_Access.Set (S, 16, 16, 255.0);
+      AUnit.Assertions.Assert
+        (IP.Refine_Corners_Subpixel (S, P, (3, 3)) (7).X >= 0.0,
+         "valid refinement succeeds after nonfinite rejection");
+   end Check_Nonfinite_Subpixel_Source;
+
+   procedure NaN_Subpixel_Source (T : in out Fixture) is
+      pragma Unreferenced (T);
+   begin
+      Check_Nonfinite_Subpixel_Source (16#7FC0_0000#);
+   end NaN_Subpixel_Source;
+
+   procedure Infinity_Subpixel_Source (T : in out Fixture) is
+      pragma Unreferenced (T);
+   begin
+      Check_Nonfinite_Subpixel_Source (16#7F80_0000#);
+   end Infinity_Subpixel_Source;
+
+   procedure Float_Subpixel_Region_Finiteness (T : in out Fixture) is
+      pragma Unreferenced (T);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (40, 40, (OpenCV.Core.Float32, 1));
+      R      : OpenCV.Core.Mat;
+      P      : constant IP.Corner_Point_Array (5 .. 5) :=
+        (5 => (X => 15.2, Y => 15.3));
+      procedure Attempt is
+         Result : constant IP.Corner_Point_Array :=
+           IP.Refine_Corners_Subpixel (R, P, (3, 3));
+         pragma Unreferenced (Result);
+      begin
+         null;
+      end Attempt;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 0.0));
+      R := Parent.Region ((X => 4, Y => 4, Width => 32, Height => 32));
+      for Y in 0 .. 31 loop
+         for X in 0 .. 31 loop
+            OpenCV.Core.Float32_Access.Set
+              (R, Y, X, (if Y >= 16 and then X >= 16 then 255.0 else 0.0));
+         end loop;
+      end loop;
+      OpenCV.Core.Float32_Access.Set
+        (Parent, 0, 0, Bits_To_Float (16#7FC0_0000#));
+      OpenCV.Core.Float32_Access.Set
+        (Parent, 39, 39, Bits_To_Float (16#7F80_0000#));
+      AUnit.Assertions.Assert
+        (IP.Refine_Corners_Subpixel (R, P, (3, 3)) (5).X >= 0.0,
+         "finite Region ignores nonfinite parent pixels");
+      OpenCV.Core.Float32_Access.Set
+        (R, 16, 16, Bits_To_Float (16#7FC0_0000#));
+      Must_Reject (Attempt'Access);
+   end Float_Subpixel_Region_Finiteness;
+
    procedure Corner_Recover (T : in out Fixture) is
       pragma Unreferenced (T);
       S : constant OpenCV.Core.Mat := Scene;
@@ -551,6 +638,18 @@ package body Corner_Analysis_Tests is
       Result.Add_Test
         (Caller.Create
            ("Empty subpixel still validates", Empty_Still_Validates'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Subpixel rejects NaN Float32 source",
+            NaN_Subpixel_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Subpixel rejects infinity Float32 source",
+            Infinity_Subpixel_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Subpixel Float32 Region finite scan is local",
+            Float_Subpixel_Region_Finiteness'Access));
       Result.Add_Test
         (Caller.Create
            ("Corner map recovers after rejection", Corner_Recover'Access));

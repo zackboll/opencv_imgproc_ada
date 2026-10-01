@@ -196,7 +196,10 @@ package OpenCV.Image_Processing is
    --  and inside [0, Columns) x [0, Rows). Dead-zone half-sizes must be
    --  smaller than the corresponding search half-sizes. Both termination
    --  criteria are active; Epsilon must be finite and nonnegative. An empty
-   --  array returns an empty array after image/window/criteria validation.
+   --  Float32 source samples must all be finite (including for empty Corners);
+   --  UInt8 sources need no scan. Nonfinite samples raise OpenCV_Error.
+   --  An empty array returns an empty array after image/window/criteria and
+   --  Float32 source validation.
    --  Arbitrary Integer bounds are preserved. Inputs remain unchanged even
    --  on failure; Region neighborhoods cannot see parent pixels.
    function Refine_Corners_Subpixel

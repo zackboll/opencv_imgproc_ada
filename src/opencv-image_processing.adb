@@ -8,6 +8,7 @@ with OpenCV.Core.Module_Interop;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Int32_Access;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Row_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Image_Processing.Internal.C_API;
 with System;
@@ -128,19 +129,35 @@ package body OpenCV.Image_Processing is
       use type OpenCV.Float32_Value;
       use type OpenCV.Float64_Value;
       use type OpenCV.Size_Coordinate;
+      use type OpenCV.Core.Depth_Type;
       use type Interfaces.Integer_32;
-      Native : Internal.C_API.Corner_Point_Buffer (0 .. Corners'Length - 1);
-      Output : Internal.C_API.Corner_Point_Buffer (Native'Range);
+      type Corner_Buffer_Access is access Internal.C_API.Corner_Point_Buffer;
+      procedure Free_Corners is new
+        Ada.Unchecked_Deallocation
+          (Internal.C_API.Corner_Point_Buffer,
+           Corner_Buffer_Access);
+      Native : Corner_Buffer_Access;
+      Output : Corner_Buffer_Access;
       Result : Corner_Point_Array (Corners'Range);
       Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Check_Row
+        (Data : aliased OpenCV.Core.Float32_Row_Access.Row_Array) is
+      begin
+         for Sample of Data loop
+            if not Is_Finite_32 (Sample) then
+               raise OpenCV.OpenCV_Error
+                 with "Subpixel Float32 source must contain finite samples";
+            end if;
+         end loop;
+      end Check_Row;
       procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
       begin
          Status :=
            Internal.C_API.Corner_Subpixel
              (S,
-              (if Native'Length = 0 then null else Native (0)'Access),
+              Native (0)'Access,
               Interfaces.Integer_32 (Native'Length),
-              (if Output'Length = 0 then null else Output (0)'Access),
+              Output (0)'Access,
               Interfaces.Integer_32 (Search_Window.Width),
               Interfaces.Integer_32 (Search_Window.Height),
               (if Dead_Zone.Enabled
@@ -166,9 +183,15 @@ package body OpenCV.Image_Processing is
                                    >= Search_Window.Height))
         or else not Is_Finite (Termination.Epsilon)
         or else Termination.Epsilon < 0.0
-        or else Corners'Length > Interfaces.Integer_32'Last
+        or else Corners'Length > Natural (Interfaces.Integer_32'Last)
       then
          raise OpenCV.OpenCV_Error with "Invalid subpixel parameters";
+      end if;
+      if Source.Depth = OpenCV.Core.Float32 then
+         for Row in 0 .. Source.Rows - 1 loop
+            OpenCV.Core.Float32_Row_Access.With_Read_Only_Row
+              (Source, Row, Check_Row'Access);
+         end loop;
       end if;
       for I in Corners'Range loop
          if not Is_Finite_32 (Corners (I).X)
@@ -180,9 +203,17 @@ package body OpenCV.Image_Processing is
          then
             raise OpenCV.OpenCV_Error with "Invalid initial corner point";
          end if;
-         Native (I - Corners'First) :=
-           (Interfaces.C.C_float (Corners (I).X),
-            Interfaces.C.C_float (Corners (I).Y));
+      end loop;
+      if Corners'Length = 0 then
+         return Result;
+      end if;
+      Native :=
+        new Internal.C_API.Corner_Point_Buffer (0 .. Corners'Length - 1);
+      Output := new Internal.C_API.Corner_Point_Buffer (Native'Range);
+      for Offset in Native'Range loop
+         Native (Offset) :=
+           (Interfaces.C.C_float (Corners (Corners'First + Offset).X),
+            Interfaces.C.C_float (Corners (Corners'First + Offset).Y));
       end loop;
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
       Raise_On_Error (Status, "Refine_Corners_Subpixel");
@@ -191,7 +222,14 @@ package body OpenCV.Image_Processing is
            (OpenCV.Float32_Value (Output (I - Corners'First).X),
             OpenCV.Float32_Value (Output (I - Corners'First).Y));
       end loop;
+      Free_Corners (Output);
+      Free_Corners (Native);
       return Result;
+   exception
+      when others =>
+         Free_Corners (Output);
+         Free_Corners (Native);
+         raise;
    end Refine_Corners_Subpixel;
 
    procedure Validate_EMD

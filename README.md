@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **522 AUnit tests**
+> **Current registered test baseline:** **525 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -121,9 +121,23 @@ two-pixel halo (`Columns >= 2*Width+5`, `Rows >= 2*Height+5`). Optional
 termination criteria are active: 1..100 iterations and finite nonnegative
 epsilon. Every initial Float32 point must be finite and satisfy
 `0 <= X < Columns`, `0 <= Y < Rows`. An empty array returns an empty array
-after source and parameter validation. All five operations snapshot the
+after source (including Float32 finiteness) and parameter validation. Only
+subpixel refinement requires every Float32 source sample to be finite; NaN or
+infinity raises `OpenCV_Error`. Response maps retain their existing semantics.
+All five operations snapshot the
 source before native execution; a Region is its own image and cannot see
 pixels in the surrounding parent.
+
+Pinned source review (OpenCV 4.1.0, 4.10.0, 5.0.0): in
+`modules/imgproc/src/cornersubpix.cpp`, 4.1 assigns `cI = cI2` before checking
+its range; 4.10 and 5.0 check `cI2` with `Rect.contains` before assigning it.
+With NaN covariance results, 4.1 can return a NaN point while newer versions
+retain the previous finite point. A NaN error normally stops the loop before
+another iteration; this is primarily a returned-point portability difference.
+In all three versions, `modules/imgproc/src/samplers.cpp` uses `cvFloor(center)`
+in `getRectSubPix`; `modules/core/include/opencv2/core/fast_math.hpp` documents
+undefined results for `cvFloor` outside INT_MIN..INT_MAX. The public Float32
+source check prevents nonfinite samples from reaching iterative refinement.
 
 ```ada
 declare
@@ -149,7 +163,8 @@ boundary policy. This is not missing OpenCV 5 Imgproc functionality.
 | --- | ---: |
 | Prior baseline | 502 |
 | Corner analysis additions | 20 |
-| Current suite | 522 |
+| Subpixel regression additions | 3 |
+| Current suite | 525 |
 
 ### Current feature summary
 
@@ -3926,7 +3941,8 @@ The previous **502-test** baseline (before the 20 corner-analysis tests) was:
 | Integral images | 7 |
 | **Total** | **502** |
 
-The focused corner-analysis suite adds 20 tests, for **522 total**.
+The focused corner-analysis suite adds 20 tests, plus three subpixel
+regressions, for **525 total**.
 
 
 The suite covers more than simple success paths. It includes:
