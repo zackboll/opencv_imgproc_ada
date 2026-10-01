@@ -35,12 +35,24 @@ if [ -z "$include_dir" ]; then
 fi
 library_dir=$("$pkg_config" --variable=libdir "$package")
 compiler="$(dirname "$library_dir")/bin/g++.exe"
-if [ -z "$include_dir" ] || [ ! -d "$include_dir" ] || [ ! -f "$compiler" ]; then
+opencv_core_import="$library_dir/libopencv_core.dll.a"
+core_shim_import="$core_prefix/lib/libopencv_core_shim.dll.a"
+if [ -z "$include_dir" ] || [ ! -d "$include_dir" ] ||
+   [ ! -f "$compiler" ] || [ ! -f "$opencv_core_import" ] ||
+   [ ! -f "$core_shim_import" ]; then
     echo "error: MSYS2 OpenCV headers or matching MinGW g++ not found" >&2
     exit 1
 fi
+if ! command -v cygpath >/dev/null 2>&1; then
+    echo "error: cygpath is required for the MSYS2 MinGW build" >&2
+    exit 1
+fi
 
-mkdir -p obj/test_support
+object=obj/test_support/watershed_overlap_fixture.o
+dll=bin/libopencv_imgproc_test_support.dll
+import_library=obj/test_support/libopencv_imgproc_test_support.dll.a
+mkdir -p obj/test_support bin
+rm -f "$object" "$dll" "$import_library"
 
 # Match the validated external production shim compile: native MinGW paths
 # and a clean compiler environment, rather than GNAT's header search path.
@@ -49,5 +61,15 @@ env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
     "$compiler" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
     "-I$(cygpath -m "$include_dir")" \
     "-I$(cygpath -m "$core_prefix/cpp")" \
-    -o "$(cygpath -m obj/test_support/watershed_overlap_fixture.o)" \
+    -o "$(cygpath -m "$object")" \
     "$(cygpath -m cpp/watershed_overlap_fixture.cpp)"
+
+# Link all native C++ and Core dependencies into the test-only DLL, not into
+# GNAT's Ada executable. The DLL lives beside tests.exe for Windows loading.
+env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
+    -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
+    "$compiler" -shared -o "$(cygpath -m "$dll")" \
+    "-Wl,--out-implib,$(cygpath -m "$import_library")" \
+    "$(cygpath -m "$object")" \
+    "$(cygpath -m "$opencv_core_import")" \
+    "$(cygpath -m "$core_shim_import")"

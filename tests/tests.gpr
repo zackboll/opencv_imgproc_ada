@@ -56,11 +56,8 @@ project Tests is
       case OpenCV_Imgproc_Install.Shim_Build is
          when "External_Relocatable" =>
             for Switches ("Ada") use
-              (Project'Project_Dir &
-                 "obj/test_support/watershed_overlap_fixture.o",
-               OpenCV_Imgproc_Install.Library_Search_Switch,
-               OpenCV_Imgproc_Install.OpenCV_Core_Link_Option,
-               OpenCV_Imgproc_Install.Cxx_Runtime_Switch);
+              ("-L" & Project'Project_Dir & "obj/test_support",
+               "-lopencv_imgproc_test_support");
          when "Static_PIC" | "Relocatable" =>
             for Switches ("Ada") use
               (OpenCV_Imgproc_Install.Library_Search_Switch,

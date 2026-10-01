@@ -9,7 +9,12 @@
 
 // Test-only fixture: both headers remain owned by OpenCV.Core. The caller
 // keeps the markers alive until the aliased source is no longer used.
-extern "C" int32_t opencv_imgproc_test_overlap_markers(
+#if defined(_WIN32)
+#define OPENCV_IMGPROC_TEST_EXPORT __declspec(dllexport)
+#else
+#define OPENCV_IMGPROC_TEST_EXPORT
+#endif
+extern "C" OPENCV_IMGPROC_TEST_EXPORT int32_t opencv_imgproc_test_overlap_markers(
     const opencv_core_mat_handle *markers_handle,
     opencv_core_mat_handle *source_handle) noexcept
 {
