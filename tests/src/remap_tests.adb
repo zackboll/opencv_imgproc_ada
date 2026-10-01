@@ -7,8 +7,6 @@ with Interfaces;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
-with OpenCV.Core.Float32_Vec2;
-with OpenCV.Core.Float32_Vec2_Access;
 with OpenCV.Core.UInt16_Access;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.UInt8_Access;
@@ -26,7 +24,6 @@ package body Remap_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Float32_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
-   use type OpenCV.Core.Float32_Vec2.Vector;
    use type OpenCV.Image_Processing.Interpolation_Method;
 
    package C_API renames OpenCV.Image_Processing.Internal.C_API;
@@ -59,6 +56,16 @@ package body Remap_Tests is
    begin
       return abs (Left - Right) <= Tolerance;
    end Nearly_Equal;
+
+   function Map_Component
+     (Map : OpenCV.Core.Mat; Channel, Row, Column : Natural)
+      return OpenCV.Float32_Value
+   is
+      Component : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Extract_Channel (Map, Channel);
+   begin
+      return OpenCV.Core.Float32_Access.Get (Component, Row, Column);
+   end Map_Component;
 
    function Bits_To_Float32 is new
      Ada.Unchecked_Conversion
@@ -138,12 +145,10 @@ package body Remap_Tests is
            IP.Convert_Remap_To_Separate_Float (Fixed);
          Back_XY  : constant OpenCV.Core.Mat :=
            IP.Convert_Remap_To_Interleaved_Float (Fixed_XY);
-         Vector   : constant OpenCV.Core.Float32_Vec2.Vector :=
-           OpenCV.Core.Float32_Vec2_Access.Get (XY, 0, 0);
       begin
          AUnit.Assertions.Assert
-           (Vector (0) = 2.0
-            and then Vector (1) = 1.0
+           (Map_Component (XY, 0, 0, 0) = 2.0
+            and then Map_Component (XY, 1, 0, 0) = 1.0
             and then OpenCV.Core.Float32_Access.Get (Pair.Map_X, 0, 0) = 2.0
             and then OpenCV.Core.Float32_Access.Get (Pair.Map_Y, 0, 0) = 1.0,
             "C2 channel order and round trip must preserve asymmetric X/Y");
@@ -151,8 +156,8 @@ package body Remap_Tests is
            (not IP.Is_Empty (Fixed)
             and then not IP.Is_Nearest_Only (Fixed)
             and then OpenCV.Core.Float32_Access.Get (Back.Map_X, 0, 0) = 2.0
-            and then OpenCV.Core.Float32_Vec2_Access.Get (Back_XY, 0, 0)
-                     = Vector,
+            and then Map_Component (Back_XY, 0, 0, 0) = 2.0
+            and then Map_Component (Back_XY, 1, 0, 0) = 1.0,
             "fixed interpolation maps reverse to Float32 coordinates");
          for Method in IP.Nearest_Neighbor .. IP.Linear loop
             IP.Remap (Image, X, Y, Direct, Method);
@@ -199,8 +204,7 @@ package body Remap_Tests is
          AUnit.Assertions.Assert
            (IP.Is_Nearest_Only (Fixed)
             and then OpenCV.Core.Float32_Access.Get (Back.Map_X, 0, 0) = 2.0
-            and then OpenCV.Core.Float32_Vec2_Access.Get (Back_XY, 0, 0) (0)
-                     = 2.0,
+            and then Map_Component (Back_XY, 0, 0, 0) = 2.0,
             "nearest reverse conversion returns rounded integer coordinates");
          IP.Remap (Image, Fixed, Output, IP.Nearest_Neighbor);
          AUnit.Assertions.Assert
@@ -292,7 +296,13 @@ package body Remap_Tests is
       procedure Check (Value : OpenCV.Float32_Value) is
          pragma Suppress (Validity_Check);
       begin
-         OpenCV.Core.Float32_Vec2_Access.Set (XY, 0, 0, (0.0, Value));
+         declare
+            Component : OpenCV.Core.Mat :=
+              OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+         begin
+            OpenCV.Core.Float32_Access.Set (Component, 0, 0, Value);
+            OpenCV.Core.Insert_Channel (XY, Component, 1);
+         end;
          Assert_Raises_OpenCV_Error
            (Try_Remap'Access, "unsafe C2 coordinate must reject Remap");
          Assert_Raises_OpenCV_Error
@@ -349,8 +359,8 @@ package body Remap_Tests is
          AUnit.Assertions.Assert
            (XY.Rows = 1
             and then XY.Columns = 2
-            and then OpenCV.Core.Float32_Vec2_Access.Get (XY, 0, 0)
-                     = (1.25, 0.75)
+            and then Map_Component (XY, 0, 0, 0) = 1.25
+            and then Map_Component (XY, 1, 0, 0) = 0.75
             and then Nearly_Equal
                        (OpenCV.Core.Float32_Access.Get (Back.Map_X, 0, 0),
                         1.25,
