@@ -128,7 +128,6 @@ package body OpenCV.Image_Processing is
    is
       use type OpenCV.Float32_Value;
       use type OpenCV.Float64_Value;
-      use type OpenCV.Size_Coordinate;
       use type OpenCV.Core.Depth_Type;
       use type Interfaces.Integer_32;
       type Corner_Buffer_Access is access Internal.C_API.Corner_Point_Buffer;
