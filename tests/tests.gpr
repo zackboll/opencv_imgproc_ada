@@ -42,7 +42,9 @@ project Tests is
    end Binder;
 
    package Linker is
-      for Linker_Options use
+      --  Tests alone compile the C++ fixture. Ensure its cv::Mat calls
+      --  resolve after the test archive on every platform, including macOS.
+      for Switches ("Ada") use
         (OpenCV_Imgproc_Install.Library_Search_Switch,
          OpenCV_Imgproc_Install.OpenCV_Core_Link_Option,
          OpenCV_Imgproc_Install.Cxx_Runtime_Switch);
