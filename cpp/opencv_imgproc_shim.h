@@ -78,6 +78,18 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_ERROR_UNKNOWN          ((opencv_imgproc_status)3)
 #define OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT ((opencv_imgproc_status)4)
 
+/* mode: 0=add, 1=square, 2=product, 3=weighted. source2 is required only
+ * for product; mask may be null or empty. All handles are borrowed.
+ * Result is rebound to a private Base clone only on complete success;
+ * on failure its previous header/storage remains unchanged. Weight policy
+ * belongs to Ada; raw floating arithmetic (including nonfinite) is native. */
+opencv_imgproc_status opencv_imgproc_accumulate_image(
+    const opencv_core_mat_handle *source1,
+    const opencv_core_mat_handle *source2,
+    const opencv_core_mat_handle *base,
+    const opencv_core_mat_handle *mask,
+    int32_t mode, double weight, opencv_core_mat_handle *result);
+
 /* mode: 0=min eigenvalue, 1=Harris, 2=eigenvalues/vectors, 3=pre-corner.
  * aperture is 3, 5 or 7; border is a semantic border selector. */
 opencv_imgproc_status opencv_imgproc_corner_response(

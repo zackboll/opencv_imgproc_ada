@@ -22,6 +22,172 @@ package body OpenCV.Image_Processing is
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
 
+   function Image_Accumulation
+     (Source_1, Source_2, Base, Mask : OpenCV.Core.Mat;
+      Mode                           : Interfaces.Integer_32;
+      Weight                         : OpenCV.Float64_Value;
+      Masked                         : Boolean) return OpenCV.Core.Mat
+   is
+      use type Interfaces.Integer_32;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Float64_Value;
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Same_Geometry (Image : OpenCV.Core.Mat) is
+      begin
+         if Image.Is_Empty
+           or else Image.Dimension_Count /= 2
+           or else Image.Rows /= Source_1.Rows
+           or else Image.Columns /= Source_1.Columns
+         then
+            raise OpenCV.OpenCV_Error
+              with "Accumulation requires nonempty matching 2-D images";
+         end if;
+      end Same_Geometry;
+      procedure First (S1 : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Second (S2 : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            procedure Accumulator
+              (B : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure Selection
+                 (M : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+               is
+                  procedure Output
+                    (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+                  begin
+                     Status :=
+                       Internal.C_API.Accumulate_Image
+                         (S1, S2, B, M, Mode, Interfaces.C.double (Weight), D);
+                  end Output;
+               begin
+                  OpenCV.Core.Module_Interop.With_Output_Handle
+                    (Result, Output'Access);
+               end Selection;
+            begin
+               OpenCV.Core.Module_Interop.With_Input_Handle
+                 (Mask, Selection'Access);
+            end Accumulator;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Base, Accumulator'Access);
+         end Second;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source_2, Second'Access);
+      end First;
+   begin
+      Same_Geometry (Source_1);
+      Same_Geometry (Base);
+      if Base.Depth not in OpenCV.Core.Float32 | OpenCV.Core.Float64
+        or else Base.Channels /= Source_1.Channels
+        or else (Mode = 0
+                 and then Source_1.Depth
+                          not in OpenCV.Core.UInt8
+                               | OpenCV.Core.UInt16
+                               | OpenCV.Core.Float32
+                               | OpenCV.Core.Float64)
+        or else (Source_1.Depth = OpenCV.Core.Float64
+                 and then Base.Depth /= OpenCV.Core.Float64)
+        or else (Mode /= 0
+                 and then (Source_1.Depth
+                           not in OpenCV.Core.UInt8 | OpenCV.Core.Float32
+                           or else Source_1.Channels not in 1 | 3))
+      then
+         raise OpenCV.OpenCV_Error with "Unsupported accumulation types";
+      end if;
+      if Mode = 2 then
+         Same_Geometry (Source_2);
+         if Source_2.Depth /= Source_1.Depth
+           or else Source_2.Channels /= Source_1.Channels
+         then
+            raise OpenCV.OpenCV_Error with "Product sources must match types";
+         end if;
+      end if;
+      if Masked then
+         Same_Geometry (Mask);
+         if Mask.Depth /= OpenCV.Core.UInt8 or else Mask.Channels /= 1 then
+            raise OpenCV.OpenCV_Error
+              with "Accumulation mask must be UInt8 C1";
+         end if;
+      end if;
+      if Mode = 3
+        and then (not Is_Finite (Weight)
+                  or else Weight < 0.0
+                  or else Weight > 1.0)
+      then
+         raise OpenCV.OpenCV_Error with "Weight must be finite in 0.0 .. 1.0";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source_1, First'Access);
+      Raise_On_Error (Status, "Image accumulation");
+      return Result;
+   end Image_Accumulation;
+
+   function Accumulate_Image
+     (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+      Empty : OpenCV.Core.Mat;
+   begin
+      return Image_Accumulation (Source, Empty, Base, Empty, 0, 0.0, False);
+   end Accumulate_Image;
+   function Accumulate_Image
+     (Source, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+      Empty : OpenCV.Core.Mat;
+   begin
+      return Image_Accumulation (Source, Empty, Base, Mask, 0, 0.0, True);
+   end Accumulate_Image;
+   function Accumulate_Image_Square
+     (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+      Empty : OpenCV.Core.Mat;
+   begin
+      return Image_Accumulation (Source, Empty, Base, Empty, 1, 0.0, False);
+   end Accumulate_Image_Square;
+   function Accumulate_Image_Square
+     (Source, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+      Empty : OpenCV.Core.Mat;
+   begin
+      return Image_Accumulation (Source, Empty, Base, Mask, 1, 0.0, True);
+   end Accumulate_Image_Square;
+   function Accumulate_Image_Product
+     (Source_1, Source_2, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+      Empty : OpenCV.Core.Mat;
+   begin
+      return
+        Image_Accumulation (Source_1, Source_2, Base, Empty, 2, 0.0, False);
+   end Accumulate_Image_Product;
+   function Accumulate_Image_Product
+     (Source_1, Source_2, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+   begin
+      return Image_Accumulation (Source_1, Source_2, Base, Mask, 2, 0.0, True);
+   end Accumulate_Image_Product;
+   function Update_Running_Average
+     (Source, Base : OpenCV.Core.Mat; Weight : OpenCV.Float64_Value)
+      return OpenCV.Core.Mat
+   is
+      Empty : OpenCV.Core.Mat;
+   begin
+      if not Weight'Valid then
+         raise OpenCV.OpenCV_Error with "Weight must be finite";
+      end if;
+      return Image_Accumulation (Source, Empty, Base, Empty, 3, Weight, False);
+   end Update_Running_Average;
+   function Update_Running_Average
+     (Source, Base, Mask : OpenCV.Core.Mat; Weight : OpenCV.Float64_Value)
+      return OpenCV.Core.Mat
+   is
+      Empty : OpenCV.Core.Mat;
+   begin
+      if not Weight'Valid then
+         raise OpenCV.OpenCV_Error with "Weight must be finite";
+      end if;
+      return Image_Accumulation (Source, Empty, Base, Mask, 3, Weight, True);
+   end Update_Running_Average;
+
    procedure Validate_Corner_Source (Source : OpenCV.Core.Mat) is
       use type OpenCV.Core.Depth_Type;
       use type OpenCV.Core.Channel_Count;

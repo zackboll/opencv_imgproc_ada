@@ -27,6 +27,7 @@ with Drawing_Annotation_Tests;
 with Distance_Transform_Tests;
 with Earth_Mover_Tests;
 with Integral_Image_Tests;
+with Image_Accumulation_Tests;
 with Laplacian_Tests;
 with Mean_Shift_Tests;
 with Median_Blur_Tests;
@@ -98,6 +99,7 @@ begin
    Suite.Add_Test (Distance_Transform_Tests.Suite);
    Suite.Add_Test (Earth_Mover_Tests.Suite);
    Suite.Add_Test (Integral_Image_Tests.Suite);
+   Suite.Add_Test (Image_Accumulation_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

@@ -5,6 +5,39 @@ private with Ada.Containers.Vectors;
 
 package OpenCV.Image_Processing is
 
+   --  Image/pixel accumulation, not histogram accumulation. All inputs are
+   --  nonempty 2-D Mats of identical geometry. Base is Float32 or Float64
+   --  with Source's channel count. Plain accumulation accepts UInt8, UInt16,
+   --  Float32 and Float64 (Float64 requires a Float64 Base), any channels.
+   --  Square, product and running average accept UInt8/Float32 C1 or C3.
+   --  Product sources have identical types. Invalid inputs raise OpenCV_Error.
+   --  Mask overloads require UInt8 C1 of matching geometry: zero preserves
+   --  Base, any nonzero sample enables every channel at that pixel.
+   --  Each function updates a private Base clone and returns fresh independent
+   --  storage only after success. Inputs and Region parents are never modified;
+   --  Regions contribute only logical pixels. All input storage aliases are
+   --  supported. Native floating overflow is not saturated or prohibited.
+   function Accumulate_Image
+     (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+   function Accumulate_Image
+     (Source, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+   function Accumulate_Image_Square
+     (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+   function Accumulate_Image_Square
+     (Source, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+   function Accumulate_Image_Product
+     (Source_1, Source_2, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+   function Accumulate_Image_Product
+     (Source_1, Source_2, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+   --  Result = (1-Weight)*Base + Weight*Source at enabled pixels.
+   --  Weight must be finite and in 0.0 .. 1.0 (otherwise OpenCV_Error).
+   function Update_Running_Average
+     (Source, Base : OpenCV.Core.Mat; Weight : OpenCV.Float64_Value)
+      return OpenCV.Core.Mat;
+   function Update_Running_Average
+     (Source, Base, Mask : OpenCV.Core.Mat; Weight : OpenCV.Float64_Value)
+      return OpenCV.Core.Mat;
+
    type Integral_Sum_Depth is
      (Int32_Integral, Float32_Integral, Float64_Integral);
    type Integral_Squared_Depth is
