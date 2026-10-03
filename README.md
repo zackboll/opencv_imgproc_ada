@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **525 AUnit tests**
+> **Current registered test baseline:** **569 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -50,6 +50,7 @@ Ada package, and built libraries serve different roles.
 - [Design goals](#design-goals)
 - [Current feature set](#current-feature-set)
 - [Integral images](#integral-images)
+- [Image accumulation and running statistics](#image-accumulation-and-running-statistics)
 - [Color conversion](#color-conversion)
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
@@ -173,6 +174,7 @@ OpenCV Imgproc and operate primarily on `OpenCV.Core.Mat`.
 
 The current public surface includes:
 
+- image accumulation, squared/product accumulators, and running weighted averages;
 - BGR-to-grayscale conversion;
 - image resize with five interpolation modes;
 - Gaussian blur;
@@ -293,6 +295,7 @@ The table below summarizes the current public operations.
 | Thresholding | `Apply_Automatic_Threshold` | nonempty 2-D C1 | Otsu: `UInt8`/`UInt16`; Triangle: `UInt8` |
 | Thresholding | `Apply_Adaptive_Threshold` | nonempty 2-D `UInt8` C1 | mean/Gaussian, odd block size >= 3, in-place supported |
 | Histogram | `Equalize_Histogram` | nonempty 2-D `UInt8` C1 | global CDF equalization; constant images retain intensity; same-object in-place supported; other storage-sharing aliases rejected |
+| Image statistics | `Accumulate_Image`, `Accumulate_Image_Square`, `Accumulate_Image_Product`, `Update_Running_Average` | nonempty 2-D; floating Base; documented portable depth/channel contracts below | fresh atomic result; optional UInt8 C1 mask; finite Weight in [0,1]; logical Regions and input aliases supported |
 | Histogram | `CLAHE` | nonempty 2-D `UInt8`/`UInt16` C1 | local contrast-limited equalization; default clip 40.0 and grid 8x8; same-object in-place supported; other storage-sharing aliases rejected |
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
 | Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
@@ -3939,10 +3942,9 @@ The previous **502-test** baseline (before the 20 corner-analysis tests) was:
 | Earth mover distance | 13 |
 | Distance transform | 6 |
 | Integral images | 7 |
-| **Total** | **502** |
-
-The focused corner-analysis suite adds 20 tests, plus three subpixel
-regressions, for **525 total**.
+| Corner analysis and subpixel regressions | 23 |
+| Image accumulation and running statistics | 44 |
+| **Total** | **569** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4417,6 +4419,91 @@ Generated `config/`, object directories, Alire state, and built libraries are
 not source artifacts.
 
 ---
+
+## Image accumulation and running statistics
+
+These are **image/pixel accumulators**, distinct from dense histogram
+`Accumulate_Histogram`, which collects bin counts from new samples.
+
+```ada
+function Accumulate_Image
+  (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+function Accumulate_Image_Square
+  (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+function Accumulate_Image_Product
+  (Source_1, Source_2, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+function Update_Running_Average
+  (Source, Base : OpenCV.Core.Mat; Weight : OpenCV.Float64_Value)
+   return OpenCV.Core.Mat;
+```
+
+Each has an overload accepting `Mask` after `Base` (before `Weight` for the
+running average). Unmasked calls need no empty/null public Mat. The formulas
+at each enabled pixel/channel are respectively `Base + Source`,
+`Base + Source*Source`, `Base + Source_1*Source_2`, and
+`(1-Weight)*Base + Weight*Source`.
+
+### Portable source/accumulator depth matrix
+
+| Source depth | Plain: Float32 Base | Plain: Float64 Base | Square/product/weighted: Float32 or Float64 Base |
+| --- | --- | --- | --- |
+| UInt8 | yes | yes | yes |
+| UInt16 | yes | yes | no (outside shared documented contract) |
+| Float32 | yes | yes | yes |
+| Float64 | **no** | yes | no (outside shared documented contract) |
+| Other depths | no | no | no |
+
+Plain accumulation permits any Core-supported positive channel count.
+Square, product, and weighted accumulation permit **C1 or C3 only**. Base
+must have the source's channel count. Product sources must have identical
+depth and channels. These deliberately documented contracts apply across
+OpenCV **4.1.0, 4.10.0, and 5.0.0**; broader internal dispatch handlers do
+not expand the public contract.
+
+Every source, Base, and supplied Mask must be **nonempty, 2-D**, with identical
+rows and columns. Mask must be **UInt8 C1**; zero leaves the entire Base pixel
+unchanged, and **any nonzero value** enables all channels at that pixel.
+Mask is read-only. OpenCV 5's Bool-mask extension is not exposed.
+
+`Weight` must be finite and in **0.0 .. 1.0**. NaN, either infinity, and
+out-of-range weights are rejected. Zero retains a finite Base and one uses
+source-converted values; intermediate weights control forgetting speed.
+Otherwise valid floating arithmetic follows native OpenCV, including IEEE
+overflow to infinity. There is no saturation or whole-image finiteness scan.
+Public contract violations and native failures raise `OpenCV.OpenCV_Error`.
+
+### Atomic results, Regions, and aliases
+
+All four functions return **fresh independent storage**: the native shim
+clones Base into a private working accumulator, calls OpenCV on that clone,
+and publishes it only after complete success. Source(s), Base, and Mask are
+unchanged on success and failure. Normal Core shallow-copy semantics still
+apply to subsequent Ada assignments of the returned Mat.
+
+A Region contributes **exactly its logical pixels**, not parent contents.
+A Base Region becomes a packed independent result, not an updated parent
+view. Source Regions and Mask Regions are read only within their logical
+geometry. Same-Mat source/base, distinct headers sharing or overlapping
+storage, self-product, and UInt8 source/mask sharing are supported without
+depending on native iteration order. As with other Core operations, callers
+must not concurrently mutate borrowed inputs during execution.
+
+```ada
+Accumulator := Accumulate_Image (Frame, Accumulator);
+Squared := Accumulate_Image_Square (Frame, Squared, Selection);
+Cross_Product := Accumulate_Image_Product (Frame, Previous, Cross_Product);
+Background := Update_Running_Average (Frame, Background, Weight => 0.25);
+```
+
+The shim preflights signed native plane/channel indexing, IPP stride and
+flattened byte counts, and packed working row size. Conservative limits are
+INT_MAX pixels, channel scalars, bytes, and nonempty input strides. Older
+OpenVX computes signed `width*height` before declining floating accumulators;
+that probe is guarded too. Mat inputs exclude OpenCL; public floating types
+exclude OpenVX's integer accumulator kernels. IPP remains enabled after
+preflight. OpenCV 5 removes OpenVX accumulation and adds Bool masks; the
+portable public contract is unchanged. See the full
+[pinned source and validation-boundary review](docs/image-accumulation-source-review.md).
 
 ## Integral images
 

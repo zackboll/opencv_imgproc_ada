@@ -3923,6 +3923,71 @@ extern "C" opencv_imgproc_status opencv_imgproc_integral_complete(
 
 extern "C" {
 
+opencv_imgproc_status opencv_imgproc_accumulate_image(
+    const opencv_core_mat_handle *source1,
+    const opencv_core_mat_handle *source2,
+    const opencv_core_mat_handle *base,
+    const opencv_core_mat_handle *mask,
+    int32_t mode, double weight, opencv_core_mat_handle *result)
+{
+    clear_error();
+    try {
+        if (mode < 0 || mode > 3)
+            return invalid_argument("Unknown image accumulation selector");
+        const cv::Mat *s1 = nullptr, *s2 = nullptr, *b = nullptr, *m = nullptr;
+        cv::Mat *out = nullptr;
+        if (opencv_core_module_input_mat(source1, &s1) != OPENCV_CORE_OK || !s1 ||
+            opencv_core_module_input_mat(base, &b) != OPENCV_CORE_OK || !b ||
+            opencv_core_module_output_mat(result, &out) != OPENCV_CORE_OK || !out)
+            return invalid_argument("Invalid accumulation input/output handle");
+        if (mode == 2 &&
+            (opencv_core_module_input_mat(source2, &s2) != OPENCV_CORE_OK || !s2))
+            return invalid_argument("Product requires second source handle");
+        if (mask &&
+            (opencv_core_module_input_mat(mask, &m) != OPENCV_CORE_OK || !m))
+            return invalid_argument("Invalid accumulation mask handle");
+
+        const uint64_t limit = static_cast<uint64_t>(INT_MAX);
+        const cv::Mat *inputs[] = {s1, s2, b, m};
+        for (const cv::Mat *image : inputs) {
+            if (!image || image->empty()) continue;
+            // ABI safety: this preflight accesses rows/cols/step[0] as a
+            // 2-D layout; the 4.x OpenVX probe multiplies width*height in int
+            // before rejecting its incompatible integer accumulator types.
+            if (image->dims != 2 || image->total() > limit)
+                return invalid_argument("Accumulation layout exceeds signed plane size");
+            // ABI safety: CPU kernels evaluate len*cn and i*cn in int.
+            // For 2-D Mats it.size is pixels per plane: cols for strided
+            // rows, rows*cols when all iterator inputs are continuous.
+            if (image->total() > limit / static_cast<uint64_t>(image->channels()))
+                return invalid_argument("Accumulation channel plane exceeds signed int");
+            // ABI safety: IPP narrows every input/destination/mask stride
+            // to int, and continuous flattening narrows total()*elemSize().
+            // Bounding total bytes also bounds the clone's packed row bytes
+            // and flattened width*channels before allocation/native entry.
+            if (image->step[0] > limit ||
+                image->total() > limit / image->elemSize())
+                return invalid_argument("Accumulation byte layout exceeds signed IPP stride");
+        }
+        cv::Mat working = b->clone();
+        const cv::Mat selection = m ? *m : cv::Mat();
+        // Mat (not UMat) excludes OpenCL. Floating destinations cannot pass
+        // the 4.x OpenVX integer type gate. Raw unsupported semantic inputs
+        // are left to OpenCV's assertions; no public depth/channel/weight
+        // policy is duplicated here.
+        switch (mode) {
+        case 0: cv::accumulate(*s1, working, selection); break;
+        case 1: cv::accumulateSquare(*s1, working, selection); break;
+        case 2: cv::accumulateProduct(*s1, *s2, working, selection); break;
+        case 3: cv::accumulateWeighted(*s1, working, weight, selection); break;
+        }
+        *out = std::move(working);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_imgproc_status opencv_imgproc_distance_transform_f32(
     const opencv_core_mat_handle *source, int32_t method,
     opencv_core_mat_handle *destination)

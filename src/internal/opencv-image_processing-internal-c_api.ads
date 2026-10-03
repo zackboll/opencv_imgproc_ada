@@ -8,6 +8,18 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Status is new Interfaces.Integer_32;
 
+   function Accumulate_Image
+     (Source_1, Source_2, Base, Mask :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Mode                           : Interfaces.Integer_32;
+      Weight                         : Interfaces.C.double;
+      Result                         :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_accumulate_image";
+
    type Corner_Point is record
       X, Y : Interfaces.C.C_float;
    end record
