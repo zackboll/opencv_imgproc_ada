@@ -3587,6 +3587,108 @@ package body OpenCV.Image_Processing is
 
    Automatic_Gaussian_Sigma : constant Interfaces.C.double := 0.0;
 
+   function Get_Gabor_Kernel
+     (Kernel_Size          : OpenCV.Size;
+      Sigma                : OpenCV.Float64_Value;
+      Orientation_Radians  : OpenCV.Float64_Value;
+      Wavelength           : OpenCV.Float64_Value;
+      Aspect_Ratio         : OpenCV.Float64_Value;
+      Phase_Offset_Radians : OpenCV.Float64_Value :=
+        OpenCV.Float64_Value (Ada.Numerics.Pi / 2.0);
+      Depth                : Gabor_Kernel_Depth := Float64_Kernel)
+      return OpenCV.Core.Mat
+   is
+      use type OpenCV.Float64_Value;
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Output (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      is
+      begin
+         Status :=
+           Internal.C_API.Get_Gabor_Kernel
+             (Handle,
+              Interfaces.Integer_32 (Kernel_Size.Width),
+              Interfaces.Integer_32 (Kernel_Size.Height),
+              Interfaces.C.double (Sigma),
+              Interfaces.C.double (Orientation_Radians),
+              Interfaces.C.double (Wavelength),
+              Interfaces.C.double (Aspect_Ratio),
+              Interfaces.C.double (Phase_Offset_Radians),
+              To_C_Gaussian_Kernel_Depth (Depth));
+      end Output;
+   begin
+      if Kernel_Size.Width <= 0
+        or else Kernel_Size.Height <= 0
+        or else Kernel_Size.Width mod 2 = 0
+        or else Kernel_Size.Height mod 2 = 0
+      then
+         raise OpenCV.OpenCV_Error with "Gabor size must be positive odd";
+      end if;
+      if not Is_Finite (Sigma)
+        or else Sigma <= 0.0
+        or else not Is_Finite (Wavelength)
+        or else Wavelength <= 0.0
+        or else not Is_Finite (Aspect_Ratio)
+        or else Aspect_Ratio <= 0.0
+        or else not Is_Finite (Orientation_Radians)
+        or else not Is_Finite (Phase_Offset_Radians)
+      then
+         raise OpenCV.OpenCV_Error with "Invalid Gabor parameters";
+      end if;
+      OpenCV.Core.Module_Interop.With_Output_Handle
+        (Destination, Output'Access);
+      Raise_On_Error (Status, "Get_Gabor_Kernel");
+      return Destination;
+   end Get_Gabor_Kernel;
+
+   function Get_Structuring_Element
+     (Kernel_Size : OpenCV.Size;
+      Shape       : Morphology_Shape;
+      Anchor      : OpenCV.Point) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Output (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      is
+      begin
+         Status :=
+           Internal.C_API.Get_Structuring_Element
+             (Handle,
+              Interfaces.Integer_32 (Kernel_Size.Width),
+              Interfaces.Integer_32 (Kernel_Size.Height),
+              To_C_Morphology_Shape (Shape),
+              Interfaces.Integer_32 (Anchor.X),
+              Interfaces.Integer_32 (Anchor.Y));
+      end Output;
+   begin
+      if Kernel_Size.Width <= 0 or else Kernel_Size.Height <= 0 then
+         raise OpenCV.OpenCV_Error with "Structuring size must be positive";
+      end if;
+      if Anchor.X < 0
+        or else Anchor.Y < 0
+        or else Integer (Anchor.X) >= Integer (Kernel_Size.Width)
+        or else Integer (Anchor.Y) >= Integer (Kernel_Size.Height)
+      then
+         raise OpenCV.OpenCV_Error with "Anchor must be inside kernel";
+      end if;
+      OpenCV.Core.Module_Interop.With_Output_Handle
+        (Destination, Output'Access);
+      Raise_On_Error (Status, "Get_Structuring_Element");
+      return Destination;
+   end Get_Structuring_Element;
+
+   function Get_Structuring_Element
+     (Kernel_Size : OpenCV.Size; Shape : Morphology_Shape := Rectangle)
+      return OpenCV.Core.Mat is
+   begin
+      return
+        Get_Structuring_Element
+          (Kernel_Size,
+           Shape,
+           (X => OpenCV.Point_Coordinate (Kernel_Size.Width / 2),
+            Y => OpenCV.Point_Coordinate (Kernel_Size.Height / 2)));
+   end Get_Structuring_Element;
+
    function Apply_Get_Gaussian_Kernel
      (Kernel_Size : Gaussian_Kernel_Size;
       Sigma       : Interfaces.C.double;

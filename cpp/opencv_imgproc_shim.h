@@ -324,6 +324,22 @@ opencv_imgproc_gaussian_blur(
     double sigma,
     int32_t border);
 
+/* Borrowed Core output; both generators replace it only on success.
+ * Depth uses the existing Gaussian coefficient selectors; shape uses only
+ * portable Rectangle/Cross/Ellipse selectors. Anchors are resolved by Ada.
+ * Raw malformed anchors are translated through native assertion failures. */
+opencv_imgproc_status
+opencv_imgproc_get_gabor_kernel(
+    opencv_core_mat_handle *destination,
+    int32_t width, int32_t height, double sigma, double orientation,
+    double wavelength, double aspect_ratio, double phase, int32_t depth);
+
+opencv_imgproc_status
+opencv_imgproc_get_structuring_element(
+    opencv_core_mat_handle *destination,
+    int32_t width, int32_t height, int32_t shape,
+    int32_t anchor_x, int32_t anchor_y);
+
 opencv_imgproc_status
 opencv_imgproc_get_gaussian_kernel(
     opencv_core_mat_handle *destination,
