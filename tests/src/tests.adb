@@ -43,6 +43,7 @@ with Warp_Affine_Tests;
 with Warp_Perspective_Tests;
 with Remap_Tests;
 with Polar_Transform_Tests;
+with Phase_Correlation_Tests;
 
 procedure Tests is
 
@@ -100,6 +101,7 @@ begin
    Suite.Add_Test (Earth_Mover_Tests.Suite);
    Suite.Add_Test (Integral_Image_Tests.Suite);
    Suite.Add_Test (Image_Accumulation_Tests.Suite);
+   Suite.Add_Test (Phase_Correlation_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

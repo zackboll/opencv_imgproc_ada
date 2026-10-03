@@ -22,6 +22,100 @@ package body OpenCV.Image_Processing is
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
 
+   function Correlate
+     (Source_1, Source_2, Window : OpenCV.Core.Mat; Windowed : Boolean)
+      return Phase_Correlation_Result
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      X, Y, Energy : aliased Interfaces.C.double := 0.0;
+      Status       : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Validate (Image : OpenCV.Core.Mat) is
+      begin
+         if Image.Is_Empty
+           or else Image.Dimension_Count /= 2
+           or else Image.Channels /= 1
+           or else Image.Depth not in OpenCV.Core.Float32 | OpenCV.Core.Float64
+           or else Image.Depth /= Source_1.Depth
+           or else Image.Rows /= Source_1.Rows
+           or else Image.Columns /= Source_1.Columns
+         then
+            raise OpenCV.OpenCV_Error
+              with "Phase correlation requires matching 2-D floating C1 Mats";
+         end if;
+      end Validate;
+      procedure First (A : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Second (B : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            procedure Selection
+              (W : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Phase_Correlate
+                   (A, B, W, X'Access, Y'Access, Energy'Access);
+            end Selection;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Window, Selection'Access);
+         end Second;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source_2, Second'Access);
+      end First;
+   begin
+      Validate (Source_1);
+      Validate (Source_2);
+      if Windowed then
+         Validate (Window);
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source_1, First'Access);
+      Raise_On_Error (Status, "Phase_Correlate");
+      return
+        (OpenCV.Float64_Value (X),
+         OpenCV.Float64_Value (Y),
+         OpenCV.Float64_Value (Energy));
+   end Correlate;
+
+   function Phase_Correlate
+     (Source_1, Source_2 : OpenCV.Core.Mat) return Phase_Correlation_Result
+   is
+      Empty : OpenCV.Core.Mat;
+   begin
+      return Correlate (Source_1, Source_2, Empty, False);
+   end Phase_Correlate;
+
+   function Phase_Correlate
+     (Source_1, Source_2, Window : OpenCV.Core.Mat)
+      return Phase_Correlation_Result is
+   begin
+      return Correlate (Source_1, Source_2, Window, True);
+   end Phase_Correlate;
+
+   function Create_Hanning_Window
+     (Window_Size : OpenCV.Size;
+      Depth       : Hanning_Window_Depth := Float64_Hanning_Window)
+      return OpenCV.Core.Mat
+   is
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.Create_Hanning_Window
+             (Interfaces.Integer_32 (Window_Size.Width),
+              Interfaces.Integer_32 (Window_Size.Height),
+              Interfaces.Integer_32 (Hanning_Window_Depth'Pos (Depth)),
+              D);
+      end Output;
+   begin
+      if Window_Size.Width <= 1 or else Window_Size.Height <= 1 then
+         raise OpenCV.OpenCV_Error
+           with "Hanning window dimensions must exceed one";
+      end if;
+      OpenCV.Core.Module_Interop.With_Output_Handle (Result, Output'Access);
+      Raise_On_Error (Status, "Create_Hanning_Window");
+      return Result;
+   end Create_Hanning_Window;
+
    function Image_Accumulation
      (Source_1, Source_2, Base, Mask : OpenCV.Core.Mat;
       Mode                           : Interfaces.Integer_32;

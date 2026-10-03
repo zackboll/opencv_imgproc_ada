@@ -5,6 +5,35 @@ private with Ada.Containers.Vectors;
 
 package OpenCV.Image_Processing is
 
+   type Phase_Correlation_Result is record
+      X_Shift, Y_Shift, Response : OpenCV.Float64_Value;
+   end record;
+   --  Matching nonempty 2-D Float32/Float64 C1 sources; Window, when
+   --  supplied, has the same geometry and type. Invalid inputs raise
+   --  OpenCV_Error. No conversion or normalization is performed.
+   --  Shift describes Source_2 relative to Source_1: right/down is positive.
+   --  Apply the negative shift to Source_2 to align it with Source_1.
+   --  Response is native normalized 5x5 peak energy, not a probability or
+   --  a guaranteed [0, 1] value. Nonfinite samples retain native behavior.
+   --  All inputs are independently snapshotted, including Window. Regions
+   --  contribute only logical pixels; aliases are supported and unchanged
+   --  on success or failure. Native signed DFT limits raise OpenCV_Error.
+   function Phase_Correlate
+     (Source_1, Source_2 : OpenCV.Core.Mat) return Phase_Correlation_Result;
+   function Phase_Correlate
+     (Source_1, Source_2, Window : OpenCV.Core.Mat)
+      return Phase_Correlation_Result;
+
+   type Hanning_Window_Depth is
+     (Float32_Hanning_Window, Float64_Hanning_Window);
+   --  Both dimensions must exceed one (otherwise OpenCV_Error).
+   --  Fresh owning C1 Mat of the requested depth and geometry. Preserves
+   --  native sqrt(separable Hann product), including native rounding.
+   function Create_Hanning_Window
+     (Window_Size : OpenCV.Size;
+      Depth       : Hanning_Window_Depth := Float64_Hanning_Window)
+      return OpenCV.Core.Mat;
+
    --  Image/pixel accumulation, not histogram accumulation. All inputs are
    --  nonempty 2-D Mats of identical geometry. Base is Float32 or Float64
    --  with Source's channel count. Plain accumulation accepts UInt8, UInt16,

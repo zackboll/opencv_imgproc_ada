@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **569 AUnit tests**
+> **Current registered test baseline:** **594 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -175,6 +175,7 @@ OpenCV Imgproc and operate primarily on `OpenCV.Core.Mat`.
 The current public surface includes:
 
 - image accumulation, squared/product accumulators, and running weighted averages;
+- translational phase correlation and native Hanning window generation;
 - BGR-to-grayscale conversion;
 - image resize with five interpolation modes;
 - Gaussian blur;
@@ -258,12 +259,83 @@ OpenCV Imgproc
 
 ---
 
+## Phase correlation
+
+`Phase_Correlate (Source_1, Source_2)` and the overload with `Window` return
+`Phase_Correlation_Result`, a record with `X_Shift`, `Y_Shift`, and `Response`,
+all `OpenCV.Float64_Value`. Inputs must be nonempty two-dimensional C1 Mats
+of identical geometry and type, either Float32 or Float64. A supplied Window
+must also be nonempty 2-D C1 of the same depth, rows and columns. Invalid
+public inputs raise `OpenCV_Error`. No integer conversion, depth promotion,
+image normalization, or image-wide finiteness scan occurs.
+
+**Sign convention, verified with controlled translations:** the result is
+Source_2's displacement relative to Source_1. Moving a feature right by three
+pixels returns approximately +3 X; moving down returns positive Y. To align
+Source_2 with Source_1, apply the negative shift to Source_2. This is native
+OpenCV's convention, not a negated wrapper convention.
+
+Response is the native sum within the 5x5 weighted peak centroid, divided
+by the padded correlation plane size. It indicates peak concentration, not
+a calibrated probability. It is not guaranteed exactly in [0, 1]; rounding
+can exceed the ideal bounds. Degenerate/nonfinite data can produce numerically
+unhelpful shifts or responses. Release-specific response equality is not promised.
+
+Both sources and Window are **always independently cloned** into packed
+private snapshots before native execution. Inputs remain unchanged on success
+and failure. This explicitly mitigates native shallow assignment followed by
+in-place window multiplication when dimensions already equal optimal DFT sizes
+(the tests pin 32x32). Regions are independent logical images: no parent pixels
+participate. Same-source calls, distinct shared headers, shifted-overlap Regions,
+and Window sharing either source's storage are supported without native
+iteration-order dependence. Concurrent external mutation is not supported.
+
+The shim calculates the exact installed `getOptimalDFTSize` values before
+entry and rejects unsupported values and signed arithmetic overflow, including
+`M*N <= INT_MAX`, centroid peak+2, channel-expanded DFT scratch dimensions,
+padding byte widths and representable allocations. These are safety bounds,
+not arbitrary image-size caps. See the detailed
+[pinned source review](docs/phase-correlation-source-review.md).
+
+All three pinned versions (4.1.0, 4.10.0, 5.0.0) supply the portable APIs.
+The exact `magSpectrums` difference is **4.1.0 versus 4.10.0/5.0.0**:
+4.1 squares special real DC/Nyquist entries; both later tags use absolute
+magnitude. The wrapper preserves the installed native algorithm. The
+OpenCV 5-only `phaseCorrelateIterative` remains explicitly deferred;
+`divSpectrums`, public DFT wrappers, rotation/scale and registration frameworks
+are outside this slice.
+
+## Hanning windows
+
+```ada
+Window : constant OpenCV.Core.Mat :=
+  Create_Hanning_Window ((Width => 32, Height => 32),
+                         Depth => Float64_Hanning_Window);
+Shift : constant Phase_Correlation_Result :=
+  Phase_Correlate (First_Image, Second_Image, Window);
+```
+
+`Hanning_Window_Depth` has `Float32_Hanning_Window` and
+`Float64_Hanning_Window` (default). Both dimensions must exceed one. Each call
+returns a fresh owning Mat with Height rows, Width columns, C1 and the requested
+floating depth, directly usable by Phase_Correlate when depths match.
+Generation calls native `createHanningWindow`: the full separable Hann product
+is square-rooted. It is not a hand-written alternative Hann definition.
+OpenCV 5's newer vector cosine paths can change rounding; tests use tolerances
+for center, edges and symmetry rather than bit-for-bit coefficients.
+Allocation/index products are preflighted, including the double coefficient
+buffer and terminal sqrt's signed scalar-plane length.
+
+This slice adds **25 tests** to the **569** baseline: **594/594** locally.
+
 ## Current feature set
 
 The table below summarizes the current public operations.
 
 | Area | Public API | Main input requirements | Important behavior |
 | --- | --- | --- | --- |
+| Motion | `Phase_Correlate` | matching nonempty 2-D Float32/Float64 C1 sources; optional matching window | Float64 shift/response record; independent logical snapshots; inputs unchanged |
+| Windows | `Create_Hanning_Window` | Width/Height > 1; Float32 or Float64 selector | fresh owning C1 Mat; native sqrt of separable Hann product |
 | Contour rendering | `Draw_Contours`, `Fill_Contours` | one Ada-owned `Contour_Set`; ordinary drawing image contract | all or selected root-relative subtree; even-odd holes/islands; Region-local offset |
 | Color | `Convert_Color` | nonempty 2-D C1/C3/C4 according to selector; `UInt8`/`UInt16`/`Float32` for linear, `UInt8`/`Float32` for nonlinear | common layout, Gray, XYZ, YCrCb, YUV, HSV, HLS, Lab, Luv conversions |
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
@@ -3944,7 +4016,8 @@ The previous **502-test** baseline (before the 20 corner-analysis tests) was:
 | Integral images | 7 |
 | Corner analysis and subpixel regressions | 23 |
 | Image accumulation and running statistics | 44 |
-| **Total** | **569** |
+| Phase correlation and Hanning windows | 25 |
+| **Total** | **594** |
 
 
 The suite covers more than simple success paths. It includes:

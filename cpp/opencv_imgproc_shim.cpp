@@ -3923,6 +3923,101 @@ extern "C" opencv_imgproc_status opencv_imgproc_integral_complete(
 
 extern "C" {
 
+opencv_imgproc_status opencv_imgproc_phase_correlate(
+    const opencv_core_mat_handle *source1,
+    const opencv_core_mat_handle *source2,
+    const opencv_core_mat_handle *window,
+    double *x, double *y, double *response)
+{
+    clear_error();
+    try {
+        if (!x || !y || !response)
+            return invalid_argument("Null phase correlation scalar output");
+        const cv::Mat *a = nullptr, *b = nullptr, *w = nullptr;
+        if (opencv_core_module_input_mat(source1, &a) != OPENCV_CORE_OK || !a ||
+            opencv_core_module_input_mat(source2, &b) != OPENCV_CORE_OK || !b ||
+            (window && (opencv_core_module_input_mat(window, &w) != OPENCV_CORE_OK || !w)))
+            return invalid_argument("Invalid phase correlation input handle");
+        // Empty native window denotes no window (including a default Ada Mat).
+        if (w && w->empty()) w = nullptr;
+        // ABI safety: phaseCorrelate accesses rows/cols and computes padding
+        // before any dimensionality assertion; an empty correlation reaches
+        // weightedCentroid with no valid peak/data. Snapshots require 2-D sizes.
+        if (a->empty() || a->dims != 2 || b->empty() || b->dims != 2 ||
+            (w && w->dims != 2))
+            return invalid_argument("Unsafe phase correlation layout");
+        const int m = cv::getOptimalDFTSize(a->rows);
+        const int n = cv::getOptimalDFTSize(a->cols);
+        // ABI safety: getOptimalDFTSize returns -1 outside its table; native
+        // padding M-rows/N-cols and subsequent allocation require positive sizes.
+        if (m <= 0 || n <= 0)
+            return invalid_argument("Unsupported optimal DFT size");
+        const uint64_t rows = static_cast<uint64_t>(m);
+        const uint64_t cols = static_cast<uint64_t>(n);
+        const uint64_t limit = static_cast<uint64_t>(INT_MAX);
+        // ABI safety: response /= M*N, IPP width*height, centroid minr*cols
+        // are signed int. Peak coordinates +2 also precede centroid clamping.
+        if (rows * cols > limit || rows > limit - 1 || cols > limit - 1)
+            return invalid_argument("Phase correlation signed plane overflow");
+        const uint64_t scalar = a->elemSize1();
+        // ABI safety: CPU DFT wave/scratch uses len*complex_elem_size in int;
+        // CopyFrom2Columns/CopyTo2Columns uses len*4 for double complex columns.
+        // This also bounds mag/divSpectrums cols*cn (C1 CCS, C2 scratch),
+        // padding width*elemSize and IPP's narrowed packed byte strides.
+        if (std::max(rows, cols) > limit / (2 * scalar))
+            return invalid_argument("Phase correlation DFT scratch overflow");
+        // ABI safety: allocations and size_t row offsets must represent even
+        // the largest double-channel scratch plane without byte multiplication
+        // wrapping. The original Region stride is never passed to the DFT.
+        if (rows * cols > std::numeric_limits<size_t>::max() / (2 * scalar))
+            return invalid_argument("Phase correlation allocation overflow");
+        cv::Mat first = a->clone();
+        cv::Mat second = b->clone();
+        cv::Mat win = w ? w->clone() : cv::Mat();
+        double energy = 0;
+        const cv::Point2d shift = cv::phaseCorrelate(first, second, win, &energy);
+        *x = shift.x;
+        *y = shift.y;
+        *response = energy;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status opencv_imgproc_create_hanning_window(
+    int32_t width, int32_t height, int32_t depth,
+    opencv_core_mat_handle *result)
+{
+    clear_error();
+    try {
+        cv::Mat *out = nullptr;
+        if (opencv_core_module_output_mat(result, &out) != OPENCV_CORE_OK || !out)
+            return invalid_argument("Invalid Hanning output handle");
+        if (depth != 0 && depth != 1)
+            return invalid_argument("Invalid Hanning depth selector");
+        // ABI safety: positive dimensions are required before the widened
+        // unsigned byte products below; negative-to-unsigned conversion could
+        // wrap those products and invalidate allocation representability checks.
+        // Use the native assertion/error category for this retained condition.
+        CV_Assert(width > 1 && height > 1);
+        const uint64_t cols = static_cast<uint64_t>(width);
+        const uint64_t rows = static_cast<uint64_t>(height);
+        const uint64_t scalar = depth == 0 ? sizeof(float) : sizeof(double);
+        // ABI safety: AutoBuffer<double>(cols) and Mat allocation/row indexing
+        // must not wrap size_t byte products; sqrt's continuous iterator
+        // narrows its scalar plane length to int before calling CPU kernels.
+        if (cols > std::numeric_limits<size_t>::max() / sizeof(double) ||
+            cols > std::numeric_limits<size_t>::max() / scalar ||
+            rows * cols > std::numeric_limits<size_t>::max() / scalar ||
+            rows * cols > static_cast<uint64_t>(INT_MAX))
+            return invalid_argument("Hanning allocation/index overflow");
+        cv::Mat working;
+        cv::createHanningWindow(working, cv::Size(width, height),
+                               depth == 0 ? CV_32FC1 : CV_64FC1);
+        *out = std::move(working);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_imgproc_status opencv_imgproc_accumulate_image(
     const opencv_core_mat_handle *source1,
     const opencv_core_mat_handle *source2,

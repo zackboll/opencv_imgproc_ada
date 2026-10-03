@@ -78,6 +78,18 @@ typedef int32_t opencv_imgproc_status;
 #define OPENCV_IMGPROC_ERROR_UNKNOWN          ((opencv_imgproc_status)3)
 #define OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT ((opencv_imgproc_status)4)
 
+/* Borrowed inputs, independently cloned before execution. Null window means
+ * no window. Scalars and existing output Mats are unchanged on failure.
+ * Hanning depth selector: 0=Float32, 1=Float64. */
+opencv_imgproc_status opencv_imgproc_phase_correlate(
+    const opencv_core_mat_handle *source1,
+    const opencv_core_mat_handle *source2,
+    const opencv_core_mat_handle *window,
+    double *x, double *y, double *response);
+opencv_imgproc_status opencv_imgproc_create_hanning_window(
+    int32_t width, int32_t height, int32_t depth,
+    opencv_core_mat_handle *result);
+
 /* mode: 0=add, 1=square, 2=product, 3=weighted. source2 is required only
  * for product; mask may be null or empty. All handles are borrowed.
  * Result is rebound to a private Base clone only on complete success;
