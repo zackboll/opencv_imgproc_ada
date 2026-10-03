@@ -2,6 +2,7 @@
 #include "opencv_core_module_bridge.hpp"
 #include "emd_signature_index_fits.hpp"
 #include "bayer_layout_fits.hpp"
+#include "yuv420_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -4395,6 +4396,185 @@ opencv_imgproc_status opencv_imgproc_demosaic_bayer_alpha(
 {
     return demosaic_bayer(source, destination, pattern, 0, order,
                           bayer_output::alpha);
+}
+
+extern "C++" {
+namespace {
+
+bool yuv420_decode_code(int32_t layout, int32_t output, int &code)
+{
+    if (layout < 0 || layout > 3 || output < 0 || output > 3)
+        return false;
+    static const int codes[4][4] = {
+        {cv::COLOR_YUV2BGR_I420, cv::COLOR_YUV2RGB_I420,
+         cv::COLOR_YUV2BGRA_I420, cv::COLOR_YUV2RGBA_I420},
+        {cv::COLOR_YUV2BGR_YV12, cv::COLOR_YUV2RGB_YV12,
+         cv::COLOR_YUV2BGRA_YV12, cv::COLOR_YUV2RGBA_YV12},
+        {cv::COLOR_YUV2BGR_NV12, cv::COLOR_YUV2RGB_NV12,
+         cv::COLOR_YUV2BGRA_NV12, cv::COLOR_YUV2RGBA_NV12},
+        {cv::COLOR_YUV2BGR_NV21, cv::COLOR_YUV2RGB_NV21,
+         cv::COLOR_YUV2BGRA_NV21, cv::COLOR_YUV2RGBA_NV21}
+    };
+    code = codes[layout][output];
+    return true;
+}
+
+bool yuv420_readable(const cv::Mat &src, int channels)
+{
+    // ABI safety: snapshot memcpy and native byte-plane loops require
+    // nonempty 2-D UInt8 rows with exactly this physical channel layout.
+    // In particular the native pair entry does not validate UV depth/C2.
+    if (src.empty() || src.dims != 2 || src.depth() != CV_8U ||
+        src.channels() != channels)
+        return false;
+    const uint64_t row_bytes = uint64_t{static_cast<unsigned>(src.cols)} *
+                               static_cast<unsigned>(channels);
+    return opencv_imgproc_detail::yuv420_source_span_fits(
+        src.rows, row_bytes, src.step[0],
+        opencv_imgproc_detail::yuv420_address_limit());
+}
+
+// Caller preflights source and packed allocation spans before entry. Do not
+// use clone/copyTo: optional IPP copy paths narrow an arbitrary parent step.
+cv::Mat yuv420_snapshot(const cv::Mat &src)
+{
+    cv::Mat result(src.rows, src.cols, src.type());
+    const size_t row_bytes = static_cast<size_t>(src.cols) * src.elemSize();
+    for (int row = 0; row < src.rows; ++row)
+        std::memcpy(result.ptr(row), src.ptr(row), row_bytes);
+    return result;
+}
+
+enum class yuv420_operation { decode, pair, encode, luma };
+
+opencv_imgproc_status convert_yuv420(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *uv_source,
+    opencv_core_mat_handle *destination, int32_t layout, int32_t selector,
+    yuv420_operation operation)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr, *uv = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src)
+            return invalid_argument("invalid YUV420 source handle");
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid YUV420 destination handle");
+        int code = cv::COLOR_YUV2GRAY_420;
+        int channels = 1;
+        if (operation == yuv420_operation::decode ||
+            operation == yuv420_operation::pair) {
+            if (!yuv420_decode_code(layout, selector, code) ||
+                (operation == yuv420_operation::pair && layout < 2))
+                return invalid_argument("invalid YUV420 decode selector");
+            channels = selector < 2 ? 3 : 4;
+        } else if (operation == yuv420_operation::encode) {
+            if (layout < 0 || layout > 1 || selector < 0 || selector > 1)
+                return invalid_argument("invalid YUV420 encode selector");
+            // ABI safety: encoder indexes uchar RGB components within C3/C4
+            // rows, two pixels at a time, without generic-depth storage access.
+            if ((src->channels() != 3 && src->channels() != 4) ||
+                !yuv420_readable(*src, src->channels()))
+                return invalid_argument("invalid YUV420 encode source layout");
+            if (!opencv_imgproc_detail::yuv420_encode_fits(
+                    src->rows, src->cols, src->channels()))
+                return invalid_argument("YUV420 encode arithmetic is not representable");
+            static const int codes[2][2][2] = {
+                {{cv::COLOR_BGR2YUV_I420, cv::COLOR_BGRA2YUV_I420},
+                 {cv::COLOR_RGB2YUV_I420, cv::COLOR_RGBA2YUV_I420}},
+                {{cv::COLOR_BGR2YUV_YV12, cv::COLOR_BGRA2YUV_YV12},
+                 {cv::COLOR_RGB2YUV_YV12, cv::COLOR_RGBA2YUV_YV12}}
+            };
+            code = codes[layout][selector][src->channels() - 3];
+        }
+
+        if (operation == yuv420_operation::pair) {
+            if (opencv_core_module_input_mat(uv_source, &uv) != OPENCV_CORE_OK || !uv)
+                return invalid_argument("invalid YUV420 UV handle");
+            if (!yuv420_readable(*src, 1) || !yuv420_readable(*uv, 2))
+                return invalid_argument("invalid YUV420 plane layout");
+            // ABI safety: 2x2 reads, signed UV*2 assertions, signed W*H
+            // scheduling and all allocations are checked in widened helpers.
+            if (!opencv_imgproc_detail::yuv420_pair_fits(
+                    src->rows, src->cols, uv->rows, uv->cols, channels))
+                return invalid_argument("YUV420 plane arithmetic is not representable");
+        } else if (operation != yuv420_operation::encode) {
+            if (!yuv420_readable(*src, 1))
+                return invalid_argument("invalid packed YUV420 layout");
+            // ABI safety: native FROM_YUV rows*2, chroma plane offsets and
+            // 2x2 byte reads require valid packed geometry before allocation.
+            if (!opencv_imgproc_detail::yuv420_packed_fits(
+                    src->rows, src->cols, channels))
+                return invalid_argument("packed YUV420 arithmetic is not representable");
+        }
+
+        cv::Mat snapshot = yuv420_snapshot(*src);
+        cv::Mat result;
+        if (operation == yuv420_operation::pair) {
+            cv::Mat uv_snapshot = yuv420_snapshot(*uv);
+            // Both snapshots have step W. This normalizes 4.1's shared stride.
+            cv::cvtColorTwoPlane(snapshot, uv_snapshot, result, code);
+        } else if (operation == yuv420_operation::decode && layout >= 2) {
+            const int height = static_cast<int>(
+                opencv_imgproc_detail::yuv420_logical_height(snapshot.rows));
+            cv::Mat y_plane(height, snapshot.cols, CV_8UC1);
+            cv::Mat uv_plane(height / 2, snapshot.cols / 2, CV_8UC2);
+            for (int row = 0; row < height; ++row)
+                std::memcpy(y_plane.ptr(row), snapshot.ptr(row), snapshot.cols);
+            for (int row = 0; row < height / 2; ++row)
+                std::memcpy(uv_plane.ptr(row), snapshot.ptr(height + row),
+                            snapshot.cols);
+            // Intentional common native route: 4.1 packed cvtColor can reach
+            // Carotene, whereas its pair entry goes directly to CPU dispatch.
+            // Storage representation must not change the decoded pixels.
+            cv::cvtColorTwoPlane(y_plane, uv_plane, result, code);
+        } else {
+            // Planar decode: stride=W<=INT_MAX, so int(stride)-W/2 is safe.
+            // Luma uses native raw-Y extraction, not studio-range rescaling.
+            cv::cvtColor(snapshot, result, code);
+        }
+        // Every snapshot and native result completes before publication,
+        // including when destination is the same handle as any input.
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+} // namespace
+
+} // extern "C++"
+
+opencv_imgproc_status opencv_imgproc_decode_yuv420(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t output)
+{
+    return convert_yuv420(source, nullptr, destination, layout, output,
+                          yuv420_operation::decode);
+}
+
+opencv_imgproc_status opencv_imgproc_decode_yuv420_two_plane(
+    const opencv_core_mat_handle *y_plane,
+    const opencv_core_mat_handle *uv_plane, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t output)
+{
+    return convert_yuv420(y_plane, uv_plane, destination, layout, output,
+                          yuv420_operation::pair);
+}
+
+opencv_imgproc_status opencv_imgproc_encode_yuv420_planar(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t order)
+{
+    return convert_yuv420(source, nullptr, destination, layout, order,
+                          yuv420_operation::encode);
+}
+
+opencv_imgproc_status opencv_imgproc_extract_yuv420_luma(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination)
+{
+    return convert_yuv420(source, nullptr, destination, 0, 0,
+                          yuv420_operation::luma);
 }
 
 opencv_imgproc_status

@@ -339,6 +339,25 @@ opencv_imgproc_status opencv_imgproc_distance_transform_labeled(
 
 const char *opencv_imgproc_last_error_message(void);
 
+/* Private YUV420 selectors: layout 0 I420, 1 YV12, 2 NV12, 3 NV21;
+ * output 0 BGR, 1 RGB, 2 BGRA, 3 RGBA; order 0 BGR/BGRA, 1 RGB/RGBA.
+ * Two-plane accepts layouts 2..3, encode 0..1. UInt8 sources are snapshotted
+ * before native entry. All destinations retain header/storage on failure;
+ * same-handle publication is supported. All handles are borrowed from Core.
+ */
+opencv_imgproc_status opencv_imgproc_decode_yuv420(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t output);
+opencv_imgproc_status opencv_imgproc_decode_yuv420_two_plane(
+    const opencv_core_mat_handle *y_plane,
+    const opencv_core_mat_handle *uv_plane, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t output);
+opencv_imgproc_status opencv_imgproc_encode_yuv420_planar(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t order);
+opencv_imgproc_status opencv_imgproc_extract_yuv420_luma(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination);
+
 /* Private selectors: pattern 0 RGGB, 1 GRBG, 2 BGGR, 3 GBRG;
  * method 0 bilinear, 1 VNG, 2 edge-aware; order 0 BGR, 1 RGB.
  * Source is snapshotted. Destination is rebound only after full success.

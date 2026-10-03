@@ -466,6 +466,41 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_last_error_message";
 
+   function Decode_YUV420
+     (Source         : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination    : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Layout, Output : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_decode_yuv420";
+
+   function Decode_YUV420_Two_Plane
+     (Y_Plane, UV_Plane : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Layout, Output    : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_decode_yuv420_two_plane";
+
+   function Encode_YUV420_Planar
+     (Source        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination   : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Layout, Order : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_encode_yuv420_planar";
+
+   function Extract_YUV420_Luma
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_extract_yuv420_luma";
+
    function Demosaic_Bayer
      (Source                 : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination            : OpenCV.Core.Module_Interop.Output_Mat_Handle;
