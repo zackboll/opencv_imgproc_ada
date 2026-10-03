@@ -501,6 +501,24 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_extract_yuv420_luma";
 
+   function Decode_YUV422
+     (Source         : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination    : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Layout, Output : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_decode_yuv422";
+
+   function Extract_YUV422_Luma
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Layout      : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_extract_yuv422_luma";
+
    function Demosaic_Bayer
      (Source                 : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination            : OpenCV.Core.Module_Interop.Output_Mat_Handle;

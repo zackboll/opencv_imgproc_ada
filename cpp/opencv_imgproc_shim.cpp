@@ -3,6 +3,7 @@
 #include "emd_signature_index_fits.hpp"
 #include "bayer_layout_fits.hpp"
 #include "yuv420_layout_fits.hpp"
+#include "yuv422_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -4575,6 +4576,107 @@ opencv_imgproc_status opencv_imgproc_extract_yuv420_luma(
 {
     return convert_yuv420(source, nullptr, destination, 0, 0,
                           yuv420_operation::luma);
+}
+
+extern "C++" {
+namespace {
+
+bool yuv422_code(int32_t layout, int32_t output, bool luma, int &code)
+{
+    if (layout < 0 || layout > 2 || (!luma && (output < 0 || output > 3)))
+        return false;
+    static const int codes[3][5] = {
+        {cv::COLOR_YUV2BGR_UYVY, cv::COLOR_YUV2RGB_UYVY,
+         cv::COLOR_YUV2BGRA_UYVY, cv::COLOR_YUV2RGBA_UYVY,
+         cv::COLOR_YUV2GRAY_UYVY},
+        {cv::COLOR_YUV2BGR_YUY2, cv::COLOR_YUV2RGB_YUY2,
+         cv::COLOR_YUV2BGRA_YUY2, cv::COLOR_YUV2RGBA_YUY2,
+         cv::COLOR_YUV2GRAY_YUY2},
+        {cv::COLOR_YUV2BGR_YVYU, cv::COLOR_YUV2RGB_YVYU,
+         cv::COLOR_YUV2BGRA_YVYU, cv::COLOR_YUV2RGBA_YVYU,
+         cv::COLOR_YUV2GRAY_YUY2}
+    };
+    code = codes[layout][luma ? 4 : output];
+    return true;
+}
+
+opencv_imgproc_status convert_yuv422(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t output, bool luma)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src)
+            return invalid_argument("invalid YUV422 source handle");
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid YUV422 destination handle");
+        int code = 0;
+        if (!yuv422_code(layout, output, luma, code))
+            return invalid_argument("invalid YUV422 selector");
+        // ABI safety: memcpy row bounds and native uchar pair interpretation
+        // require nonempty 2-D UInt8 C2, not differently-sized scalar storage.
+        if (src->empty() || src->dims != 2 || src->depth() != CV_8U ||
+            src->channels() != 2)
+            return invalid_argument("invalid packed YUV422 byte layout");
+        const uint64_t width = static_cast<uint64_t>(src->cols);
+        const uint64_t height = static_cast<uint64_t>(src->rows);
+        const uint64_t channels = luma ? 1 : (output < 2 ? 3 : 4);
+        const bool openvx = CV_VERSION_MAJOR < 5 && layout < 2 &&
+                            (output == 1 || output == 3);
+        // ABI safety: decode helper rejects incomplete 4.1 pair reads/writes,
+        // signed 2*width, width*height and reachable OpenVX W*dcn narrowing.
+        // Luma separately bounds optional IPP snapshot step's int conversion;
+        // it deliberately does not duplicate Ada's even-width frame policy.
+        if (luma ? !opencv_imgproc_detail::yuv422_luma_fits(width, height)
+                 : !opencv_imgproc_detail::yuv422_decode_fits(
+                       width, height, channels, openvx))
+            return invalid_argument("YUV422 arithmetic is not representable");
+        // ABI safety: original parent-readable (H-1)*step+W*2 must fit both
+        // size_t and ptrdiff_t before manual logical-row pointer formation.
+        if (!opencv_imgproc_detail::yuv422_source_span_fits(
+                height, width * 2, src->step[0],
+                opencv_imgproc_detail::yuv422_address_limit()))
+            return invalid_argument("YUV422 source span is not representable");
+        cv::Mat snapshot(src->rows, src->cols, CV_8UC2);
+        const size_t row_bytes = static_cast<size_t>(width * 2);
+        for (int row = 0; row < src->rows; ++row)
+            std::memcpy(snapshot.ptr(row), src->ptr(row), row_bytes);
+        cv::Mat result;
+        if (luma) {
+            result.create(snapshot.rows, snapshot.cols, CV_8UC1);
+            // ABI safety: Core mixChannels casts a collapsed continuous
+            // pixel count to int and increments signed t by BLOCK_SIZE.
+            // W<=INT_MAX/2 keeps each row's count and final increment safe.
+            for (int row = 0; row < snapshot.rows; ++row) {
+                const cv::Mat input_row = snapshot.row(row);
+                cv::Mat output_row = result.row(row);
+                cv::cvtColor(input_row, output_row, code);
+            }
+        } else {
+            cv::cvtColor(snapshot, result, code);
+        }
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+} // namespace
+} // extern C++
+
+opencv_imgproc_status opencv_imgproc_decode_yuv422(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t output)
+{
+    return convert_yuv422(source, destination, layout, output, false);
+}
+
+opencv_imgproc_status opencv_imgproc_extract_yuv422_luma(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout)
+{
+    return convert_yuv422(source, destination, layout, 0, true);
 }
 
 opencv_imgproc_status

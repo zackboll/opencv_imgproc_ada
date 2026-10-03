@@ -358,6 +358,18 @@ opencv_imgproc_status opencv_imgproc_encode_yuv420_planar(
 opencv_imgproc_status opencv_imgproc_extract_yuv420_luma(
     const opencv_core_mat_handle *source, opencv_core_mat_handle *destination);
 
+/* Private YUV422: layout 0 UYVY, 1 YUY2, 2 YVYU;
+ * output 0 BGR, 1 RGB, 2 BGRA, 3 RGBA. Borrowed UInt8 C2 sources are
+ * manually snapshotted. Failure preserves destination header/pixels/storage;
+ * same-handle publication succeeds. Raw luma does not require even width.
+ */
+opencv_imgproc_status opencv_imgproc_decode_yuv422(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout, int32_t output);
+opencv_imgproc_status opencv_imgproc_extract_yuv422_luma(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t layout);
+
 /* Private selectors: pattern 0 RGGB, 1 GRBG, 2 BGGR, 3 GBRG;
  * method 0 bilinear, 1 VNG, 2 edge-aware; order 0 BGR, 1 RGB.
  * Source is snapshotted. Destination is rebound only after full success.
