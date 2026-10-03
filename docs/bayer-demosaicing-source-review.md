@@ -74,13 +74,83 @@ uses SHIFT+1/+2 with doubled/quadrupled coefficients. NEON's saturating
 multiply-high rounding can differ from the scalar formula; assertions permit
 one UInt8 luminance level (UInt16 remains scalar and exact).
 
-Pixel-arithmetic version caveat: 4.1 declares G2Y as signed int, whereas
-4.10/5.0 declare it unsigned. In 4.1, very bright UInt16 four-green sums
-multiplied by 9617 can overflow signed int before assignment to unsigned t1.
-The binding preserves native pixel arithmetic; it does not impose a new
-pixel-value policy or claim to repair that upstream behavior. The asymmetric
-UInt16 luminance fixture keeps the individual signed terms representable.
-This is distinct from the layout/stride arithmetic hardened at the ABI.
+### Legacy UInt16 Gray signed-overflow safety
+
+Additional exact-tag inspection confirms `const int G2Y = 9617` in **4.0.0,
+4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0, 4.5.1, 4.5.2, 4.5.3, and 4.5.4**.
+**4.5.5** changes it to `const unsigned G2Y = 9617`; **4.6.0, 4.7.0, 4.8.0,
+4.9.0, 4.10.0, and 5.0.0** retain the fix. The exact transition is independently
+supported by upstream commit
+[`542b3e8a64a1516657ec84fd9b2acaaa2baf6440`](https://github.com/opencv/opencv/commit/542b3e8a64a1516657ec84fd9b2acaaa2baf6440)
+(2021-12-13), whose sole code change makes G2Y unsigned. Compare the exact
+[`4.5.4`](https://github.com/opencv/opencv/blob/4.5.4/modules/imgproc/src/demosaicing.cpp#L606)
+and [`4.5.5`](https://github.com/opencv/opencv/blob/4.5.5/modules/imgproc/src/demosaicing.cpp#L606)
+sources. Despite the historical commit's description, signed overflow is
+**undefined behavior**, not a harmless version-specific luminance result.
+
+The vulnerable expression occurs in both the main pair loop and final tail:
+
+```cpp
+t1 = (bayer[1] + bayer[bayer_step] + bayer[bayer_step+2]
+      + bayer[bayer_step*2+1]) * G2Y;
+```
+
+These are the four axial green neighbors of a red/blue center. UInt16 samples
+promote to signed int; their sum is at most 262140 and is safe, but multiplying
+by signed G2Y can overflow **before** assignment to unsigned t1. The exact
+32-bit signed limit is `INT_MAX / 9617 = 223300`:
+
+- `223300 * 9617 = 2147476100 <= INT_MAX` (safe);
+- `223301 * 9617 = 2147485717 > INT_MAX` (first unsafe sum).
+
+Other individual Gray terms remain below INT_MAX at full UInt16 range. The
+binding version-gates only the UInt16 direct-Gray scan with:
+
+```cpp
+CV_VERSION_MAJOR == 4 &&
+    (CV_VERSION_MINOR < 5 ||
+     (CV_VERSION_MINOR == 5 && CV_VERSION_REVISION < 5))
+```
+
+After raw layout/span/allocation preflight and construction of the **packed
+independent snapshot**, the helper sums those neighbors in uint64_t and rejects
+any sum above 223300 before `cv::demosaicing`. It scans the snapshot, **not
+parent-backed Source storage**. Rejection returns the existing private
+invalid-argument status with a legacy-luminance diagnostic; the public operation
+raises `OpenCV.OpenCV_Error`. Source and the existing raw Destination remain
+unchanged; a subsequent valid call can succeed. No pixel cap of 55825 is used:
+larger individual samples are accepted when executed neighborhoods are safe.
+No values are rewritten, clamped, converted or emulated. **4.5.5+, 4.6+,
+4.10 and 5.x have no such restriction**; all other Bayer operations are unchanged.
+
+#### Exact native-loop coverage and physical parity
+
+In 4.5.4 `Bayer2Gray_` sets `start_with_green` for short GB/GR Gray aliases,
+which map to physical GRBG/GBRG. Native `size` excludes the outer one-pixel
+border. For range row `i`, `bayer0` points to source `(i,0)` and destination
+starts at `(i+1,1)`; each four-green expression surrounds `(y=i+1,x=bayer
+column+1)`. Odd `range.start` toggles `start_with_green`, as does every completed
+row, so parallel partitioning does not change physical phase.
+
+If set, the optional first pixel is green and uses the two-neighbor terms,
+then advances one column. The UInt16 `SIMDBayerStubInterpolator_<ushort>`
+returns zero, skipping no centers. Each main iteration evaluates one non-green
+center and the following green center, advancing two columns. The final tail,
+when present, evaluates only the remaining non-green center. Border pixels are
+copied and never evaluate the four-green expression.
+
+Consequently the exact executed centers are `y=1..rows-2`, `x=1..cols-2`:
+
+| Physical pattern selector | Non-green R/B center parity `(x+y) mod 2` |
+|---|---|
+| 0 RGGB, 2 BGGR | 0 (even) |
+| 1 GRBG, 3 GBRG | 1 (odd) |
+
+The helper examines precisely these sites, including first sites and tails for
+odd/even widths and both row phases. All four axial neighbors there are green.
+It contains no OpenCV numeric Bayer codes and is compiled even on fixed builds;
+only its shim invocation is version-gated. Native raw dimensions below three
+execute no four-green expression, so the helper imposes no additional minimum.
 
 ## VNG fallback and version differences
 
@@ -110,7 +180,8 @@ identity. No algorithm is emulated in Ada.
 
 ## Signed arithmetic preflight
 
-`cpp/bayer_layout_fits.hpp` is pure constexpr widened arithmetic, called
+The layout helpers in `cpp/bayer_layout_fits.hpp` are constexpr widened
+arithmetic, called
 **before snapshot copying or native allocation**. It uses division before potentially
 large products and actual INT_MAX/ptrdiff_t limits, not arbitrary size caps.
 Rows/cols originate as positive native int dimensions; intermediate products
@@ -226,6 +297,8 @@ incorrect to claim that **no IPP is transitively reachable** from 5.0 VNG.
 The shim resolves borrowed Core source/destination, decodes selectors, checks
 raw layout and arithmetic, deep-copies into a packed independent cv::Mat, demosaics
 only that snapshot into a local result, then moves the result to Core output.
+On affected builds, the UInt16 Gray safety scan follows snapshot construction
+and precedes native demosaicing and result publication.
 The Mat bridge retains ownership in Core. No source is modified or retained
 as owned state. Same-handle/shared-storage raw calls are safe: snapshotting precedes
 publication. All failures leave the old destination unchanged.
@@ -255,6 +328,8 @@ no duplicative semantic output postconditions.
 
 ## Verification
 
+### Original feature verification
+
 Baseline 687; **43 focused new AUnit tests**: final **730 registered, 730
 executed, 730 passed**, zero failed assertions and zero unexpected errors.
 The physical fixture uses explicit 2x2 R/G/B tiles, independent of native codes.
@@ -266,6 +341,28 @@ recovery and native-safe degenerate raw sizes. Arithmetic helper tests are
 allocation-free. Strict Ada includes -gnatwc; C++ is warnings-as-errors.
 GNATprove/coverage were not run for this non-SPARK foreign-algorithm slice.
 
+### Corrective regression coverage
+
+The corrective keeps **730 AUnit tests**, using a standalone native regression
+rather than adding a public/test version API. `tests/bayer_layout_test.cpp`
+checks exact sums 223300/223301, full-range rejection, and every interior site
+of fixed arrays with dimensions 3..9 against independent physical CFA tiles.
+Unsafe crosses on actual R/B centers reject; equally bright crosses on green
+centers do not. It allocates no image storage dynamically.
+
+`tests/run_bayer_gray_test.sh` compiles the real shim twice: installed-version
+behavior and a **test-translation-unit-only** historical 4.5.4 version selection.
+Both link the installed native runtime, not an actual legacy OpenCV library.
+The installed 4.10 test accepts all-65535 UInt16 Gray for every pattern and
+checks UInt16/C1/geometry, white pixels including borders, and Source preservation.
+The legacy-branch test rejects before demosaicing, preserves sentinel bytes,
+metadata and storage identity (including same-handle rejection), recovers at
+sum 223300, and proves that a safe Region inside a bright parent succeeds.
+This verifies the binding guard/publication path, **not runtime behavior of an
+installed 4.1 or 4.5.4 library**. The focused CI steps run both variants.
+
+### Local build environment
+
 Normal `alr -n build` and `alr -n -C tests run` were attempted but blocked
 before compilation by the host's pkg-config/sudo system-package deployment.
 Used configure_opencv.sh and the selected Alire-managed GNAT 16.1.0/GPRbuild
@@ -275,4 +372,10 @@ Production dependency metadata and the unrelated sibling Core work were
 not modified. Forced project-owned compilation used
 `-gnatwa -gnatwc -gnatwu -gnatwn -gnatwe -gnatyM79 -Werror`; strict C++ used
 `-Wall -Wextra -Wpedantic -Werror`. GNATformat checks of all eight modified
-Ada files, direct 79-column checks, and git diff --check passed.
+Ada files, direct 79-column checks, and git diff --check passed for the original
+feature. This corrective changes no Ada files; GNATformat and direct 79-column
+checks of the existing Bayer Ada test/fixture units also pass. The strict
+corrective library/test rebuild and full AUnit run again pass with **730 run,
+730 successful, zero failed assertions and zero unexpected errors**. The native
+tests pass with all four strict C++ warning switches, and the allocation-free
+test additionally passes AddressSanitizer/UndefinedBehaviorSanitizer.

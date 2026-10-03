@@ -4,6 +4,7 @@
 #include "bayer_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
+#include <opencv2/core/version.hpp>
 
 #include <array>
 #include <cfloat>
@@ -4350,6 +4351,20 @@ opencv_imgproc_status demosaic_bayer(
         for (int y = 0; y < src->rows; ++y)
             std::memcpy(snapshot.ptr(y), src->ptr(y),
                         static_cast<size_t>(row_bytes));
+#if CV_VERSION_MAJOR == 4 && \
+    (CV_VERSION_MINOR < 5 || \
+     (CV_VERSION_MINOR == 5 && CV_VERSION_REVISION < 5))
+        // ABI safety: before 4.5.5 the UInt16 Gray four-green * signed G2Y
+        // expression can overflow int. Scan only native-executed centers
+        // of the independent snapshot, before any result is published.
+        if (output == bayer_output::gray && snapshot.depth() == CV_16U &&
+            !opencv_imgproc_detail::bayer_legacy_gray_uint16_fits(
+                snapshot.ptr<uint16_t>(), snapshot.rows, snapshot.cols,
+                snapshot.step[0] / sizeof(uint16_t), pattern))
+            return invalid_argument(
+                "UInt16 Bayer Gray exceeds legacy OpenCV "
+                "safe luminance range");
+#endif
         cv::Mat result;
         cv::demosaicing(snapshot, result, code, channels);
         *dst = std::move(result);

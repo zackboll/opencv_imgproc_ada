@@ -8,6 +8,41 @@
 
 namespace opencv_imgproc_detail {
 
+constexpr uint64_t legacy_bayer_gray_green_sum_limit()
+{
+    return static_cast<uint64_t>(INT_MAX) / 9617;
+}
+
+// Preconditions: validated physical selector (0 RGGB, 1 GRBG, 2 BGGR,
+// 3 GBRG), readable UInt16 C1 snapshot, and layout/span preflight establishing
+// rows*stride elements are addressable with stride >= cols. Stride is in
+// elements, not bytes. No parent storage or OpenCV enum codes are consulted.
+constexpr bool bayer_legacy_gray_uint16_fits(const uint16_t *pixels,
+                                            size_t rows, size_t cols,
+                                            size_t stride, int32_t pattern)
+{
+    if (rows < 3 || cols < 3)
+        return true; // Native degenerate path executes no four-green term.
+    const size_t non_green_parity = static_cast<size_t>(pattern % 2);
+    for (size_t y = 1; y < rows - 1; ++y) {
+        // Bayer2Gray_'s optional first pixel is green; pairs and the final
+        // tail evaluate the four-green term only at these R/B centers.
+        const size_t first_x = ((1 + y) % 2 == non_green_parity) ? 1 : 2;
+        for (size_t x = first_x; x < cols - 1; x += 2) {
+            // ABI safety: legacy OpenCV multiplies the promoted four-ushort
+            // sum by signed int G2Y before storing unsigned t1. Prevent
+            // signed-overflow UB, not merely a different numeric result.
+            const uint64_t sum = uint64_t{pixels[(y - 1) * stride + x]} +
+                                 pixels[y * stride + x - 1] +
+                                 pixels[y * stride + x + 1] +
+                                 pixels[(y + 1) * stride + x];
+            if (sum > legacy_bayer_gray_green_sum_limit())
+                return false;
+        }
+    }
+    return true;
+}
+
 constexpr bool bayer_source_span_fits(uint64_t rows, uint64_t row_bytes,
                                       uint64_t step, uint64_t address_limit)
 {

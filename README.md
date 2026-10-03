@@ -443,6 +443,12 @@ there is no depth conversion. Results preserve rows, columns, and depth.
 The alpha channel comes from native OpenCV: **255 for UInt8, 65535 for
 UInt16**. Ada does not insert alpha or implement interpolation.
 
+On affected legacy OpenCV 4.x releases, an additional UInt16 Bayer-to-Gray
+safety preflight rejects neighborhoods that would overflow the native signed
+fixed-point intermediate. OpenCV **4.5.5+** uses corrected unsigned arithmetic
+and needs no such restriction. See the
+[source/safety review](docs/bayer-demosaicing-source-review.md#legacy-uint16-gray-signed-overflow-safety).
+
 Patterns are physical **2x2 CFA tiles**, not OpenCV's counterintuitive short
 names. For BGR, physical RGGB/GRBG/BGGR/GBRG map to historical BG/GB/RG/GR
 codes respectively. RGB aliases exchange red/blue destinations. No native
