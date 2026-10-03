@@ -1,6 +1,7 @@
 #include "opencv_imgproc_shim.h"
 #include "opencv_core_module_bridge.hpp"
 #include "emd_signature_index_fits.hpp"
+#include "bayer_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 
@@ -11,6 +12,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 #include <climits>
 #include <exception>
 #include <limits>
@@ -4263,6 +4265,121 @@ opencv_imgproc_status opencv_imgproc_distance_transform_labeled(
 const char *opencv_imgproc_last_error_message(void)
 {
     return last_error_message;
+}
+
+namespace {
+
+enum class bayer_output { color, gray, alpha };
+
+// One mapping: physical RGGB/GRBG/BGGR/GBRG, then BGR/RGB order.
+// Long physical aliases are absent in 4.1.0; short aliases are portable.
+bool bayer_code(int32_t pattern, int32_t method, int32_t order,
+                bayer_output output, int &code)
+{
+    if (pattern < 0 || pattern > 3 || method < 0 || method > 2 ||
+        order < 0 || order > 1)
+        return false;
+    static const int color[3][2][4] = {
+        {{cv::COLOR_BayerBG2BGR, cv::COLOR_BayerGB2BGR,
+          cv::COLOR_BayerRG2BGR, cv::COLOR_BayerGR2BGR},
+         {cv::COLOR_BayerBG2RGB, cv::COLOR_BayerGB2RGB,
+          cv::COLOR_BayerRG2RGB, cv::COLOR_BayerGR2RGB}},
+        {{cv::COLOR_BayerBG2BGR_VNG, cv::COLOR_BayerGB2BGR_VNG,
+          cv::COLOR_BayerRG2BGR_VNG, cv::COLOR_BayerGR2BGR_VNG},
+         {cv::COLOR_BayerBG2RGB_VNG, cv::COLOR_BayerGB2RGB_VNG,
+          cv::COLOR_BayerRG2RGB_VNG, cv::COLOR_BayerGR2RGB_VNG}},
+        {{cv::COLOR_BayerBG2BGR_EA, cv::COLOR_BayerGB2BGR_EA,
+          cv::COLOR_BayerRG2BGR_EA, cv::COLOR_BayerGR2BGR_EA},
+         {cv::COLOR_BayerBG2RGB_EA, cv::COLOR_BayerGB2RGB_EA,
+          cv::COLOR_BayerRG2RGB_EA, cv::COLOR_BayerGR2RGB_EA}}
+    };
+    static const int gray[4] = {
+        cv::COLOR_BayerBG2GRAY, cv::COLOR_BayerGB2GRAY,
+        cv::COLOR_BayerRG2GRAY, cv::COLOR_BayerGR2GRAY
+    };
+    static const int alpha[2][4] = {
+        {cv::COLOR_BayerBG2BGRA, cv::COLOR_BayerGB2BGRA,
+         cv::COLOR_BayerRG2BGRA, cv::COLOR_BayerGR2BGRA},
+        {cv::COLOR_BayerBG2RGBA, cv::COLOR_BayerGB2RGBA,
+         cv::COLOR_BayerRG2RGBA, cv::COLOR_BayerGR2RGBA}
+    };
+    code = output == bayer_output::gray ? gray[pattern] :
+           output == bayer_output::alpha ? alpha[order][pattern] :
+           color[method][order][pattern];
+    return true;
+}
+
+opencv_imgproc_status demosaic_bayer(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t pattern, int32_t method, int32_t order, bayer_output output)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src)
+            return invalid_argument("invalid Bayer source handle");
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid Bayer destination handle");
+        int code = 0;
+        if (!bayer_code(pattern, method, order, output, code))
+            return invalid_argument("invalid Bayer selector");
+        // ABI safety: native invokers index C1 uchar/ushort neighborhoods
+        // using 2-D rows/cols. Empty/ND or incompatible channel/depth layouts
+        // cannot supply those pointer bounds; VNG always reads uchar bytes.
+        if (src->empty() || src->dims != 2 || src->channels() != 1 ||
+            (src->depth() != CV_8U && src->depth() != CV_16U) ||
+            (method == 1 && src->depth() != CV_8U))
+            return invalid_argument("invalid Bayer source layout");
+        const int channels = output == bayer_output::gray ? 1 :
+                             output == bayer_output::alpha ? 4 : 3;
+        if (!opencv_imgproc_detail::bayer_layout_fits(
+                src->rows, src->cols, channels, src->elemSize1(),
+                method == 1, method == 2))
+            return invalid_argument("Bayer native arithmetic is not representable");
+        const uint64_t row_bytes = static_cast<uint64_t>(src->cols) *
+                                   src->elemSize1();
+        if (!opencv_imgproc_detail::bayer_source_span_fits(
+                src->rows, row_bytes, src->step[0],
+                std::numeric_limits<std::ptrdiff_t>::max()))
+            return invalid_argument("Bayer snapshot source span is not representable");
+        // Region isolation is essential for OpenCV 5 VNG copyMakeBorder.
+        // A packed deep snapshot without Mat::clone/copyTo's optional IPP
+        // int source-step cast: parent strides remain size-sized throughout.
+        cv::Mat snapshot(src->rows, src->cols, src->type());
+        for (int y = 0; y < src->rows; ++y)
+            std::memcpy(snapshot.ptr(y), src->ptr(y),
+                        static_cast<size_t>(row_bytes));
+        cv::Mat result;
+        cv::demosaicing(snapshot, result, code, channels);
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+} // namespace
+
+opencv_imgproc_status opencv_imgproc_demosaic_bayer(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t pattern, int32_t method, int32_t order)
+{
+    return demosaic_bayer(source, destination, pattern, method, order,
+                          bayer_output::color);
+}
+
+opencv_imgproc_status opencv_imgproc_demosaic_bayer_gray(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t pattern)
+{
+    return demosaic_bayer(source, destination, pattern, 0, 0, bayer_output::gray);
+}
+
+opencv_imgproc_status opencv_imgproc_demosaic_bayer_alpha(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t pattern, int32_t order)
+{
+    return demosaic_bayer(source, destination, pattern, 0, order,
+                          bayer_output::alpha);
 }
 
 opencv_imgproc_status

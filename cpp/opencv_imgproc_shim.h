@@ -339,6 +339,21 @@ opencv_imgproc_status opencv_imgproc_distance_transform_labeled(
 
 const char *opencv_imgproc_last_error_message(void);
 
+/* Private selectors: pattern 0 RGGB, 1 GRBG, 2 BGGR, 3 GBRG;
+ * method 0 bilinear, 1 VNG, 2 edge-aware; order 0 BGR, 1 RGB.
+ * Source is snapshotted. Destination is rebound only after full success.
+ * Raw small images retain native behavior where pointer formation is safe.
+ */
+opencv_imgproc_status opencv_imgproc_demosaic_bayer(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t pattern, int32_t method, int32_t order);
+opencv_imgproc_status opencv_imgproc_demosaic_bayer_gray(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t pattern);
+opencv_imgproc_status opencv_imgproc_demosaic_bayer_alpha(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t pattern, int32_t order);
+
 opencv_imgproc_status
 opencv_imgproc_cvt_color(
     const opencv_core_mat_handle *source,
