@@ -340,8 +340,8 @@ opencv_imgproc_status translate_current_exception() noexcept
 }
 
 enum color_depth_policy {
-    standard_linear,
-    standard_nonlinear,
+    uint8_uint16_or_float32,
+    uint8_or_float32,
     uint8_only
 };
 
@@ -352,8 +352,8 @@ struct color_conversion_spec {
     color_depth_policy depth_policy;
 };
 
-// Only these selected conversions can enter CvtColorIPPLoop_Invoker on
-// OpenCV 4.1/4.10/5.0. Standard-range HSV/HLS and sRGB Lab/Luv bypass it.
+// Exact public C3/C4 shapes, OpenCV 4.1/4.10/5.0 potential IPP reachability.
+// Compile-time IPP disable flags may remove paths; fallback remains possible.
 bool color_may_use_ipp(int32_t selector, int depth) noexcept
 {
     switch (selector) {
@@ -389,7 +389,24 @@ bool color_may_use_ipp(int32_t selector, int depth) noexcept
     case OPENCV_IMGPROC_COLOR_RGB_TO_YUV:
     case OPENCV_IMGPROC_COLOR_YUV_TO_BGR:
     case OPENCV_IMGPROC_COLOR_YUV_TO_RGB:
+    case OPENCV_IMGPROC_COLOR_BGR_TO_HSV_FULL:
+    case OPENCV_IMGPROC_COLOR_HSV_FULL_TO_BGR:
+    case OPENCV_IMGPROC_COLOR_HSV_FULL_TO_RGB:
+    case OPENCV_IMGPROC_COLOR_BGR_TO_HLS_FULL:
+    case OPENCV_IMGPROC_COLOR_RGB_TO_HLS_FULL:
+    case OPENCV_IMGPROC_COLOR_HLS_FULL_TO_BGR:
+    case OPENCV_IMGPROC_COLOR_HLS_FULL_TO_RGB:
+    case OPENCV_IMGPROC_COLOR_LINEAR_BGR_TO_LAB:
+    case OPENCV_IMGPROC_COLOR_LINEAR_RGB_TO_LAB:
+    case OPENCV_IMGPROC_COLOR_LAB_TO_LINEAR_BGR:
+    case OPENCV_IMGPROC_COLOR_LAB_TO_LINEAR_RGB:
+    case OPENCV_IMGPROC_COLOR_RGBA_TO_PREMULTIPLIED_RGBA:
         return depth == CV_8U;
+    case OPENCV_IMGPROC_COLOR_LINEAR_BGR_TO_LUV:
+    case OPENCV_IMGPROC_COLOR_LINEAR_RGB_TO_LUV:
+    case OPENCV_IMGPROC_COLOR_LUV_TO_LINEAR_BGR:
+    case OPENCV_IMGPROC_COLOR_LUV_TO_LINEAR_RGB:
+        return depth == CV_8U || depth == CV_32F;
     default:
         return false;
     }
@@ -400,54 +417,54 @@ bool color_spec(int32_t conversion, color_conversion_spec &spec) noexcept
     // Semantic selectors are maintained by the private Ada interop layer;
     // the table intentionally does not expose OpenCV's code integers.
     static const color_conversion_spec conversions[] = {
-        {cv::COLOR_BGR2GRAY, 3, 1, standard_linear},
-        {cv::COLOR_RGB2GRAY, 3, 1, standard_linear},
-        {cv::COLOR_BGRA2GRAY, 4, 1, standard_linear},
-        {cv::COLOR_RGBA2GRAY, 4, 1, standard_linear},
-        {cv::COLOR_GRAY2BGR, 1, 3, standard_linear},
-        {cv::COLOR_GRAY2RGB, 1, 3, standard_linear},
-        {cv::COLOR_GRAY2BGRA, 1, 4, standard_linear},
-        {cv::COLOR_GRAY2RGBA, 1, 4, standard_linear},
-        {cv::COLOR_BGR2RGB, 3, 3, standard_linear},
-        {cv::COLOR_RGB2BGR, 3, 3, standard_linear},
-        {cv::COLOR_BGR2BGRA, 3, 4, standard_linear},
-        {cv::COLOR_RGB2RGBA, 3, 4, standard_linear},
-        {cv::COLOR_BGR2RGBA, 3, 4, standard_linear},
-        {cv::COLOR_RGB2BGRA, 3, 4, standard_linear},
-        {cv::COLOR_BGRA2BGR, 4, 3, standard_linear},
-        {cv::COLOR_RGBA2RGB, 4, 3, standard_linear},
-        {cv::COLOR_RGBA2BGR, 4, 3, standard_linear},
-        {cv::COLOR_BGRA2RGB, 4, 3, standard_linear},
-        {cv::COLOR_BGRA2RGBA, 4, 4, standard_linear},
-        {cv::COLOR_RGBA2BGRA, 4, 4, standard_linear},
-        {cv::COLOR_BGR2XYZ, 3, 3, standard_linear},
-        {cv::COLOR_RGB2XYZ, 3, 3, standard_linear},
-        {cv::COLOR_XYZ2BGR, 3, 3, standard_linear},
-        {cv::COLOR_XYZ2RGB, 3, 3, standard_linear},
-        {cv::COLOR_BGR2YCrCb, 3, 3, standard_linear},
-        {cv::COLOR_RGB2YCrCb, 3, 3, standard_linear},
-        {cv::COLOR_YCrCb2BGR, 3, 3, standard_linear},
-        {cv::COLOR_YCrCb2RGB, 3, 3, standard_linear},
-        {cv::COLOR_BGR2YUV, 3, 3, standard_linear},
-        {cv::COLOR_RGB2YUV, 3, 3, standard_linear},
-        {cv::COLOR_YUV2BGR, 3, 3, standard_linear},
-        {cv::COLOR_YUV2RGB, 3, 3, standard_linear},
-        {cv::COLOR_BGR2HSV, 3, 3, standard_nonlinear},
-        {cv::COLOR_RGB2HSV, 3, 3, standard_nonlinear},
-        {cv::COLOR_HSV2BGR, 3, 3, standard_nonlinear},
-        {cv::COLOR_HSV2RGB, 3, 3, standard_nonlinear},
-        {cv::COLOR_BGR2HLS, 3, 3, standard_nonlinear},
-        {cv::COLOR_RGB2HLS, 3, 3, standard_nonlinear},
-        {cv::COLOR_HLS2BGR, 3, 3, standard_nonlinear},
-        {cv::COLOR_HLS2RGB, 3, 3, standard_nonlinear},
-        {cv::COLOR_BGR2Lab, 3, 3, standard_nonlinear},
-        {cv::COLOR_RGB2Lab, 3, 3, standard_nonlinear},
-        {cv::COLOR_Lab2BGR, 3, 3, standard_nonlinear},
-        {cv::COLOR_Lab2RGB, 3, 3, standard_nonlinear},
-        {cv::COLOR_BGR2Luv, 3, 3, standard_nonlinear},
-        {cv::COLOR_RGB2Luv, 3, 3, standard_nonlinear},
-        {cv::COLOR_Luv2BGR, 3, 3, standard_nonlinear},
-        {cv::COLOR_Luv2RGB, 3, 3, standard_nonlinear},
+        {cv::COLOR_BGR2GRAY, 3, 1, uint8_uint16_or_float32},
+        {cv::COLOR_RGB2GRAY, 3, 1, uint8_uint16_or_float32},
+        {cv::COLOR_BGRA2GRAY, 4, 1, uint8_uint16_or_float32},
+        {cv::COLOR_RGBA2GRAY, 4, 1, uint8_uint16_or_float32},
+        {cv::COLOR_GRAY2BGR, 1, 3, uint8_uint16_or_float32},
+        {cv::COLOR_GRAY2RGB, 1, 3, uint8_uint16_or_float32},
+        {cv::COLOR_GRAY2BGRA, 1, 4, uint8_uint16_or_float32},
+        {cv::COLOR_GRAY2RGBA, 1, 4, uint8_uint16_or_float32},
+        {cv::COLOR_BGR2RGB, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_RGB2BGR, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_BGR2BGRA, 3, 4, uint8_uint16_or_float32},
+        {cv::COLOR_RGB2RGBA, 3, 4, uint8_uint16_or_float32},
+        {cv::COLOR_BGR2RGBA, 3, 4, uint8_uint16_or_float32},
+        {cv::COLOR_RGB2BGRA, 3, 4, uint8_uint16_or_float32},
+        {cv::COLOR_BGRA2BGR, 4, 3, uint8_uint16_or_float32},
+        {cv::COLOR_RGBA2RGB, 4, 3, uint8_uint16_or_float32},
+        {cv::COLOR_RGBA2BGR, 4, 3, uint8_uint16_or_float32},
+        {cv::COLOR_BGRA2RGB, 4, 3, uint8_uint16_or_float32},
+        {cv::COLOR_BGRA2RGBA, 4, 4, uint8_uint16_or_float32},
+        {cv::COLOR_RGBA2BGRA, 4, 4, uint8_uint16_or_float32},
+        {cv::COLOR_BGR2XYZ, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_RGB2XYZ, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_XYZ2BGR, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_XYZ2RGB, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_BGR2YCrCb, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_RGB2YCrCb, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_YCrCb2BGR, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_YCrCb2RGB, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_BGR2YUV, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_RGB2YUV, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_YUV2BGR, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_YUV2RGB, 3, 3, uint8_uint16_or_float32},
+        {cv::COLOR_BGR2HSV, 3, 3, uint8_or_float32},
+        {cv::COLOR_RGB2HSV, 3, 3, uint8_or_float32},
+        {cv::COLOR_HSV2BGR, 3, 3, uint8_or_float32},
+        {cv::COLOR_HSV2RGB, 3, 3, uint8_or_float32},
+        {cv::COLOR_BGR2HLS, 3, 3, uint8_or_float32},
+        {cv::COLOR_RGB2HLS, 3, 3, uint8_or_float32},
+        {cv::COLOR_HLS2BGR, 3, 3, uint8_or_float32},
+        {cv::COLOR_HLS2RGB, 3, 3, uint8_or_float32},
+        {cv::COLOR_BGR2Lab, 3, 3, uint8_or_float32},
+        {cv::COLOR_RGB2Lab, 3, 3, uint8_or_float32},
+        {cv::COLOR_Lab2BGR, 3, 3, uint8_or_float32},
+        {cv::COLOR_Lab2RGB, 3, 3, uint8_or_float32},
+        {cv::COLOR_BGR2Luv, 3, 3, uint8_or_float32},
+        {cv::COLOR_RGB2Luv, 3, 3, uint8_or_float32},
+        {cv::COLOR_Luv2BGR, 3, 3, uint8_or_float32},
+        {cv::COLOR_Luv2RGB, 3, 3, uint8_or_float32},
         {cv::COLOR_BGR2BGR565, 3, 2, uint8_only},
         {cv::COLOR_RGB2BGR565, 3, 2, uint8_only},
         {cv::COLOR_BGRA2BGR565, 4, 2, uint8_only},
@@ -467,10 +484,28 @@ bool color_spec(int32_t conversion, color_conversion_spec &spec) noexcept
         {cv::COLOR_BGR5552BGRA, 2, 4, uint8_only},
         {cv::COLOR_BGR5552RGBA, 2, 4, uint8_only},
         {cv::COLOR_GRAY2BGR555, 1, 2, uint8_only},
-        {cv::COLOR_BGR5552GRAY, 2, 1, uint8_only}
+        {cv::COLOR_BGR5552GRAY, 2, 1, uint8_only},
+        {cv::COLOR_BGR2HSV_FULL, 3, 3, uint8_or_float32},
+        {cv::COLOR_RGB2HSV_FULL, 3, 3, uint8_or_float32},
+        {cv::COLOR_HSV2BGR_FULL, 3, 3, uint8_or_float32},
+        {cv::COLOR_HSV2RGB_FULL, 3, 3, uint8_or_float32},
+        {cv::COLOR_BGR2HLS_FULL, 3, 3, uint8_or_float32},
+        {cv::COLOR_RGB2HLS_FULL, 3, 3, uint8_or_float32},
+        {cv::COLOR_HLS2BGR_FULL, 3, 3, uint8_or_float32},
+        {cv::COLOR_HLS2RGB_FULL, 3, 3, uint8_or_float32},
+        {cv::COLOR_LBGR2Lab, 3, 3, uint8_or_float32},
+        {cv::COLOR_LRGB2Lab, 3, 3, uint8_or_float32},
+        {cv::COLOR_Lab2LBGR, 3, 3, uint8_or_float32},
+        {cv::COLOR_Lab2LRGB, 3, 3, uint8_or_float32},
+        {cv::COLOR_LBGR2Luv, 3, 3, uint8_or_float32},
+        {cv::COLOR_LRGB2Luv, 3, 3, uint8_or_float32},
+        {cv::COLOR_Luv2LBGR, 3, 3, uint8_or_float32},
+        {cv::COLOR_Luv2LRGB, 3, 3, uint8_or_float32},
+        {cv::COLOR_RGBA2mRGBA, 4, 4, uint8_only},
+        {cv::COLOR_mRGBA2RGBA, 4, 4, uint8_only}
     };
     static_assert(sizeof(conversions) / sizeof(conversions[0]) ==
-                  OPENCV_IMGPROC_COLOR_BGR555_TO_GRAY + 1,
+                  OPENCV_IMGPROC_COLOR_PREMULTIPLIED_RGBA_TO_RGBA + 1,
                   "semantic color selector table must cover the C ABI");
     if (conversion < 0 || conversion >= static_cast<int32_t>(sizeof(conversions) / sizeof(conversions[0])))
         return false;
@@ -4263,33 +4298,62 @@ opencv_imgproc_cvt_color(
         }
         // ABI safety: reject malformed raw source metadata before native
         // conversion helpers read rows or compute source channel offsets.
-        // Packed HAL functors receive only pointers/strides/counts, and
-        // access ushort words or src[bidx^2]/src[3]; an incompatible byte
-        // layout can make those accesses exceed the supplied pixel storage.
+        // HAL functors receive only pointers/strides/counts: packed paths
+        // access ushort words, HSV/Lab paths index src[bidx^2], and alpha
+        // paths always read four bytes. Wrong depth/layout can mis-size raw
+        // accesses; N-D sources do not supply valid 2-D HAL width/height.
         if (src->empty() || src->dims != 2 ||
             src->channels() != spec.source_channels ||
             (src->depth() != CV_8U && src->depth() != CV_16U && src->depth() != CV_32F) ||
-            (spec.depth_policy == standard_nonlinear && src->depth() == CV_16U) ||
+            (spec.depth_policy == uint8_or_float32 && src->depth() == CV_16U) ||
             (spec.depth_policy == uint8_only && src->depth() != CV_8U))
             return invalid_argument("invalid color conversion source shape, channels or depth");
-        if (spec.depth_policy == uint8_only) {
-            // ABI safety: CvtColorLoop and Carotene TEGRA_CVTBGRTOBGR565
-            // evaluate signed int width * height before converting to double.
-            if (static_cast<uint64_t>(src->cols) * src->rows >
+        // ABI safety: every selected conversion's portable CvtColorLoop
+        // evaluates signed int width * height before converting to double.
+        // IPP/Carotene schedulers and FastCV's HSV size check repeat it.
+        if (static_cast<uint64_t>(src->cols) * src->rows >
+            static_cast<uint64_t>(std::numeric_limits<int>::max()))
+            return invalid_argument("color pixel count overflows int");
+        // ABI safety: HSV/Lab/Luv CPU functors compute signed n*3 row
+        // bounds (including Float32 HSV2RGB and Lab2RGB); avoid overflow.
+        if (spec.depth_policy == uint8_or_float32 &&
+            static_cast<uint64_t>(src->cols) * 3 >
                 static_cast<uint64_t>(std::numeric_limits<int>::max()))
-                return invalid_argument("packed color pixel count overflows int");
+            return invalid_argument("color row scalar count overflows int");
+        if (spec.depth_policy == uint8_only ||
+            ((spec.code == cv::COLOR_BGR2HSV ||
+              spec.code == cv::COLOR_RGB2HSV ||
+              spec.code == cv::COLOR_BGR2HSV_FULL ||
+              spec.code == cv::COLOR_RGB2HSV_FULL) && src->depth() == CV_8U)) {
             if (spec.code == cv::COLOR_BGR2BGR565 ||
                 spec.code == cv::COLOR_RGB2BGR565 ||
                 spec.code == cv::COLOR_BGRA2BGR565 ||
-                spec.code == cv::COLOR_RGBA2BGR565) {
-                // ABI safety: optional Carotene rgb[x]2[bgr/rgb]565 takes
-                // ptrdiff_t strides, implicitly converted from HAL size_t.
+                spec.code == cv::COLOR_RGBA2BGR565 ||
+                spec.code == cv::COLOR_BGR2HSV ||
+                spec.code == cv::COLOR_RGB2HSV ||
+                spec.code == cv::COLOR_BGR2HSV_FULL ||
+                spec.code == cv::COLOR_RGB2HSV_FULL) {
+                // ABI safety: optional Carotene rgb[x]2[bgr/rgb]565
+                // and rgb[x]2hsv take ptrdiff_t strides, implicitly
+                // converted from HAL size_t before row pointer arithmetic.
                 const uint64_t limit = static_cast<uint64_t>(
                     std::numeric_limits<std::ptrdiff_t>::max());
                 if (src->step[0] > limit ||
-                    static_cast<uint64_t>(src->cols) * 2 > limit)
-                    return invalid_argument("packed color Carotene stride overflows ptrdiff_t");
+                    static_cast<uint64_t>(src->cols) *
+                        spec.destination_channels * src->elemSize1() > limit)
+                    return invalid_argument("color Carotene stride overflows ptrdiff_t");
             }
+        }
+        // ABI safety: OpenCV 5 FastCV RGB->HSV FULL (C3 UInt8, <=640*480
+        // pixels) passes HAL size_t byte strides to uint32_t parameters of
+        // fcvColorRGB888ToHSV888u8; truncation addresses the wrong rows.
+        if (conversion == OPENCV_IMGPROC_COLOR_RGB_TO_HSV_FULL &&
+            src->depth() == CV_8U &&
+            static_cast<uint64_t>(src->cols) * src->rows <= 640U * 480U) {
+            const uint64_t limit = std::numeric_limits<uint32_t>::max();
+            if (src->step[0] > limit ||
+                static_cast<uint64_t>(src->cols) * 3 > limit)
+                return invalid_argument("color FastCV byte stride overflows uint32_t");
         }
         // ABI safety: reachable CvtColorIPPLoop_Invoker implementations in
         // OpenCV 4.1/4.10/5.0 cast original source and output BYTE steps to

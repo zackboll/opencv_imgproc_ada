@@ -210,7 +210,25 @@ package OpenCV.Image_Processing is
       BGR555_To_BGRA,
       BGR555_To_RGBA,
       Gray_To_BGR555,
-      BGR555_To_Gray);
+      BGR555_To_Gray,
+      BGR_To_HSV_Full,
+      RGB_To_HSV_Full,
+      HSV_Full_To_BGR,
+      HSV_Full_To_RGB,
+      BGR_To_HLS_Full,
+      RGB_To_HLS_Full,
+      HLS_Full_To_BGR,
+      HLS_Full_To_RGB,
+      Linear_BGR_To_Lab,
+      Linear_RGB_To_Lab,
+      Lab_To_Linear_BGR,
+      Lab_To_Linear_RGB,
+      Linear_BGR_To_Luv,
+      Linear_RGB_To_Luv,
+      Luv_To_Linear_BGR,
+      Luv_To_Linear_RGB,
+      RGBA_To_Premultiplied_RGBA,
+      Premultiplied_RGBA_To_RGBA);
 
    --  Packed conversions require UInt8. BGR565/BGR555 use UInt8 C2,
    --  OpenCV's native Mat representation: two bytes per native 16-bit word.
@@ -219,6 +237,19 @@ package OpenCV.Image_Processing is
    --  Packing truncates; unpacking does not replicate low color bits.
    --  BGR565 ignores input alpha and expands alpha to 255. BGR555 uses
    --  bit 15 as nonzero-alpha flag; C3 and Gray packing leave it zero.
+
+   --  FULL HSV/HLS and linear-light Lab/Luv require UInt8/Float32 C3.
+   --  UInt8 FULL hue has full-byte encoding; native forward scale is 256,
+   --  reverse scale 255, so exact round trips are not promised. Float32
+   --  standard/FULL hue remains degrees and both paths are equivalent in
+   --  reviewed OpenCV 4.1/4.10/5.0 implementations.
+   --  Linear Lab/Luv omits sRGB transfer encoding/decoding, unlike ordinary
+   --  Lab/Luv selectors. Float32 RGB is normally 0..1; no pixel sanitizer or
+   --  manual Lab/Luv rescaling is applied. Native UInt8 encoding is retained.
+   --  Premultiplied selectors require UInt8 C4 in named RGBA order, preserve
+   --  alpha, and multiply color by alpha/255. Reverse saturates even for
+   --  noncanonical color > alpha; zero alpha yields zero color. Quantization
+   --  makes the inverse lossy, especially at low alpha.
 
    type Interpolation_Method is
      (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4);

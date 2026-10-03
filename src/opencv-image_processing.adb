@@ -1042,209 +1042,263 @@ package body OpenCV.Image_Processing is
      (Conversion : Color_Conversion) return Interfaces.Integer_32 is
    begin
       case Conversion is
-         when BGR_To_Gray    =>
+         when BGR_To_Gray                =>
             return Internal.C_API.BGR_To_Gray;
 
-         when RGB_To_Gray    =>
+         when RGB_To_Gray                =>
             return Internal.C_API.RGB_To_Gray;
 
-         when BGRA_To_Gray   =>
+         when BGRA_To_Gray               =>
             return Internal.C_API.BGRA_To_Gray;
 
-         when RGBA_To_Gray   =>
+         when RGBA_To_Gray               =>
             return Internal.C_API.RGBA_To_Gray;
 
-         when Gray_To_BGR    =>
+         when Gray_To_BGR                =>
             return Internal.C_API.Gray_To_BGR;
 
-         when Gray_To_RGB    =>
+         when Gray_To_RGB                =>
             return Internal.C_API.Gray_To_RGB;
 
-         when Gray_To_BGRA   =>
+         when Gray_To_BGRA               =>
             return Internal.C_API.Gray_To_BGRA;
 
-         when Gray_To_RGBA   =>
+         when Gray_To_RGBA               =>
             return Internal.C_API.Gray_To_RGBA;
 
-         when BGR_To_RGB     =>
+         when BGR_To_RGB                 =>
             return Internal.C_API.BGR_To_RGB;
 
-         when RGB_To_BGR     =>
+         when RGB_To_BGR                 =>
             return Internal.C_API.RGB_To_BGR;
 
-         when BGR_To_BGRA    =>
+         when BGR_To_BGRA                =>
             return Internal.C_API.BGR_To_BGRA;
 
-         when RGB_To_RGBA    =>
+         when RGB_To_RGBA                =>
             return Internal.C_API.RGB_To_RGBA;
 
-         when BGR_To_RGBA    =>
+         when BGR_To_RGBA                =>
             return Internal.C_API.BGR_To_RGBA;
 
-         when RGB_To_BGRA    =>
+         when RGB_To_BGRA                =>
             return Internal.C_API.RGB_To_BGRA;
 
-         when BGRA_To_BGR    =>
+         when BGRA_To_BGR                =>
             return Internal.C_API.BGRA_To_BGR;
 
-         when RGBA_To_RGB    =>
+         when RGBA_To_RGB                =>
             return Internal.C_API.RGBA_To_RGB;
 
-         when RGBA_To_BGR    =>
+         when RGBA_To_BGR                =>
             return Internal.C_API.RGBA_To_BGR;
 
-         when BGRA_To_RGB    =>
+         when BGRA_To_RGB                =>
             return Internal.C_API.BGRA_To_RGB;
 
-         when BGRA_To_RGBA   =>
+         when BGRA_To_RGBA               =>
             return Internal.C_API.BGRA_To_RGBA;
 
-         when RGBA_To_BGRA   =>
+         when RGBA_To_BGRA               =>
             return Internal.C_API.RGBA_To_BGRA;
 
-         when BGR_To_XYZ     =>
+         when BGR_To_XYZ                 =>
             return Internal.C_API.BGR_To_XYZ;
 
-         when RGB_To_XYZ     =>
+         when RGB_To_XYZ                 =>
             return Internal.C_API.RGB_To_XYZ;
 
-         when XYZ_To_BGR     =>
+         when XYZ_To_BGR                 =>
             return Internal.C_API.XYZ_To_BGR;
 
-         when XYZ_To_RGB     =>
+         when XYZ_To_RGB                 =>
             return Internal.C_API.XYZ_To_RGB;
 
-         when BGR_To_YCrCb   =>
+         when BGR_To_YCrCb               =>
             return Internal.C_API.BGR_To_YCrCb;
 
-         when RGB_To_YCrCb   =>
+         when RGB_To_YCrCb               =>
             return Internal.C_API.RGB_To_YCrCb;
 
-         when YCrCb_To_BGR   =>
+         when YCrCb_To_BGR               =>
             return Internal.C_API.YCrCb_To_BGR;
 
-         when YCrCb_To_RGB   =>
+         when YCrCb_To_RGB               =>
             return Internal.C_API.YCrCb_To_RGB;
 
-         when BGR_To_YUV     =>
+         when BGR_To_YUV                 =>
             return Internal.C_API.BGR_To_YUV;
 
-         when RGB_To_YUV     =>
+         when RGB_To_YUV                 =>
             return Internal.C_API.RGB_To_YUV;
 
-         when YUV_To_BGR     =>
+         when YUV_To_BGR                 =>
             return Internal.C_API.YUV_To_BGR;
 
-         when YUV_To_RGB     =>
+         when YUV_To_RGB                 =>
             return Internal.C_API.YUV_To_RGB;
 
-         when BGR_To_HSV     =>
+         when BGR_To_HSV                 =>
             return Internal.C_API.BGR_To_HSV;
 
-         when RGB_To_HSV     =>
+         when RGB_To_HSV                 =>
             return Internal.C_API.RGB_To_HSV;
 
-         when HSV_To_BGR     =>
+         when HSV_To_BGR                 =>
             return Internal.C_API.HSV_To_BGR;
 
-         when HSV_To_RGB     =>
+         when HSV_To_RGB                 =>
             return Internal.C_API.HSV_To_RGB;
 
-         when BGR_To_HLS     =>
+         when BGR_To_HLS                 =>
             return Internal.C_API.BGR_To_HLS;
 
-         when RGB_To_HLS     =>
+         when RGB_To_HLS                 =>
             return Internal.C_API.RGB_To_HLS;
 
-         when HLS_To_BGR     =>
+         when HLS_To_BGR                 =>
             return Internal.C_API.HLS_To_BGR;
 
-         when HLS_To_RGB     =>
+         when HLS_To_RGB                 =>
             return Internal.C_API.HLS_To_RGB;
 
-         when BGR_To_Lab     =>
+         when BGR_To_Lab                 =>
             return Internal.C_API.BGR_To_Lab;
 
-         when RGB_To_Lab     =>
+         when RGB_To_Lab                 =>
             return Internal.C_API.RGB_To_Lab;
 
-         when Lab_To_BGR     =>
+         when Lab_To_BGR                 =>
             return Internal.C_API.Lab_To_BGR;
 
-         when Lab_To_RGB     =>
+         when Lab_To_RGB                 =>
             return Internal.C_API.Lab_To_RGB;
 
-         when BGR_To_Luv     =>
+         when BGR_To_Luv                 =>
             return Internal.C_API.BGR_To_Luv;
 
-         when RGB_To_Luv     =>
+         when RGB_To_Luv                 =>
             return Internal.C_API.RGB_To_Luv;
 
-         when Luv_To_BGR     =>
+         when Luv_To_BGR                 =>
             return Internal.C_API.Luv_To_BGR;
 
-         when Luv_To_RGB     =>
+         when Luv_To_RGB                 =>
             return Internal.C_API.Luv_To_RGB;
 
-         when BGR_To_BGR565  =>
+         when BGR_To_BGR565              =>
             return Internal.C_API.BGR_To_BGR565;
 
-         when RGB_To_BGR565  =>
+         when RGB_To_BGR565              =>
             return Internal.C_API.RGB_To_BGR565;
 
-         when BGRA_To_BGR565 =>
+         when BGRA_To_BGR565             =>
             return Internal.C_API.BGRA_To_BGR565;
 
-         when RGBA_To_BGR565 =>
+         when RGBA_To_BGR565             =>
             return Internal.C_API.RGBA_To_BGR565;
 
-         when BGR565_To_BGR  =>
+         when BGR565_To_BGR              =>
             return Internal.C_API.BGR565_To_BGR;
 
-         when BGR565_To_RGB  =>
+         when BGR565_To_RGB              =>
             return Internal.C_API.BGR565_To_RGB;
 
-         when BGR565_To_BGRA =>
+         when BGR565_To_BGRA             =>
             return Internal.C_API.BGR565_To_BGRA;
 
-         when BGR565_To_RGBA =>
+         when BGR565_To_RGBA             =>
             return Internal.C_API.BGR565_To_RGBA;
 
-         when Gray_To_BGR565 =>
+         when Gray_To_BGR565             =>
             return Internal.C_API.Gray_To_BGR565;
 
-         when BGR565_To_Gray =>
+         when BGR565_To_Gray             =>
             return Internal.C_API.BGR565_To_Gray;
 
-         when BGR_To_BGR555  =>
+         when BGR_To_BGR555              =>
             return Internal.C_API.BGR_To_BGR555;
 
-         when RGB_To_BGR555  =>
+         when RGB_To_BGR555              =>
             return Internal.C_API.RGB_To_BGR555;
 
-         when BGRA_To_BGR555 =>
+         when BGRA_To_BGR555             =>
             return Internal.C_API.BGRA_To_BGR555;
 
-         when RGBA_To_BGR555 =>
+         when RGBA_To_BGR555             =>
             return Internal.C_API.RGBA_To_BGR555;
 
-         when BGR555_To_BGR  =>
+         when BGR555_To_BGR              =>
             return Internal.C_API.BGR555_To_BGR;
 
-         when BGR555_To_RGB  =>
+         when BGR555_To_RGB              =>
             return Internal.C_API.BGR555_To_RGB;
 
-         when BGR555_To_BGRA =>
+         when BGR555_To_BGRA             =>
             return Internal.C_API.BGR555_To_BGRA;
 
-         when BGR555_To_RGBA =>
+         when BGR555_To_RGBA             =>
             return Internal.C_API.BGR555_To_RGBA;
 
-         when Gray_To_BGR555 =>
+         when Gray_To_BGR555             =>
             return Internal.C_API.Gray_To_BGR555;
 
-         when BGR555_To_Gray =>
+         when BGR555_To_Gray             =>
             return Internal.C_API.BGR555_To_Gray;
+
+         when BGR_To_HSV_Full            =>
+            return Internal.C_API.BGR_To_HSV_Full;
+
+         when RGB_To_HSV_Full            =>
+            return Internal.C_API.RGB_To_HSV_Full;
+
+         when HSV_Full_To_BGR            =>
+            return Internal.C_API.HSV_Full_To_BGR;
+
+         when HSV_Full_To_RGB            =>
+            return Internal.C_API.HSV_Full_To_RGB;
+
+         when BGR_To_HLS_Full            =>
+            return Internal.C_API.BGR_To_HLS_Full;
+
+         when RGB_To_HLS_Full            =>
+            return Internal.C_API.RGB_To_HLS_Full;
+
+         when HLS_Full_To_BGR            =>
+            return Internal.C_API.HLS_Full_To_BGR;
+
+         when HLS_Full_To_RGB            =>
+            return Internal.C_API.HLS_Full_To_RGB;
+
+         when Linear_BGR_To_Lab          =>
+            return Internal.C_API.Linear_BGR_To_Lab;
+
+         when Linear_RGB_To_Lab          =>
+            return Internal.C_API.Linear_RGB_To_Lab;
+
+         when Lab_To_Linear_BGR          =>
+            return Internal.C_API.Lab_To_Linear_BGR;
+
+         when Lab_To_Linear_RGB          =>
+            return Internal.C_API.Lab_To_Linear_RGB;
+
+         when Linear_BGR_To_Luv          =>
+            return Internal.C_API.Linear_BGR_To_Luv;
+
+         when Linear_RGB_To_Luv          =>
+            return Internal.C_API.Linear_RGB_To_Luv;
+
+         when Luv_To_Linear_BGR          =>
+            return Internal.C_API.Luv_To_Linear_BGR;
+
+         when Luv_To_Linear_RGB          =>
+            return Internal.C_API.Luv_To_Linear_RGB;
+
+         when RGBA_To_Premultiplied_RGBA =>
+            return Internal.C_API.RGBA_To_Premultiplied_RGBA;
+
+         when Premultiplied_RGBA_To_RGBA =>
+            return Internal.C_API.Premultiplied_RGBA_To_RGBA;
       end case;
    end To_C_Conversion;
 
@@ -1634,7 +1688,7 @@ package body OpenCV.Image_Processing is
             | Gray_To_BGRA
             | Gray_To_RGBA
             | Gray_To_BGR565
-            | Gray_To_BGR555 =>
+            | Gray_To_BGR555                       =>
             return 1;
 
          when BGR565_To_BGR
@@ -1646,7 +1700,7 @@ package body OpenCV.Image_Processing is
             | BGR555_To_RGB
             | BGR555_To_BGRA
             | BGR555_To_RGBA
-            | BGR555_To_Gray =>
+            | BGR555_To_Gray                       =>
             return 2;
 
          when BGRA_To_Gray
@@ -1660,15 +1714,29 @@ package body OpenCV.Image_Processing is
             | RGBA_To_BGR565
             | BGRA_To_BGR555
             | RGBA_To_BGR555
-            | RGBA_To_BGRA   =>
+            | RGBA_To_Premultiplied_RGBA
+            | Premultiplied_RGBA_To_RGBA
+            | RGBA_To_BGRA                         =>
             return 4;
 
-         when others         =>
+         when BGR_To_Gray
+            | RGB_To_Gray
+            | BGR_To_RGB .. RGB_To_BGRA
+            | BGR_To_XYZ .. Luv_To_RGB
+            | BGR_To_BGR565
+            | RGB_To_BGR565
+            | BGR_To_BGR555
+            | RGB_To_BGR555
+            | BGR_To_HSV_Full .. Luv_To_Linear_RGB =>
             return 3;
       end case;
    end Required_Color_Channels;
 
-   function Nonlinear_Color (Conversion : Color_Conversion) return Boolean is
+   type Color_Depth_Kind is
+     (UInt8_UInt16_Or_Float32, UInt8_Or_Float32, UInt8_Only);
+
+   function Color_Depth_Policy
+     (Conversion : Color_Conversion) return Color_Depth_Kind is
    begin
       case Conversion is
          when BGR_To_HSV
@@ -1686,13 +1754,19 @@ package body OpenCV.Image_Processing is
             | BGR_To_Luv
             | RGB_To_Luv
             | Luv_To_BGR
-            | Luv_To_RGB =>
-            return True;
+            | Luv_To_RGB
+            | BGR_To_HSV_Full .. Luv_To_Linear_RGB =>
+            return UInt8_Or_Float32;
 
-         when others     =>
-            return False;
+         when BGR_To_BGR565 .. BGR555_To_Gray
+            | RGBA_To_Premultiplied_RGBA
+            | Premultiplied_RGBA_To_RGBA           =>
+            return UInt8_Only;
+
+         when BGR_To_Gray .. YUV_To_RGB            =>
+            return UInt8_UInt16_Or_Float32;
       end case;
-   end Nonlinear_Color;
+   end Color_Depth_Policy;
 
    procedure Validate_Conversion
      (Source : OpenCV.Core.Mat; Conversion : Color_Conversion)
@@ -1707,9 +1781,9 @@ package body OpenCV.Image_Processing is
                 not in OpenCV.Core.UInt8
                      | OpenCV.Core.UInt16
                      | OpenCV.Core.Float32
-        or else (Nonlinear_Color (Conversion)
+        or else (Color_Depth_Policy (Conversion) = UInt8_Or_Float32
                  and then Source.Depth = OpenCV.Core.UInt16)
-        or else (Conversion in BGR_To_BGR565 .. BGR555_To_Gray
+        or else (Color_Depth_Policy (Conversion) = UInt8_Only
                  and then Source.Depth /= OpenCV.Core.UInt8)
       then
          Ada.Exceptions.Raise_Exception
