@@ -14,9 +14,10 @@ package OpenCV.Image_Processing is
    --  Mask overloads require UInt8 C1 of matching geometry: zero preserves
    --  Base, any nonzero sample enables every channel at that pixel.
    --  Each function updates a private Base clone and returns fresh independent
-   --  storage only after success. Inputs and Region parents are never modified;
-   --  Regions contribute only logical pixels. All input storage aliases are
-   --  supported. Native floating overflow is not saturated or prohibited.
+   --  storage only after success. Inputs and Region parents are never
+   --  modified; Regions contribute only logical pixels. All input storage
+   --  aliases are supported. Native floating overflow is not saturated or
+   --  prohibited.
    function Accumulate_Image
      (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
    function Accumulate_Image
