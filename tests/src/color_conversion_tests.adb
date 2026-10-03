@@ -20,6 +20,7 @@ with OpenCV;
 package body Color_Conversion_Tests is
 
    package IP renames OpenCV.Image_Processing;
+   use type IP.Color_Conversion;
    package Raw renames OpenCV.Image_Processing.Internal.C_API;
    use type OpenCV.Float32_Value;
    use type Raw.Status;
@@ -286,7 +287,9 @@ package body Color_Conversion_Tests is
                then 1
                elsif Name (1 .. 6) in "BGR565" | "BGR555"
                then 2
-               elsif Name (1 .. 5) = "BGRA_" or else Name (1 .. 5) = "RGBA_"
+               elsif Conversion = IP.Premultiplied_RGBA_To_RGBA
+                 or else Name (1 .. 5) = "BGRA_"
+                 or else Name (1 .. 5) = "RGBA_"
                then 4
                else 3);
             Output_Channels : constant Positive :=

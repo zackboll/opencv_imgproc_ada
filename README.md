@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **650 AUnit tests**
+> **Current registered test baseline:** **687 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -337,7 +337,7 @@ The table below summarizes the current public operations.
 | Motion | `Phase_Correlate` | matching nonempty 2-D Float32/Float64 C1 sources; optional matching window | Float64 shift/response record; independent logical snapshots; inputs unchanged |
 | Windows | `Create_Hanning_Window` | Width/Height > 1; Float32 or Float64 selector | fresh owning C1 Mat; native sqrt of separable Hann product |
 | Contour rendering | `Draw_Contours`, `Fill_Contours` | one Ada-owned `Contour_Set`; ordinary drawing image contract | all or selected root-relative subtree; even-odd holes/islands; Region-local offset |
-| Color | `Convert_Color` | nonempty 2-D C1/C3/C4 according to selector; `UInt8`/`UInt16`/`Float32` for linear, `UInt8`/`Float32` for nonlinear | common layout, Gray, XYZ, YCrCb, YUV, HSV, HLS, Lab, Luv conversions |
+| Color | `Convert_Color` | nonempty 2-D, exact selector channels; UInt8/UInt16/Float32 for layout/Gray/XYZ/YCrCb/YUV, UInt8/Float32 for HSV/HLS/Lab/Luv, UInt8 only for packed/alpha | layout, Gray, XYZ, YCrCb, YUV, standard/FULL HSV/HLS, sRGB/linear-light Lab/Luv, packed color and premultiplied RGBA |
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
 | Filtering | `Get_Gaussian_Kernel` | odd positive size | automatic or explicit sigma; Float32/Float64 `N x 1` C1 kernel; usable with `Sep_Filter_2D` |
@@ -423,6 +423,11 @@ procedure Convert_Color
 | HLS | `BGR_To_HLS`, `RGB_To_HLS`, `HLS_To_BGR`, `HLS_To_RGB` | C3 / C3 | UInt8, Float32 |
 | Lab | `BGR_To_Lab`, `RGB_To_Lab`, `Lab_To_BGR`, `Lab_To_RGB` | C3 / C3 | UInt8, Float32 |
 | Luv | `BGR_To_Luv`, `RGB_To_Luv`, `Luv_To_BGR`, `Luv_To_RGB` | C3 / C3 | UInt8, Float32 |
+| HSV FULL | `BGR_To_HSV_Full`, `RGB_To_HSV_Full`, `HSV_Full_To_BGR`, `HSV_Full_To_RGB` | C3 / C3 | UInt8, Float32 |
+| HLS FULL | `BGR_To_HLS_Full`, `RGB_To_HLS_Full`, `HLS_Full_To_BGR`, `HLS_Full_To_RGB` | C3 / C3 | UInt8, Float32 |
+| Linear-light Lab | `Linear_BGR_To_Lab`, `Linear_RGB_To_Lab`, `Lab_To_Linear_BGR`, `Lab_To_Linear_RGB` | C3 / C3 | UInt8, Float32 |
+| Linear-light Luv | `Linear_BGR_To_Luv`, `Linear_RGB_To_Luv`, `Luv_To_Linear_BGR`, `Luv_To_Linear_RGB` | C3 / C3 | UInt8, Float32 |
+| Premultiplied RGBA | `RGBA_To_Premultiplied_RGBA`, `Premultiplied_RGBA_To_RGBA` | C4 / C4 | UInt8 only |
 | BGR565 / BGR555 | BGR, RGB, BGRA, RGBA and Gray to/from each packed layout | packed C2; Gray C1; BGR/RGB C3; BGRA/RGBA C4 | UInt8 only |
 
 Source must be nonempty and 2-D with *exactly* the channels implied by its
@@ -432,9 +437,32 @@ or 1.0 (`Float32`);
 removing alpha discards it, while BGRA/RGBA swaps preserve it. Float32 BGR/RGB
 is normally scaled to 0..1; **normalize before Float32 Lab/Luv** for meaningful
 sRGB-oriented results. No value sanitizer rejects out-of-range finite values.
-The ordinary sRGB Lab/Luv variants are used, not linear-light LBGR/LRGB.
-Standard (not FULL) UInt8 HSV/HLS hue uses 0..180 for the 0..360 degree
-circle, with HSV saturation/value in 0..255; Float32 hue uses native degrees.
+Ordinary Lab/Luv selectors use sRGB transfer behavior. The explicitly named
+linear-light selectors instead consume/produce linear RGB without sRGB
+decoding/encoding. OpenCV performs the CIE transform; the binding does not
+implement gamma conversion or rescale Lab/Luv. Linear Float32 RGB is normally
+0..1, and UInt8 retains native 0..255 encoding; no per-pixel range check is made.
+
+Standard UInt8 HSV/HLS hue uses 0..180-style encoding for the 0..360 degree
+circle; FULL uses full-byte 0..255 encoding. Native CPU FULL uses an internal
+forward scale of **256** and reverse scale of **255**: these are intentionally
+not corrected, and exact UInt8 FULL round trips are not promised. Float32
+standard and FULL both use **degree-based hue** (360-degree scale) and are
+numerically equivalent in the pinned OpenCV 4.1.0/4.10.0/5.0.0 implementations.
+FULL does not rescale floating hue to 0..255 or normalize/sanitize pixels.
+
+Premultiplied RGBA multiplies each color by alpha/255 while preserving alpha.
+The native scalar forward expectation is `(color * alpha + 128) / 255`.
+The inverse uses saturating `(premultiplied * 255 + alpha / 2) / alpha`;
+zero alpha gives zero color. Noncanonical premultiplied color greater than
+alpha is accepted and saturates, not rejected. Low-alpha quantization loses
+information, so premultiply/unpremultiply is generally **lossy** (opaque
+pixels are preserved). Only the named RGBA UInt8 C4 contract is exposed,
+without BGRA aliases or Float32/UInt16 variants.
+
+The [extended color source review](docs/extended-color-source-review.md)
+documents exact-tag dispatch, SIMD, IPP/HAL reachability and native arithmetic
+safety findings. Local runtime validation uses OpenCV 4.10.0 only.
 
 Regions are logical standalone images: no parent pixels outside the Region
 participate. Source remains unchanged for distinct Destination; same-object
@@ -4025,7 +4053,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The previous **502-test** baseline (before the 20 corner-analysis tests) was:
+The current **687-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -4072,7 +4100,8 @@ The previous **502-test** baseline (before the 20 corner-analysis tests) was:
 | Phase correlation and Hanning windows | 25 |
 | Kernel generators (Gabor and structuring elements) | 25 |
 | Packed BGR565 / BGR555 conversions | 31 |
-| **Total** | **650** |
+| Extended FULL hue, linear-light Lab/Luv, premultiplied RGBA | 37 |
+| **Total** | **687** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4149,6 +4178,17 @@ were source-reviewed, not runtime-tested locally.
 
 The packed-color slice adds 31 focused tests, bringing the complete suite to
 **650 registered, executed and passed tests** from baseline 619.
+
+The extended-color slice adds **37 focused tests** from baseline 650:
+**687 registered, 687 executed, 687 passed**, zero failed assertions and
+zero unexpected errors. Local execution used OpenCV 4.10.0 and a clean detached
+Core checkout. Strict Ada compilation includes `-gnatwa -gnatwc -gnatwu
+-gnatwn -gnatwe -gnatyM79 -Werror`; C++ uses `-Wall -Wextra -Wpedantic -Werror`.
+GNATformat, direct 79-column checks of modified Ada, and `git diff --check`
+passed. Normal Alire deployment was blocked by the machine's `pkg-config`
+sudo issue; configure scripts and Alire-managed GNAT/GPRbuild were used without
+changing production dependencies. GNATprove/coverage were not run for this
+non-SPARK, foreign-boundary slice.
 
 ## Examples
 
@@ -4818,9 +4858,8 @@ pre-1.0.
 
 Notable Imgproc families that are not yet broadly bound include:
 
-- deferred color layouts: subsampled/packed YUV and
-  two-plane conversion, Bayer/demosaicing, FULL hue variants, linear-light
-  Lab/Luv variants, and premultiplied alpha;
+- deferred color layouts: YUV 4:2:x layouts, two-plane YUV conversion,
+  and Bayer/demosaicing;
 - deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;
 - relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
   calibration/undistortion map generation in the appropriate module;

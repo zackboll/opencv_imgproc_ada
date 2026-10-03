@@ -539,7 +539,7 @@ package body Packed_Color_Tests is
       Empty : C.Mat;
    begin
       C.UInt8_Access.Set (D, 0, 0, 71);
-      Check_Source (S, 68);
+      Check_Source (S, 86);
       Check_Source (S, -1);
       Check_Source (S, 999);
       for Conversion in Packed_Conversion loop

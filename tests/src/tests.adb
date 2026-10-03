@@ -15,6 +15,7 @@ with Corner_Analysis_Tests;
 with Draw_Contour_Tests;
 with Color_Conversion_Tests;
 with Packed_Color_Tests;
+with Extended_Color_Tests;
 with Filter_2D_Tests;
 with Histogram_Analysis_Tests;
 with Histogram_Equalization_Tests;
@@ -62,6 +63,7 @@ procedure Tests is
    Reporter : AUnit.Reporter.Text.Text_Reporter;
 begin
    Suite.Add_Test (Packed_Color_Tests.Suite);
+   Suite.Add_Test (Extended_Color_Tests.Suite);
    Suite.Add_Test (Resize_Tests.Suite);
    Suite.Add_Test (Gaussian_Blur_Tests.Suite);
    Suite.Add_Test (Gaussian_Kernel_Tests.Suite);
