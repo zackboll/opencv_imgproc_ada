@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **619 AUnit tests**
+> **Current registered test baseline:** **650 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -423,10 +423,12 @@ procedure Convert_Color
 | HLS | `BGR_To_HLS`, `RGB_To_HLS`, `HLS_To_BGR`, `HLS_To_RGB` | C3 / C3 | UInt8, Float32 |
 | Lab | `BGR_To_Lab`, `RGB_To_Lab`, `Lab_To_BGR`, `Lab_To_RGB` | C3 / C3 | UInt8, Float32 |
 | Luv | `BGR_To_Luv`, `RGB_To_Luv`, `Luv_To_BGR`, `Luv_To_RGB` | C3 / C3 | UInt8, Float32 |
+| BGR565 / BGR555 | BGR, RGB, BGRA, RGBA and Gray to/from each packed layout | packed C2; Gray C1; BGR/RGB C3; BGRA/RGBA C4 | UInt8 only |
 
 Source must be nonempty and 2-D with *exactly* the channels implied by its
 name. Every result retains the source rows, columns and depth. When alpha is
-added, OpenCV writes 255 (`UInt8`), 65535 (`UInt16`), or 1.0 (`Float32`);
+added in ordinary conversions, OpenCV writes 255 (`UInt8`), 65535 (`UInt16`),
+or 1.0 (`Float32`);
 removing alpha discards it, while BGRA/RGBA swaps preserve it. Float32 BGR/RGB
 is normally scaled to 0..1; **normalize before Float32 Lab/Luv** for meaningful
 sRGB-oriented results. No value sanitizer rejects out-of-range finite values.
@@ -439,6 +441,57 @@ participate. Source remains unchanged for distinct Destination; same-object
 conversion is supported. Destination is rebound only after successful native
 conversion. The raw bridge also checks actual source byte stride and derived
 output byte stride for reachable optional IPP paths which narrow them to int.
+
+### Portable packed BGR565 / BGR555
+
+BGR565/BGR555 are exposed as **UInt8 C2** because that is OpenCV's native Mat
+representation. The two bytes use the host's native 16-bit byte order.
+This API does not define a network/file-format byte order. They are not
+UInt16 C1 images; logical rows and columns are unchanged.
+
+All twenty selectors are available through `Convert_Color`:
+
+| Source | BGR565 selector | BGR555 selector | Destination |
+| --- | --- | --- | --- |
+| BGR C3 | `BGR_To_BGR565` | `BGR_To_BGR555` | packed C2 |
+| RGB C3 | `RGB_To_BGR565` | `RGB_To_BGR555` | packed C2 |
+| BGRA C4 | `BGRA_To_BGR565` | `BGRA_To_BGR555` | packed C2 |
+| RGBA C4 | `RGBA_To_BGR565` | `RGBA_To_BGR555` | packed C2 |
+| Gray C1 | `Gray_To_BGR565` | `Gray_To_BGR555` | packed C2 |
+| packed C2 | `BGR565_To_BGR` | `BGR555_To_BGR` | BGR C3 |
+| packed C2 | `BGR565_To_RGB` | `BGR555_To_RGB` | RGB C3 |
+| packed C2 | `BGR565_To_BGRA` | `BGR555_To_BGRA` | BGRA C4 |
+| packed C2 | `BGR565_To_RGBA` | `BGR555_To_RGBA` | RGBA C4 |
+| packed C2 | `BGR565_To_Gray` | `BGR555_To_Gray` | Gray C1 |
+
+Every source must be nonempty, 2-D, **UInt8**, with exactly the listed channels.
+Other depths, including UInt16 and Float32, raise `OpenCV_Error`.
+
+In a native word, BGR565 stores blue in bits 0..4, green in 5..10 and red in
+11..15. BGR555 stores blue in 0..4, green in 5..9, red in 10..14 and an alpha
+flag in bit 15. RGB/RGBA selectors interpret source channel order but produce
+the **same** BGR packed layout, not an RGB packed format.
+
+Native packing truncates low bits. Expansion uses shifts without low-bit
+replication: maximum B/R is 248; maximum green is 252 for BGR565 and 248 for
+BGR555. Gray packing quantizes each color field; packed-to-Gray applies native
+integer luminance coefficients to the expanded colors. Arbitrary Gray round
+trips are therefore not exact (white becomes 250 via BGR565, 248 via BGR555).
+
+**Alpha:** BGR565 ignores C4 input alpha and always expands alpha to 255.
+BGR555 packs C4 alpha as a boolean nonzero flag: 0 expands to 0; 1, 128 and
+255 all expand to 255. **C3 and Gray packing leave the BGR555 alpha bit zero**,
+so subsequent BGRA/RGBA expansion has alpha 0, not 255.
+
+Source Regions use only their logical geometry and actual row stride; no
+parent pixels participate and no isolation clone is needed. Conversion builds
+fresh storage before rebinding Destination. Same-variable and shared-storage
+conversion are supported; rebinding an old Destination Region does not modify
+its parent, inside or outside the view. Failure leaves Destination unchanged.
+Packed paths reject pixel counts above signed-int range because native CPU
+and optional Carotene scheduling multiply width by height in signed arithmetic.
+See [the pinned source review](docs/packed-color-source-review.md) for exact
+native paths, formulas and boundary checks.
 
 ```ada
 Convert_Color (BGR_Image, Gray_Image, BGR_To_Gray);
@@ -4018,7 +4071,8 @@ The previous **502-test** baseline (before the 20 corner-analysis tests) was:
 | Image accumulation and running statistics | 44 |
 | Phase correlation and Hanning windows | 25 |
 | Kernel generators (Gabor and structuring elements) | 25 |
-| **Total** | **619** |
+| Packed BGR565 / BGR555 conversions | 31 |
+| **Total** | **650** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4088,10 +4142,13 @@ limits height to 92681 on the 32-bit-int ABI; Rectangle/Cross do not share
 that restriction. See [the pinned source review](docs/kernel-generators-source-review.md)
 for OpenCV 4.1/4.10/5.0 differences, formulas and safety reasoning.
 
-The full AUnit suite now registers and passes **619 tests** (baseline 594,
+The kernel-generator slice registered and passed **619 tests** (baseline 594,
 25 new kernel-generator tests), including direct filtering and morphology
 integration. Local runtime validation uses OpenCV 4.10.0; 4.1.0 and 5.0.0
 were source-reviewed, not runtime-tested locally.
+
+The packed-color slice adds 31 focused tests, bringing the complete suite to
+**650 registered, executed and passed tests** from baseline 619.
 
 ## Examples
 
@@ -4761,7 +4818,7 @@ pre-1.0.
 
 Notable Imgproc families that are not yet broadly bound include:
 
-- deferred color layouts: packed BGR565/BGR555, subsampled/packed YUV and
+- deferred color layouts: subsampled/packed YUV and
   two-plane conversion, Bayer/demosaicing, FULL hue variants, linear-light
   Lab/Luv variants, and premultiplied alpha;
 - deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;

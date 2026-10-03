@@ -284,12 +284,16 @@ package body Color_Conversion_Tests is
             Input_Channels  : constant Positive :=
               (if Name (1 .. 5) = "GRAY_"
                then 1
+               elsif Name (1 .. 6) in "BGR565" | "BGR555"
+               then 2
                elsif Name (1 .. 5) = "BGRA_" or else Name (1 .. 5) = "RGBA_"
                then 4
                else 3);
             Output_Channels : constant Positive :=
               (if Name (Name'Last - 4 .. Name'Last) = "_GRAY"
                then 1
+               elsif Name (Name'Last - 5 .. Name'Last) in "BGR565" | "BGR555"
+               then 2
                elsif Name (Name'Last - 4 .. Name'Last) = "_BGRA"
                  or else Name (Name'Last - 4 .. Name'Last) = "_RGBA"
                then 4

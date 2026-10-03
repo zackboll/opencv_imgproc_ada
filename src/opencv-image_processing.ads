@@ -190,7 +190,35 @@ package OpenCV.Image_Processing is
       BGR_To_Luv,
       RGB_To_Luv,
       Luv_To_BGR,
-      Luv_To_RGB);
+      Luv_To_RGB,
+      BGR_To_BGR565,
+      RGB_To_BGR565,
+      BGRA_To_BGR565,
+      RGBA_To_BGR565,
+      BGR565_To_BGR,
+      BGR565_To_RGB,
+      BGR565_To_BGRA,
+      BGR565_To_RGBA,
+      Gray_To_BGR565,
+      BGR565_To_Gray,
+      BGR_To_BGR555,
+      RGB_To_BGR555,
+      BGRA_To_BGR555,
+      RGBA_To_BGR555,
+      BGR555_To_BGR,
+      BGR555_To_RGB,
+      BGR555_To_BGRA,
+      BGR555_To_RGBA,
+      Gray_To_BGR555,
+      BGR555_To_Gray);
+
+   --  Packed conversions require UInt8. BGR565/BGR555 use UInt8 C2,
+   --  OpenCV's native Mat representation: two bytes per native 16-bit word.
+   --  Byte order is host-native, not a network/file-format byte order.
+   --  RGB/RGBA selectors interpret channel order, not a new packed layout.
+   --  Packing truncates; unpacking does not replicate low color bits.
+   --  BGR565 ignores input alpha and expands alpha to 255. BGR555 uses
+   --  bit 15 as nonzero-alpha flag; C3 and Gray packing leave it zero.
 
    type Interpolation_Method is
      (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4);
