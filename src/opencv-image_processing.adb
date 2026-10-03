@@ -3617,8 +3617,8 @@ package body OpenCV.Image_Processing is
               To_C_Gaussian_Kernel_Depth (Depth));
       end Output;
    begin
-      if Kernel_Size.Width <= 0
-        or else Kernel_Size.Height <= 0
+      if Kernel_Size.Width = 0
+        or else Kernel_Size.Height = 0
         or else Kernel_Size.Width mod 2 = 0
         or else Kernel_Size.Height mod 2 = 0
       then
@@ -3661,7 +3661,7 @@ package body OpenCV.Image_Processing is
               Interfaces.Integer_32 (Anchor.Y));
       end Output;
    begin
-      if Kernel_Size.Width <= 0 or else Kernel_Size.Height <= 0 then
+      if Kernel_Size.Width = 0 or else Kernel_Size.Height = 0 then
          raise OpenCV.OpenCV_Error with "Structuring size must be positive";
       end if;
       if Anchor.X < 0
