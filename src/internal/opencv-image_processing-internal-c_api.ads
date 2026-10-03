@@ -8,6 +8,23 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Status is new Interfaces.Integer_32;
 
+   function Phase_Correlate
+     (Source_1, Source_2, Window : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      X, Y, Response             : access Interfaces.C.double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_phase_correlate";
+
+   function Create_Hanning_Window
+     (Width, Height, Depth : Interfaces.Integer_32;
+      Result               : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_create_hanning_window";
+
    function Accumulate_Image
      (Source_1, Source_2, Base, Mask :
         OpenCV.Core.Module_Interop.Input_Mat_Handle;
