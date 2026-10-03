@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **594 AUnit tests**
+> **Current registered test baseline:** **619 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -4017,7 +4017,8 @@ The previous **502-test** baseline (before the 20 corner-analysis tests) was:
 | Corner analysis and subpixel regressions | 23 |
 | Image accumulation and running statistics | 44 |
 | Phase correlation and Hanning windows | 25 |
-| **Total** | **594** |
+| Kernel generators (Gabor and structuring elements) | 25 |
+| **Total** | **619** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4040,6 +4041,57 @@ GitHub Actions runs the test crate on Linux and macOS for pull requests, and
 additionally on Windows for `main` pushes and manual dispatch.
 
 ---
+
+## Reusable kernel generators
+
+All generators return fresh owning `OpenCV.Core.Mat` values:
+
+| Generator | Result and consumer |
+|---|---|
+| `Get_Gaussian_Kernel` | Gaussian column coefficients for `Sep_Filter_2D` |
+| `Get_Derivative_Kernels` | Sobel-family X/Y pair for `Sep_Filter_2D` |
+| `Get_Scharr_Kernels` | Scharr X/Y pair for `Sep_Filter_2D` |
+| `Get_Gabor_Kernel` | 2-D Float32/Float64 C1 coefficients for `Filter_2D` |
+| `Get_Structuring_Element` | UInt8 C1 mask for `Erode`, `Dilate`, `Apply_Morphology` |
+
+`Get_Gabor_Kernel (Kernel_Size, Sigma, Orientation_Radians, Wavelength,
+Aspect_Ratio, Phase_Offset_Radians, Depth)` requires **positive odd width and
+height**, guaranteeing exact requested geometry. Native automatic sizing is
+not exposed: zero/negative dimensions are not sentinels. Sigma is Gaussian
+envelope standard deviation, Wavelength is sinusoid wavelength, Aspect_Ratio
+is spatial aspect ratio (native gamma), and orientation and phase are finite
+**radians**. Phase defaults to pi/2. Sigma, wavelength and aspect ratio must
+be finite and strictly positive; angles are not normalized. Depth defaults
+to `Float64_Kernel`, with `Float32_Kernel` also supported through the
+`Gabor_Kernel_Depth` subtype. Invalid public inputs raise `OpenCV_Error`.
+
+Coefficients are neither normalized nor transposed/reversed by Ada. Native
+coordinates (x,y) are stored at (height/2-y,width/2-x), preserving OpenCV's
+180-degree coordinate reversal, including its phase consequence. Extreme
+finite parameters may produce nonfinite coefficients through native derived
+IEEE arithmetic; no arbitrary numerical cutoff is imposed.
+
+`Get_Structuring_Element (Kernel_Size, Shape)` uses the centered anchor
+(width/2,height/2). Its explicit-anchor overload requires an anchor inside
+the kernel and exposes no negative sentinel. Positive dimensions may be
+even. The existing `Morphology_Shape` remains exactly `Rectangle`, `Cross`,
+`Ellipse`. Output values are **0/1**, never scaled to 255. Rectangle/Ellipse
+geometry ignores the generating anchor; Cross geometry includes its row and
+column. Mats retain no anchor metadata: pass the intended explicit anchor
+again when applying an off-center Cross. Size (1,1) always yields Rectangle,
+even when Cross or Ellipse was requested. OpenCV-5-only `MORPH_DIAMOND` is
+deliberately excluded for OpenCV 4 portability.
+
+Native allocation and signed arithmetic limits raise `OpenCV_Error` before
+unsafe native work. In particular Ellipse's signed radius-square arithmetic
+limits height to 92681 on the 32-bit-int ABI; Rectangle/Cross do not share
+that restriction. See [the pinned source review](docs/kernel-generators-source-review.md)
+for OpenCV 4.1/4.10/5.0 differences, formulas and safety reasoning.
+
+The full AUnit suite now registers and passes **619 tests** (baseline 594,
+25 new kernel-generator tests), including direct filtering and morphology
+integration. Local runtime validation uses OpenCV 4.10.0; 4.1.0 and 5.0.0
+were source-reviewed, not runtime-tested locally.
 
 ## Examples
 

@@ -285,6 +285,8 @@ package OpenCV.Image_Processing is
 
    subtype Derivative_Kernel_Depth is Gaussian_Kernel_Depth;
 
+   subtype Gabor_Kernel_Depth is Gaussian_Kernel_Depth;
+
    type Derivative_Kernel_Normalization is (Unnormalized, Normalized);
 
    type Derivative_Kernels is record
@@ -467,6 +469,19 @@ package OpenCV.Image_Processing is
 
    type Morphology_Shape is (Rectangle, Cross, Ellipse);
 
+   --  Fresh UInt8 C1 mask with native 0/1 values and exact positive size.
+   --  Even dimensions are supported. Size (1, 1) is always Rectangle.
+   --  Only Cross geometry depends on Anchor; Mat retains no anchor metadata.
+   --  Pass the intended anchor again when applying a custom Cross kernel.
+   --  The centered overload uses (Width / 2, Height / 2).
+   function Get_Structuring_Element
+     (Kernel_Size : OpenCV.Size; Shape : Morphology_Shape := Rectangle)
+      return OpenCV.Core.Mat;
+   function Get_Structuring_Element
+     (Kernel_Size : OpenCV.Size;
+      Shape       : Morphology_Shape;
+      Anchor      : OpenCV.Point) return OpenCV.Core.Mat;
+
    type Morphology_Operation is
      (Opening, Closing, Gradient, Top_Hat, Black_Hat);
 
@@ -549,6 +564,25 @@ package OpenCV.Image_Processing is
      (Kernel_Size : Gaussian_Kernel_Size;
       Sigma       : OpenCV.Float64_Value;
       Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
+      return OpenCV.Core.Mat;
+
+   --  Fresh C1 kernel with exactly the requested positive odd dimensions.
+   --  Native automatic sizing is deliberately not exposed. Sigma,
+   --  Wavelength and Aspect_Ratio must be positive finite values; angles
+   --  must be finite radians and are not normalized. Invalid inputs raise
+   --  OpenCV_Error. Extreme finite parameters retain native IEEE behavior
+   --  and may produce nonfinite coefficients through derived expressions.
+   --  No normalization, reversal or transposition is performed: native
+   --  coordinates (x, y) are stored at (Height / 2 - y, Width / 2 - x).
+   function Get_Gabor_Kernel
+     (Kernel_Size          : OpenCV.Size;
+      Sigma                : OpenCV.Float64_Value;
+      Orientation_Radians  : OpenCV.Float64_Value;
+      Wavelength           : OpenCV.Float64_Value;
+      Aspect_Ratio         : OpenCV.Float64_Value;
+      Phase_Offset_Radians : OpenCV.Float64_Value :=
+        OpenCV.Float64_Value (Ada.Numerics.Pi / 2.0);
+      Depth                : Gabor_Kernel_Depth := Float64_Kernel)
       return OpenCV.Core.Mat;
 
    --  Get_Derivative_Kernels generates the separable 1-D Sobel-family

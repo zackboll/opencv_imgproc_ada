@@ -4344,6 +4344,97 @@ opencv_imgproc_gaussian_blur(
 }
 
 opencv_imgproc_status
+opencv_imgproc_get_gabor_kernel(
+    opencv_core_mat_handle *destination,
+    int32_t width, int32_t height, double sigma, double orientation,
+    double wavelength, double aspect_ratio, double phase, int32_t depth)
+{
+    clear_error();
+    try {
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK
+            || !dst)
+            return invalid_argument("invalid destination Mat");
+        int native_depth = 0;
+        if (!to_opencv_gaussian_kernel_depth(depth, native_depth))
+            return invalid_argument("unsupported Gabor depth");
+        // ABI safety: nonpositive dimensions select cvRound of parameter-
+        // derived extents, which may be nonfinite or outside signed int.
+        if (width <= 0 || height <= 0)
+            return invalid_argument("unsafe Gabor automatic size");
+        const int64_t cols = 2 * (static_cast<int64_t>(width) / 2) + 1;
+        const int64_t rows = 2 * (static_cast<int64_t>(height) / 2) + 1;
+        // ABI safety: native xmax-xmin+1/ymax-ymin+1 and reversed indices
+        // must fit int. Loop maxima are at most INT_MAX/2, so ++ is safe.
+        if (cols > INT_MAX || rows > INT_MAX)
+            return invalid_argument("Gabor signed extent overflow");
+        const uint64_t w = static_cast<uint64_t>(cols);
+        const uint64_t h = static_cast<uint64_t>(rows);
+        const uint64_t bytes = native_depth == CV_32F ? 4 : 8;
+        // ABI safety: 4.1 setSize multiplies in int64; allocator and
+        // finalizeHdr form size_t byte products and end pointers. Reserve
+        // fastMalloc alignment/header space, also on 32-bit hosts.
+        const uint64_t limit = std::min<uint64_t>(
+            PTRDIFF_MAX, SIZE_MAX - 64 - sizeof(void *));
+        if (w > limit / bytes || w > limit / h ||
+            w * h > limit / bytes)
+            return invalid_argument("Gabor allocation overflow");
+        cv::Mat result = cv::getGaborKernel(cv::Size(width, height), sigma,
+            orientation, wavelength, aspect_ratio, phase, native_depth);
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_get_structuring_element(
+    opencv_core_mat_handle *destination,
+    int32_t width, int32_t height, int32_t shape,
+    int32_t anchor_x, int32_t anchor_y)
+{
+    clear_error();
+    try {
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK
+            || !dst)
+            return invalid_argument("invalid destination Mat");
+        int native_shape = 0;
+        if (!to_opencv_morphology_shape(shape, native_shape))
+            return invalid_argument("unsupported structuring shape");
+        // ABI safety: reject negative extents before unsigned products;
+        // zero height would divide by zero in the allocation preflight.
+        if (width <= 0 || height <= 0)
+            return invalid_argument("unsafe structuring extent");
+        const uint64_t w = static_cast<uint64_t>(width);
+        const uint64_t h = static_cast<uint64_t>(height);
+        const uint64_t limit = std::min<uint64_t>(
+            PTRDIFF_MAX, SIZE_MAX - 64 - sizeof(void *));
+        // ABI safety: Mat row/total bytes, signed 4.1 setSize product and
+        // allocator alignment/header addition must all be representable.
+        if (w > limit || w > limit / h)
+            return invalid_argument("structuring allocation overflow");
+        if (native_shape == cv::MORPH_ELLIPSE) {
+            const int64_t r = static_cast<int64_t>(height) / 2;
+            const int64_t c = static_cast<int64_t>(width) / 2;
+            // ABI safety: native r*r-dy*dy is evaluated in signed int
+            // before sqrt; c+dx+1 must fit even for the center row dx=c.
+            if (r * r > INT_MAX || 2 * c + 1 > INT_MAX)
+                return invalid_argument("ellipse signed arithmetic overflow");
+        }
+        // normalizeAnchor asserts containment before using anchor.x in
+        // j1+1 or mask indexing. Malformed anchors safely throw there.
+        cv::Mat result = cv::getStructuringElement(native_shape,
+            cv::Size(width, height), cv::Point(anchor_x, anchor_y));
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_get_gaussian_kernel(
     opencv_core_mat_handle *destination,
     int32_t kernel_size,

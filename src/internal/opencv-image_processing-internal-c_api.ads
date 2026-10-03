@@ -454,6 +454,33 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_gaussian_blur";
 
+   function Get_Gabor_Kernel
+     (Destination  : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Width        : Interfaces.Integer_32;
+      Height       : Interfaces.Integer_32;
+      Sigma        : Interfaces.C.double;
+      Orientation  : Interfaces.C.double;
+      Wavelength   : Interfaces.C.double;
+      Aspect_Ratio : Interfaces.C.double;
+      Phase        : Interfaces.C.double;
+      Depth        : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_get_gabor_kernel";
+
+   function Get_Structuring_Element
+     (Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Width       : Interfaces.Integer_32;
+      Height      : Interfaces.Integer_32;
+      Shape       : Interfaces.Integer_32;
+      Anchor_X    : Interfaces.Integer_32;
+      Anchor_Y    : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_get_structuring_element";
+
    function Get_Gaussian_Kernel
      (Destination  : OpenCV.Core.Module_Interop.Output_Mat_Handle;
       Kernel_Size  : Interfaces.Integer_32;
