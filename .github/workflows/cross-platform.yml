@@ -340,18 +340,62 @@ jobs:
             'Building External_Relocatable OpenCV Imgproc shim' \
             "${log}"
 
+      - name: Resolve configured Windows C++ toolchain
+        run: |
+          set -eu
+
+          mapfile -t cxx_drivers < <(
+            sed -n \
+              's/^[[:space:]]*Cxx_Driver := "\(.*\)";[[:space:]]*$/\1/p' \
+              config/opencv_imgproc_install.gpr
+          )
+
+          if [ "${#cxx_drivers[@]}" -ne 1 ] || [ -z "${cxx_drivers[0]}" ]; then
+            echo "error: expected exactly one nonempty configured Cxx_Driver" >&2
+            exit 1
+          fi
+
+          cxx_driver="${cxx_drivers[0]}"
+          echo "Configured Windows C++ driver: ${cxx_driver}"
+
+          case "${cxx_driver}" in
+            *gnat_native*)
+              echo "error: production build selected GNAT g++: ${cxx_driver}" >&2
+              exit 1
+              ;;
+
+            */mingw64/bin/g++.exe|*/mingw64/bin/g++)
+              ;;
+
+            *)
+              echo "error: expected MSYS2 MinGW64 g++, got: ${cxx_driver}" >&2
+              exit 1
+              ;;
+          esac
+
+          test -f "${cxx_driver}"
+
+          # Use Git Bash's POSIX path form when adding the runtime directory to PATH.
+          mingw_bin="$(cygpath -u "$(dirname "${cxx_driver}")")"
+          echo "Configured MinGW runtime directory: ${mingw_bin}"
+
+          printf 'IMGPROC_WINDOWS_CXX=%s\n' \
+            "${cxx_driver}" >> "${GITHUB_ENV}"
+          printf 'IMGPROC_WINDOWS_MINGW_BIN=%s\n' \
+            "${mingw_bin}" >> "${GITHUB_ENV}"
+
       - name: Run EMD signature index boundary test
         run: |
-          /mingw64/bin/g++.exe -std=c++17 -Wall -Wextra -Werror \
+          "${IMGPROC_WINDOWS_CXX}" -std=c++17 -Wall -Wextra -Werror \
             tests/emd_signature_index_test.cpp -o emd_signature_index_test.exe
-          PATH="/mingw64/bin:$PATH" ./emd_signature_index_test.exe
+          PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./emd_signature_index_test.exe
 
       - name: Run Bayer arithmetic boundary tests
         run: |
-          /mingw64/bin/g++.exe -std=c++17 \
+          "${IMGPROC_WINDOWS_CXX}" -std=c++17 \
             -Wall -Wextra -Wpedantic -Werror \
             tests/bayer_layout_test.cpp -o bayer_layout_test.exe
-          PATH="/mingw64/bin:$PATH" ./bayer_layout_test.exe
+          PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./bayer_layout_test.exe
 
       - name: Verify Imgproc Windows shim isolation
         run: |
@@ -523,6 +567,6 @@ jobs:
 
       - name: Run YUV420 arithmetic boundary tests
         run: |
-          /mingw64/bin/g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+          "${IMGPROC_WINDOWS_CXX}" -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             tests/yuv420_layout_test.cpp -o yuv420_layout_test.exe
-          ./yuv420_layout_test.exe
+          PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./yuv420_layout_test.exe
