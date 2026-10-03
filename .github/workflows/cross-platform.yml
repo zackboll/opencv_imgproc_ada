@@ -232,7 +232,7 @@ jobs:
         run: alr -n -C tests run
 
       - name: Run Bayer Gray overflow boundary regression
-        run: CXX="$(xcrun --find clang++)" sh tests/run_bayer_gray_test.sh
+        run: sh tests/run_bayer_gray_test.sh
 
   # Windows/MSYS2 is expensive, so it runs after merge on main and on
   # manual dispatch, but is skipped for pull-request review iterations.

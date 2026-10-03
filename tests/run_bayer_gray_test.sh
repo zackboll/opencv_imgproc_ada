@@ -16,7 +16,17 @@ include=$(pkg-config --variable=includedir "$package")
 if [ -z "$include" ]; then
     include=$(pkg-config --variable=includedir_new "$package")
 fi
-cxx=${CXX:-c++}
+compile_cpp()
+{
+    if [ -n "${CXX:-}" ]; then
+        "$CXX" "$@"
+    elif [ "$(uname -s)" = "Darwin" ]; then
+        xcrun clang++ "$@"
+    else
+        c++ "$@"
+    fi
+}
+
 mkdir -p tests/bin
 for mode in installed legacy; do
     define=
@@ -25,7 +35,7 @@ for mode in installed legacy; do
     fi
     # pkg-config flags are intentionally word-split. Mark upstream headers
     # as system headers; all project C++ remains strict warnings-as-errors.
-    "$cxx" -std=c++17 -Wall -Wextra -Wpedantic -Werror $define \
+    compile_cpp -std=c++17 -Wall -Wextra -Wpedantic -Werror $define \
         $(pkg-config --cflags "$package") -isystem "$include" \
         -I"$core/cpp" tests/bayer_gray_runtime_test.cpp \
         -L"$core/lib" -lopencv_core_shim \
