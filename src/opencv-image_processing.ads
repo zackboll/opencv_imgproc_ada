@@ -567,6 +567,52 @@ package OpenCV.Image_Processing is
 
    subtype Affine_Mapping_Direction is Warp_Mapping_Direction;
 
+   type YUV420_Layout is (I420, YV12, NV12, NV21);
+   subtype YUV420_Planar_Layout is YUV420_Layout range I420 .. YV12;
+   subtype YUV420_Semiplanar_Layout is YUV420_Layout range NV12 .. NV21;
+   type YUV420_Color_Output is
+     (BGR_Output, RGB_Output, BGRA_Output, RGBA_Output);
+   type YUV_Color_Order is (BGR_Order, RGB_Order);
+
+   --  Packed sources/results are UInt8 C1, W columns and H+H/2 rows.
+   --  Logical W/H are positive even values, at least 2. I420 is Y,U,V;
+   --  YV12 is Y,V,U; NV12 is Y then U,V pairs; NV21 is Y then V,U pairs.
+   --  All operations take packed independent snapshots, leave inputs
+   --  unchanged and return fresh owning Mats. Violations raise OpenCV_Error.
+   --  A packed Region must itself contain a complete standalone frame:
+   --  parent plane offsets and ROI origins are never inferred.
+   --  Native BT.601 limited-range conversion accepts all byte values.
+   --  Vendor rounding can differ from the portable 20-bit CPU arithmetic.
+   function Decode_YUV420
+     (Source : OpenCV.Core.Mat;
+      Layout : YUV420_Layout;
+      Output : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
+   --  UInt8 H x W C3 BGR/RGB or C4 BGRA/RGBA, with alpha 255.
+
+   function Decode_YUV420_Two_Plane
+     (Y_Plane  : OpenCV.Core.Mat;
+      UV_Plane : OpenCV.Core.Mat;
+      Layout   : YUV420_Semiplanar_Layout;
+      Output   : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
+   --  Y: nonempty 2-D UInt8 C1 H x W. UV: UInt8 C2 H/2 x W/2.
+   --  Caller supplies corresponding planes/Regions; no chroma phase is
+   --  inferred. Independent packed snapshots have equal byte step W,
+   --  normalizing OpenCV 4.1's shared-stride assumption. Both semiplanar
+   --  decode forms use cvtColorTwoPlane, with exact representation equality.
+
+   function Encode_YUV420_Planar
+     (Source : OpenCV.Core.Mat;
+      Layout : YUV420_Planar_Layout;
+      Order  : YUV_Color_Order := BGR_Order) return OpenCV.Core.Mat;
+   --  Nonempty 2-D UInt8 C3/C4, even W/H >=2. BGR_Order means BGR/BGRA;
+   --  RGB_Order means RGB/RGBA. Alpha is ignored, not premultiplied.
+   --  Native encoding computes Y per pixel and samples U/V at the top-left
+   --  pixel of each 2x2 block, without averaging. Subsampling is lossy.
+
+   function Extract_YUV420_Luma
+     (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+   --  Raw Y bytes, UInt8 C1 H x W, with no subtract-16 or rescaling.
+
    type Bayer_Pattern is (RGGB, GRBG, BGGR, GBRG);
    type Bayer_Demosaicing_Method is
      (Bilinear, Variable_Number_Of_Gradients, Edge_Aware);

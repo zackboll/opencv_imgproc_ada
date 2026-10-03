@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **730 AUnit tests**
+> **Current registered test baseline:** **780 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -52,6 +52,7 @@ Ada package, and built libraries serve different roles.
 - [Integral images](#integral-images)
 - [Image accumulation and running statistics](#image-accumulation-and-running-statistics)
 - [Color conversion](#color-conversion)
+- [YUV 4:2:0](#yuv-420)
 - [Bayer demosaicing](#bayer-demosaicing)
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
@@ -399,6 +400,105 @@ Float64
 ```
 
 Individual operations may intentionally support a narrower set.
+
+---
+
+## YUV 4:2:0
+
+Frame conversion is deliberately **separate from `Color_Conversion`** because
+YUV420 changes geometry and can have two independent source planes:
+
+```ada
+type YUV420_Layout is (I420, YV12, NV12, NV21);
+subtype YUV420_Planar_Layout is YUV420_Layout range I420 .. YV12;
+subtype YUV420_Semiplanar_Layout is YUV420_Layout range NV12 .. NV21;
+type YUV420_Color_Output is
+  (BGR_Output, RGB_Output, BGRA_Output, RGBA_Output);
+type YUV_Color_Order is (BGR_Order, RGB_Order);
+
+function Decode_YUV420
+  (Source : OpenCV.Core.Mat;
+   Layout : YUV420_Layout;
+   Output : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
+function Decode_YUV420_Two_Plane
+  (Y_Plane, UV_Plane : OpenCV.Core.Mat;
+   Layout : YUV420_Semiplanar_Layout;
+   Output : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
+function Encode_YUV420_Planar
+  (Source : OpenCV.Core.Mat;
+   Layout : YUV420_Planar_Layout;
+   Order : YUV_Color_Order := BGR_Order) return OpenCV.Core.Mat;
+function Extract_YUV420_Luma
+  (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+```
+
+Logical width `W` and height `H` must both be even and at least 2. The packed
+representation is **UInt8 C1, W columns, H + H/2 rows** (canonical OpenCV
+`W x 3H/2`). Packed rows must be divisible by 3. All layouts start with
+`W*H` Y bytes. In the flat logical row-major stream:
+
+| Layout | Bytes following Y |
+|---|---|
+| I420 | `W*H/4` U bytes, then `W*H/4` V bytes |
+| YV12 | `W*H/4` V bytes, then `W*H/4` U bytes |
+| NV12 | interleaved `U,V` pairs |
+| NV21 | interleaved `V,U` pairs |
+
+Two-plane decode accepts **only** Y = UInt8 C1 `H x W` and UV = UInt8 C2
+`H/2 x W/2`. A C1 chroma byte matrix, C3/C4 UV, alternate depths, ND Mats,
+or mismatched dimensions are not accepted.
+
+| Output | Result | Color order |
+|---|---|---|
+| BGR_Output | UInt8 C3 `H x W` | B, G, R |
+| RGB_Output | UInt8 C3 `H x W` | R, G, B |
+| BGRA_Output | UInt8 C4 `H x W` | B, G, R, 255 |
+| RGBA_Output | UInt8 C4 `H x W` | R, G, B, 255 |
+
+Encoding accepts UInt8 C3/C4 `H x W`, produces I420 or YV12 UInt8 C1
+`(H+H/2) x W`, and interprets `BGR_Order` as BGR/BGRA and `RGB_Order` as
+RGB/RGBA. **Alpha is ignored**, including 0, 1, 128 and 255: no premultiplication
+is performed. **NV12/NV21 encoding and two-plane encoding are not provided.**
+
+This is native **BT.601-style limited-range** conversion: nominal Y 16..235,
+Cb/Cr 16..240 with center 128. Every UInt8 byte is accepted, including values
+outside those nominal ranges; decode clamps `Y-16` below zero and saturates
+RGB. Portable CPU encode/decode use the pinned 20-bit fixed-point coefficients.
+Vendor implementations can have different rounding; arbitrary vendor/build
+pixel identity is not promised. **Luma extraction copies raw Y bytes exactly**
+using `COLOR_YUV2GRAY_420`; it neither subtracts 16 nor rescales to full range.
+
+The reviewed scalar and SIMD encoders compute Y for **every pixel**, but U/V
+for each 2x2 block use **only its top-left color sample**, not an average of the
+four colors. Changing unsampled colors changes their Y values, not that block's
+U/V. YUV420 chroma subsampling and integer quantization are lossy; arbitrary
+RGB round trips are not identity transforms.
+
+Every source is copied manually by logical rows into independent packed Mats,
+without passing arbitrary parent strides into optional copy/YUV backends.
+Inputs stay unchanged, results own fresh storage, and invalid public inputs
+raise `OpenCV.OpenCV_Error`. Native arithmetic/address-span limits are checked
+before allocation; there are no arbitrary practical image-size caps.
+
+**Regions are standalone logical buffers.** A packed Region must itself contain
+the entire valid frame layout; parent plane offsets are never inferred. Y and
+UV Regions must describe corresponding planes supplied by the caller; parent
+ROI origins are not used to infer chroma phase. Outside-parent pixels cannot
+participate. Independent Y and UV snapshots both have byte step W, normalizing
+**OpenCV 4.1's shared Y/UV stride** even when the original parent strides differ.
+
+Both packed and separate NV12/NV21 decode intentionally use the same public
+`cv::cvtColorTwoPlane` route after snapshots, so the two representations decode
+**exactly equally** within a native build. On 4.1 this deliberately bypasses
+packed `cvtColor`'s single-buffer HAL/Carotene opportunity; the pair API goes
+to CPU dispatch. On 4.10/5.0 the pair API can reach expanded separate-plane HAL
+implementations. No global acceleration switch or hint policy is introduced.
+I420/YV12 and luma retain their natural native `cvtColor` routes.
+
+**50 focused new AUnit tests**, baseline 730: **780 registered, 780 executed,
+780 passed**, zero failed assertions and unexpected errors locally on 4.10.0.
+Exact 4.1.0/4.10.0/5.0.0 source findings, backend reachability, bounds, and
+runtime limits are recorded in [the source review](docs/yuv420-source-review.md).
 
 ---
 
@@ -4147,7 +4247,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **730-test** distribution is:
+The current **780-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -4196,7 +4296,8 @@ The current **730-test** distribution is:
 | Packed BGR565 / BGR555 conversions | 31 |
 | Extended FULL hue, linear-light Lab/Luv, premultiplied RGBA | 37 |
 | Bayer demosaicing | 43 |
-| **Total** | **730** |
+| YUV 4:2:0 frame conversions | 50 |
+| **Total** | **780** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4953,7 +5054,7 @@ pre-1.0.
 
 Notable Imgproc families that are not yet broadly bound include:
 
-- deferred color layouts: YUV 4:2:x layouts and two-plane YUV conversion;
+- deferred color layouts: YUV 4:2:2 layouts;
 - deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;
 - relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
   calibration/undistortion map generation in the appropriate module;

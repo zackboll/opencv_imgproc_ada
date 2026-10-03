@@ -81,6 +81,12 @@ jobs:
       - name: Run Imgproc tests
         run: alr -n -C tests run
 
+      - name: Run YUV420 arithmetic boundary tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/yuv420_layout_test.cpp -o yuv420_layout_test
+          ./yuv420_layout_test
+
       - name: Run Bayer Gray overflow boundary regression
         run: sh tests/run_bayer_gray_test.sh
 
@@ -182,6 +188,12 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             tests/bayer_layout_test.cpp -o bayer_layout_test
           ./bayer_layout_test
+
+      - name: Run YUV420 arithmetic boundary tests
+        run: |
+          xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/yuv420_layout_test.cpp -o yuv420_layout_test
+          ./yuv420_layout_test
 
       - name: Verify Imgproc shim isolation
         run: |
@@ -508,3 +520,9 @@ jobs:
         run: |
           PATH="$PWD/lib:$PWD/../core/lib:/mingw64/bin:$PATH" \
             alr -n -C tests run
+
+      - name: Run YUV420 arithmetic boundary tests
+        run: |
+          /mingw64/bin/g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/yuv420_layout_test.cpp -o yuv420_layout_test.exe
+          ./yuv420_layout_test.exe

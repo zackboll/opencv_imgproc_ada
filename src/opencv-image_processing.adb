@@ -3636,6 +3636,173 @@ package body OpenCV.Image_Processing is
       end if;
    end Raise_On_Error;
 
+   procedure Validate_YUV420_Bytes
+     (Source : OpenCV.Core.Mat; Channels : OpenCV.Core.Channel_Count)
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+   begin
+      if Source.Is_Empty or else Source.Dimension_Count /= 2 then
+         raise OpenCV.OpenCV_Error with "YUV420 source must be nonempty 2-D";
+      end if;
+      if Source.Depth /= OpenCV.Core.UInt8 or else Source.Channels /= Channels
+      then
+         raise OpenCV.OpenCV_Error with "Invalid YUV420 depth or channels";
+      end if;
+   end Validate_YUV420_Bytes;
+
+   procedure Validate_YUV420_Packed (Source : OpenCV.Core.Mat) is
+   begin
+      Validate_YUV420_Bytes (Source, 1);
+      if Source.Columns < 2
+        or else Source.Columns mod 2 /= 0
+        or else Source.Rows < 3
+        or else Source.Rows mod 3 /= 0
+      then
+         raise OpenCV.OpenCV_Error with "Invalid packed YUV420 geometry";
+      end if;
+   end Validate_YUV420_Packed;
+
+   procedure Validate_YUV420_Geometry (Source : OpenCV.Core.Mat) is
+   begin
+      if Source.Columns < 2
+        or else Source.Rows < 2
+        or else Source.Columns mod 2 /= 0
+        or else Source.Rows mod 2 /= 0
+      then
+         raise OpenCV.OpenCV_Error with "YUV420 requires even W/H >=2";
+      end if;
+   end Validate_YUV420_Geometry;
+
+   function Decode_YUV420
+     (Source : OpenCV.Core.Mat;
+      Layout : YUV420_Layout;
+      Output : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Publish (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Decode_YUV420
+                (S,
+                 D,
+                 Interfaces.Integer_32 (YUV420_Layout'Pos (Layout)),
+                 Interfaces.Integer_32 (YUV420_Color_Output'Pos (Output)));
+         end Publish;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Publish'Access);
+      end Input;
+   begin
+      Validate_YUV420_Packed (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Decode_YUV420");
+      return Destination;
+   end Decode_YUV420;
+
+   function Decode_YUV420_Two_Plane
+     (Y_Plane  : OpenCV.Core.Mat;
+      UV_Plane : OpenCV.Core.Mat;
+      Layout   : YUV420_Semiplanar_Layout;
+      Output   : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input_Y (Y : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Input_UV (UV : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Publish
+              (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Decode_YUV420_Two_Plane
+                   (Y,
+                    UV,
+                    D,
+                    Interfaces.Integer_32 (YUV420_Layout'Pos (Layout)),
+                    Interfaces.Integer_32 (YUV420_Color_Output'Pos (Output)));
+            end Publish;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Destination, Publish'Access);
+         end Input_UV;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (UV_Plane, Input_UV'Access);
+      end Input_Y;
+   begin
+      Validate_YUV420_Bytes (Y_Plane, 1);
+      Validate_YUV420_Bytes (UV_Plane, 2);
+      Validate_YUV420_Geometry (Y_Plane);
+      if UV_Plane.Rows /= Y_Plane.Rows / 2
+        or else UV_Plane.Columns /= Y_Plane.Columns / 2
+      then
+         raise OpenCV.OpenCV_Error with "YUV420 plane dimensions mismatch";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Y_Plane, Input_Y'Access);
+      Raise_On_Error (Status, "Decode_YUV420_Two_Plane");
+      return Destination;
+   end Decode_YUV420_Two_Plane;
+
+   function Encode_YUV420_Planar
+     (Source : OpenCV.Core.Mat;
+      Layout : YUV420_Planar_Layout;
+      Order  : YUV_Color_Order := BGR_Order) return OpenCV.Core.Mat
+   is
+      use type OpenCV.Core.Channel_Count;
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Publish (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Encode_YUV420_Planar
+                (S,
+                 D,
+                 Interfaces.Integer_32 (YUV420_Layout'Pos (Layout)),
+                 Interfaces.Integer_32 (YUV_Color_Order'Pos (Order)));
+         end Publish;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Publish'Access);
+      end Input;
+   begin
+      Validate_YUV420_Bytes (Source, Source.Channels);
+      if Source.Channels not in 3 | 4 then
+         raise OpenCV.OpenCV_Error with "YUV420 encode requires C3 or C4";
+      end if;
+      Validate_YUV420_Geometry (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Encode_YUV420_Planar");
+      return Destination;
+   end Encode_YUV420_Planar;
+
+   function Extract_YUV420_Luma
+     (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Publish (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status := Internal.C_API.Extract_YUV420_Luma (S, D);
+         end Publish;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Publish'Access);
+      end Input;
+   begin
+      Validate_YUV420_Packed (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Extract_YUV420_Luma");
+      return Destination;
+   end Extract_YUV420_Luma;
+
    procedure Validate_Bayer
      (Source : OpenCV.Core.Mat; Method : Bayer_Demosaicing_Method := Bilinear)
    is
