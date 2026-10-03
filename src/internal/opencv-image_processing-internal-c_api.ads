@@ -466,6 +466,33 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_last_error_message";
 
+   function Demosaic_Bayer
+     (Source                 : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination            : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Pattern, Method, Order : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_demosaic_bayer";
+
+   function Demosaic_Bayer_Gray
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Pattern     : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_demosaic_bayer_gray";
+
+   function Demosaic_Bayer_Alpha
+     (Source         : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination    : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Pattern, Order : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_demosaic_bayer_alpha";
+
    function Cvt_Color
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;

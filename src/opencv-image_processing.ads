@@ -567,6 +567,40 @@ package OpenCV.Image_Processing is
 
    subtype Affine_Mapping_Direction is Warp_Mapping_Direction;
 
+   type Bayer_Pattern is (RGGB, GRBG, BGGR, GBRG);
+   type Bayer_Demosaicing_Method is
+     (Bilinear, Variable_Number_Of_Gradients, Edge_Aware);
+   type Bayer_Color_Order is (BGR_Order, RGB_Order);
+
+   --  Pattern describes the physical 2x2 CFA at logical Source (0,0).
+   --  Cropping does not automatically adjust the parent's Bayer phase.
+   --  Every operation requires nonempty 2-D C1 UInt8/UInt16, at least 3x3.
+   --  VNG requires UInt8. No depth conversion is performed.
+   --  Source is unchanged; an independent packed snapshot isolates Regions
+   --  from parent pixels. Results are fresh owning Mats of the same size
+   --  and depth. Invalid sources raise OpenCV.OpenCV_Error.
+   --  OpenCV falls back to bilinear demosaicing when either dimension is
+   --  below 8. Older 4.x fallback has native phase/order quirks; see README.
+   --  OpenCV 5 VNG uses reflected padding; cross-version VNG border values
+   --  are not promised identical. The installed algorithm is preserved.
+   function Demosaic_Bayer
+     (Source  : OpenCV.Core.Mat;
+      Pattern : Bayer_Pattern;
+      Method  : Bayer_Demosaicing_Method := Bilinear;
+      Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
+   --  C3 BGR or RGB according to Order.
+
+   function Demosaic_Bayer_To_Gray
+     (Source : OpenCV.Core.Mat; Pattern : Bayer_Pattern)
+      return OpenCV.Core.Mat;
+   --  Direct native Bayer luminance, C1 (not color followed by conversion).
+
+   function Demosaic_Bayer_With_Alpha
+     (Source  : OpenCV.Core.Mat;
+      Pattern : Bayer_Pattern;
+      Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
+   --  Bilinear C4 BGRA/RGBA; native alpha is 255/65535 for UInt8/UInt16.
+
    --  Nonempty 2-D Source, with exactly the channels named by Conversion.
    --  Layout, Gray, XYZ, YCrCb and YUV accept UInt8/UInt16/Float32;
    --  HSV, HLS, Lab and Luv accept UInt8/Float32. Destination retains

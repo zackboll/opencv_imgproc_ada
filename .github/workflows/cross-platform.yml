@@ -72,8 +72,17 @@ jobs:
             tests/emd_signature_index_test.cpp -o emd_signature_index_test
           ./emd_signature_index_test
 
+      - name: Run Bayer arithmetic boundary tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/bayer_layout_test.cpp -o bayer_layout_test
+          ./bayer_layout_test
+
       - name: Run Imgproc tests
         run: alr -n -C tests run
+
+      - name: Run Bayer Gray overflow boundary regression
+        run: sh tests/run_bayer_gray_test.sh
 
   macos-arm64:
     name: macOS ARM64
@@ -168,6 +177,12 @@ jobs:
             tests/emd_signature_index_test.cpp -o emd_signature_index_test
           ./emd_signature_index_test
 
+      - name: Run Bayer arithmetic boundary tests
+        run: |
+          xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/bayer_layout_test.cpp -o bayer_layout_test
+          ./bayer_layout_test
+
       - name: Verify Imgproc shim isolation
         run: |
           set -eu
@@ -215,6 +230,9 @@ jobs:
 
       - name: Run Imgproc tests
         run: alr -n -C tests run
+
+      - name: Run Bayer Gray overflow boundary regression
+        run: sh tests/run_bayer_gray_test.sh
 
   # Windows/MSYS2 is expensive, so it runs after merge on main and on
   # manual dispatch, but is skipped for pull-request review iterations.
@@ -315,6 +333,13 @@ jobs:
           /mingw64/bin/g++.exe -std=c++17 -Wall -Wextra -Werror \
             tests/emd_signature_index_test.cpp -o emd_signature_index_test.exe
           PATH="/mingw64/bin:$PATH" ./emd_signature_index_test.exe
+
+      - name: Run Bayer arithmetic boundary tests
+        run: |
+          /mingw64/bin/g++.exe -std=c++17 \
+            -Wall -Wextra -Wpedantic -Werror \
+            tests/bayer_layout_test.cpp -o bayer_layout_test.exe
+          PATH="/mingw64/bin:$PATH" ./bayer_layout_test.exe
 
       - name: Verify Imgproc Windows shim isolation
         run: |

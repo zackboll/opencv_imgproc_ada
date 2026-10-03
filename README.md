@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **687 AUnit tests**
+> **Current registered test baseline:** **730 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -52,6 +52,7 @@ Ada package, and built libraries serve different roles.
 - [Integral images](#integral-images)
 - [Image accumulation and running statistics](#image-accumulation-and-running-statistics)
 - [Color conversion](#color-conversion)
+- [Bayer demosaicing](#bayer-demosaicing)
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
 - [Gaussian kernel](#gaussian-kernel)
@@ -400,6 +401,99 @@ Float64
 Individual operations may intentionally support a narrower set.
 
 ---
+
+## Bayer demosaicing
+
+Portable native `cv::demosaicing` is separate from `Color_Conversion`:
+
+```ada
+type Bayer_Pattern is (RGGB, GRBG, BGGR, GBRG);
+type Bayer_Demosaicing_Method is
+  (Bilinear, Variable_Number_Of_Gradients, Edge_Aware);
+type Bayer_Color_Order is (BGR_Order, RGB_Order);
+
+function Demosaic_Bayer
+  (Source  : OpenCV.Core.Mat;
+   Pattern : Bayer_Pattern;
+   Method  : Bayer_Demosaicing_Method := Bilinear;
+   Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
+
+function Demosaic_Bayer_To_Gray
+  (Source : OpenCV.Core.Mat; Pattern : Bayer_Pattern)
+   return OpenCV.Core.Mat;
+
+function Demosaic_Bayer_With_Alpha
+  (Source  : OpenCV.Core.Mat;
+   Pattern : Bayer_Pattern;
+   Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
+```
+
+| Operation | Source depth | Output |
+|---|---|---|
+| Bilinear color | UInt8 / UInt16 | C3 BGR or RGB |
+| Variable Number of Gradients (VNG) | **UInt8 only** | C3 BGR or RGB |
+| Edge_Aware | UInt8 / UInt16 | C3 BGR or RGB |
+| Direct bilinear Gray | UInt8 / UInt16 | C1 native luminance |
+| Bilinear with alpha | UInt8 / UInt16 | C4 BGRA or RGBA |
+
+Every call requires a **nonempty 2-D C1 Source with Width/Height >=3**.
+This public minimum avoids native degenerate zero/border-only results.
+Other depths (including UInt16 VNG) reject with `OpenCV.OpenCV_Error`;
+there is no depth conversion. Results preserve rows, columns, and depth.
+The alpha channel comes from native OpenCV: **255 for UInt8, 65535 for
+UInt16**. Ada does not insert alpha or implement interpolation.
+
+On affected legacy OpenCV 4.x releases, an additional UInt16 Bayer-to-Gray
+safety preflight rejects neighborhoods that would overflow the native signed
+fixed-point intermediate. OpenCV **4.5.5+** uses corrected unsigned arithmetic
+and needs no such restriction. See the
+[source/safety review](docs/bayer-demosaicing-source-review.md#legacy-uint16-gray-signed-overflow-safety).
+
+Patterns are physical **2x2 CFA tiles**, not OpenCV's counterintuitive short
+names. For BGR, physical RGGB/GRBG/BGGR/GBRG map to historical BG/GB/RG/GR
+codes respectively. RGB aliases exchange red/blue destinations. No native
+COLOR_Bayer integer constants are public.
+
+**OpenCV falls back to bilinear demosaicing when either dimension is below 8.**
+Requests 3x3 through 7x7 are accepted, not rejected to force gradients.
+There is a native 4.1/4.10 quirk: this fallback does not decode VNG aliases for
+phase/order and behaves as BGGR/BGR; 5.0 corrects the decoding. The binding
+preserves native calls rather than silently substituting a different code.
+For accurate phase/order on small images across all versions, select Bilinear
+explicitly. VNG at >=8 uses the native gradient algorithm.
+
+All methods first make a **packed independent snapshot** of Source. A Region
+is an independent logical Bayer image: outside-parent pixels do not
+participate, and a Region equals its clone with the same explicit Pattern.
+**Pattern refers to logical Source coordinate (0,0)**. Cropping a parent at odd
+row/column offsets changes its Bayer phase; the caller must choose the new
+Pattern. The wrapper never infers or rewrites it from parent offsets.
+
+Source and parent storage are preserved. Each call returns a **fresh owning
+Core Mat**, independent of Source, shared aliases, and other call results.
+Native failure leaves raw destination storage unchanged; exceptions do not
+cross the C ABI.
+
+OpenCV 4.1/4.10 VNG processes source storage directly and manually copies
+border rows. OpenCV 5.0 instead adds two-pixel **BORDER_REFLECT_101** padding.
+The snapshot prevents that padding from extending into Region parent storage.
+**Cross-version VNG border values are not promised identical.** The installed
+OpenCV algorithm is preserved, with no Ada emulation or backend toggles.
+
+See [the exact-tag source/safety review](docs/bayer-demosaicing-source-review.md)
+for signed element-step and row-index bounds, EA's C3 arithmetic, VNG N*147
+scratch/padding checks, allocation portability, and SIMD/backend differences.
+
+This slice adds **43 focused AUnit tests**: baseline 687; **730 registered,
+730 executed, 730 passed**, zero failed assertions and unexpected errors.
+Local execution is OpenCV 4.10.0; 4.1.0/5.0.0 are source-reviewed, not locally
+runtime-tested. Allocation-free native arithmetic checks can be run with:
+
+```sh
+c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+  tests/bayer_layout_test.cpp -o /tmp/bayer_layout_test
+/tmp/bayer_layout_test
+```
 
 ## Color conversion
 
@@ -4053,7 +4147,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **687-test** distribution is:
+The current **730-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -4101,7 +4195,8 @@ The current **687-test** distribution is:
 | Kernel generators (Gabor and structuring elements) | 25 |
 | Packed BGR565 / BGR555 conversions | 31 |
 | Extended FULL hue, linear-light Lab/Luv, premultiplied RGBA | 37 |
-| **Total** | **687** |
+| Bayer demosaicing | 43 |
+| **Total** | **730** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -4858,8 +4953,7 @@ pre-1.0.
 
 Notable Imgproc families that are not yet broadly bound include:
 
-- deferred color layouts: YUV 4:2:x layouts, two-plane YUV conversion,
-  and Bayer/demosaicing;
+- deferred color layouts: YUV 4:2:x layouts and two-plane YUV conversion;
 - deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;
 - relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
   calibration/undistortion map generation in the appropriate module;

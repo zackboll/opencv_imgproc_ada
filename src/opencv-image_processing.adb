@@ -3636,6 +3636,111 @@ package body OpenCV.Image_Processing is
       end if;
    end Raise_On_Error;
 
+   procedure Validate_Bayer
+     (Source : OpenCV.Core.Mat; Method : Bayer_Demosaicing_Method := Bilinear)
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+   begin
+      if Source.Is_Empty or else Source.Dimension_Count /= 2 then
+         raise OpenCV.OpenCV_Error with "Bayer source must be nonempty 2-D";
+      end if;
+      if Source.Channels /= 1
+        or else Source.Columns < 3
+        or else Source.Rows < 3
+      then
+         raise OpenCV.OpenCV_Error
+           with "Bayer source must be C1, at least 3x3";
+      end if;
+      if Source.Depth not in OpenCV.Core.UInt8 | OpenCV.Core.UInt16
+        or else (Method = Variable_Number_Of_Gradients
+                 and then Source.Depth /= OpenCV.Core.UInt8)
+      then
+         raise OpenCV.OpenCV_Error with "Unsupported Bayer source depth";
+      end if;
+   end Validate_Bayer;
+
+   function Demosaic_Bayer
+     (Source  : OpenCV.Core.Mat;
+      Pattern : Bayer_Pattern;
+      Method  : Bayer_Demosaicing_Method := Bilinear;
+      Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Demosaic_Bayer
+                (S,
+                 D,
+                 Interfaces.Integer_32 (Bayer_Pattern'Pos (Pattern)),
+                 Interfaces.Integer_32 (Bayer_Demosaicing_Method'Pos (Method)),
+                 Interfaces.Integer_32 (Bayer_Color_Order'Pos (Order)));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Bayer (Source, Method);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Demosaic_Bayer");
+      return Destination;
+   end Demosaic_Bayer;
+
+   function Demosaic_Bayer_To_Gray
+     (Source : OpenCV.Core.Mat; Pattern : Bayer_Pattern) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Demosaic_Bayer_Gray
+                (S, D, Interfaces.Integer_32 (Bayer_Pattern'Pos (Pattern)));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Bayer (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Demosaic_Bayer_To_Gray");
+      return Destination;
+   end Demosaic_Bayer_To_Gray;
+
+   function Demosaic_Bayer_With_Alpha
+     (Source  : OpenCV.Core.Mat;
+      Pattern : Bayer_Pattern;
+      Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Demosaic_Bayer_Alpha
+                (S,
+                 D,
+                 Interfaces.Integer_32 (Bayer_Pattern'Pos (Pattern)),
+                 Interfaces.Integer_32 (Bayer_Color_Order'Pos (Order)));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Bayer (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Demosaic_Bayer_With_Alpha");
+      return Destination;
+   end Demosaic_Bayer_With_Alpha;
+
    procedure Convert_Color
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
