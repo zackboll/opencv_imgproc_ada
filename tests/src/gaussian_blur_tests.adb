@@ -44,6 +44,7 @@ package body Gaussian_Blur_Tests is
       Destination : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
    begin
+      Source.Set_To ((others => 0.0));
       OpenCV.Core.Float32_Access.Set (Source, 1, 1, 100.0);
 
       OpenCV.Image_Processing.Gaussian_Blur
@@ -64,7 +65,9 @@ package body Gaussian_Blur_Tests is
          and then OpenCV.Core.Float32_Access.Get (Destination, 1, 0) > 0.0,
          "Gaussian blur must spread an impulse to neighboring pixels");
       AUnit.Assertions.Assert
-        (OpenCV.Core.Float32_Access.Get (Source, 1, 1) = 100.0,
+        (OpenCV.Core.Float32_Access.Get (Source, 1, 1) = 100.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 1, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 0.0,
          "Gaussian blur must not modify the source Mat");
    end Float32_Impulse_Blurs_And_Preserves_Source;
 
@@ -102,11 +105,7 @@ package body Gaussian_Blur_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
    begin
       OpenCV.Image_Processing.Gaussian_Blur
-        (Source,
-         Destination,
-         (Width => 3, Height => 3),
-         1.0,
-         OpenCV.Reflect);
+        (Source, Destination, (Width => 3, Height => 3), 1.0, OpenCV.Reflect);
       AUnit.Assertions.Assert
         (Destination.Depth = OpenCV.Core.UInt16
          and then Destination.Channels = 1,
@@ -264,11 +263,7 @@ package body Gaussian_Blur_Tests is
       procedure Attempt is
       begin
          OpenCV.Image_Processing.Gaussian_Blur
-           (Source,
-            Destination,
-            (Width => 3, Height => 3),
-            1.0,
-            OpenCV.Wrap);
+           (Source, Destination, (Width => 3, Height => 3), 1.0, OpenCV.Wrap);
       end Attempt;
    begin
       Assert_Raises_OpenCV_Error
