@@ -260,6 +260,8 @@ opencv_imgproc_status opencv_imgproc_distance_transform_labeled(
 #define OPENCV_IMGPROC_INTER_CUBIC    ((int32_t)2)
 #define OPENCV_IMGPROC_INTER_AREA     ((int32_t)3)
 #define OPENCV_IMGPROC_INTER_LANCZOS4 ((int32_t)4)
+/* Resize only; semantic selectors are not native OpenCV flag values. */
+#define OPENCV_IMGPROC_INTER_LINEAR_EXACT ((int32_t)5)
 
 #define OPENCV_IMGPROC_BORDER_CONSTANT     ((int32_t)0)
 #define OPENCV_IMGPROC_BORDER_REPLICATE    ((int32_t)1)

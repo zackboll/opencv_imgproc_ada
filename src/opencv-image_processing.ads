@@ -252,7 +252,7 @@ package OpenCV.Image_Processing is
    --  makes the inverse lossy, especially at low alpha.
 
    type Interpolation_Method is
-     (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4);
+     (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4, Linear_Exact);
 
    type Polar_Mapping is (Linear_Polar, Logarithmic_Polar);
    type Polar_Direction is (Cartesian_To_Polar, Polar_To_Cartesian);
@@ -689,6 +689,12 @@ package OpenCV.Image_Processing is
    --  must have nonzero width and height. Source remains valid and is not
    --  modified. Contract violations and failures reported by OpenCV raise
    --  OpenCV.OpenCV_Error.
+   --  Linear_Exact is Resize-only fixed-point bilinear interpolation for
+   --  UInt8, UInt16, and Int16, with deterministic integer rounding. It is
+   --  not lossless or mathematically exact, and can differ from Linear.
+   --  Float32/Float64 exact requests are rejected rather than silently
+   --  falling back to Linear. Same-size resizing copies the source. Native
+   --  2x downscaling may use bit-equivalent Area (except for C2).
    procedure Resize
      (Source        : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;

@@ -144,7 +144,7 @@ package body Polar_Transform_Tests is
       OpenCV.Core.Set_To (Parent, (others => 0.0));
       OpenCV.Core.UInt8_Access.Set (View, 4, 6, 200);
       for Method in IP.Interpolation_Method loop
-         if Method /= IP.Area then
+         if Method not in IP.Area | IP.Linear_Exact then
             IP.Warp_Polar
               (View, Dest, (4.0, 4.0), 4.0, (8, 16), Interpolation => Method);
             AUnit.Assertions.Assert

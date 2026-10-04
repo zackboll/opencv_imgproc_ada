@@ -5,6 +5,7 @@
 #include "yuv420_layout_fits.hpp"
 #include "yuv422_layout_fits.hpp"
 #include "morphology_expansion_fits.hpp"
+#include "resize_exact_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -569,6 +570,16 @@ bool to_opencv_interpolation(
     default:
         return false;
     }
+}
+
+bool to_opencv_resize_interpolation(
+    int32_t interpolation, int &opencv_interpolation) noexcept
+{
+    if (interpolation == OPENCV_IMGPROC_INTER_LINEAR_EXACT) {
+        opencv_interpolation = cv::INTER_LINEAR_EXACT;
+        return true;
+    }
+    return to_opencv_interpolation(interpolation, opencv_interpolation);
 }
 
 bool to_opencv_border(int32_t border, int &opencv_border) noexcept
@@ -4884,10 +4895,31 @@ opencv_imgproc_resize(
 
         int opencv_interpolation = 0;
 
-        if (!to_opencv_interpolation(
+        if (!to_opencv_resize_interpolation(
                 interpolation,
                 opencv_interpolation)) {
             return invalid_argument("unsupported interpolation method");
+        }
+
+        // ABI safety: only non-copy integer exact execution reaches signed
+        // resize_bitExact buffer/index products; floats fall back natively.
+        if (opencv_interpolation == cv::INTER_LINEAR_EXACT &&
+            src->depth() <= CV_32S &&
+            (width != src->cols || height != src->rows)) {
+            const uint64_t fixedpoint_bytes = src->depth() == CV_8U ? 2 :
+                (src->depth() == CV_32S ? 8 : 4);
+            // ABI safety: protect native signed coefficient/line-buffer
+            // products and size_t allocations before cv::resize allocates.
+            // Each concrete protected expression is documented in the helper.
+            if (width <= 0 || height <= 0 ||
+                !opencv_imgproc_detail::resize_exact_layout_fits(
+                    static_cast<uint64_t>(width),
+                    static_cast<uint64_t>(height),
+                    static_cast<uint64_t>(src->cols),
+                    static_cast<uint64_t>(src->rows),
+                    static_cast<uint64_t>(src->channels()),
+                    src->elemSize1(), fixedpoint_bytes, src->step))
+                return invalid_argument("exact resize native layout overflows");
         }
 
         cv::resize(

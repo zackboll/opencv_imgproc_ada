@@ -262,6 +262,7 @@ package OpenCV.Image_Processing.Internal.C_API is
    Interpolation_Cubic            : constant Interfaces.Integer_32 := 2;
    Interpolation_Area             : constant Interfaces.Integer_32 := 3;
    Interpolation_Lanczos_4        : constant Interfaces.Integer_32 := 4;
+   Interpolation_Linear_Exact     : constant Interfaces.Integer_32 := 5;
 
    Border_Constant    : constant Interfaces.Integer_32 := 0;
    Border_Replicate   : constant Interfaces.Integer_32 := 1;
