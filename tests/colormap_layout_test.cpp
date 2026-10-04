@@ -1,5 +1,6 @@
 #include "../cpp/colormap_layout_fits.hpp"
 #include <cassert>
+#include <cstddef>
 #include <limits>
 
 int main()
