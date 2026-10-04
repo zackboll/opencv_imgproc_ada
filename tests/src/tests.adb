@@ -37,6 +37,7 @@ with Laplacian_Tests;
 with Mean_Shift_Tests;
 with Median_Blur_Tests;
 with Morphology_Tests;
+with Hit_Or_Miss_Tests;
 with Pyramid_Construction_Tests;
 with Pyramid_Tests;
 with Resize_Tests;
@@ -90,6 +91,7 @@ begin
    Suite.Add_Test (Sep_Filter_2D_Tests.Suite);
    Suite.Add_Test (Laplacian_Tests.Suite);
    Suite.Add_Test (Morphology_Tests.Suite);
+   Suite.Add_Test (Hit_Or_Miss_Tests.Suite);
    Suite.Add_Test (Canny_Edge_Tests.Suite);
    Suite.Add_Test (Corner_Analysis_Tests.Suite);
    Suite.Add_Test (Spatial_Derivative_Tests.Suite);

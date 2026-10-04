@@ -1460,6 +1460,37 @@ package OpenCV.Image_Processing is
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
 
+   --  Native Hit-or-Miss returns a UInt8 C1 0/255 match mask of Source size.
+   --  Source must be nonempty 2-D UInt8 C1 with exactly 0/255 pixels. Kernel
+   --  must be nonempty 2-D Int8 C1: +1 requires foreground, -1 background,
+   --  and 0 is don't-care. All-zero kernels deliberately reject native copy
+   --  behavior. Hit-only and miss-only kernels are supported. Violations
+   --  raise OpenCV_Error. No conversion/thresholding is performed.
+   --  Center is (Kernel.Columns / 2, Kernel.Rows / 2), even for even sizes.
+   --  Iterations erodes each hit/complemented-miss leg N times, then ANDs
+   --  once; it does not repeat the complete transform. Supported borders
+   --  are Constant_Border, Replicate, Reflect and Reflect_101, not Wrap.
+   --  Both legs use the same native default morphology border policy, not
+   --  separately complemented external values. Regions are isolated logical
+   --  images. Direct in-place operation, including a Region, is supported;
+   --  Kernel/Destination storage overlap rejects. Distinct Source remains
+   --  unchanged.
+   procedure Hit_Or_Miss
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel      : OpenCV.Core.Mat;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
+
+   --  Explicit Anchor is inside Kernel: no negative center sentinel.
+   procedure Hit_Or_Miss
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel      : OpenCV.Core.Mat;
+      Anchor      : OpenCV.Point;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
+
    --  Canny_Edges finds edges in a non-empty two-dimensional UInt8 C1 Source.
    --  Lower_Threshold and Upper_Threshold must be finite, nonnegative, and
    --  ordered lower to upper. Destination is replaced with a UInt8 C1 Mat of
