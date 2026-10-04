@@ -733,6 +733,31 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_morphology_request";
 
+   type Hit_Or_Miss_Facts is record
+      Source_Binary, Kernel_Ternary, Has_Constraint, All_Hits, All_Misses :
+        Interfaces.Unsigned_8;
+   end record
+   with Convention => C;
+
+   function Hit_Or_Miss_Inspect
+     (Source, Kernel : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Facts          : access Hit_Or_Miss_Facts) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_hit_or_miss_inspect";
+
+   function Hit_Or_Miss
+     (Source                                                  :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination                                             :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Kernel                                                  :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Explicit_Anchor, Anchor_X, Anchor_Y, Iterations, Border :
+        Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_hit_or_miss";
+
    function Canny
      (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination     : OpenCV.Core.Module_Interop.Output_Mat_Handle;

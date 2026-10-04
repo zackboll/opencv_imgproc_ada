@@ -5553,6 +5553,103 @@ package body OpenCV.Image_Processing is
          Border);
    end Sep_Filter_2D;
 
+   procedure Hit_Or_Miss
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel      : OpenCV.Core.Mat;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border) is
+   begin
+      Hit_Or_Miss
+        (Source,
+         Destination,
+         Kernel,
+         (X => OpenCV.Point_Coordinate (Kernel.Columns / 2),
+          Y => OpenCV.Point_Coordinate (Kernel.Rows / 2)),
+         Iterations,
+         Border);
+   end Hit_Or_Miss;
+
+   procedure Hit_Or_Miss
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Kernel      : OpenCV.Core.Mat;
+      Anchor      : OpenCV.Point;
+      Iterations  : Morphology_Iterations := 1;
+      Border      : OpenCV.Border_Kind := OpenCV.Constant_Border)
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type Interfaces.Unsigned_8;
+      Facts  : aliased Internal.C_API.Hit_Or_Miss_Facts;
+      Status : Internal.C_API.Status;
+
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Mask (K : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+            begin
+               Status :=
+                 Internal.C_API.Hit_Or_Miss
+                   (S,
+                    D,
+                    K,
+                    1,
+                    Interfaces.Integer_32 (Anchor.X),
+                    Interfaces.Integer_32 (Anchor.Y),
+                    Interfaces.Integer_32 (Iterations),
+                    To_C_Border (Border));
+            end Output;
+         begin
+            Status := Internal.C_API.Hit_Or_Miss_Inspect (S, K, Facts'Access);
+            Raise_On_Error (Status, "Hit-or-Miss inspection");
+            if Facts.Source_Binary = 0 then
+               raise OpenCV.OpenCV_Error
+                 with "Hit-or-Miss Source requires exactly 0/255 pixels";
+            end if;
+            if Facts.Kernel_Ternary = 0 or else Facts.Has_Constraint = 0 then
+               raise OpenCV.OpenCV_Error
+                 with "Hit-or-Miss requires a constrained -1/0/+1 Kernel";
+            end if;
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Destination, Output'Access);
+         end Mask;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle (Kernel, Mask'Access);
+      end Input;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth /= OpenCV.Core.UInt8
+        or else Source.Channels /= 1
+      then
+         raise OpenCV.OpenCV_Error
+           with "Hit-or-Miss requires nonempty 2-D UInt8 C1 Source";
+      end if;
+      if Kernel.Is_Empty
+        or else Kernel.Dimension_Count /= 2
+        or else Kernel.Depth /= OpenCV.Core.Int8
+        or else Kernel.Channels /= 1
+      then
+         raise OpenCV.OpenCV_Error
+           with "Hit-or-Miss requires nonempty 2-D Int8 C1 Kernel";
+      end if;
+      if Anchor.X < 0
+        or else Anchor.Y < 0
+        or else Long_Long_Integer (Anchor.X)
+                >= Long_Long_Integer (Kernel.Columns)
+        or else Long_Long_Integer (Anchor.Y) >= Long_Long_Integer (Kernel.Rows)
+        or else Border = OpenCV.Wrap
+      then
+         raise OpenCV.OpenCV_Error with "Invalid Hit-or-Miss anchor or border";
+      end if;
+      if Storage_Overlaps (Kernel, Destination, "Hit-or-Miss") then
+         raise OpenCV.OpenCV_Error with "Kernel overlaps destination";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Hit-or-Miss");
+   end Hit_Or_Miss;
+
    procedure Erode
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;

@@ -4,6 +4,7 @@
 #include "bayer_layout_fits.hpp"
 #include "yuv420_layout_fits.hpp"
 #include "yuv422_layout_fits.hpp"
+#include "morphology_expansion_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -2467,14 +2468,32 @@ bool morphology_integer_border_component_safe(double value) noexcept
            value <= static_cast<double>(std::numeric_limits<int>::max());
 }
 
-// Shared raw preflight for generated and borrowed custom masks.
+// Facts only; the caller has established a nonempty two-dimensional Int8 C1.
+opencv_imgproc_hit_or_miss_facts inspect_hit_or_miss_kernel(const cv::Mat &kernel)
+{
+    opencv_imgproc_hit_or_miss_facts facts{0, 1, 0, 1, 1};
+    for (int row = 0; row < kernel.rows; ++row) {
+        const auto *values = kernel.ptr<int8_t>(row);
+        for (int col = 0; col < kernel.cols; ++col) {
+            const int value = values[col];
+            facts.kernel_ternary &= value >= -1 && value <= 1;
+            facts.has_constraint |= value == 1 || value == -1;
+            facts.all_hits &= value == 1;
+            facts.all_misses &= value == -1;
+        }
+    }
+    return facts;
+}
+
+// Shared raw preflight for generated, ordinary custom and ternary masks.
 opencv_imgproc_status morphology_request_impl(
     const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
     int32_t operation, int32_t kernel_source,
     const opencv_core_mat_handle *kernel_handle, int32_t kernel_width,
     int32_t kernel_height, int32_t shape, int32_t explicit_anchor,
     int32_t anchor_x, int32_t anchor_y, int32_t iterations, int32_t border,
-    int32_t explicit_border, const double *border_components)
+    int32_t explicit_border, const double *border_components,
+    bool hit_or_miss = false)
 {
     clear_error();
     try {
@@ -2490,6 +2509,10 @@ opencv_imgproc_status morphology_request_impl(
              src->depth() != CV_16S && src->depth() != CV_32F &&
              src->depth() != CV_64F))
             return invalid_argument("invalid morphology source");
+        // ABI safety: morphologyEx creates dst before asserting CV_8UC1 for
+        // Hit-or-Miss; reject here to preserve preflight failure atomicity.
+        if (hit_or_miss && src->type() != CV_8UC1)
+            return invalid_argument("invalid Hit-or-Miss source layout");
         if (operation < 0 || operation > 6 || kernel_source < 0 || kernel_source > 1 ||
             explicit_anchor < 0 || explicit_anchor > 1 || iterations <= 0 ||
             explicit_border < 0 || explicit_border > 1)
@@ -2504,10 +2527,13 @@ opencv_imgproc_status morphology_request_impl(
         if (kernel_source == 1) {
             if (opencv_core_module_input_mat(kernel_handle, &custom) != OPENCV_CORE_OK || !custom)
                 return invalid_argument("invalid morphology kernel handle");
-            // ABI safety: countNonZero and preprocess2DKernel require a
+            // ABI safety: the Hit-or-Miss scan indexes signed bytes in logical
+            // rows; other layouts would read the wrong elements. Ordinary
+            // countNonZero and preprocess2DKernel require a
             // nonempty two-dimensional byte mask; malformed types/rows can
             // make sparse coordinate indexing access outside allocated data.
-            if (custom->empty() || custom->dims != 2 || custom->type() != CV_8UC1 ||
+            if (custom->empty() || custom->dims != 2 ||
+                custom->type() != (hit_or_miss ? CV_8SC1 : CV_8UC1) ||
                 custom->rows <= 0 || custom->cols <= 0)
                 return invalid_argument("invalid custom morphology kernel");
             kernel = custom;
@@ -2541,20 +2567,25 @@ opencv_imgproc_status morphology_request_impl(
                 cv::Size(kernel_width, kernel_height), anchor);
             kernel = &generated;
         }
-        // ABI safety: preprocess2DKernel may leave coords empty for an all-zero
-        // mask, while MorphFilter later dereferences &coords[0] and kp[0].
-        const int nonzero = cv::countNonZero(*kernel);
-        if (!nonzero)
-            return invalid_argument("all-zero morphology kernel");
+        bool full_mask = false;
+        if (hit_or_miss) {
+            const auto facts = inspect_hit_or_miss_kernel(*kernel);
+            // Only a full +1 or full -1 mask yields a full native erosion leg.
+            // Malformed-but-safe values are facts, not semantic rejections.
+            full_mask = facts.all_hits || facts.all_misses;
+        } else {
+            // ABI safety: preprocess2DKernel may leave coords empty for an
+            // all-zero ordinary mask; MorphFilter dereferences &coords[0].
+            const int nonzero = cv::countNonZero(*kernel);
+            if (!nonzero)
+                return invalid_argument("all-zero morphology kernel");
+            full_mask = nonzero == width * height;
+        }
         // ABI safety: morphOp's full-mask rectangular collapse multiplies
         // anchor by iterations and evaluates width+(iterations-1)*(width-1)
         // and its height equivalent in signed int, after the 1x1 early exit.
-        if (width * height > 1 && iterations > 1 && nonzero == width * height &&
-            (width + (int64_t(iterations) - 1) * (width - 1) > limit ||
-             height + (int64_t(iterations) - 1) * (height - 1) > limit ||
-             width + (int64_t(iterations) - 1) * (width - 1) > limit / channels ||
-             int64_t(anchor.x) * iterations > limit ||
-             int64_t(anchor.y) * iterations > limit))
+        if (!opencv_imgproc_detail::morphology_expansion_fits(
+                width, height, channels, anchor.x, anchor.y, iterations, full_mask))
             return invalid_argument("morphology iteration expansion overflows int");
         if (custom && mat_storage_overlaps(*custom, *dst))
             return invalid_argument("morphology kernel overlaps destination");
@@ -2583,6 +2614,11 @@ opencv_imgproc_status morphology_request_impl(
                 value = cv::Scalar(border_components[0], border_components[1],
                                    border_components[2], border_components[3]);
             }
+        }
+        if (hit_or_miss) {
+            cv::morphologyEx(*src, *dst, cv::MORPH_HITMISS, *kernel,
+                anchor, iterations, cv_border, value);
+            return OPENCV_IMGPROC_OK;
         }
         switch (operation) {
         case 0: cv::erode(*src, *dst, *kernel, anchor, iterations, cv_border, value); break;
@@ -5467,6 +5503,48 @@ opencv_imgproc_status opencv_imgproc_morphology_request(
     return morphology_request_impl(source, destination, operation, kernel_source,
         kernel, kernel_width, kernel_height, shape, explicit_anchor, anchor_x,
         anchor_y, iterations, border, explicit_border, border_components);
+}
+
+opencv_imgproc_status opencv_imgproc_hit_or_miss_inspect(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *kernel,
+    opencv_imgproc_hit_or_miss_facts *facts)
+{
+    clear_error();
+    if (facts) *facts = {};
+    try {
+        const cv::Mat *src = nullptr;
+        const cv::Mat *mask = nullptr;
+        if (!facts ||
+            opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src ||
+            opencv_core_module_input_mat(kernel, &mask) != OPENCV_CORE_OK || !mask)
+            return invalid_argument("invalid Hit-or-Miss inspection argument");
+        // ABI safety: these logical-row scans use byte pointers and two
+        // dimensional indexing; reject layouts that cannot be scanned thus.
+        if (src->empty() || src->dims != 2 || src->type() != CV_8UC1 ||
+            mask->empty() || mask->dims != 2 || mask->type() != CV_8SC1)
+            return invalid_argument("invalid Hit-or-Miss inspection layout");
+        auto result = inspect_hit_or_miss_kernel(*mask);
+        result.source_binary = 1;
+        for (int row = 0; row < src->rows; ++row) {
+            const auto *values = src->ptr<uint8_t>(row);
+            for (int col = 0; col < src->cols; ++col)
+                result.source_binary &= values[col] == 0 || values[col] == 255;
+        }
+        *facts = result;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status opencv_imgproc_hit_or_miss(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    const opencv_core_mat_handle *kernel, int32_t explicit_anchor,
+    int32_t anchor_x, int32_t anchor_y, int32_t iterations, int32_t border)
+{
+    return morphology_request_impl(source, destination, 0, 1, kernel,
+        0, 0, 0, explicit_anchor, anchor_x, anchor_y, iterations, border,
+        0, nullptr, true);
 }
 
 opencv_imgproc_status

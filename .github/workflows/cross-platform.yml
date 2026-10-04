@@ -78,6 +78,12 @@ jobs:
             tests/bayer_layout_test.cpp -o bayer_layout_test
           ./bayer_layout_test
 
+      - name: Run morphology expansion boundary tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/morphology_expansion_test.cpp -o morphology_expansion_test
+          ./morphology_expansion_test
+
       - name: Run Imgproc tests
         run: alr -n -C tests run
 
@@ -194,6 +200,12 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             tests/bayer_layout_test.cpp -o bayer_layout_test
           ./bayer_layout_test
+
+      - name: Run morphology expansion boundary tests
+        run: |
+          xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/morphology_expansion_test.cpp -o morphology_expansion_test
+          ./morphology_expansion_test
 
       - name: Run YUV420 arithmetic boundary tests
         run: |
@@ -408,6 +420,13 @@ jobs:
             -Wall -Wextra -Wpedantic -Werror \
             tests/bayer_layout_test.cpp -o bayer_layout_test.exe
           PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./bayer_layout_test.exe
+
+      - name: Run morphology expansion boundary tests
+        run: |
+          "${IMGPROC_WINDOWS_CXX}" -std=c++17 \
+            -Wall -Wextra -Wpedantic -Werror \
+            tests/morphology_expansion_test.cpp -o morphology_expansion_test.exe
+          PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./morphology_expansion_test.exe
 
       - name: Verify Imgproc Windows shim isolation
         run: |

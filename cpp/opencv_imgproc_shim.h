@@ -529,6 +529,27 @@ opencv_imgproc_status opencv_imgproc_morphology_request(
     int32_t anchor_x, int32_t anchor_y, int32_t iterations, int32_t border,
     int32_t explicit_border, const double *border_components);
 
+/* Logical-row inspection only: each fact is 0=false or 1=true. Semantic
+ * rejection belongs to Ada. Output is cleared on failure. Handles borrowed. */
+typedef struct opencv_imgproc_hit_or_miss_facts {
+    uint8_t source_binary;
+    uint8_t kernel_ternary;
+    uint8_t has_constraint;
+    uint8_t all_hits;
+    uint8_t all_misses;
+} opencv_imgproc_hit_or_miss_facts;
+
+opencv_imgproc_status opencv_imgproc_hit_or_miss_inspect(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *kernel,
+    opencv_imgproc_hit_or_miss_facts *facts);
+
+/* Native Hit-or-Miss. Semantic-only inputs outside Ada's contract retain
+ * native behavior. explicit_anchor 0=centered, 1=given. No border scalar. */
+opencv_imgproc_status opencv_imgproc_hit_or_miss(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    const opencv_core_mat_handle *kernel, int32_t explicit_anchor,
+    int32_t anchor_x, int32_t anchor_y, int32_t iterations, int32_t border);
+
 opencv_imgproc_status
 opencv_imgproc_canny(
     const opencv_core_mat_handle *source,

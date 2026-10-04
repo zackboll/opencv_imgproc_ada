@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **812 AUnit tests**
+> **Current registered test baseline:** **837 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -2358,8 +2358,77 @@ sparse masks retain the full positive iteration domain. A 1x1 mask follows
 OpenCV's early copy/no-op even for very large iteration counts. An Ellipse's
 generated height is limited to 92681 by OpenCV's signed radius arithmetic.
 Opening with two iterations runs two erosions followed by two dilations, not
-two alternating erode/dilate pairs. Hit-or-Miss and OpenCV 5-only Diamond are
-deferred.
+two alternating erode/dilate pairs. OpenCV 5-only Diamond remains deferred.
+
+### Hit-or-Miss binary pattern queries
+
+Hit-or-Miss is a **separate operation**, not a `Morphology_Operation` value.
+Generated Rectangle/Cross/Ellipse masks retain their existing general
+morphology domain and cannot select it.
+
+```ada
+procedure Hit_Or_Miss
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Kernel      : OpenCV.Core.Mat;
+   Iterations  : Morphology_Iterations := 1;
+   Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
+
+procedure Hit_Or_Miss
+  (Source      : OpenCV.Core.Mat;
+   Destination : in out OpenCV.Core.Mat;
+   Kernel      : OpenCV.Core.Mat;
+   Anchor      : OpenCV.Point;
+   Iterations  : Morphology_Iterations := 1;
+   Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
+```
+
+- Source is nonempty 2-D **UInt8 C1**, containing **exactly 0 (background)
+  or 255 (foreground)**. Values such as 1, 127 and 254 raise `OpenCV_Error`;
+  the binding never thresholds or normalizes the caller's pixels.
+- Kernel is nonempty 2-D **Int8 C1**: **+1 requires foreground**, **-1
+  requires background**, **0 is don't-care**. All other values reject.
+  This is not the UInt8 zero/nonzero inclusion-mask contract of Erode/Dilate.
+- All-don't-care/all-zero kernels deliberately reject as semantically empty
+  queries, although native OpenCV copies Source for that case.
+- Hit-only and miss-only kernels are supported. A 1x1 +1 kernel returns
+  Source; a 1x1 -1 kernel returns its binary complement.
+- The centered anchor is `(Kernel.Columns / 2, Kernel.Rows / 2)`, including
+  even-sized/non-square kernels. Explicit anchors must be inside the kernel;
+  no negative/native-center sentinel is exposed.
+- Native `Iterations = N` erodes Source with the hit mask N times and its
+  complement with the miss mask N times, then ANDs **once**. It does not
+  repeatedly apply the complete Hit-or-Miss transform.
+- `Constant_Border`, `Replicate`, `Reflect` and `Reflect_101` are supported;
+  Wrap rejects. Constant uses `cv::morphologyDefaultBorderValue()`. Both
+  erosion legs use the **same** native morphology border policy; no separately
+  complemented external border is invented. No Border_Value overload exists.
+- Source Regions are independent logical images through `BORDER_ISOLATED`.
+  Source/kernel scans inspect only logical rows/columns with their actual
+  step. Non-contiguous kernel Regions ignore the rest of their parent.
+- Direct in-place operation, including a parent-backed Region, is supported
+  and leaves parent pixels outside the Region unchanged. Distinct Source
+  remains unchanged. Kernel/Destination storage overlap rejects.
+- Destination has Source's rows/columns, UInt8 C1 type, and exactly **0/255**
+  values: a binary match mask. Malformed public input raises `OpenCV_Error`
+  before native execution or Destination publication.
+
+Full-rectangle iteration overflow checks apply only to **all +1** or **all
+-1** kernels. A mixed +/-1 kernel can have no zeros yet both derived native
+erosion masks are sparse; it is not incorrectly subjected to full-mask
+expansion limits. The existing morphology arithmetic/alias preflight is reused.
+
+The public Ada layer owns semantic rejection. C++ inspection supplies facts;
+the raw native entry point enforces ABI/memory safety and retains memory-safe
+native behavior outside the public binary/ternary contract. This Mat-only API
+does not enter OpenCL's UMat-destination dispatch. Exact 4.1.0/4.10.0/5.0.0
+source review, vendor-path limitations and validation evidence are recorded in
+[the pinned Hit-or-Miss review](docs/hit-or-miss-source-review.md).
+
+This slice adds **25 focused AUnit tests** to the 812-test baseline:
+**837 registered, 837 executed, 837 passed**, zero failed assertions and
+unexpected errors locally on OpenCV 4.10.0. OpenCV 5-only Diamond, thinning,
+pruning, reconstruction and binary conversion remain outside this slice.
 
 ---
 
@@ -4323,7 +4392,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **812-test** distribution is:
+The current **837-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -4346,6 +4415,7 @@ The current **812-test** distribution is:
 | Sep Filter 2D | 12 |
 | Laplacian | 9 |
 | Morphology | 32 |
+| Hit-or-Miss morphology | 25 |
 | Canny | 5 |
 | Sobel / Scharr derivatives | 11 |
 | Fixed threshold | 7 |
@@ -4374,7 +4444,7 @@ The current **812-test** distribution is:
 | Bayer demosaicing | 43 |
 | YUV 4:2:0 frame conversions | 50 |
 | Packed YUV 4:2:2 decode and luma | 32 |
-| **Total** | **812** |
+| **Total** | **837** |
 
 
 The suite covers more than simple success paths. It includes:
