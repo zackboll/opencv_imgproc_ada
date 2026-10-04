@@ -18,6 +18,7 @@ with Packed_Color_Tests;
 with Extended_Color_Tests;
 with Bayer_Demosaicing_Tests;
 with YUV420_Conversion_Tests;
+with YUV422_Conversion_Tests;
 with Filter_2D_Tests;
 with Histogram_Analysis_Tests;
 with Histogram_Equalization_Tests;
@@ -68,6 +69,7 @@ begin
    Suite.Add_Test (Extended_Color_Tests.Suite);
    Suite.Add_Test (Bayer_Demosaicing_Tests.Suite);
    Suite.Add_Test (YUV420_Conversion_Tests.Suite);
+   Suite.Add_Test (YUV422_Conversion_Tests.Suite);
    Suite.Add_Test (Resize_Tests.Suite);
    Suite.Add_Test (Gaussian_Blur_Tests.Suite);
    Suite.Add_Test (Gaussian_Kernel_Tests.Suite);

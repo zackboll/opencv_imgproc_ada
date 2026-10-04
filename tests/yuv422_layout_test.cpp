@@ -1,0 +1,55 @@
+#include "../cpp/yuv422_layout_fits.hpp"
+
+using namespace opencv_imgproc_detail;
+constexpr uint64_t imax = INT_MAX;
+constexpr uint64_t wide = INT64_MAX;
+constexpr uint64_t last_width = (imax / 2 / 2) * 2;
+static_assert(yuv422_width_fits(2));
+static_assert(!yuv422_width_fits(1));
+static_assert(!yuv422_width_fits(3));
+static_assert(!yuv422_width_fits(5));
+static_assert(!yuv422_width_fits(0));
+static_assert(yuv422_width_fits(last_width));
+static_assert(!yuv422_width_fits(last_width + 2));
+static_assert(yuv422_geometry_fits(2, imax / 2));
+static_assert(!yuv422_geometry_fits(2, imax / 2 + 1));
+static_assert(!yuv422_geometry_fits(2, 0));
+static_assert(yuv422_decode_fits(2, 1, 3, false, 6));
+static_assert(!yuv422_decode_fits(2, 1, 3, false, 5));
+static_assert(yuv422_decode_fits(2, 1, 4, false, 8));
+static_assert(!yuv422_decode_fits(2, 1, 4, false, 7));
+static_assert(yuv422_byte_span_fits(3, 2, 2, 12));
+static_assert(!yuv422_byte_span_fits(3, 2, 2, 11));
+static_assert(yuv422_luma_fits(2, 3, 12));
+static_assert(!yuv422_luma_fits(2, 3, 11));
+static_assert(yuv422_luma_fits(3, 1)); // raw channel extraction, not Ada policy
+static_assert(!yuv422_luma_fits(imax / 2 + 1, 1, wide));
+static_assert(yuv422_source_span_fits(3, 4, 100, 204));
+static_assert(!yuv422_source_span_fits(3, 4, 100, 203));
+static_assert(!yuv422_source_span_fits(3, 4, 3, wide));
+static_assert(yuv422_source_span_fits(1, 4, UINT64_MAX, 4));
+static_assert(yuv422_source_span_fits(2, 4, imax + 1, wide));
+static_assert(!yuv422_source_span_fits(2, 4, UINT64_MAX, wide));
+static_assert(!yuv422_byte_span_fits(1, UINT64_MAX, 4, wide));
+static_assert(!yuv422_byte_span_fits(UINT64_MAX, 2, 2, wide));
+static_assert(!yuv422_decode_fits(2, 1, 1));
+static_assert(!yuv422_decode_fits(2, 1, 2));
+static_assert(!yuv422_decode_fits(2, 1, 0));
+static_assert(!yuv422_decode_fits(2, 1, 5));
+static_assert(yuv422_byte_span_fits(1, wide / 2, 2, wide));
+static_assert(!yuv422_byte_span_fits(1, wide / 2 + 1, 2, wide));
+static_assert(yuv422_byte_span_fits(1, wide / 3, 3, wide));
+static_assert(!yuv422_byte_span_fits(1, wide / 3 + 1, 3, wide));
+static_assert(yuv422_byte_span_fits(1, wide / 4, 4, wide));
+static_assert(!yuv422_byte_span_fits(1, wide / 4 + 1, 4, wide));
+static_assert(yuv422_source_span_fits(2, 4, wide - 4, wide));
+static_assert(!yuv422_source_span_fits(2, 4, wide - 3, wide));
+static_assert(yuv422_openvx_step_fits(2048, 1535, 4, true));
+static_assert(yuv422_openvx_step_fits(2048, 1536, 4, true));
+static_assert(yuv422_decode_fits(last_width, 1, 4, false, wide));
+static_assert(yuv422_decode_fits((imax / 3 / 2) * 2, 1, 3, true, wide));
+static_assert(!yuv422_decode_fits((imax / 3 / 2) * 2 + 2, 1, 3, true, wide));
+static_assert(yuv422_decode_fits((imax / 4 / 2) * 2, 1, 4, true, wide));
+static_assert(!yuv422_decode_fits((imax / 4 / 2) * 2 + 2, 1, 4, true, wide));
+static_assert(yuv422_openvx_step_fits(2, 1, 4, true));
+int main() { return 0; }

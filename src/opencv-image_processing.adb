@@ -3803,6 +3803,74 @@ package body OpenCV.Image_Processing is
       return Destination;
    end Extract_YUV420_Luma;
 
+   procedure Validate_YUV422 (Source : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+   begin
+      if Source.Is_Empty or else Source.Dimension_Count /= 2 then
+         raise OpenCV.OpenCV_Error with "YUV422 source must be nonempty 2-D";
+      end if;
+      if Source.Depth /= OpenCV.Core.UInt8 or else Source.Channels /= 2 then
+         raise OpenCV.OpenCV_Error with "YUV422 requires UInt8 C2";
+      end if;
+      if Source.Columns < 2 or else Source.Columns mod 2 /= 0 then
+         raise OpenCV.OpenCV_Error with "YUV422 requires even W >=2";
+      end if;
+   end Validate_YUV422;
+
+   function Decode_YUV422
+     (Source : OpenCV.Core.Mat;
+      Layout : YUV422_Layout;
+      Output : YUV422_Color_Output := BGR_Output) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Publish (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Decode_YUV422
+                (S,
+                 D,
+                 Interfaces.Integer_32 (YUV422_Layout'Pos (Layout)),
+                 Interfaces.Integer_32 (YUV422_Color_Output'Pos (Output)));
+         end Publish;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Publish'Access);
+      end Input;
+   begin
+      Validate_YUV422 (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Decode_YUV422");
+      return Destination;
+   end Decode_YUV422;
+
+   function Extract_YUV422_Luma
+     (Source : OpenCV.Core.Mat; Layout : YUV422_Layout) return OpenCV.Core.Mat
+   is
+      Destination : OpenCV.Core.Mat;
+      Status      : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Publish (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              Internal.C_API.Extract_YUV422_Luma
+                (S, D, Interfaces.Integer_32 (YUV422_Layout'Pos (Layout)));
+         end Publish;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Publish'Access);
+      end Input;
+   begin
+      Validate_YUV422 (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Extract_YUV422_Luma");
+      return Destination;
+   end Extract_YUV422_Luma;
+
    procedure Validate_Bayer
      (Source : OpenCV.Core.Mat; Method : Bayer_Demosaicing_Method := Bilinear)
    is

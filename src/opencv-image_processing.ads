@@ -613,6 +613,32 @@ package OpenCV.Image_Processing is
      (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat;
    --  Raw Y bytes, UInt8 C1 H x W, with no subtract-16 or rescaling.
 
+   type YUV422_Layout is (UYVY, YUY2, YVYU);
+   subtype YUV422_Color_Output is YUV420_Color_Output;
+
+   --  Nonempty 2-D UInt8 C2, H >=1, even W >=2. Each C2 element is
+   --  two stream bytes: UYVY = U,Y0,V,Y1; YUY2 = Y0,U,Y1,V;
+   --  YVYU = Y0,V,Y1,U. Each U/V pair serves two horizontal pixels.
+   --  Results are fresh owning H x W UInt8 Mats; Source stays unchanged.
+   --  Independent logical-row snapshots treat Regions as standalone frames.
+   --  Caller supplies the declared byte phase: odd-column parent ROIs may
+   --  change it; Layout is never inferred from the parent's ROI origin.
+   --  Invalid sources/native arithmetic spans raise OpenCV.OpenCV_Error.
+   --  OpenCV 4.1 lacks the native even-width check; the shim enforces it
+   --  before pair reads. Decode uses native limited-range BT.601 arithmetic,
+   --  accepting all UInt8 values. Vendor/build pixel identity is not promised.
+   function Decode_YUV422
+     (Source : OpenCV.Core.Mat;
+      Layout : YUV422_Layout;
+      Output : YUV422_Color_Output := BGR_Output) return OpenCV.Core.Mat;
+   --  C3 BGR/RGB or C4 BGRA/RGBA, alpha 255; geometry is preserved.
+
+   function Extract_YUV422_Luma
+     (Source : OpenCV.Core.Mat; Layout : YUV422_Layout) return OpenCV.Core.Mat;
+   --  Exact raw Y bytes, C1, no subtract-16, scaling or chroma participation.
+   --  UYVY uses source channel 1; YUY2/YVYU use channel 0.
+   --  YUV422 encoding is intentionally deferred: OpenCV 4.1 lacks it.
+
    type Bayer_Pattern is (RGGB, GRBG, BGGR, GBRG);
    type Bayer_Demosaicing_Method is
      (Bilinear, Variable_Number_Of_Gradients, Edge_Aware);

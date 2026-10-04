@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **780 AUnit tests**
+> **Current registered test baseline:** **812 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -53,6 +53,7 @@ Ada package, and built libraries serve different roles.
 - [Image accumulation and running statistics](#image-accumulation-and-running-statistics)
 - [Color conversion](#color-conversion)
 - [YUV 4:2:0](#yuv-420)
+- [YUV 4:2:2](#yuv-422)
 - [Bayer demosaicing](#bayer-demosaicing)
 - [Resizing](#resizing)
 - [Gaussian blur](#gaussian-blur)
@@ -499,6 +500,81 @@ I420/YV12 and luma retain their natural native `cvtColor` routes.
 780 passed**, zero failed assertions and unexpected errors locally on 4.10.0.
 Exact 4.1.0/4.10.0/5.0.0 source findings, backend reachability, bounds, and
 runtime limits are recorded in [the source review](docs/yuv420-source-review.md).
+
+---
+
+## YUV 4:2:2
+
+Portable packed **decode and raw luma extraction** are separate from
+`Color_Conversion`, without changing the existing YUV420 output enumeration:
+
+```ada
+type YUV422_Layout is (UYVY, YUY2, YVYU);
+subtype YUV422_Color_Output is YUV420_Color_Output;
+
+function Decode_YUV422
+  (Source : OpenCV.Core.Mat;
+   Layout : YUV422_Layout;
+   Output : YUV422_Color_Output := BGR_Output) return OpenCV.Core.Mat;
+function Extract_YUV422_Luma
+  (Source : OpenCV.Core.Mat;
+   Layout : YUV422_Layout) return OpenCV.Core.Mat;
+```
+
+Source is exactly **nonempty 2-D UInt8 C2, H rows and W columns**, with
+**H >= 1 and even W >= 2**. Each C2 element contains two consecutive bytes;
+two adjacent elements form one chroma pair:
+
+| Layout | Four stream bytes | First C2 column | Second C2 column |
+|---|---|---|---|
+| UYVY | U, Y0, V, Y1 | U, Y0 | V, Y1 |
+| YUY2 | Y0, U, Y1, V | Y0, U | Y1, V |
+| YVYU | Y0, V, Y1, U | Y0, V | Y1, U |
+
+U/V are shared by **exactly two horizontal pixels**; Y0 and Y1 remain
+independent. This is not C1 with doubled width, UInt16 C1, or four-byte pixels.
+Only the three canonical layout names are exposed; VYUY is not supported.
+
+Decode preserves H x W and UInt8 depth. `BGR_Output`/`RGB_Output` return
+C3 in B,G,R / R,G,B order; `BGRA_Output`/`RGBA_Output` return C4 in
+B,G,R,255 / R,G,B,255 order. **Alpha is always 255.** Conversion uses native
+limited-range BT.601-style arithmetic, with 20-bit portable CPU coefficients:
+nominal Y 16..235, Cb/Cr 16..240, centered at 128. **All bytes 0..255 are
+accepted**, including outside-studio values; native saturation applies.
+Vendor/build pixel identity is not promised. No custom matrix, full-range,
+BT.709/2020, or public AlgorithmHint selection is added.
+
+Luma is **exact raw Y**, UInt8 C1 H x W: UYVY extracts C2 channel 1;
+YUY2 and YVYU extract channel 0. No subtract-16, normalization, color
+conversion arithmetic, or chroma participation occurs.
+
+Every operation manually snapshots logical rows into independent packed C2
+storage before native entry; results own fresh Core Mat storage and inputs
+remain unchanged. **Regions are complete standalone frames.** Outside-parent
+bytes cannot affect conversion. The caller must supply the declared logical
+byte phase: an odd-column ROI into a UYVY parent can change that phase. The
+binding does not infer or rewrite Layout from parent ROI offsets.
+
+**OpenCV 4.1 lacks a native even-width check.** Its pair loop may read the
+missing second pixel/chroma and write two output pixels for an odd final
+column. Ada and the raw decode shim reject odd widths before native entry.
+OpenCV 4.10/5.0 add `FROM_UYVY` even-width validation. Widened native
+arithmetic preflight also requires `2*W <= INT_MAX`, `W*H <= INT_MAX`, safe
+snapshot/result allocations, and representable original readable address spans.
+Reachable 4.x OpenVX RGB(A) output-step narrowing is checked specifically;
+arbitrary parent strides are not passed to optional native backends.
+Invalid public input raises `OpenCV.OpenCV_Error`.
+
+**Decode only in the portable API:** RGB/BGR/BGRA/RGBA-to-YUV422 encode
+codes exist in OpenCV 4.10/5.0 but are absent in 4.1. Encoding is available
+only in newer OpenCV releases and intentionally deferred from the portable
+4.1/4.10/5.0 baseline. Planar 4:2:2, higher-bit-depth YUV, and UMat remain
+outside this slice; this does not complete all YUV422 capabilities.
+
+**32 focused new AUnit tests**, baseline 780: **812 registered, 812 executed,
+812 passed**, zero failed assertions and unexpected errors locally on 4.10.0.
+Exact-tag backend, numeric, safety and execution limits are recorded in
+[the YUV422 source review](docs/yuv422-source-review.md).
 
 ---
 
@@ -4247,7 +4323,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **780-test** distribution is:
+The current **812-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -4297,7 +4373,8 @@ The current **780-test** distribution is:
 | Extended FULL hue, linear-light Lab/Luv, premultiplied RGBA | 37 |
 | Bayer demosaicing | 43 |
 | YUV 4:2:0 frame conversions | 50 |
-| **Total** | **780** |
+| Packed YUV 4:2:2 decode and luma | 32 |
+| **Total** | **812** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -5054,7 +5131,9 @@ pre-1.0.
 
 Notable Imgproc families that are not yet broadly bound include:
 
-- deferred color layouts: YUV 4:2:2 layouts;
+- YUV 4:2:2 encoding remains deferred because it is unavailable in the
+  OpenCV 4.1 portability baseline; planar and higher-bit-depth YUV422
+  representations also remain outside the portable packed decoder;
 - deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;
 - relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
   calibration/undistortion map generation in the appropriate module;
