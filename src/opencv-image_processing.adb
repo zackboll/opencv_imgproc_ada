@@ -1353,7 +1353,7 @@ package body OpenCV.Image_Processing is
       end case;
    end To_C_Conversion;
 
-   function To_C_Interpolation
+   function To_C_Resize_Interpolation
      (Interpolation : Interpolation_Method) return Interfaces.Integer_32 is
    begin
       case Interpolation is
@@ -1371,8 +1371,11 @@ package body OpenCV.Image_Processing is
 
          when Lanczos_4        =>
             return Internal.C_API.Interpolation_Lanczos_4;
+
+         when Linear_Exact     =>
+            return Internal.C_API.Interpolation_Linear_Exact;
       end case;
-   end To_C_Interpolation;
+   end To_C_Resize_Interpolation;
 
    function To_C_Border
      (Border : OpenCV.Border_Kind) return Interfaces.Integer_32 is
@@ -1448,13 +1451,13 @@ package body OpenCV.Image_Processing is
      (Interpolation : Interpolation_Method) return Interfaces.Integer_32 is
    begin
       case Interpolation is
-         when Nearest_Neighbor         =>
+         when Nearest_Neighbor                        =>
             return Internal.C_API.Warp_Interpolation_Nearest;
 
-         when Linear                   =>
+         when Linear                                  =>
             return Internal.C_API.Warp_Interpolation_Linear;
 
-         when Cubic | Area | Lanczos_4 =>
+         when Cubic | Area | Lanczos_4 | Linear_Exact =>
             Ada.Exceptions.Raise_Exception
               (OpenCV.OpenCV_Error'Identity,
                "Warp_Affine supports only Nearest_Neighbor and Linear"
@@ -1495,22 +1498,22 @@ package body OpenCV.Image_Processing is
      (Interpolation : Interpolation_Method) return Interfaces.Integer_32 is
    begin
       case Interpolation is
-         when Nearest_Neighbor =>
+         when Nearest_Neighbor    =>
             return Internal.C_API.Interpolation_Nearest_Neighbor;
 
-         when Linear           =>
+         when Linear              =>
             return Internal.C_API.Interpolation_Linear;
 
-         when Cubic            =>
+         when Cubic               =>
             return Internal.C_API.Interpolation_Cubic;
 
-         when Lanczos_4        =>
+         when Lanczos_4           =>
             return Internal.C_API.Interpolation_Lanczos_4;
 
-         when Area             =>
+         when Area | Linear_Exact =>
             Ada.Exceptions.Raise_Exception
               (OpenCV.OpenCV_Error'Identity,
-               "Remap does not support Area interpolation");
+               "Remap does not support Area or Linear_Exact interpolation");
       end case;
    end To_C_Remap_Interpolation;
 
@@ -2210,10 +2213,10 @@ package body OpenCV.Image_Processing is
       end if;
 
       case Interpolation is
-         when Nearest_Neighbor | Linear =>
+         when Nearest_Neighbor | Linear               =>
             null;
 
-         when Cubic | Area | Lanczos_4  =>
+         when Cubic | Area | Lanczos_4 | Linear_Exact =>
             Ada.Exceptions.Raise_Exception
               (OpenCV.OpenCV_Error'Identity,
                "Warp_Affine supports only Nearest_Neighbor and Linear"
@@ -2303,10 +2306,10 @@ package body OpenCV.Image_Processing is
       end if;
 
       case Interpolation is
-         when Nearest_Neighbor | Linear =>
+         when Nearest_Neighbor | Linear               =>
             null;
 
-         when Cubic | Area | Lanczos_4  =>
+         when Cubic | Area | Lanczos_4 | Linear_Exact =>
             Ada.Exceptions.Raise_Exception
               (OpenCV.OpenCV_Error'Identity,
                "Warp_Perspective supports only Nearest_Neighbor and Linear"
@@ -2370,9 +2373,9 @@ package body OpenCV.Image_Processing is
          when Nearest_Neighbor | Linear | Cubic | Lanczos_4 =>
             null;
 
-         when Area                                          =>
+         when Area | Linear_Exact                           =>
             raise OpenCV.OpenCV_Error
-              with "Remap does not support Area interpolation";
+              with "Remap does not support Area or Linear_Exact interpolation";
       end case;
    end Validate_Remap_Source;
 
@@ -4083,7 +4086,7 @@ package body OpenCV.Image_Processing is
                  Destination_Handle,
                  Interfaces.Integer_32 (Output_Size.Width),
                  Interfaces.Integer_32 (Output_Size.Height),
-                 To_C_Interpolation (Interpolation));
+                 To_C_Resize_Interpolation (Interpolation));
          end Resize_Output;
       begin
          OpenCV.Core.Module_Interop.With_Output_Handle
@@ -4091,6 +4094,17 @@ package body OpenCV.Image_Processing is
       end Resize_Input;
    begin
       Validate_Resize (Source, Output_Size);
+      --  Native resize silently falls back to Linear for floating sources.
+      --  Public exact mode must actually use integer fixed-point arithmetic.
+      if Interpolation = Linear_Exact
+        and then Source.Depth
+                 not in OpenCV.Core.UInt8
+                      | OpenCV.Core.UInt16
+                      | OpenCV.Core.Int16
+      then
+         raise OpenCV.OpenCV_Error
+           with "Linear_Exact Resize requires UInt8, UInt16, or Int16";
+      end if;
       OpenCV.Core.Module_Interop.With_Input_Handle
         (Source, Resize_Input'Access);
       Raise_On_Error (Status, "resize");
@@ -5161,9 +5175,9 @@ package body OpenCV.Image_Processing is
          raise OpenCV.OpenCV_Error
            with "Warp_Polar requires finite center and radius (>1 for log)";
       end if;
-      if Interpolation = Area then
+      if Interpolation in Area | Linear_Exact then
          raise OpenCV.OpenCV_Error
-           with "Warp_Polar does not support Area interpolation";
+           with "Warp_Polar does not support Area or Linear_Exact";
       end if;
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
       Raise_On_Error (Status, "Warp_Polar");

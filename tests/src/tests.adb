@@ -42,6 +42,7 @@ with Hit_Or_Miss_Tests;
 with Pyramid_Construction_Tests;
 with Pyramid_Tests;
 with Resize_Tests;
+with Resize_Linear_Exact_Tests;
 with Segmentation_Tests;
 with Spatial_Derivative_Tests;
 with Template_Matching_Tests;
@@ -73,6 +74,7 @@ begin
    Suite.Add_Test (YUV420_Conversion_Tests.Suite);
    Suite.Add_Test (YUV422_Conversion_Tests.Suite);
    Suite.Add_Test (Resize_Tests.Suite);
+   Suite.Add_Test (Resize_Linear_Exact_Tests.Suite);
    Suite.Add_Test (Gaussian_Blur_Tests.Suite);
    Suite.Add_Test (Gaussian_Kernel_Tests.Suite);
    Suite.Add_Test (Derivative_Kernel_Tests.Suite);

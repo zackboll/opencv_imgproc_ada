@@ -102,6 +102,12 @@ jobs:
       - name: Run Bayer Gray overflow boundary regression
         run: sh tests/run_bayer_gray_test.sh
 
+      - name: Run resize-exact arithmetic boundary tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/resize_exact_layout_test.cpp -o resize_exact_layout_test
+          ./resize_exact_layout_test
+
   macos-arm64:
     name: macOS ARM64
     runs-on: macos-latest
@@ -218,6 +224,12 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             tests/yuv422_layout_test.cpp -o yuv422_layout_test
           ./yuv422_layout_test
+
+      - name: Run resize-exact arithmetic boundary tests
+        run: |
+          xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/resize_exact_layout_test.cpp -o resize_exact_layout_test
+          ./resize_exact_layout_test
 
       - name: Verify Imgproc shim isolation
         run: |
@@ -607,3 +619,9 @@ jobs:
           "${IMGPROC_WINDOWS_CXX}" -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             tests/yuv422_layout_test.cpp -o yuv422_layout_test.exe
           PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./yuv422_layout_test.exe
+
+      - name: Run resize-exact arithmetic boundary tests
+        run: |
+          "${IMGPROC_WINDOWS_CXX}" -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/resize_exact_layout_test.cpp -o resize_exact_layout_test.exe
+          PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./resize_exact_layout_test.exe

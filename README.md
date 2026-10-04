@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **855 AUnit tests**
+> **Current registered test baseline:** **871 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -807,7 +807,7 @@ Interpolation methods:
 
 ```ada
 type Interpolation_Method is
-  (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4);
+  (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4, Linear_Exact);
 ```
 
 API:
@@ -827,6 +827,31 @@ Requirements:
 - output width and height are nonzero.
 
 The operation preserves the source element depth and channel count.
+
+`Linear_Exact` is OpenCV's deterministic fixed-point bilinear interpolation
+for `UInt8`, `UInt16`, and `Int16`. Native integer coefficients and integer
+rounding are used, not an Ada implementation. It is not mathematically exact
+real-number interpolation, lossless resizing, or nearest neighbor; it can
+differ from ordinary `Linear`. Channel count is unrestricted (including >4).
+
+OpenCV silently changes exact requests on `Float32`/`Float64` to ordinary
+Linear. This public API instead raises `OpenCV.OpenCV_Error` before touching
+Destination; ordinary `Linear` remains available for floating sources.
+Same-size integer exact resize copies the content unchanged. Native 2x
+downscaling in both axes may use bit-equivalent Area, except C2, whose Area
+path is not bit-exact. Non-contiguous Regions use their actual parent stride
+but only their logical pixels. Native overflow preflight is allocation-free.
+
+`Linear_Exact` is **Resize-only**: all `Remap` overloads, `Warp_Affine`,
+`Warp_Perspective`, and `Warp_Polar` reject it. Map conversion uses a Boolean
+nearest-only choice, not this interpolation enumeration. See the
+[exact-tag source review](docs/resize-linear-exact-source-review.md) for
+numeric semantics, HAL reachability, stride and buffer safety findings.
+
+This slice adds 16 registrations to the verified 855-test baseline:
+**871 registered, 871 executed, 871 passed**, zero failed assertions and
+unexpected errors locally on OpenCV 4.10.0. Exact-tag header syntax checks
+are source-compatibility evidence, not runtime execution of 4.1.0 or 5.0.0.
 
 ---
 
@@ -4443,12 +4468,13 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **855-test** distribution is:
+The current **871-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
 | Color conversion | 14 |
 | Resize | 10 |
+| Resize Linear_Exact | 16 |
 | Gaussian blur | 10 |
 | Gaussian kernel | 8 |
 | Derivative kernels | 10 |
@@ -4495,7 +4521,7 @@ The current **855-test** distribution is:
 | Bayer demosaicing | 43 |
 | YUV 4:2:0 frame conversions | 50 |
 | Packed YUV 4:2:2 decode and luma | 32 |
-| **Total** | **855** |
+| **Total** | **871** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -5256,8 +5282,9 @@ Notable Imgproc families that are not yet broadly bound include:
   OpenCV 4.1 portability baseline; planar and higher-bit-depth YUV422
   representations also remain outside the portable packed decoder;
 - deferred morphology operations: Hit-or-Miss and OpenCV 5-only Diamond;
-- relative `WARP_RELATIVE_MAP`, exact interpolation variants, and
-  calibration/undistortion map generation in the appropriate module;
+- `INTER_NEAREST_EXACT` remains outside the OpenCV 4.1 baseline; native Remap
+  does not support exact modes. `WARP_RELATIVE_MAP` is also absent in 4.1;
+  calibration/undistortion map generation belongs in the appropriate module;
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
   (`use_edgeval`) Hough, and `HOUGH_GRADIENT_ALT`;
 - deferred segmentation capabilities: flood fill on `Int32` images and
