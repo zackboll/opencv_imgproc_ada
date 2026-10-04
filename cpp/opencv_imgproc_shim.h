@@ -131,6 +131,16 @@ opencv_imgproc_status opencv_imgproc_earth_mover_distance_flow(
     const opencv_core_mat_handle *cost, float *distance,
     opencv_core_mat_handle *flow);
 
+/* Built-in metrics only (0..2). Threshold is native Float32 input;
+ * lower_bound is a scalar output, not a pointer-valued public abstraction.
+ * Flags are 0/1. Unavailable bound is reported as zero, exact as 1.
+ * All four outputs are required and left unchanged on failure. */
+opencv_imgproc_status opencv_imgproc_earth_mover_distance_lower_bound(
+    const opencv_core_mat_handle *signature1,
+    const opencv_core_mat_handle *signature2, int32_t metric,
+    float initial_threshold, float *distance, float *lower_bound,
+    uint8_t *lower_bound_available, uint8_t *exact_distance_computed);
+
 /* Semantic depths: sum 0=Int32, 1=Float32, 2=Float64;
  * square 0=Float32, 1=Float64. Outputs are borrowed Core Mat headers. */
 opencv_imgproc_status opencv_imgproc_integral_sum(

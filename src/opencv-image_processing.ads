@@ -2249,6 +2249,30 @@ package OpenCV.Image_Processing is
      (Signature_1, Signature_2, Cost : OpenCV.Core.Mat)
       return Earth_Mover_Result;
 
+   type Earth_Mover_Bounded_Result is record
+      Distance                : OpenCV.Float32_Value;
+      Lower_Bound             : OpenCV.Float32_Value;
+      Lower_Bound_Available   : Boolean;
+      Exact_Distance_Computed : Boolean;
+   end record;
+
+   --  Same signature and native-safety contract as exact built-in EMD above.
+   --  Threshold must be finite and nonnegative. When native Float32 masses
+   --  satisfy abs (Sum_1 - Sum_2) < 1.0e-5 * Sum_1, OpenCV calculates its
+   --  weighted-center bound. If Bound >= Threshold, it skips transport:
+   --  Distance = Lower_Bound and Exact_Distance_Computed = False.
+   --  Equality exits too; zero requests bound-only whenever available.
+   --  Default largest finite Float32 requests exact distance plus the bound.
+   --  Unequal masses: Available = False, Bound = 0, exact solve still runs.
+   --  Full safety preflight and packed Region snapshots precede the shortcut.
+   --  Nonfinite native results raise OpenCV_Error. No Cost overload (native
+   --  bound requires a metric) or Flow (early-exit zeros are not transport).
+   function Earth_Mover_Distance_With_Lower_Bound
+     (Signature_1, Signature_2 : OpenCV.Core.Mat;
+      Metric                   : Earth_Mover_Metric := Euclidean_EMD;
+      Early_Exit_Threshold     : OpenCV.Float32_Value :=
+        OpenCV.Float32_Value'Last) return Earth_Mover_Bounded_Result;
+
    --  Histogram analysis ---------------------------------------------------
 
    --  Maximum histogram dimensionality guaranteed on every supported OpenCV

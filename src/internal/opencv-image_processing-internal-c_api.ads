@@ -133,6 +133,17 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_earth_mover_distance_flow";
 
+   function Earth_Mover_Distance_Lower_Bound
+     (Signature_1, Signature_2 : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Metric                   : Interfaces.Integer_32;
+      Initial_Threshold        : Interfaces.C.C_float;
+      Distance, Lower_Bound    : access Interfaces.C.C_float;
+      Available, Exact         : access Interfaces.Unsigned_8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_earth_mover_distance_lower_bound";
+
    function Distance_Transform_F32
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Method      : Interfaces.Integer_32;

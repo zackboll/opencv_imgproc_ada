@@ -31,6 +31,7 @@ with Drawing_Tests;
 with Drawing_Annotation_Tests;
 with Distance_Transform_Tests;
 with Earth_Mover_Tests;
+with Earth_Mover_Lower_Bound_Tests;
 with Integral_Image_Tests;
 with Image_Accumulation_Tests;
 with Laplacian_Tests;
@@ -112,6 +113,7 @@ begin
    Suite.Add_Test (Histogram_Analysis_Tests.Suite);
    Suite.Add_Test (Distance_Transform_Tests.Suite);
    Suite.Add_Test (Earth_Mover_Tests.Suite);
+   Suite.Add_Test (Earth_Mover_Lower_Bound_Tests.Suite);
    Suite.Add_Test (Integral_Image_Tests.Suite);
    Suite.Add_Test (Image_Accumulation_Tests.Suite);
    Suite.Add_Test (Phase_Correlation_Tests.Suite);

@@ -560,6 +560,57 @@ package body OpenCV.Image_Processing is
           .Distance;
    end Earth_Mover_Distance;
 
+   function Earth_Mover_Distance_With_Lower_Bound
+     (Signature_1, Signature_2 : OpenCV.Core.Mat;
+      Metric                   : Earth_Mover_Metric := Euclidean_EMD;
+      Early_Exit_Threshold     : OpenCV.Float32_Value :=
+        OpenCV.Float32_Value'Last) return Earth_Mover_Bounded_Result
+   is
+      use type OpenCV.Float32_Value;
+      use type Interfaces.Unsigned_8;
+      Empty_Cost : OpenCV.Core.Mat;
+      Distance   : aliased Interfaces.C.C_float := 0.0;
+      Bound      : aliased Interfaces.C.C_float := 0.0;
+      Available  : aliased Interfaces.Unsigned_8 := 0;
+      Exact      : aliased Interfaces.Unsigned_8 := 0;
+      Status     : Internal.C_API.Status := Internal.C_API.Success;
+      procedure With_First (A : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure With_Second
+           (B : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Earth_Mover_Distance_Lower_Bound
+                (A,
+                 B,
+                 Earth_Mover_Metric'Pos (Metric),
+                 Interfaces.C.C_float (Early_Exit_Threshold),
+                 Distance'Access,
+                 Bound'Access,
+                 Available'Access,
+                 Exact'Access);
+         end With_Second;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Signature_2, With_Second'Access);
+      end With_First;
+   begin
+      if not Is_Finite_32 (Early_Exit_Threshold)
+        or else Early_Exit_Threshold < 0.0
+      then
+         raise OpenCV.OpenCV_Error
+           with "EMD threshold must be finite and nonnegative";
+      end if;
+      Validate_EMD (Signature_1, Signature_2, Empty_Cost, False, Metric);
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Signature_1, With_First'Access);
+      Raise_On_Error (Status, "Earth_Mover_Distance_With_Lower_Bound");
+      return
+        (Distance                => OpenCV.Float32_Value (Distance),
+         Lower_Bound             => OpenCV.Float32_Value (Bound),
+         Lower_Bound_Available   => Available /= 0,
+         Exact_Distance_Computed => Exact /= 0);
+   end Earth_Mover_Distance_With_Lower_Bound;
+
    function Earth_Mover_Distance_With_Flow
      (Signature_1, Signature_2 : OpenCV.Core.Mat;
       Metric                   : Earth_Mover_Metric := Euclidean_EMD)

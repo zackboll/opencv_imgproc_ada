@@ -104,10 +104,10 @@ bool emd_layout_fits(const cv::Mat &a, const cv::Mat &b, const cv::Mat *cost)
 }
 
 // ABI/native safety: both solvers accumulate positive weights in float.
-bool emd_weights_safe(const cv::Mat &a)
+bool emd_weights_safe(const cv::Mat &a, float &native_total)
 {
     double total = 0.0;
-    float native_total = 0.0f;
+    native_total = 0.0f;
     for (int i = 0; i < a.rows; ++i) {
         const float w = a.at<float>(i, 0);
         if (!std::isfinite(w) || w < 0) return false;
@@ -117,6 +117,28 @@ bool emd_weights_safe(const cv::Mat &a)
         native_total += w;
     }
     return total > 0;
+}
+
+// ABI safety: 4.1's bound loops form size*cols and increment signed indices
+// through that full product. Its center arrays start AFTER idx1/idx2/s/d,
+// whereas the legacy allocation only takes max(buffer_size, 2*dims floats).
+// Check that the remaining allocation contains both arrays, not just dims.
+bool emd_lower_bound_layout_fits(const cv::Mat &a, const cv::Mat &b)
+{
+    const uint64_t x = static_cast<uint64_t>(a.rows) + 1;
+    const uint64_t y = static_cast<uint64_t>(b.rows) + 1;
+    const uint64_t cols = static_cast<uint64_t>(a.cols);
+    if (static_cast<uint64_t>(a.rows) * cols > INT_MAX ||
+        static_cast<uint64_t>(b.rows) * cols > INT_MAX)
+        return false;
+    const uint64_t centers = (cols - 1) * 2 * sizeof(float);
+    const uint64_t prefix = (x + y) * (sizeof(int) + sizeof(float));
+    const uint64_t legacy = x * y * (sizeof(float) * 2 + sizeof(char)) +
+        (x + y) * (sizeof(emd_legacy_node2d_layout) + sizeof(void *) +
+                   sizeof(emd_legacy_node1d_layout) + sizeof(float) +
+                   sizeof(int) + sizeof(void *)) +
+        x * (sizeof(float *) * 2 + sizeof(char *)) + 256;
+    return prefix + centers <= std::max(legacy, centers);
 }
 
 bool emd_costs_safe(const cv::Mat &a, const cv::Mat &b, int32_t metric,
@@ -9769,14 +9791,23 @@ opencv_imgproc_calc_hist_masked(
         source, mask, true, dimensions, dimension_count, histogram);
 }
 
+struct emd_bound_request {
+    float threshold;
+    float *lower_bound;
+    uint8_t *available;
+    uint8_t *exact;
+};
+
 static opencv_imgproc_status emd_execute(
     const opencv_core_mat_handle *signature1,
     const opencv_core_mat_handle *signature2, int32_t metric,
     const opencv_core_mat_handle *cost, float *distance,
-    opencv_core_mat_handle *flow, bool with_flow)
+    opencv_core_mat_handle *flow, bool with_flow,
+    const emd_bound_request *bound = nullptr)
 {
     clear_error();
-    if (!distance || (with_flow && !flow))
+    if (!distance || (with_flow && !flow) ||
+        (bound && (!bound->lower_bound || !bound->available || !bound->exact)))
         return invalid_argument("EMD output pointer is null");
     try {
         const cv::Mat *a = nullptr, *b = nullptr, *c = nullptr;
@@ -9785,7 +9816,7 @@ static opencv_imgproc_status emd_execute(
             opencv_core_module_input_mat(signature2, &b) != OPENCV_CORE_OK || !b ||
             (with_flow && (opencv_core_module_output_mat(flow, &out) != OPENCV_CORE_OK || !out)))
             return invalid_argument("Invalid EMD Mat handle");
-        if (metric < 0 || metric > 3)
+        if (metric < 0 || metric > (bound ? 2 : 3))
             return invalid_argument("Invalid EMD metric selector");
         if (metric == 3 &&
             (opencv_core_module_input_mat(cost, &c) != OPENCV_CORE_OK || !c))
@@ -9804,9 +9835,16 @@ static opencv_imgproc_status emd_execute(
             !emd_signature_index_fits(b->rows, b->cols, metric != 3) ||
             !emd_layout_fits(*a, *b, c))
             return invalid_argument("EMD legacy buffer or signed stride overflows int");
-        if (!emd_weights_safe(*a) || !emd_weights_safe(*b) ||
+        float total_a = 0.0f, total_b = 0.0f;
+        if (!emd_weights_safe(*a, total_a) || !emd_weights_safe(*b, total_b) ||
             !emd_costs_safe(*a, *b, metric, c))
             return invalid_argument("EMD native weight or cost is unsafe");
+        // Interpret the native in/out parameter using the same Float32 mass
+        // accumulation and asymmetric comparison as both pinned solvers.
+        const float diff = total_a - total_b;
+        const bool available = bound && std::fabs(diff) < 1e-5f * total_a;
+        if (available && !emd_lower_bound_layout_fits(*a, *b))
+            return invalid_argument("EMD lower-bound indexing or scratch is unsafe");
         // Packed deep copies protect 4.1's step-blind signature indexing.
         const cv::Mat packed_a = a->clone(), packed_b = b->clone();
         const cv::Mat packed_c = c ? c->clone() : cv::Mat();
@@ -9814,15 +9852,26 @@ static opencv_imgproc_status emd_execute(
         const int native_metric = metric == 0 ? native_distance_l1 :
             metric == 1 ? native_distance_l2 : metric == 2 ? native_distance_c :
             native_distance_user;
+        float lower_bound = bound ? bound->threshold : 0.0f;
         const float value = with_flow
             ? cv::EMD(packed_a, packed_b, native_metric, packed_c, nullptr, local_flow)
-            : cv::EMD(packed_a, packed_b, native_metric, packed_c, nullptr);
-        if (!std::isfinite(value)) {
-            set_error("Native EMD returned a nonfinite distance");
+            : cv::EMD(packed_a, packed_b, native_metric, packed_c,
+                      bound ? &lower_bound : nullptr);
+        // ABI safety: do not publish a partially valid numeric result after
+        // finite inputs overflow native Float32 weighted-center arithmetic.
+        if (!std::isfinite(value) ||
+            (available && (!std::isfinite(lower_bound) || lower_bound < 0.0f))) {
+            set_error("Native EMD returned an invalid distance or lower bound");
             return OPENCV_IMGPROC_ERROR_OPENCV;
         }
+        const bool exact = !available || !(bound->threshold <= lower_bound);
         if (with_flow) *out = std::move(local_flow);
         *distance = value;
+        if (bound) {
+            *bound->lower_bound = available ? lower_bound : 0.0f;
+            *bound->available = available ? 1 : 0;
+            *bound->exact = exact ? 1 : 0;
+        }
         return OPENCV_IMGPROC_OK;
     } catch (...) { return translate_current_exception(); }
 }
@@ -9842,6 +9891,18 @@ opencv_imgproc_status opencv_imgproc_earth_mover_distance_flow(
     opencv_core_mat_handle *flow)
 {
     return emd_execute(signature1, signature2, metric, cost, distance, flow, true);
+}
+
+opencv_imgproc_status opencv_imgproc_earth_mover_distance_lower_bound(
+    const opencv_core_mat_handle *signature1,
+    const opencv_core_mat_handle *signature2, int32_t metric,
+    float initial_threshold, float *distance, float *lower_bound,
+    uint8_t *lower_bound_available, uint8_t *exact_distance_computed)
+{
+    const emd_bound_request bound{initial_threshold, lower_bound,
+                                  lower_bound_available, exact_distance_computed};
+    return emd_execute(signature1, signature2, metric, nullptr, distance,
+                       nullptr, false, &bound);
 }
 
 opencv_imgproc_status
