@@ -6,6 +6,7 @@
 #include "yuv422_layout_fits.hpp"
 #include "morphology_expansion_fits.hpp"
 #include "resize_exact_layout_fits.hpp"
+#include "colormap_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -4746,6 +4747,98 @@ opencv_imgproc_status opencv_imgproc_extract_yuv422_luma(
     int32_t layout)
 {
     return convert_yuv422(source, destination, layout, 0, true);
+}
+
+namespace {
+
+bool colormap_snapshot(const cv::Mat &input, cv::Mat &snapshot)
+{
+    // ABI safety: row copies use 2-D rows/cols; empty input also reaches
+    // division by zero in newer native packet scheduling if not rejected.
+    if (input.empty() || input.dims != 2)
+        return false;
+    const uint64_t bytes = static_cast<uint64_t>(input.cols) * input.elemSize();
+    const uint64_t limit = std::min<uint64_t>(
+        SIZE_MAX, std::numeric_limits<std::ptrdiff_t>::max());
+    // ABI safety: readable parent span, packed allocation and fastMalloc
+    // alignment/header addition must all be representable before row copies.
+    if (!opencv_imgproc_detail::colormap_span_fits(
+            input.rows, bytes, input.step[0], limit) ||
+        bytes > (SIZE_MAX - 64 - sizeof(void *)) /
+                    static_cast<uint64_t>(input.rows))
+        return false;
+    snapshot.create(input.rows, input.cols, input.type());
+    for (int row = 0; row < input.rows; ++row)
+        std::memcpy(snapshot.ptr(row), input.ptr(row), static_cast<size_t>(bytes));
+    return true;
+}
+
+opencv_imgproc_status apply_colormap(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t selector, const opencv_core_mat_handle *lookup_table, bool custom)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        const cv::Mat *lut = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src)
+            return invalid_argument("invalid colormap source handle");
+        if (opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid colormap destination handle");
+        static const int maps[] = {
+            cv::COLORMAP_AUTUMN, cv::COLORMAP_BONE, cv::COLORMAP_JET,
+            cv::COLORMAP_WINTER, cv::COLORMAP_RAINBOW, cv::COLORMAP_OCEAN,
+            cv::COLORMAP_SUMMER, cv::COLORMAP_SPRING, cv::COLORMAP_COOL,
+            cv::COLORMAP_HSV, cv::COLORMAP_PINK, cv::COLORMAP_HOT,
+            cv::COLORMAP_PARULA, cv::COLORMAP_MAGMA, cv::COLORMAP_INFERNO,
+            cv::COLORMAP_PLASMA, cv::COLORMAP_VIRIDIS, cv::COLORMAP_CIVIDIS,
+            cv::COLORMAP_TWILIGHT, cv::COLORMAP_TWILIGHT_SHIFTED
+        };
+        static_assert(sizeof(maps) / sizeof(maps[0]) == 20);
+        if (!custom && (selector < 0 || selector >= 20))
+            return invalid_argument("invalid portable colormap selector");
+        if (custom) {
+            if (opencv_core_module_input_mat(lookup_table, &lut) != OPENCV_CORE_OK || !lut)
+                return invalid_argument("invalid colormap table handle");
+            // ABI safety: compatibility, not unsafe native input. C1 LUTs
+            // produce C3 in 4.1 but C1 in 4.10/5; this ABI promises C3 output.
+            if (lut->type() == CV_8UC1)
+                return invalid_argument("custom C1 colormaps are not portable");
+        }
+        // ABI safety: 4.1 LUT iterator narrowing and signed len*cn, cn=3.
+        // Widen before arithmetic. Also dominates all packed native strides
+        // and rows+rowsPerPacket-1 (rows<=INT_MAX/3, rowsPerPacket<=4096).
+        if (!opencv_imgproc_detail::colormap_layout_fits(src->rows, src->cols))
+            return invalid_argument("colormap native arithmetic is not representable");
+        cv::Mat snapshot, table;
+        if (!colormap_snapshot(*src, snapshot) ||
+            (custom && !colormap_snapshot(*lut, table)))
+            return invalid_argument("colormap snapshot span is not representable");
+        cv::Mat result;
+        if (custom)
+            cv::applyColorMap(snapshot, result, table);
+        else
+            cv::applyColorMap(snapshot, result, maps[selector]);
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+} // namespace
+
+opencv_imgproc_status opencv_imgproc_apply_colormap(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t selector)
+{
+    return apply_colormap(source, destination, selector, nullptr, false);
+}
+
+opencv_imgproc_status opencv_imgproc_apply_custom_colormap(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    const opencv_core_mat_handle *lookup_table)
+{
+    return apply_colormap(source, destination, 0, lookup_table, true);
 }
 
 opencv_imgproc_status
