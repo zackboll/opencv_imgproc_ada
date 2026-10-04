@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **837 AUnit tests**
+> **Current registered test baseline:** **855 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -388,7 +388,7 @@ The table below summarizes the current public operations.
 | Histogram analysis | `Compare_Histograms` | two histograms with the same binning mode and identical bin geometry | six OpenCV metrics; source positions and channels may differ; nonuniform comparison requires the exact edge sequence |
 | Histogram analysis | `Back_Project` | one Mat when every stored source position is 0, or enough same-geometry sources for the stored positions | fresh C1 Mat of the first source's size and depth; finite scale |
 | Histogram analysis | `Accumulate_Histogram` | a calculated histogram plus a compatible source or source array, optional mask | new histogram; Base is unchanged; Float32 bin sums, not native `accumulate=true` |
-| Histogram analysis | `Earth_Mover_Distance`, `Earth_Mover_Distance_With_Flow`, `Earth_Mover_Distance_With_Cost`, `Earth_Mover_Distance_With_Cost_And_Flow` | nonempty 2-D Float32 C1 signatures; optional Float32 C1 transport-cost matrix | exact native EMD, optionally with fresh real-row transport Flow; packed snapshots for Region portability |
+| Histogram analysis | `Earth_Mover_Distance`, `Earth_Mover_Distance_With_Flow`, `Earth_Mover_Distance_With_Cost`, `Earth_Mover_Distance_With_Cost_And_Flow`, `Earth_Mover_Distance_With_Lower_Bound` | nonempty 2-D Float32 C1 signatures; optional Float32 C1 transport-cost matrix | exact native EMD with optional Flow; separate built-in bounded result with explicit exactness; packed Region snapshots |
 
 The supported general-purpose Imgproc numeric depths are:
 
@@ -2426,7 +2426,7 @@ source review, vendor-path limitations and validation evidence are recorded in
 [the pinned Hit-or-Miss review](docs/hit-or-miss-source-review.md).
 
 This slice adds **25 focused AUnit tests** to the 812-test baseline:
-**837 registered, 837 executed, 837 passed**, zero failed assertions and
+**855 registered, 855 executed, 855 passed**, zero failed assertions and
 unexpected errors locally on OpenCV 4.10.0. OpenCV 5-only Diamond, thinning,
 pruning, reconstruction and binary conversion remain outside this slice.
 
@@ -3931,10 +3931,61 @@ rows with contiguous indexing rather than their Mat row step. OpenCV 4.10
 and 5.0 use the rewritten `EMDSolver`, which indexes Mat rows and sizes
 its buffers differently. The shim preflights the 4.1 signed-int work-buffer
 formula using full source row counts, and also bounds the rewritten solver's
-active-row signed products. No lower-bound threshold/early-exit shortcut is
-exposed: each successful call performs the native transport solve. Invalid
+active-row signed products. The four original APIs above always perform the
+native transport solve and never implicitly request a lower bound. Invalid
 input raises `OpenCV_Error`; the native scalar and flow are published only
 after success.
+
+### Native lower bound and early exit
+
+`Earth_Mover_Distance_With_Lower_Bound` accepts the same two signatures and
+built-in `Earth_Mover_Metric` (Euclidean by default), plus a finite,
+nonnegative `Early_Exit_Threshold`. It returns:
+
+```ada
+type Earth_Mover_Bounded_Result is record
+   Distance                : OpenCV.Float32_Value;
+   Lower_Bound             : OpenCV.Float32_Value;
+   Lower_Bound_Available   : Boolean;
+   Exact_Distance_Computed : Boolean;
+end record;
+```
+
+The default threshold is `OpenCV.Float32_Value'Last`, the largest finite
+binary32 value. An ordinary call computes **exact EMD plus the native bound**
+when available. Large finite thresholds are valid; no arbitrary maximum is
+imposed. Native nonfinite distance or available-bound results raise
+`OpenCV_Error` instead of publishing invalid evidence.
+
+OpenCV calculates its weighted-center metric bound only when native Float32
+accumulated masses satisfy the strict comparison
+`abs(Sum_1 - Sum_2) < 1.0e-5 * Sum_1`. This tolerance is asymmetric: its
+reference is **Signature_1's** accumulated mass. `Lower_Bound_Available`
+reports that fact. Outside tolerance, OpenCV still solves exact EMD with its
+dummy-cluster behavior; the result reports bound unavailable, `Lower_Bound = 0`
+and `Exact_Distance_Computed = True`, never the unchanged input threshold.
+
+When available, **Lower_Bound >= Early_Exit_Threshold** skips native transport
+and returns `Distance = Lower_Bound`, with `Exact_Distance_Computed = False`.
+The comparison is **inclusive**. Threshold **0 means lower-bound-only whenever
+available**, including a zero bound for different distributions with the same
+centroid but positive exact EMD. It does **not** mean "compute both", despite
+longstanding contradictory OpenCV header advice. If the threshold exceeds
+the bound, the exact solve continues. Never infer exactness from equality of
+Distance and Lower_Bound: exact EMD can also equal its bound.
+
+There is **no Cost overload** because the native center bound requires a
+metric. There is **no Flow** in this API: native early-exit Flow is merely an
+initialized zero matrix, not a transport solution. Use
+`Earth_Mover_Distance_With_Flow` when transport evidence is required.
+
+The binding retains its **full native-safety preflight even when EMD may
+early-exit**, including pairwise costs and packed Region snapshots. It saves
+the native transport/simplex solve, not the preflight's pairwise complexity.
+The bounded path additionally protects 4.1's full signed signature products
+and center scratch-buffer layout. See the
+[exact-tag source review](docs/emd-lower-bound-source-review.md) for native
+arithmetic, allocation/version differences, and the header/source discrepancy.
 
 ## Geometry is a separate module
 
@@ -4392,7 +4443,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **837-test** distribution is:
+The current **855-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -4432,7 +4483,7 @@ The current **837-test** distribution is:
 | Segmentation (flood fill, watershed, GrabCut) | 35 |
 | Mean-shift filtering | 16 |
 | Histogram analysis (calculation, comparison, back projection, accumulation) | 39 |
-| Earth mover distance | 13 |
+| Earth mover distance | 31 |
 | Distance transform | 6 |
 | Integral images | 7 |
 | Corner analysis and subpixel regressions | 23 |
@@ -4444,7 +4495,7 @@ The current **837-test** distribution is:
 | Bayer demosaicing | 43 |
 | YUV 4:2:0 frame conversions | 50 |
 | Packed YUV 4:2:2 decode and luma | 32 |
-| **Total** | **837** |
+| **Total** | **855** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -5214,8 +5265,6 @@ Notable Imgproc families that are not yet broadly bound include:
 - `SparseMat` histograms remain deferred until Core supplies a deliberate
   module-interoperability surface for sparse handles; Imgproc will not
   duplicate Core's SparseMat ownership model;
-- EMD's input/output lower-bound threshold shortcut (which can skip the exact
-  transport solve) remains deferred;
 - custom/user-defined distance masks (not part of the portable foundation);
 - custom OpenCV 5 font faces and FreeType/arbitrary font loading;
 - `drawFrameAxes` (calibration-dependent);
