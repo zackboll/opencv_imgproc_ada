@@ -447,12 +447,12 @@ package body Segmentation_Tests is
          Try (Target);
       end Three_D;
 
-      procedure Int32_Depth is
+      procedure Float64_Depth is
          Target : OpenCV.Core.Mat :=
-           Filled (4, 4, (OpenCV.Core.Int32, 1), Gray (0.0));
+           Filled (4, 4, (OpenCV.Core.Float64, 1), Gray (0.0));
       begin
          Try (Target);
-      end Int32_Depth;
+      end Float64_Depth;
 
       procedure Two_Channels is
          Target : OpenCV.Core.Mat :=
@@ -498,7 +498,7 @@ package body Segmentation_Tests is
    begin
       Assert_Raises (Empty'Access, "an empty image is rejected");
       Assert_Raises (Three_D'Access, "an N-dimensional image is rejected");
-      Assert_Raises (Int32_Depth'Access, "an Int32 image is rejected");
+      Assert_Raises (Float64_Depth'Access, "a Float64 image is rejected");
       Assert_Raises (Two_Channels'Access, "a two-channel image is rejected");
       Assert_Raises (Seed_Negative'Access, "a negative seed is rejected");
       Assert_Raises
