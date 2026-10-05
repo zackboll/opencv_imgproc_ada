@@ -55,6 +55,7 @@ with Remap_Tests;
 with Polar_Transform_Tests;
 with Phase_Correlation_Tests;
 with Kernel_Generator_Tests;
+with Linear_Blend_Tests;
 
 procedure Tests is
 
@@ -124,6 +125,7 @@ begin
    Suite.Add_Test (Image_Accumulation_Tests.Suite);
    Suite.Add_Test (Phase_Correlation_Tests.Suite);
    Suite.Add_Test (Kernel_Generator_Tests.Suite);
+   Suite.Add_Test (Linear_Blend_Tests.Suite);
    if Run (Reporter) = AUnit.Failure then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;

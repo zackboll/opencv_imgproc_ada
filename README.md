@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **929 AUnit tests**
+> **Current registered test baseline:** **979 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -51,6 +51,7 @@ Ada package, and built libraries serve different roles.
 - [Current feature set](#current-feature-set)
 - [Integral images](#integral-images)
 - [Image accumulation and running statistics](#image-accumulation-and-running-statistics)
+- [Linear blending / image fusion](#linear-blending--image-fusion)
 - [Color conversion](#color-conversion)
 - [Colormaps](#colormaps)
 - [YUV 4:2:0](#yuv-420)
@@ -373,6 +374,7 @@ The table below summarizes the current public operations.
 | Thresholding | `Apply_Adaptive_Threshold` | nonempty 2-D `UInt8` C1 | mean/Gaussian, odd block size >= 3, in-place supported |
 | Histogram | `Equalize_Histogram` | nonempty 2-D `UInt8` C1 | global CDF equalization; constant images retain intensity; same-object in-place supported; other storage-sharing aliases rejected |
 | Image statistics | `Accumulate_Image`, `Accumulate_Image_Square`, `Accumulate_Image_Product`, `Update_Running_Average` | nonempty 2-D; floating Base; documented portable depth/channel contracts below | fresh atomic result; optional UInt8 C1 mask; finite Weight in [0,1]; logical Regions and input aliases supported |
+| Image fusion | `Blend_Linear` | matching nonempty 2-D UInt8/Float32 sources; Float32 C1 weight maps, finite [0,1] | native normalized blend with 1e-5 denominator; any safe Core channel count; fresh atomic owning result; read-sharing and logical Regions |
 | Histogram | `CLAHE` | nonempty 2-D `UInt8`/`UInt16` C1 | local contrast-limited equalization; default clip 40.0 and grid 8x8; same-object in-place supported; other storage-sharing aliases rejected |
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
 | Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
@@ -4535,7 +4537,7 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **929-test** distribution is:
+The current **979-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
@@ -4583,6 +4585,7 @@ The current **929-test** distribution is:
 | Integral images | 7 |
 | Corner analysis and subpixel regressions | 23 |
 | Image accumulation and running statistics | 44 |
+| Native linear blending / image fusion | 50 |
 | Phase correlation and Hanning windows | 25 |
 | Kernel generators (Gabor and structuring elements) | 25 |
 | Packed BGR565 / BGR555 conversions | 31 |
@@ -4590,7 +4593,7 @@ The current **929-test** distribution is:
 | Bayer demosaicing | 43 |
 | YUV 4:2:0 frame conversions | 50 |
 | Packed YUV 4:2:2 decode and luma | 32 |
-| **Total** | **929** |
+| **Total** | **979** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -5131,6 +5134,49 @@ not source artifacts.
 
 ---
 
+## Linear blending / image fusion
+
+`Blend_Linear (Source_1, Source_2, Weight_1, Weight_2)` calls native Imgproc
+`cv::blendLinear` and returns a **fresh owning Mat with independent storage**.
+All four inputs remain unchanged. Sources must be nonempty 2-D **UInt8 or
+Float32**, with identical depth, channel count, rows and columns. Every
+Core-valid positive channel count is supported when the native signed width
+is safe: `Columns * Channels <= INT_MAX` (widened preflight, no practical cap).
+Native channel representation is version-dependent: OpenCV 4.1/4.10 supports
+up to 512, OpenCV 5.0 up to 128; use the actual Core Mat metadata.
+
+Both weight maps must be matching nonempty 2-D **Float32 C1**. Every logical
+weight sample must be **finite and in 0.0 .. 1.0**, otherwise `OpenCV_Error`.
+One weight per pixel is shared by all source channels. The weights **need not
+sum to one**. This is image-fusion/alpha-map weighting, not a separate
+Porter-Duff or channel-alpha compositing API.
+
+The pinned 4.1/4.10/5.0 implementation differs from the simplified public
+header formula. Actual native binary32 arithmetic is:
+
+```text
+Destination = (Source_1 * Weight_1 + Source_2 * Weight_2)
+              / (Weight_1 + Weight_2 + 1.0e-5f)
+```
+
+UInt8 then uses native rounding/saturation. `(1,1)` approximates the average,
+not the arithmetic sum; `(1,0)` retains the **1e-5 denominator bias**. Both
+zero weights give zero for finite source samples. Float32 sources need not
+be finite: NaN, infinity and intermediate overflow preserve native IEEE
+behavior, including `Inf * 0 -> NaN`. There is **no cross-platform Float32
+bit-identity promise**; SIMD/platform differences require tolerant comparison.
+
+Regions contribute only their own logical rows/columns, not surrounding
+parent pixels, and original row stride is supported. Identical sources,
+overlapping Regions, identical weight maps and compatible read-sharing inputs
+work without unnecessary snapshots. Concurrent external mutation is
+unsupported. Publication happens only after successful native computation.
+
+See [the exact-source and safety review](docs/linear-blend-source-review.md).
+The dedicated 50-test suite covers native normalization/epsilon, SIMD and
+scalar channels through C512, IEEE sources, logical Regions, unchanged inputs,
+independent ownership, public weight rejection/recovery and raw ABI safety.
+
 ## Image accumulation and running statistics
 
 These are **image/pixel accumulators**, distinct from dense histogram
@@ -5366,7 +5412,8 @@ Notable Imgproc families that are not yet broadly bound include:
 - custom OpenCV 5 font faces and FreeType/arbitrary font loading;
 - `drawFrameAxes` (calibration-dependent);
 - subpixel fixed-point drawing;
-- alpha blending and arbitrary multi-polygon construction;
+- native linear image blending is supported; separate Porter-Duff/channel-alpha
+  compositing and arbitrary multi-polygon construction remain deferred;
 - additional shape/image analysis that still belongs specifically to Imgproc.
 
 

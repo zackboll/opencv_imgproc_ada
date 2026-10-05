@@ -72,6 +72,17 @@ typedef struct {
 
 typedef int32_t opencv_imgproc_status;
 
+/* Four borrowed read-only inputs. Fresh result is published only on success;
+ * a failed call leaves destination unchanged. UInt8 raw weights must be finite
+ * in [0,1] to keep native float-to-integer conversion safe. Float32 raw weight
+ * values retain native arithmetic; the public weight policy belongs to Ada. */
+opencv_imgproc_status opencv_imgproc_blend_linear(
+    const opencv_core_mat_handle *source1,
+    const opencv_core_mat_handle *source2,
+    const opencv_core_mat_handle *weight1,
+    const opencv_core_mat_handle *weight2,
+    opencv_core_mat_handle *destination);
+
 /* Borrowed Mats, atomic fresh-result publication. Portable selectors 0..19
  * only, in Autumn..Twilight_Shifted order; never native-version expansion.
  * Custom CV_8UC1 LUTs are excluded for cross-version output ABI stability:

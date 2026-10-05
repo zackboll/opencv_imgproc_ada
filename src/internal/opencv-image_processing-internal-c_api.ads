@@ -8,6 +8,16 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Status is new Interfaces.Integer_32;
 
+   function Blend_Linear
+     (Source_1, Source_2, Weight_1, Weight_2 :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination                            :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_blend_linear";
+
    function Phase_Correlate
      (Source_1, Source_2, Window : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       X, Y, Response             : access Interfaces.C.double) return Status

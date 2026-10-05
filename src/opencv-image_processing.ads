@@ -5,6 +5,26 @@ private with Ada.Containers.Vectors;
 
 package OpenCV.Image_Processing is
 
+   --  Native cv::blendLinear, returning fresh independent owning storage.
+   --  Sources: nonempty 2-D UInt8 or Float32, identical depth, channels and
+   --  geometry. Any Core-valid channels with Columns*Channels <= INT_MAX.
+   --  Weights: matching nonempty 2-D Float32 C1; every sample finite in
+   --  0.0 .. 1.0. One weight per pixel applies to all channels. Invalid
+   --  inputs raise OpenCV_Error. Weights need not sum to one.
+   --  Native binary32 formula per channel:
+   --    (Source_1*Weight_1 + Source_2*Weight_2)
+   --      / (Weight_1 + Weight_2 + 1.0e-5f)
+   --  UInt8 then uses native rounding/saturation. Both-zero weights yield
+   --  zero for finite sources; Float32 NaN/Inf/overflow retain native IEEE
+   --  behavior (including Inf*0). (1,0) retains the epsilon bias.
+   --  Float32 cross-platform bit identity is not promised.
+   --  All inputs remain unchanged; read-sharing/overlapping aliases work.
+   --  Regions contribute only logical pixels, with original row strides.
+   --  Concurrent external mutation is unsupported. Publication is atomic.
+   function Blend_Linear
+     (Source_1, Source_2, Weight_1, Weight_2 : OpenCV.Core.Mat)
+      return OpenCV.Core.Mat;
+
    type Phase_Correlation_Result is record
       X_Shift, Y_Shift, Response : OpenCV.Float64_Value;
    end record;
