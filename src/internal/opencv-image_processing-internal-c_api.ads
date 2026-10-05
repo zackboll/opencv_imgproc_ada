@@ -558,6 +558,24 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_demosaic_bayer_alpha";
 
+   function Apply_Colormap
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Selector    : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_apply_colormap";
+
+   function Apply_Custom_Colormap
+     (Source       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination  : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Lookup_Table : OpenCV.Core.Module_Interop.Input_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_apply_custom_colormap";
+
    function Cvt_Color
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;

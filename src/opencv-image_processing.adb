@@ -4030,6 +4030,146 @@ package body OpenCV.Image_Processing is
       return Destination;
    end Demosaic_Bayer_With_Alpha;
 
+   function To_C_Color_Map
+     (Map : Built_In_Color_Map) return Interfaces.Integer_32 is
+   begin
+      case Map is
+         when Autumn_Map           =>
+            return 0;
+
+         when Bone_Map             =>
+            return 1;
+
+         when Jet_Map              =>
+            return 2;
+
+         when Winter_Map           =>
+            return 3;
+
+         when Rainbow_Map          =>
+            return 4;
+
+         when Ocean_Map            =>
+            return 5;
+
+         when Summer_Map           =>
+            return 6;
+
+         when Spring_Map           =>
+            return 7;
+
+         when Cool_Map             =>
+            return 8;
+
+         when HSV_Map              =>
+            return 9;
+
+         when Pink_Map             =>
+            return 10;
+
+         when Hot_Map              =>
+            return 11;
+
+         when Parula_Map           =>
+            return 12;
+
+         when Magma_Map            =>
+            return 13;
+
+         when Inferno_Map          =>
+            return 14;
+
+         when Plasma_Map           =>
+            return 15;
+
+         when Viridis_Map          =>
+            return 16;
+
+         when Cividis_Map          =>
+            return 17;
+
+         when Twilight_Map         =>
+            return 18;
+
+         when Twilight_Shifted_Map =>
+            return 19;
+      end case;
+   end To_C_Color_Map;
+
+   procedure Validate_Color_Map_Source (Source : OpenCV.Core.Mat) is
+      use type OpenCV.Core.Depth_Type;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth /= OpenCV.Core.UInt8
+        or else Source.Channels not in 1 | 3
+      then
+         raise OpenCV.OpenCV_Error
+           with "Apply_Color_Map requires nonempty 2-D UInt8 C1 or C3 Source";
+      end if;
+   end Validate_Color_Map_Source;
+
+   procedure Apply_Color_Map
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Map         : Built_In_Color_Map)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Apply_Colormap (S, D, To_C_Color_Map (Map));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Color_Map_Source (Source);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Apply_Color_Map");
+   end Apply_Color_Map;
+
+   procedure Apply_Color_Map
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Lookup_Table : OpenCV.Core.Mat)
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Table (L : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+            begin
+               Status := Internal.C_API.Apply_Custom_Colormap (S, D, L);
+            end Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Destination, Output'Access);
+         end Table;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Lookup_Table, Table'Access);
+      end Input;
+   begin
+      Validate_Color_Map_Source (Source);
+      if Lookup_Table.Is_Empty
+        or else Lookup_Table.Dimension_Count /= 2
+        or else Lookup_Table.Depth /= OpenCV.Core.UInt8
+        or else Lookup_Table.Channels /= 3
+        or else Lookup_Table.Rows /= 256
+        or else Lookup_Table.Columns /= 1
+      then
+         raise OpenCV.OpenCV_Error
+           with "Apply_Color_Map requires a 256x1 UInt8 C3 BGR Lookup_Table";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Apply_Color_Map custom");
+   end Apply_Color_Map;
+
    procedure Convert_Color
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -7042,13 +7182,10 @@ package body OpenCV.Image_Processing is
 
    function Text_Length (Text : String) return Interfaces.Integer_32 is
    begin
-      if Long_Long_Integer (Text'Length)
-        > Long_Long_Integer (Interfaces.Integer_32'Last)
-      then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV.OpenCV_Error'Identity, "text length exceeds C ABI range");
-      end if;
       return Interfaces.Integer_32 (Text'Length);
+   exception
+      when Constraint_Error =>
+         raise OpenCV.OpenCV_Error with "text length exceeds C ABI range";
    end Text_Length;
 
    procedure Draw_Arrow

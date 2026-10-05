@@ -14,6 +14,7 @@ with Contour_Tests;
 with Corner_Analysis_Tests;
 with Draw_Contour_Tests;
 with Color_Conversion_Tests;
+with Colormap_Tests;
 with Packed_Color_Tests;
 with Extended_Color_Tests;
 with Bayer_Demosaicing_Tests;
@@ -69,6 +70,7 @@ procedure Tests is
    Reporter : AUnit.Reporter.Text.Text_Reporter;
 begin
    Suite.Add_Test (Packed_Color_Tests.Suite);
+   Suite.Add_Test (Colormap_Tests.Suite);
    Suite.Add_Test (Extended_Color_Tests.Suite);
    Suite.Add_Test (Bayer_Demosaicing_Tests.Suite);
    Suite.Add_Test (YUV420_Conversion_Tests.Suite);

@@ -72,6 +72,17 @@ typedef struct {
 
 typedef int32_t opencv_imgproc_status;
 
+/* Borrowed Mats, atomic fresh-result publication. Portable selectors 0..19
+ * only, in Autumn..Twilight_Shifted order; never native-version expansion.
+ * Custom CV_8UC1 LUTs are excluded for cross-version output ABI stability:
+ * native 4.1 produces C3 with them, 4.10/5 produce C1. */
+opencv_imgproc_status opencv_imgproc_apply_colormap(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t selector);
+opencv_imgproc_status opencv_imgproc_apply_custom_colormap(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    const opencv_core_mat_handle *lookup_table);
+
 #define OPENCV_IMGPROC_OK                     ((opencv_imgproc_status)0)
 #define OPENCV_IMGPROC_ERROR_OPENCV           ((opencv_imgproc_status)1)
 #define OPENCV_IMGPROC_ERROR_STD              ((opencv_imgproc_status)2)

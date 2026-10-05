@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **871 AUnit tests**
+> **Current registered test baseline:** **905 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -52,6 +52,7 @@ Ada package, and built libraries serve different roles.
 - [Integral images](#integral-images)
 - [Image accumulation and running statistics](#image-accumulation-and-running-statistics)
 - [Color conversion](#color-conversion)
+- [Colormaps](#colormaps)
 - [YUV 4:2:0](#yuv-420)
 - [YUV 4:2:2](#yuv-422)
 - [Bayer demosaicing](#bayer-demosaicing)
@@ -341,6 +342,7 @@ The table below summarizes the current public operations.
 | Windows | `Create_Hanning_Window` | Width/Height > 1; Float32 or Float64 selector | fresh owning C1 Mat; native sqrt of separable Hann product |
 | Contour rendering | `Draw_Contours`, `Fill_Contours` | one Ada-owned `Contour_Set`; ordinary drawing image contract | all or selected root-relative subtree; even-odd holes/islands; Region-local offset |
 | Color | `Convert_Color` | nonempty 2-D, exact selector channels; UInt8/UInt16/Float32 for layout/Gray/XYZ/YCrCb/YUV, UInt8/Float32 for HSV/HLS/Lab/Luv, UInt8 only for packed/alpha | layout, Gray, XYZ, YCrCb, YUV, standard/FULL HSV/HLS, sRGB/linear-light Lab/Luv, packed color and premultiplied RGBA |
+| Colormaps | `Apply_Color_Map` overloads | nonempty 2-D UInt8 C1/C3 Source; custom table exactly 256x1 UInt8 C3 | 20 portable built-ins and native custom BGR lookup |
 | Resize | `Resize` | nonempty 2-D; `UInt8`, `UInt16`, `Int16`, `Float32`, or `Float64` | five interpolation modes; preserves depth/channels |
 | Filtering | `Gaussian_Blur` | nonempty 2-D; supported numeric depths | positive odd kernel, positive finite sigma |
 | Filtering | `Get_Gaussian_Kernel` | odd positive size | automatic or explicit sigma; Float32/Float64 `N x 1` C1 kernel; usable with `Sep_Filter_2D` |
@@ -800,6 +802,53 @@ Convert_Color (Lab_Image, Restored_Bgr, Lab_To_BGR);
 ```
 
 ---
+
+## Colormaps
+
+`Apply_Color_Map` directly binds the native Imgproc `applyColorMap` family:
+
+```ada
+Apply_Color_Map (Source, Destination, Jet_Map);
+Apply_Color_Map (Source, Destination, Lookup_Table);
+```
+
+`Built_In_Color_Map` contains Autumn, Bone, Jet, Winter, Rainbow, Ocean,
+Summer, Spring, Cool, HSV, Pink, Hot, Parula, Magma, Inferno, Plasma, Viridis,
+Cividis, Twilight and Twilight_Shifted (each literal has the `_Map` suffix).
+These twenty are available in OpenCV 4.1.0, 4.10.0 and 5.0.0. Turbo and
+DeepGreen are intentionally omitted because they are absent from 4.1; the
+private portable selector set never expands with the installed version.
+
+Source must be nonempty, 2-D, UInt8 **C1 or C3**. C1 bytes index the color
+table directly. C3 is interpreted as **BGR**, converted with native
+`COLOR_BGR2GRAY`, and then indexed by that grayscale byte. Colormaps are
+**not applied independently to B/G/R channels**. Results are fresh owning
+UInt8 C3 Mats, native **BGR** order, with Source rows/columns.
+
+Custom Lookup_Table is exactly **256 rows x 1 column UInt8 C3**. Each row
+contains a BGR triple; `(I,0)` corresponds to grayscale I, 0..255. A 1x256
+table is rejected. Custom C1 is natively valid but deliberately excluded:
+OpenCV 4.1's grayscale-to-BGR/Core LUT pipeline returns C3 with a C1 table,
+whereas 4.10/5's dedicated loop returns C1. Restricting to C3 preserves the
+portable output contract. No scaling, alpha or LUT interpolation is added.
+
+Source and custom table Regions are logical images, snapshotted by row into
+independent packed storage. A noncontiguous 256x1 table Region is accepted.
+All inputs are snapshotted before native execution and Destination is rebound
+only after success: same-handle Destination=Source and
+Destination=Lookup_Table are supported, as are Source/table storage aliases.
+Separate source/table storage remains unchanged; failed calls preserve the
+old Destination and raise `OpenCV.OpenCV_Error`.
+
+The legacy 4.1 LUT signed arithmetic requires widened preflight
+`Rows * Columns * 3 <= INT_MAX`; original parent strides are checked for
+readable address spans, not arbitrarily narrowed to signed int.
+See [exact-tag source/backend/safety review](docs/colormaps-source-review.md).
+Local runtime is OpenCV 4.10.0; exact 4.1.0/4.10.0/5.0.0 headers are syntax
+checked separately. The 34 new registrations cover every built-in selector,
+pinned values, custom exact entries/luminance, failures, Regions and aliases:
+**905 registered, 905 executed, 905 passed**, zero failed assertions and
+unexpected errors (baseline 871).
 
 ## Resizing
 

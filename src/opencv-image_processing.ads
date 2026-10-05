@@ -673,6 +673,50 @@ package OpenCV.Image_Processing is
       Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
    --  Bilinear C4 BGRA/RGBA; native alpha is 255/65535 for UInt8/UInt16.
 
+   type Built_In_Color_Map is
+     (Autumn_Map,
+      Bone_Map,
+      Jet_Map,
+      Winter_Map,
+      Rainbow_Map,
+      Ocean_Map,
+      Summer_Map,
+      Spring_Map,
+      Cool_Map,
+      HSV_Map,
+      Pink_Map,
+      Hot_Map,
+      Parula_Map,
+      Magma_Map,
+      Inferno_Map,
+      Plasma_Map,
+      Viridis_Map,
+      Cividis_Map,
+      Twilight_Map,
+      Twilight_Shifted_Map);
+   --  Portable OpenCV 4.1/4.10/5 set; no Turbo or DeepGreen.
+
+   --  Nonempty 2-D UInt8 C1 or C3 Source. C1 bytes index the table;
+   --  C3 is BGR converted to grayscale first, NOT independent B/G/R maps.
+   --  Fresh owning UInt8 C3 BGR result with Source geometry. Logical-row
+   --  snapshots isolate Regions and permit Destination = Source. Publication
+   --  occurs only after success; failures raise OpenCV.OpenCV_Error and leave
+   --  Destination unchanged. Separate input storage is never modified.
+   procedure Apply_Color_Map
+     (Source      : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Map         : Built_In_Color_Map);
+
+   --  Lookup_Table must be 2-D UInt8 C3, 256 rows x 1 column (not 1x256).
+   --  Row I contains the BGR triple for grayscale byte I, I = 0 .. 255.
+   --  Custom C1 tables are intentionally excluded: OpenCV 4.1 returns C3
+   --  with them, whereas 4.10/5 return C1. The table is also snapshotted;
+   --  noncontiguous Regions and Destination = Lookup_Table are supported.
+   procedure Apply_Color_Map
+     (Source       : OpenCV.Core.Mat;
+      Destination  : in out OpenCV.Core.Mat;
+      Lookup_Table : OpenCV.Core.Mat);
+
    --  Nonempty 2-D Source, with exactly the channels named by Conversion.
    --  Layout, Gray, XYZ, YCrCb and YUV accept UInt8/UInt16/Float32;
    --  HSV, HLS, Lab and Luv accept UInt8/Float32. Destination retains
