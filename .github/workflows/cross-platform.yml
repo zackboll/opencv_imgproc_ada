@@ -120,6 +120,12 @@ jobs:
             tests/flood_fill_int32_test.cpp -o flood_fill_int32_test
           ./flood_fill_int32_test
 
+      - name: Run linear-blend arithmetic boundary tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/blend_linear_layout_test.cpp -o blend_linear_layout_test
+          ./blend_linear_layout_test
+
   macos-arm64:
     name: macOS ARM64
     runs-on: macos-latest
@@ -218,6 +224,12 @@ jobs:
           xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             tests/bayer_layout_test.cpp -o bayer_layout_test
           ./bayer_layout_test
+
+      - name: Run linear-blend arithmetic boundary tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/blend_linear_layout_test.cpp -o blend_linear_layout_test
+          ./blend_linear_layout_test
 
       - name: Run morphology expansion boundary tests
         run: |
@@ -661,3 +673,9 @@ jobs:
           "${IMGPROC_WINDOWS_CXX}" -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             tests/flood_fill_int32_test.cpp -o flood_fill_int32_test.exe
           PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./flood_fill_int32_test.exe
+
+      - name: Run linear-blend arithmetic boundary tests
+        run: |
+          "${IMGPROC_WINDOWS_CXX}" -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/blend_linear_layout_test.cpp -o blend_linear_layout_test.exe
+          PATH="${IMGPROC_WINDOWS_MINGW_BIN}:$PATH" ./blend_linear_layout_test.exe

@@ -22,6 +22,102 @@ package body OpenCV.Image_Processing is
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
 
+   function Blend_Linear
+     (Source_1, Source_2, Weight_1, Weight_2 : OpenCV.Core.Mat)
+      return OpenCV.Core.Mat
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Float32_Value;
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure Geometry (Image : OpenCV.Core.Mat) is
+      begin
+         if Image.Is_Empty
+           or else Image.Dimension_Count /= 2
+           or else Image.Rows /= Source_1.Rows
+           or else Image.Columns /= Source_1.Columns
+         then
+            raise OpenCV.OpenCV_Error
+              with "Linear blending requires matching nonempty 2-D images";
+         end if;
+      end Geometry;
+
+      procedure Weight (Image : OpenCV.Core.Mat) is
+         procedure Check_Row
+           (Data : aliased OpenCV.Core.Float32_Row_Access.Row_Array) is
+            --  Foreign binary32 may legitimately contain NaN/Inf. Classify
+            --  it here rather than letting -gnatVa raise Constraint_Error
+            --  while loading a sample, before the public OpenCV_Error check.
+            pragma Suppress (Validity_Check);
+         begin
+            for Value of Data loop
+               --  Ordered bounds reject NaN and both infinities as well.
+               if not (Value >= 0.0 and then Value <= 1.0) then
+                  raise OpenCV.OpenCV_Error
+                    with "Linear blend weights must be finite in [0,1]";
+               end if;
+            end loop;
+         end Check_Row;
+      begin
+         Geometry (Image);
+         if Image.Depth /= OpenCV.Core.Float32 or else Image.Channels /= 1 then
+            raise OpenCV.OpenCV_Error
+              with "Linear blend weights must be Float32 C1";
+         end if;
+         for Row in 0 .. Image.Rows - 1 loop
+            OpenCV.Core.Float32_Row_Access.With_Read_Only_Row
+              (Image, Row, Check_Row'Access);
+         end loop;
+      end Weight;
+
+      procedure First (A : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Second (B : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            procedure First_Weight
+              (W1 : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure Second_Weight
+                 (W2 : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+               is
+                  procedure Output
+                    (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+                  begin
+                     Status := Internal.C_API.Blend_Linear (A, B, W1, W2, D);
+                  end Output;
+               begin
+                  OpenCV.Core.Module_Interop.With_Output_Handle
+                    (Result, Output'Access);
+               end Second_Weight;
+            begin
+               OpenCV.Core.Module_Interop.With_Input_Handle
+                 (Weight_2, Second_Weight'Access);
+            end First_Weight;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Weight_1, First_Weight'Access);
+         end Second;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Source_2, Second'Access);
+      end First;
+   begin
+      Geometry (Source_1);
+      Geometry (Source_2);
+      if Source_1.Depth not in OpenCV.Core.UInt8 | OpenCV.Core.Float32
+        or else Source_1.Depth /= Source_2.Depth
+        or else Source_1.Channels /= Source_2.Channels
+      then
+         raise OpenCV.OpenCV_Error
+           with "Linear blend sources must have identical UInt8/Float32 types";
+      end if;
+      Weight (Weight_1);
+      Weight (Weight_2);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source_1, First'Access);
+      Raise_On_Error (Status, "Blend_Linear");
+      return Result;
+   end Blend_Linear;
+
    function Correlate
      (Source_1, Source_2, Window : OpenCV.Core.Mat; Windowed : Boolean)
       return Phase_Correlation_Result

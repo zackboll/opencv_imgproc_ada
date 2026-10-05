@@ -8,6 +8,7 @@
 #include "resize_exact_layout_fits.hpp"
 #include "colormap_layout_fits.hpp"
 #include "flood_fill_int32_fits.hpp"
+#include "blend_linear_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -4200,6 +4201,61 @@ opencv_imgproc_status opencv_imgproc_phase_correlate(
         *x = shift.x;
         *y = shift.y;
         *response = energy;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status opencv_imgproc_blend_linear(
+    const opencv_core_mat_handle *source1,
+    const opencv_core_mat_handle *source2,
+    const opencv_core_mat_handle *weight1,
+    const opencv_core_mat_handle *weight2,
+    opencv_core_mat_handle *destination)
+{
+    clear_error();
+    try {
+        const cv::Mat *a = nullptr, *b = nullptr, *w1 = nullptr, *w2 = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source1, &a) != OPENCV_CORE_OK || !a ||
+            opencv_core_module_input_mat(source2, &b) != OPENCV_CORE_OK || !b ||
+            opencv_core_module_input_mat(weight1, &w1) != OPENCV_CORE_OK || !w1 ||
+            opencv_core_module_input_mat(weight2, &w2) != OPENCV_CORE_OK || !w2 ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("Invalid linear blend Mat handle");
+        // ABI safety: in 4.x release builds an n-D source can pass size(),
+        // allocate a 2-D result, then skip the invoker (rows=-1), publishing
+        // uninitialized pixels. 5.0 rejects n-D size() itself.
+        if (a->dims > 2)
+            return invalid_argument("Unsafe linear blend source layout");
+        // ABI safety: native cols*cn is signed int before any overflow check.
+        // Subtractive SIMD bounds keep increments/offsets within this width.
+        if (!opencv_imgproc_detail::blend_linear_layout_fits(a->cols, a->channels()))
+            return invalid_argument("Linear blend channel-expanded width overflow");
+        if (a->depth() == CV_8U) {
+            // ABI safety: this typed scan must not reinterpret other layouts
+            // as float rows or skip n-D weights (rows=-1) that 4.x size()
+            // can accept, leaving unsafe values unscanned before cvRound.
+            // Native assertions handle source/weight geometry.
+            if (w1->dims != 2 || w2->dims != 2 ||
+                w1->type() != CV_32FC1 || w2->type() != CV_32FC1)
+                return invalid_argument("Unsafe UInt8 blend weight layout");
+            // ABI safety: saturate_cast<uchar>(float) calls cvRound BEFORE
+            // clamping. NaN/Inf/out-of-int results can cause undefined float
+            // conversion on portable fallbacks. [0,1] keeps UInt8 num/den
+            // finite and inside the conversion envelope, including SIMD.
+            for (const cv::Mat *w : {w1, w2}) {
+                for (int y = 0; y < w->rows; ++y) {
+                    const float *row = w->ptr<float>(y);
+                    for (int x = 0; x < w->cols; ++x) {
+                        if (!std::isfinite(row[x]) || row[x] < 0.0f || row[x] > 1.0f)
+                            return invalid_argument("Unsafe UInt8 blend weight value");
+                    }
+                }
+            }
+        }
+        cv::Mat result;
+        cv::blendLinear(*a, *b, *w1, *w2, result);
+        *dst = std::move(result);
         return OPENCV_IMGPROC_OK;
     } catch (...) { return translate_current_exception(); }
 }
