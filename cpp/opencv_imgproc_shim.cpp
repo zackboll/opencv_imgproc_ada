@@ -7,6 +7,7 @@
 #include "morphology_expansion_fits.hpp"
 #include "resize_exact_layout_fits.hpp"
 #include "colormap_layout_fits.hpp"
+#include "flood_fill_int32_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -2689,6 +2690,20 @@ bool flood_fill_components(
         const double value = new_value.values[index];
         const double low = lower.values[index];
         const double high = upper.values[index];
+        if (image.depth() == CV_32S) {
+            // ABI safety: cvRound/cvFloor must not convert nonfinite or
+            // out-of-domain doubles. Negative differences in that domain
+            // are left to OpenCV's own check before lower-bound negation.
+            using opencv_imgproc_detail::flood_fill_int32_component_fits;
+            if (!flood_fill_int32_component_fits(value)
+                || !flood_fill_int32_component_fits(low)
+                || !flood_fill_int32_component_fits(high)) {
+                *message = "flood-fill Int32 components exceed the native "
+                           "conversion range";
+                return false;
+            }
+            continue;
+        }
         if (!std::isfinite(value) || !std::isfinite(low)
             || !std::isfinite(high)) {
             // ABI safety: a NaN difference passes OpenCV's "< 0" check and
@@ -2719,6 +2734,40 @@ bool flood_fill_components(
         }
     }
     return true;
+}
+
+const char *flood_fill_int32_span(const cv::Mat &image)
+{
+    // ABI safety: skip empty/non-Int32/unsupported-channel layouts rather
+    // than dereferencing null data, reading samples of the wrong width, or
+    // indexing beyond the three-element extrema arrays. OpenCV rejects
+    // unsupported layouts itself; this does not duplicate public policy.
+    if (image.depth() != CV_32S || image.empty()
+        || (image.channels() != 1 && image.channels() != 3)) {
+        return nullptr;
+    }
+    const int channels = image.channels();
+    int minimum[3] = {INT_MAX, INT_MAX, INT_MAX};
+    int maximum[3] = {INT_MIN, INT_MIN, INT_MIN};
+    for (int row = 0; row < image.rows; ++row) {
+        const int *samples = image.ptr<int>(row);
+        for (int col = 0; col < image.cols; ++col) {
+            for (int channel = 0; channel < channels; ++channel) {
+                const int value = samples[col * channels + channel];
+                minimum[channel] = std::min(minimum[channel], value);
+                maximum[channel] = std::max(maximum[channel], value);
+            }
+        }
+    }
+    for (int channel = 0; channel < channels; ++channel) {
+        // ABI safety: all pinned Diff32s paths subtract original samples
+        // in signed int, even unmasked zero-range requests on newer OpenCV.
+        if (!opencv_imgproc_detail::flood_fill_int32_span_fits(
+                minimum[channel], maximum[channel])) {
+            return "flood-fill Int32 stored-value span exceeds INT_MAX";
+        }
+    }
+    return nullptr;
 }
 
 bool grabcut_mode(int32_t mode, int &opencv_mode) noexcept
@@ -2971,9 +3020,18 @@ opencv_imgproc_status opencv_imgproc_flood_fill_masked_impl(
         if (message != nullptr) {
             return invalid_argument(message);
         }
+        // ABI safety: OpenCV still converts newVal in mask-only mode even
+        // though no image assignment uses it. Neutralize the ignored value.
+        const opencv_imgproc_scalar4 neutral{{0.0, 0.0, 0.0, 0.0}};
+        const opencv_imgproc_scalar4 &fill_value =
+            mask_only != 0 ? neutral : *new_value;
         if (!flood_fill_components(
-                *img, *new_value, *lower_difference, *upper_difference,
+                *img, fill_value, *lower_difference, *upper_difference,
                 &message)) {
+            return invalid_argument(message);
+        }
+        message = flood_fill_int32_span(*img);
+        if (message != nullptr) {
             return invalid_argument(message);
         }
 
@@ -2986,7 +3044,7 @@ opencv_imgproc_status opencv_imgproc_flood_fill_masked_impl(
             flags |= cv::FLOODFILL_MASK_ONLY;
         }
 
-        const double *v = new_value->values;
+        const double *v = fill_value.values;
         const double *lo = lower_difference->values;
         const double *hi = upper_difference->values;
         const cv::Scalar fill(v[0], v[1], v[2], v[3]);

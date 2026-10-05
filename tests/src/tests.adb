@@ -45,6 +45,7 @@ with Pyramid_Tests;
 with Resize_Tests;
 with Resize_Linear_Exact_Tests;
 with Segmentation_Tests;
+with Int32_Flood_Fill_Tests;
 with Spatial_Derivative_Tests;
 with Template_Matching_Tests;
 with Threshold_Tests;
@@ -113,6 +114,7 @@ begin
    Suite.Add_Test (Drawing_Annotation_Tests.Suite);
    Suite.Add_Test (Hough_Detection_Tests.Suite);
    Suite.Add_Test (Segmentation_Tests.Suite);
+   Suite.Add_Test (Int32_Flood_Fill_Tests.Suite);
    Suite.Add_Test (Mean_Shift_Tests.Suite);
    Suite.Add_Test (Histogram_Analysis_Tests.Suite);
    Suite.Add_Test (Distance_Transform_Tests.Suite);

@@ -2108,14 +2108,19 @@ package OpenCV.Image_Processing is
    end record;
 
    --  Fills the connected component containing Seed with New_Value in place.
-   --  Image must be a nonempty two-dimensional UInt8 or Float32 Mat with one
-   --  or three channels; Seed (X is the column, Y the row) must lie inside
+   --  Image must be a nonempty two-dimensional UInt8, Int32, or Float32 Mat
+   --  with one or three channels; Seed (X is the column, Y the row) is inside
    --  it. A neighbour joins the component when every channel lies within
    --  [reference - Lower_Difference, reference + Upper_Difference], where
    --  the reference follows Range_Mode. The components used by Image's
    --  channels must be finite, and the differences nonnegative. A Region is
    --  filled as its own logical image and mutates its parent's storage;
    --  shallow aliases observe the mutation.
+   --  Int32 requires each channel's stored maximum minus minimum <= INT_MAX
+   --  to prevent native signed subtraction overflow (including mask-only).
+   --  Active Int32 New_Value lies in Int32_Value'First .. Int32_Value'Last;
+   --  differences lie in 0 .. Int32_Value'Last. Native rounding of New_Value
+   --  and flooring of differences preserve fractional Scalar semantics.
    procedure Flood_Fill
      (Image            : in out OpenCV.Core.Mat;
       Seed             : OpenCV.Point;

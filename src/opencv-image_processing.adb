@@ -8476,9 +8476,11 @@ package body OpenCV.Image_Processing is
       elsif Image.Dimension_Count /= 2 then
          Segmentation_Error ("Flood_Fill requires a two-dimensional image");
       elsif Image.Depth /= OpenCV.Core.UInt8
+        and then Image.Depth /= OpenCV.Core.Int32
         and then Image.Depth /= OpenCV.Core.Float32
       then
-         Segmentation_Error ("Flood_Fill requires a UInt8 or Float32 image");
+         Segmentation_Error
+           ("Flood_Fill requires a UInt8, Int32, or Float32 image");
       elsif Image.Channels /= 1 and then Image.Channels /= 3 then
          Segmentation_Error ("Flood_Fill requires one or three channels");
       elsif Seed.X < 0
@@ -8508,6 +8510,21 @@ package body OpenCV.Image_Processing is
             elsif Lower < 0.0 or else Upper < 0.0 then
                Segmentation_Error
                  ("Flood_Fill requires nonnegative differences");
+            elsif Image.Depth = OpenCV.Core.Int32
+              and then
+                ((Use_New_Value
+                  and then
+                    (Value < OpenCV.Float64_Value (OpenCV.Int32_Value'First)
+                     or else
+                       Value > OpenCV.Float64_Value (OpenCV.Int32_Value'Last)))
+                 or else
+                   Lower > OpenCV.Float64_Value (OpenCV.Int32_Value'Last)
+                 or else
+                   Upper > OpenCV.Float64_Value (OpenCV.Int32_Value'Last))
+            then
+               Segmentation_Error
+                 ("Flood_Fill Int32 components exceed the native"
+                  & " conversion range");
             end if;
          end;
       end loop;

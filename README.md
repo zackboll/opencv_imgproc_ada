@@ -21,7 +21,7 @@ translation of `opencv2/imgproc.hpp`.
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **905 AUnit tests**
+> **Current registered test baseline:** **929 AUnit tests**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -383,7 +383,7 @@ The table below summarizes the current public operations.
 | Hough | `Find_Hough_Circles` | nonempty 2-D `UInt8` C1 grayscale image | classic `HOUGH_GRADIENT`; automatic or explicit maximum radius; Float32 center/radius; source-preserving snapshot |
 | Hough | `Find_Hough_Lines_With_Votes`, `Find_Hough_Lines_From_Points` | binary `UInt8` C1 image, or an Ada array of finite Float32 points | polar lines with accumulator votes; point-set rho range must contain every vote (OpenCV 4.1 safety) |
 | Hough | `Find_Hough_Circle_Centers`, `Find_Hough_Circles_With_Votes` | nonempty 2-D `UInt8` C1 grayscale image | centers-only gradient detection; radius-finding circles with support votes |
-| Segmentation | `Flood_Fill`, `Flood_Fill_With_Mask` | nonempty 2-D `UInt8`/`Float32`, C1/C3; mask `UInt8` C1 `(rows + 2) x (cols + 2)` | in place; floating/fixed range; 4/8 connectivity; area and bounds; mask fill value and mask-only mode |
+| Segmentation | `Flood_Fill`, `Flood_Fill_With_Mask` | nonempty 2-D `UInt8`/`Int32`/`Float32`, C1/C3; Int32 per-channel span <= INT_MAX; mask `UInt8` C1 `(rows + 2) x (cols + 2)` | in place; floating/fixed range; 4/8 connectivity; area and bounds; mask fill value and mask-only mode |
 | Segmentation | `Watershed` | `UInt8` C3 source; `Int32` C1 markers of the same size | markers mutated in place (`-1` boundaries); source preserved; nonnegative input markers; overlap rejected |
 | Segmentation | `Initialize_GrabCut`, `Restore_GrabCut_State`, `Clone_GrabCut_State`, `Refine_GrabCut`, `Refine_GrabCut_Frozen_Model` | `UInt8` C3 source; rectangle and/or 0..3 label mask; imported Float64 C1 1 x 65 models | limited private state; masks and models exported as deep clones; restored models validated before evaluation |
 | Histogram analysis | `Calculate_Histogram`, `Calculate_Nonuniform_Histogram` | one Mat, or several Mats of the same rows, columns, and `UInt8`/`UInt16`/`Float32` depth; per-axis channel or `(Source_Position, Channel)`; optional `UInt8` C1 mask | dense 1..10-D Float32 counts; one binning mode per histogram, either uniform `[lower, upper)` bins or explicit nonuniform edges |
@@ -3517,9 +3517,8 @@ type Flood_Fill_Result is record
 end record;
 ```
 
-- **Image:** nonempty 2-D `UInt8` or `Float32`, one or three channels. This
-  is OpenCV's documented portable contract; the undocumented `Int32` paths are
-  not exposed.
+- **Image:** nonempty 2-D `UInt8`, `Int32`, or `Float32`, one or three channels.
+  Native Int32 paths were reviewed in exact OpenCV 4.1.0, 4.10.0 and 5.0.0.
 - **Seed:** `X` is the column and `Y` the row, and it must be inside the
   image.
 - **Ranges:** a neighbour joins when every channel is within
@@ -3533,6 +3532,25 @@ end record;
 - **In place:** `Image` is modified. A `Region` is filled as its own logical
   image in view coordinates and mutates its parent's storage. Shallow aliases
   observe the change.
+
+**Int32 native-safety boundary:** OpenCV subtracts Int32 samples in signed
+`int`. Before native entry, the binding scans the logical image and rejects
+it with `OpenCV.OpenCV_Error` if any channel's widened stored maximum minus
+minimum exceeds `INT_MAX` (2,147,483,647). This prevents native signed-overflow
+undefined behavior; it is not a mathematical flood-fill policy. The boundary
+is inclusive, applies independently per channel, and also applies to zero
+differences, masks and mask-only execution. Disconnected extrema can therefore
+conservatively reject. A Region's outside pixels do not contribute. Rejection
+leaves Image and any supplied Mask unchanged, including the mask border.
+Arbitrary full-domain Int32 images exceeding this span are **not** supported.
+
+Active Int32 `New_Value` components must be finite and in
+`Int32_Value'First .. Int32_Value'Last`; active differences must be finite and
+in `0 .. Int32_Value'Last`. Fractional values remain supported: native
+`cvRound` rounds the replacement, and `cvFloor` floors differences. Half-tie
+rounding follows native OpenCV/platform behavior, not an Ada-specific rule.
+Mask-only ignores New_Value; inactive Scalar components remain irrelevant.
+See [the pinned source review](docs/int32-flood-fill-source-review.md).
 
 `Flood_Fill_With_Mask` adds a caller-owned mask:
 
@@ -4517,11 +4535,12 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Current test distribution
 
-The current **871-test** distribution is:
+The current **929-test** distribution is:
 
 | Suite | Tests |
 | --- | ---: |
 | Color conversion | 14 |
+| Built-in and custom colormaps | 34 |
 | Resize | 10 |
 | Resize Linear_Exact | 16 |
 | Gaussian blur | 10 |
@@ -4556,6 +4575,7 @@ The current **871-test** distribution is:
 | Drawing annotations | 14 |
 | Hough detection | 37 |
 | Segmentation (flood fill, watershed, GrabCut) | 35 |
+| Native Int32 flood fill | 24 |
 | Mean-shift filtering | 16 |
 | Histogram analysis (calculation, comparison, back projection, accumulation) | 39 |
 | Earth mover distance | 31 |
@@ -4570,7 +4590,7 @@ The current **871-test** distribution is:
 | Bayer demosaicing | 43 |
 | YUV 4:2:0 frame conversions | 50 |
 | Packed YUV 4:2:2 decode and luma | 32 |
-| **Total** | **871** |
+| **Total** | **929** |
 
 
 The suite covers more than simple success paths. It includes:
@@ -5336,8 +5356,9 @@ Notable Imgproc families that are not yet broadly bound include:
   calibration/undistortion map generation belongs in the appropriate module;
 - deferred Hough capabilities: multiscale `srn`/`stn`, OpenCV 5 weighted
   (`use_edgeval`) Hough, and `HOUGH_GRADIENT_ALT`;
-- deferred segmentation capabilities: flood fill on `Int32` images and
-  higher-level distance-transform marker-construction convenience;
+- deferred segmentation capabilities: higher-level distance-transform
+  marker-construction convenience; native Int32 flood fill is supported
+  subject to its per-channel signed-subtraction safety boundary;
 - `SparseMat` histograms remain deferred until Core supplies a deliberate
   module-interoperability surface for sparse handles; Imgproc will not
   duplicate Core's SparseMat ownership model;
