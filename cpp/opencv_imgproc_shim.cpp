@@ -6437,6 +6437,81 @@ opencv_imgproc_contour_hierarchy(
 }
 
 opencv_imgproc_status
+opencv_imgproc_spatial_gradient(
+    const opencv_core_mat_handle *source,
+    int32_t border,
+    opencv_core_mat_handle *x,
+    opencv_core_mat_handle *y)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dx = nullptr;
+        cv::Mat *dy = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK ||
+            src == nullptr ||
+            opencv_core_module_output_mat(x, &dx) != OPENCV_CORE_OK ||
+            dx == nullptr ||
+            opencv_core_module_output_mat(y, &dy) != OPENCV_CORE_OK ||
+            dy == nullptr) {
+            return invalid_argument("invalid spatial gradient Mat handle");
+        }
+        // ABI safety: publishing into identical headers would overwrite one
+        // result or mutate the borrowed source. Shared data in distinct old
+        // destination headers is safe because publication rebinds headers.
+        if (dx == dy || src == dx || src == dy) {
+            return invalid_argument("spatial gradient Mat objects must differ");
+        }
+        // ABI safety: the adapter reads ptr<uchar>(row)[0], and constructs
+        // 2-D views/results. Empty or N-D inputs cannot supply those bounded
+        // rows; another type would interpret bytes as unrelated pixels.
+        if (src->empty() || src->dims != 2 || src->type() != CV_8UC1) {
+            return invalid_argument("spatial gradient requires 2-D CV_8UC1");
+        }
+        // Translate the two supported C ABI selectors, not OpenCV enum values.
+        int native_border = 0;
+        if (border == 3) {
+            native_border = cv::BORDER_REFLECT_101;
+        } else if (border == 1) {
+            native_border = cv::BORDER_REPLICATE;
+        } else {
+            return invalid_argument("invalid spatial gradient border selector");
+        }
+
+        cv::Mat dx_result, dy_result;
+        if (src->cols >= 2) {
+            cv::spatialGradient(*src, dx_result, dy_result, 3, native_border);
+        } else {
+            // ABI safety: reviewed 4.1/4.10/5.0 fallbacks preload column 1
+            // unconditionally. Never invoke native spatialGradient at width 1.
+            // See docs/spatial-gradient-source-review.md for equivalence proof.
+            cv::Mat safe(src->rows, 2, CV_8UC1);
+            for (int row = 0; row < src->rows; ++row) {
+                const uchar value = src->ptr<uchar>(row)[0];
+                uchar *target = safe.ptr<uchar>(row);
+                target[0] = value;
+                target[1] = value;
+            }
+            cv::Mat wide_dx, wide_dy;
+            cv::spatialGradient(safe, wide_dx, wide_dy, 3, native_border);
+            dx_result.create(src->rows, 1, CV_16SC1);
+            dy_result.create(src->rows, 1, CV_16SC1);
+            for (int row = 0; row < src->rows; ++row) {
+                dx_result.ptr<short>(row)[0] = wide_dx.ptr<short>(row)[0];
+                dy_result.ptr<short>(row)[0] = wide_dy.ptr<short>(row)[0];
+            }
+        }
+        // Mat move assignment only releases/rebinds headers (no allocation).
+        // All potentially failing computation precedes either publication.
+        *dx = std::move(dx_result);
+        *dy = std::move(dy_result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
 opencv_imgproc_sobel(
     const opencv_core_mat_handle *source,
     opencv_core_mat_handle *destination,

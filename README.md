@@ -77,6 +77,7 @@ Ada package, and built libraries serve different roles.
 - [Morphology](#morphology)
 - [Canny edge detection](#canny-edge-detection)
 - [Spatial derivatives](#spatial-derivatives)
+- [Spatial gradient](#spatial-gradient)
 - [Thresholding](#thresholding)
 - [Histogram equalization](#histogram-equalization)
 - [CLAHE](#clahe)
@@ -2540,6 +2541,34 @@ Requirements:
 The result is a `UInt8` C1 image with the source geometry.
 
 ---
+
+## Spatial gradient
+
+`Spatial_Gradient (Source, Border := OpenCV.Reflect_101)` returns a
+`Spatial_Gradient_Result` with `X_Derivative` and `Y_Derivative` Mats.
+It computes the native fixed 3x3 first-order Sobel X/Y pair in one native
+call, without a public kernel-size selector.
+
+- Source must be nonempty, exactly 2-D **UInt8 C1**.
+- Borders are **Reflect_101** (default) and **Replicate** only.
+- Both outputs are **Int16 C1**, with Source geometry and mathematical range
+  **-1020 .. +1020**; no saturation or wrap is needed.
+- Source is unchanged. Both outputs own fresh independent storage, sharing
+  neither with Source nor with each other, and survive Source finalization.
+- Regions are logical images: Region boundaries are gradient boundaries;
+  surrounding parent pixels do not participate, even with noncontinuous stride.
+- Invalid public inputs and native failures raise `OpenCV.OpenCV_Error`.
+
+### Implementation and portability
+
+OpenCV 4.1/4.10 and the reviewed 5.0 fallback contain an unsafe read for
+one-column inputs. The binding never enters that path; one-column logical
+images are privately duplicated to width two, native `spatialGradient` runs
+on the safe temporary, and column zero is returned in fresh width-one Mats.
+Widths >= 2 use native execution directly. The upstream bug is not fixed
+or patched. The adapter preserves the same logical Sobel semantics for both
+borders, including `1x1` (both derivatives zero), without a user-visible
+behavioral difference. See [the source review and equivalence proof](docs/spatial-gradient-source-review.md).
 
 ## Spatial derivatives
 

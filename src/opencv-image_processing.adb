@@ -918,6 +918,53 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Integral;
 
+   function Spatial_Gradient
+     (Source : OpenCV.Core.Mat;
+      Border : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return Spatial_Gradient_Result
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      Result : Spatial_Gradient_Result;
+      Status : Internal.C_API.Status;
+      procedure Input (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure X_Output (X : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+            procedure Y_Output
+              (Y : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            begin
+               Status :=
+                 Internal.C_API.Spatial_Gradient
+                   (Handle, To_C_Border (Border), X, Y);
+            end Y_Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Result.Y_Derivative, Y_Output'Access);
+         end X_Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Result.X_Derivative, X_Output'Access);
+      end Input;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth /= OpenCV.Core.UInt8
+        or else Source.Channels /= 1
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Spatial_Gradient requires a nonempty 2-D UInt8 C1 source");
+      end if;
+      if Border not in OpenCV.Reflect_101 | OpenCV.Replicate then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Spatial_Gradient requires Reflect_101 or Replicate");
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Spatial_Gradient");
+      return Result;
+   end Spatial_Gradient;
+
    function Integral_Sum
      (Source    : OpenCV.Core.Mat;
       Sum_Depth : Integral_Sum_Depth := Float64_Integral)

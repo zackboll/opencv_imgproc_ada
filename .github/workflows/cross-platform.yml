@@ -87,6 +87,9 @@ jobs:
       - name: Run Imgproc tests
         run: alr -n -C tests run
 
+      - name: Verify spatial-gradient native widths with ASan and UBSan
+        run: SANITIZE=1 sh tests/run_spatial_gradient_native.sh
+
       - name: Run YUV420 arithmetic boundary tests
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
