@@ -1134,6 +1134,16 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_hough_circle_evidence_copy";
 
+   function Spatial_Gradient
+     (Source : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Border : Interfaces.Integer_32;
+      X      : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Y      : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_spatial_gradient";
+
    function Sobel
      (Source            : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination       : OpenCV.Core.Module_Interop.Output_Mat_Handle;

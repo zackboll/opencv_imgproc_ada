@@ -47,6 +47,7 @@ with Resize_Linear_Exact_Tests;
 with Segmentation_Tests;
 with Int32_Flood_Fill_Tests;
 with Spatial_Derivative_Tests;
+with Spatial_Gradient_Tests;
 with Template_Matching_Tests;
 with Threshold_Tests;
 with Warp_Affine_Tests;
@@ -61,8 +62,27 @@ procedure Tests is
 
    use type AUnit.Status;
 
-   Suite : constant AUnit.Test_Suites.Access_Test_Suite :=
-     Color_Conversion_Tests.Suite;
+   function Selected return AUnit.Test_Suites.Access_Test_Suite is
+   begin
+      if Ada.Command_Line.Argument_Count = 1 then
+         if Ada.Command_Line.Argument (1) = "spatial-gradient" then
+            return Spatial_Gradient_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "spatial-gradient-adapter" then
+            return Spatial_Gradient_Tests.Suite (Only_Adapter => True);
+         elsif Ada.Command_Line.Argument (1) = "spatial-derivatives" then
+            return Spatial_Derivative_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "canny" then
+            return Canny_Edge_Tests.Suite;
+         else
+            raise Constraint_Error with "unknown test suite selector";
+         end if;
+      elsif Ada.Command_Line.Argument_Count > 1 then
+         raise Constraint_Error with "too many test suite selectors";
+      end if;
+      return Color_Conversion_Tests.Suite;
+   end Selected;
+
+   Suite : constant AUnit.Test_Suites.Access_Test_Suite := Selected;
 
    function Stored_Suite return AUnit.Test_Suites.Access_Test_Suite
    is (Suite);
@@ -71,6 +91,12 @@ procedure Tests is
 
    Reporter : AUnit.Reporter.Text.Text_Reporter;
 begin
+   if Ada.Command_Line.Argument_Count = 1 then
+      if Run (Reporter) = AUnit.Failure then
+         Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
+      end if;
+      return;
+   end if;
    Suite.Add_Test (Packed_Color_Tests.Suite);
    Suite.Add_Test (Colormap_Tests.Suite);
    Suite.Add_Test (Extended_Color_Tests.Suite);
@@ -102,6 +128,7 @@ begin
    Suite.Add_Test (Canny_Edge_Tests.Suite);
    Suite.Add_Test (Corner_Analysis_Tests.Suite);
    Suite.Add_Test (Spatial_Derivative_Tests.Suite);
+   Suite.Add_Test (Spatial_Gradient_Tests.Suite);
    Suite.Add_Test (Threshold_Tests.Suite);
    Suite.Add_Test (Automatic_Threshold_Tests.Suite);
    Suite.Add_Test (Adaptive_Threshold_Tests.Suite);

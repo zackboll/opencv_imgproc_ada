@@ -1574,6 +1574,22 @@ package OpenCV.Image_Processing is
       Aperture        : Canny_Aperture := Sobel_3x3;
       Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
 
+   type Spatial_Gradient_Result is record
+      X_Derivative : OpenCV.Core.Mat;
+      Y_Derivative : OpenCV.Core.Mat;
+   end record;
+
+   --  Native fixed 3x3 first-order Sobel pair. Source must be nonempty,
+   --  exactly 2-D UInt8 C1; Border must be Reflect_101 or Replicate.
+   --  Each result is a fresh independent Int16 C1 Mat with Source geometry
+   --  and mathematical range -1020 .. 1020. Source remains unchanged.
+   --  Regions are logical images: parent pixels never participate.
+   --  Invalid input and native failures raise OpenCV_Error.
+   function Spatial_Gradient
+     (Source : OpenCV.Core.Mat;
+      Border : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return Spatial_Gradient_Result;
+
    --  Sobel computes the X_Order/Y_Order spatial derivative independently for
    --  every Source channel. Source must be a non-empty two-dimensional UInt8,
    --  UInt16, Int16, Float32, or Float64 Mat. X_Order and Y_Order may not both

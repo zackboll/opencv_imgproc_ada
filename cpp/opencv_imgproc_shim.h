@@ -874,6 +874,19 @@ opencv_imgproc_hough_circle_evidence_copy(
     opencv_imgproc_hough_circle_evidence *circles,
     int32_t capacity);
 
+/* Borrowed nonempty 2-D CV_8UC1 input. Border is the shim's Reflect_101 (3)
+ * or Replicate (1) selector. Outputs must be distinct native Mat objects,
+ * neither identical to source; previously shared pixel storage is allowed.
+ * Both outputs are freshly allocated and published only after all work
+ * succeeds. Failure leaves both existing output objects unchanged.
+ * Width one is privately duplicated to width two before native execution. */
+opencv_imgproc_status
+opencv_imgproc_spatial_gradient(
+    const opencv_core_mat_handle *source,
+    int32_t border,
+    opencv_core_mat_handle *x,
+    opencv_core_mat_handle *y);
+
 opencv_imgproc_status
 opencv_imgproc_sobel(
     const opencv_core_mat_handle *source,
