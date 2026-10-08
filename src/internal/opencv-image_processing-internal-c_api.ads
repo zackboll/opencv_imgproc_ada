@@ -1794,6 +1794,18 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_add_histograms";
 
+   function Extract_Subpixel_Patch
+     (Source             : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Width, Height      : Interfaces.C.int;
+      Center_X, Center_Y : Interfaces.C.C_float;
+      Output_Depth       : Interfaces.C.int;
+      Destination        : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_extract_subpixel_patch";
+
    function Last_Error_Message return String;
 
 end OpenCV.Image_Processing.Internal.C_API;

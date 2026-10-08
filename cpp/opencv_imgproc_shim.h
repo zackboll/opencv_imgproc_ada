@@ -1479,6 +1479,15 @@ opencv_imgproc_add_histograms(
     const opencv_core_mat_handle *increment,
     opencv_core_mat_handle *result);
 
+/* Borrowed source; destination is rebound only after complete success.
+ * output_depth: 0 preserve, 1 Float32. Center is logical-image binary32.
+ */
+opencv_imgproc_status
+opencv_imgproc_extract_subpixel_patch(
+    const opencv_core_mat_handle *source, int32_t width, int32_t height,
+    float center_x, float center_y, int32_t output_depth,
+    opencv_core_mat_handle *destination);
+
 #ifdef __cplusplus
 }
 #endif

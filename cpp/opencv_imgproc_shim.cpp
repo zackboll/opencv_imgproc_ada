@@ -9,6 +9,7 @@
 #include "colormap_layout_fits.hpp"
 #include "flood_fill_int32_fits.hpp"
 #include "blend_linear_layout_fits.hpp"
+#include "subpixel_patch_guard.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -6434,6 +6435,75 @@ opencv_imgproc_contour_hierarchy(
     *first_child = entry[2];
     *parent = entry[3];
     return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_extract_subpixel_patch(
+    const opencv_core_mat_handle *source, int32_t width, int32_t height,
+    float cx, float cy, int32_t output_depth,
+    opencv_core_mat_handle *destination)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK ||
+            src == nullptr ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK ||
+            dst == nullptr)
+            return invalid_argument("invalid subpixel patch Mat handle");
+        // ABI safety: publication must not rebind the borrowed source object.
+        if (src == dst)
+            return invalid_argument("subpixel patch Mat objects must differ");
+        // ABI safety: the private adapter constructs a 2-D ROI and uses the
+        // reviewed sampler's byte/float C1/C3 indexing. Other geometry/types
+        // cannot satisfy those pointer and storage bounds.
+        if (src->empty() || src->dims != 2 ||
+            (src->depth() != CV_8U && src->depth() != CV_32F) ||
+            (src->channels() != 1 && src->channels() != 3))
+            return invalid_argument("subpixel patch requires 2-D UInt8/Float32 C1/C3");
+        if (output_depth != 0 && output_depth != 1)
+            return invalid_argument("invalid subpixel patch output selector");
+        const int depth = output_depth == 1 ? CV_32F : src->depth();
+        opencv_imgproc_subpixel::Guard guard;
+        // ABI safety: finite in-image centers and positive dimensions are
+        // required by the cvFloor, adjustRect and guard provenance proof.
+        if (!opencv_imgproc_subpixel::plan(
+                src->cols, src->rows, width, height, cx, cy, src->channels(),
+                int(src->elemSize1()), depth == CV_32F ? 4 : 1,
+                src->depth() == CV_8U && depth == CV_32F, guard))
+            return invalid_argument("unsafe subpixel patch geometry or arithmetic");
+        cv::Mat padded, guarded;
+        const cv::Mat *input = src;
+        if (!guard.direct) {
+            // ABI safety: copyMakeBorder's scalar row loop increments its
+            // source pointer after the final row. A continuous private snapshot
+            // makes that pointer exactly one-past, even for an edge ROI or
+            // externally strided caller allocation. Its destination row loop
+            // also advances a left-inset pointer; an extra bottom row keeps
+            // that formation inside the private allocation.
+            cv::Mat snapshot(src->rows, src->cols, src->type());
+            for (int row = 0; row < src->rows; ++row) {
+                std::memcpy(snapshot.ptr(row), src->ptr(row),
+                            size_t(src->cols) * src->elemSize());
+            }
+            cv::copyMakeBorder(snapshot, padded, guard.top, guard.bottom + 1,
+                               guard.left, guard.right,
+                               cv::BORDER_REPLICATE | cv::BORDER_ISOLATED);
+            guarded = padded(cv::Rect(guard.left, guard.top, src->cols, src->rows));
+            input = &guarded;
+        }
+        // ABI safety: pinned C1 IPP dispatch narrows the actual input step.
+        if (!opencv_imgproc_subpixel::input_step_safe(src->channels(), input->step))
+            return invalid_argument("subpixel patch input step exceeds IPP int range");
+        cv::Mat result;
+        cv::getRectSubPix(*input, cv::Size(width, height), cv::Point2f(cx, cy),
+                          result, depth);
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
 }
 
 opencv_imgproc_status
