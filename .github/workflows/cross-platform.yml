@@ -87,6 +87,25 @@ jobs:
       - name: Run Imgproc tests
         run: alr -n -C tests run
 
+      - name: Run subpixel guard arithmetic with ASan and UBSan
+        run: |
+          set -eu
+          package=opencv4
+          if pkg-config --exists opencv5; then package=opencv5; fi
+          include=$(pkg-config --variable=includedir "$package")
+          if [ -z "$include" ]; then
+            include=$(pkg-config --variable=includedir_new "$package")
+          fi
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+            -isystem "$include" tests/subpixel_patch_guard_test.cpp \
+            $(pkg-config --libs-only-L "$package") -lopencv_core \
+            -o subpixel_patch_guard_test
+          ./subpixel_patch_guard_test
+
+      - name: Verify subpixel native backing bytes with ASan and UBSan
+        run: SANITIZE=1 sh tests/run_subpixel_patch_native.sh
+
       - name: Verify spatial-gradient native widths with ASan and UBSan
         run: SANITIZE=1 sh tests/run_spatial_gradient_native.sh
 

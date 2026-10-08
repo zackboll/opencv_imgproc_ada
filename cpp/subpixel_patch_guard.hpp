@@ -53,9 +53,9 @@ inline bool plan(int columns, int rows, int width, int height,
     const int64_t bottom = std::max<int64_t>(0, end_y - (rows - 1));
     const int64_t padded_columns = columns + left + right;
     const int64_t padded_rows = rows + top + bottom;
-    // ABI safety: copyMakeBorder destination dimensions and expanded byte
-    // widths use signed int; adjustRect multiplies pixel offsets as int.
-    // An extra bottom row contains the final left-inset copy row increment.
+    // ABI safety: destination dimensions and adjustRect pixel-byte products
+    // must fit signed int. Preserve the reviewed extra physical bottom row
+    // and byte-width boundary even with bytewise private guard construction.
     if (padded_columns > INT_MAX || padded_rows > INT_MAX ||
         (!g.direct && padded_rows == INT_MAX) ||
         (!g.direct && padded_columns * channels * input_bytes > INT_MAX))

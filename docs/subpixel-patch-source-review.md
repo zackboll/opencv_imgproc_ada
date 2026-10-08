@@ -99,48 +99,52 @@ Bottom = max(0, ip_y + height - (source.rows - 1))
 
 The physical parent must have representable signed-int rows/columns.
 Each border count then fits int. The helper additionally bounds padded byte
-width by INT_MAX: copyMakeBorder uses signed expanded widths and adjustRect
-uses signed pixel-byte products. This is an arithmetic boundary, not an
+width by INT_MAX: adjustRect uses signed pixel-byte products. The existing
+reviewed byte-width boundary is retained. This is an arithmetic boundary, not an
 allocation-size preference.
 
-## Isolated parent construction and Core safety model
+## Corrective review: Float32 aliasing and bytewise parent construction
 
-`opencv_core_mat_copy_make_border` in the current Core shim checks signed
-destination dimension additions before `copyMakeBorder`. The adapter reuses
-that reasoning and adds the byte-width constraint for the reviewed scalar
-copy path. Nonnegative guards and positive source geometry establish the
-native preconditions.
+Reviewed head `0db89b2a64d53053e38c84b3e603d6f6b8baacd7` used a private
+snapshot followed by copyMakeBorder. Exact 4.1/4.10/5.0 copyMakeBorder_8u
+selects intMode for four-byte-aligned pixel sizes, strides and pointers.
+It casts source/destination to `const int*`/`int*` and accesses them through
+those types. Float32 C1/C3 representations do not establish ISO C++17
+type-based aliasing permission for those accesses. IPP, compiler behavior
+and sanitizer silence cannot establish that permission.
 
-`copyMakeBorder_8u` creates border index tables and expands widths/left/right
-by its byte-channel count (possibly divided by sizeof(int) in aligned mode).
-Bounding full padded byte width bounds the table length, those products, and
-the `source.width + i` right-border indices. Replicate chooses bounded source
-indices. Mat allocation handles byte-size/allocation failure by exception.
+The correction removes copyMakeBorder and the separate snapshot entirely
+from this adapter. It allocates `Mat(guard.rows + 1, guard.columns, type)`
+and uses only uchar row pointers and memcpy. No source-value floating-point
+arithmetic or incompatible typed loads occur during padding. Full pixel
+representations (including signed zero, infinities and NaN payloads) survive.
+OpenCV itself is not modified; native getRectSubPix still does the sampling.
 
-The scalar copy loop advances its source pointer after the last row. For a
-bottom-ending, horizontally inset ROI or tightly sized strided external
-buffer, that formation need not be inside the original allocation. Border
-requests first snapshot Source row-by-row into private continuous storage,
-without advancing a caller pointer after the final row, so that final
-increment is exactly one-past. Interior requests never snapshot.
+Let P=elemSize, W=columns*P, S=source.cols*P, F=left*P.
+The checked plan bounds W by INT_MAX and guard.rows+1 by INT_MAX, so these
+size_t products are representable. Before horizontal pointers are formed,
+the shim checks P<=W, F<=W-P, S<=W-F, W<=padded.step, S<=source.step,
+and right*P==W-(F+S). Source is nonempty, so S>=P. Thus the first donor F
+and last donor F+S-P each have P bytes inside the row. For 0<=x<left,
+x*P+P<=F; for 0<=x<right, F+S+x*P+P<=W. All copies are disjoint.
 
-The destination loop likewise advances a left-inset pointer after copying
-the last logical source row. One extra replicated bottom row ensures that
-formation stays inside the padded allocation, including pure horizontal
-border requests. The helper rejects padded_rows == INT_MAX before adding
-this physical row; this is an adapter representability boundary.
+Logical source row r is obtained only for 0<=r<source.rows; destination
+top+r is below top+source.rows<=guard.rows. Each logical row copy reads
+exactly S bytes from the logical Region, not its parent. Horizontal guards
+read only the now-initialized first/last pixels. No caller row pointer is
+incremented after the last row.
 
-`BORDER_ISOLATED` prevents the `isSubmatrix` branch from expanding Source
-into its old parent. Source stride need not be continuous. A new owning
-parent is produced by:
+Vertical copies read fully initialized rows top and top+source.rows-1.
+Destinations 0..top-1 and top+source.rows..padded.rows-1 are distinct from
+those donors and entirely within the allocation. Copy length is W, not a
+stride that might include unrelated storage. Every physical pixel, including
+the extra final bottom row, is initialized. No negative offsets or pointers
+outside the allocation are formed. Mat allocation exceptions are contained.
 
-```cpp
-Mat snapshot(source.rows, source.cols, source.type());
-// Copy each logical row by bounded memcpy, with no final pointer increment.
-copyMakeBorder(snapshot, padded, top, bottom + 1, left, right,
-               BORDER_REPLICATE | BORDER_ISOLATED);
-guarded = padded(Rect(left, top, source.cols, source.rows));
-```
+The extra bottom row and existing planner boundaries remain unchanged.
+The original-size ROI is constructed only after all padding succeeds.
+Region isolation is structural: only logical rows/pixels are read; no
+copyMakeBorder parent expansion or BORDER_ISOLATED dependency remains.
 
 ## Pointer provenance proof
 
@@ -185,8 +189,8 @@ Version differences: 4.1 uses assert in adjustRect where 4.10/5.0 use
 CV_Assert; error enum spellings are modernized. 5.0 removes unrelated legacy
 quadrangle/C wrappers. The reviewed getRectSubPix adjustment, scalar border
 arithmetic, supported depth combinations and C1-only IPP dispatch remain
-the same. copyMakeBorder retains its isolated-region decision and signed
-geometry/expanded-width scalar model across all three versions.
+the same. The historical copyMakeBorder implementation is reviewed as the
+reason for this correction, not a production dependency of this adapter.
 
 ## Signed arithmetic and backend boundaries
 
@@ -227,15 +231,22 @@ unexpected errors. Adapter-only: 17/17; historical regressions: 2/2.
 Existing warp/remap: 48/48; corner analysis/subpixel: 23/23.
 GCC and Clang 19 helper and production interception builds pass strict C++17.
 Exact 4.1, installed exact 4.10, and exact 5.0 public focused suites each pass
-38/38. Each GCC interception run observes 276 calls, 64 direct, 212 guarded.
+38/38. Corrected interception observes 308 calls, 64 direct, 244 guarded.
+There are 16 added Float32 C1/C3 representation fixtures (two calls each),
+including noncontinuous Regions, all guard directions, oversized patches and
+1x1 images. Every physical pixel is checked byte-for-byte against a clamped
+logical donor before native forwarding, including the extra bottom row.
+Fixtures include positive/negative finite values, both zeros, both infinities
+and explicit quiet NaN payloads 0x7fc12345 and 0xffc54321. No interpolation
+output payload/signed-zero preservation is asserted.
 Both historical tightly backed cases succeed. GCC ASan/UBSan instruments
 the complete Imgproc
 shim, Core shim and harness, **not the installed OpenCV shared libraries**;
 The interception fixtures pass on all three versions. The metadata checks
 are essential evidence
 in addition to sanitizer silence. Clang 19 strict interception against all
-three versions also passes; Clang ASan/UBSan installed-version execution
-passes. Both compilers' allocation-free boundary helper sanitizer runs pass.
+three versions also passes; Clang ASan/UBSan execution passes on all three
+versions. Both compilers' allocation-free boundary helper sanitizer runs pass.
 All three builds report IPP disabled; no IPP runtime coverage is claimed.
 The complete production shim is compiled against each exact version as part
 of the interception build, with strict C++17 warnings-as-errors.
@@ -245,3 +256,17 @@ Modified Ada units compile with -gnatwa -gnatwc -gnatwu -gnatwn -gnatwe
 sections; unrelated formatter changes were reverted. All modified Ada files
 pass the 79-column check. git diff --check passes. No SPARK-designated
 production code changed; GNATprove was not required.
+
+Correction validation leaves all existing Ada tests intact: 38 focused,
+17 adapter, 2 historical on each exact version; 1070 full-suite tests.
+No Ada source changed in the corrective delta; existing project-owned units
+were strictly recompiled and the focused Ada formatter/79-column checks run.
+Linux hosted CI now runs both sanitized guard arithmetic and the complete
+native interception regression after normal Imgproc tests. ELF wrapping is
+not added to macOS/Windows; Windows manual-dispatch policy is unchanged.
+
+Validation-boundary review: new byte-extent/guard checks protect memcpy
+offsets and lengths, not public semantic policy. Existing duplicated source
+geometry/type and center/patch prerequisites remain for typed native indexing,
+ROI construction, cvFloor and allocation-provenance bounds, as documented
+above. No additional public semantic validation is duplicated by this correction.

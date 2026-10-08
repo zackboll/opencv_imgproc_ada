@@ -5,13 +5,21 @@
 #include <stdexcept>
 
 namespace {
-int calls = 0, direct_calls = 0, guarded_calls = 0;
+int calls = 0, direct_calls = 0, guarded_calls = 0, representation_cases = 0;
 const cv::Mat *original = nullptr;
 cv::Size expected_size;
 cv::Point2f expected_center;
 opencv_imgproc_subpixel::Guard expected_guard;
 void require(bool ok, const char *message) {
     if (!ok) throw std::runtime_error(message);
+}
+bool same_bytes(const cv::Mat &a, const cv::Mat &b) {
+    if (a.size() != b.size() || a.type() != b.type()) return false;
+    for (int row = 0; row < a.rows; ++row) {
+        if (std::memcmp(a.ptr<uchar>(row), b.ptr<uchar>(row),
+                        size_t(a.cols) * a.elemSize()) != 0) return false;
+    }
+    return true;
 }
 struct Mat {
     opencv_core_mat_handle *handle = nullptr;
@@ -27,7 +35,7 @@ struct Mat {
     Mat &operator=(const Mat &) = delete;
 };
 void exercise(const cv::Mat &image, cv::Size size, cv::Point2f center,
-              int selector) {
+              int selector, bool representation_only = false) {
     Mat source(image), output(cv::Mat{});
     original = source.value;
     expected_size = size;
@@ -47,8 +55,8 @@ void exercise(const cv::Mat &image, cv::Size size, cv::Point2f center,
     require(output.value->size() == size && output.value->depth() == depth &&
                 output.value->channels() == image.channels(), "metadata");
     require(output.value->data != image.data, "fresh result");
-    require(cv::norm(image, before, cv::NORM_INF) == 0, "unchanged source");
-    for (int y = 0; y < size.height; ++y) {
+    require(same_bytes(image, before), "unchanged source bytes");
+    for (int y = 0; !representation_only && y < size.height; ++y) {
         for (int x = 0; x < size.width; ++x) {
             const float sx = center.x - (size.width - 1) * 0.5f + x;
             const float sy = center.y - (size.height - 1) * 0.5f + y;
@@ -99,7 +107,7 @@ void exercise(const cv::Mat &image, cv::Size size, cv::Point2f center,
                 1, 1, center.x, center.y, 0, nullptr) !=
                 OPENCV_IMGPROC_OK, "null destination rejected");
     require(calls == previous + 1, "all invalid zero calls");
-    require(cv::norm(*output.value, published, cv::NORM_INF) == 0,
+    require(same_bytes(*output.value, published),
             "failure atomicity");
     // Distinct headers initially sharing Source storage may be rebound.
     *output.value = image;
@@ -108,8 +116,9 @@ void exercise(const cv::Mat &image, cv::Size size, cv::Point2f center,
                 output.handle) == OPENCV_IMGPROC_OK, "shared destination");
     require(calls == previous + 2 && output.value->data != image.data,
             "shared destination one call and fresh storage");
-    require(cv::norm(image, before, cv::NORM_INF) == 0,
+    require(same_bytes(image, before),
             "shared destination preserves Source");
+    if (representation_only) ++representation_cases;
 }
 }
 
@@ -143,6 +152,26 @@ extern "C" void wrap_subpix(const cv::_InputArray &input, cv::Size size,
                 whole.width - offset.x - m.cols >= expected_guard.right &&
                 whole.height - offset.y - m.rows >= expected_guard.bottom,
                 "physical sample interval covered");
+        require(whole.width == expected_guard.columns &&
+                whole.height == expected_guard.rows + 1 &&
+                offset == cv::Point(expected_guard.left, expected_guard.top),
+                "exact backing extent including extra bottom row");
+        const size_t pixel_bytes = m.elemSize();
+        // Validate every physical pixel BEFORE calling unmodified native code.
+        // Compare representations, not Float32 arithmetic or NaN equality.
+        for (int y = 0; y < whole.height; ++y) {
+            const int donor_y = std::max(0, std::min(original->rows - 1,
+                                                     y - offset.y));
+            const uchar *physical = m.datastart + size_t(y) * m.step;
+            for (int x = 0; x < whole.width; ++x) {
+                const int donor_x = std::max(0, std::min(original->cols - 1,
+                                                         x - offset.x));
+                require(std::memcmp(physical + size_t(x) * pixel_bytes,
+                            original->ptr<uchar>(donor_y) +
+                                size_t(donor_x) * pixel_bytes, pixel_bytes) == 0,
+                        "exact clamped donor pixel bytes");
+            }
+        }
     }
     real_subpix(input, size, center, output, depth);
 }
@@ -201,6 +230,42 @@ int main() {
                 exercise(region, {7,7}, {0.25f,0.25f}, selector);
             }
         }
+        // Binary32 representations are copied without converting pixel values.
+        const uint32_t bits[] = {0x3fc00000, 0xc0200000, 0x00000000,
+                                 0x80000000, 0x7f800000, 0xff800000,
+                                 0x7fc12345, 0xffc54321};
+        for (int channels : {1,3}) {
+            cv::Mat parent(6,7,CV_MAKETYPE(CV_32F,channels));
+            for (int y = 0; y < parent.rows; ++y) {
+                for (int x = 0; x < parent.cols * channels; ++x) {
+                    const uint32_t value = bits[(y * parent.cols * channels + x) % 8];
+                    std::memcpy(parent.ptr<uchar>(y) + size_t(x) * 4,
+                                &value, sizeof(value));
+                }
+            }
+            cv::Mat region = parent(cv::Rect(1,1,4,4));
+            for (int y = 0; y < region.rows; ++y) {
+                for (int x = 0; x < region.cols * channels; ++x) {
+                    const uint32_t value = bits[(y * region.cols * channels + x) % 8];
+                    std::memcpy(region.ptr<uchar>(y) + size_t(x) * 4,
+                                &value, sizeof(value));
+                }
+            }
+            require(!region.isContinuous(), "noncontinuous Float32 Region");
+            const cv::Mat before = parent.clone();
+            // Top-left/bottom-right, single-sided guards, all-sided oversized.
+            exercise(region, {3,3}, {0,0}, 0, true);
+            exercise(region, {1,1}, {3,3}, 0, true);
+            exercise(region, {3,1}, {0,1}, 0, true);
+            exercise(region, {1,1}, {3,1}, 0, true);
+            exercise(region, {1,3}, {1,0}, 0, true);
+            exercise(region, {1,1}, {1,3}, 0, true);
+            exercise(region, {9,9}, {1.25f,1.25f}, 0, true);
+            require(same_bytes(parent, before), "parent representation unchanged");
+            const cv::Mat single = region(cv::Rect(0,0,1,1));
+            exercise(single, {7,7}, {0,0}, 0, true);
+        }
+        std::cout << "representation cases=" << representation_cases << '\n';
         std::cout << "native calls=" << calls << " direct=" << direct_calls
                   << " guarded=" << guarded_calls << '\n';
         std::cout << "IPP enabled=" << cv::ipp::useIPP() << '\n';

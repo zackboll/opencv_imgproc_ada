@@ -6476,20 +6476,49 @@ opencv_imgproc_extract_subpixel_patch(
         cv::Mat padded, guarded;
         const cv::Mat *input = src;
         if (!guard.direct) {
-            // ABI safety: copyMakeBorder's scalar row loop increments its
-            // source pointer after the final row. A continuous private snapshot
-            // makes that pointer exactly one-past, even for an edge ROI or
-            // externally strided caller allocation. Its destination row loop
-            // also advances a left-inset pointer; an extra bottom row keeps
-            // that formation inside the private allocation.
-            cv::Mat snapshot(src->rows, src->cols, src->type());
-            for (int row = 0; row < src->rows; ++row) {
-                std::memcpy(snapshot.ptr(row), src->ptr(row),
-                            size_t(src->cols) * src->elemSize());
+            // ABI safety: use only bytewise copies, not copyMakeBorder's
+            // aligned int-pointer optimization on Float32 object storage.
+            // The checked plan retains the extra initialized bottom row.
+            padded.create(guard.rows + 1, guard.columns, src->type());
+            const size_t pixel_bytes = src->elemSize();
+            const size_t row_bytes = size_t(guard.columns) * pixel_bytes;
+            const size_t source_bytes = size_t(src->cols) * pixel_bytes;
+            const size_t first = size_t(guard.left) * pixel_bytes;
+            // ABI safety: establish all row-copy and donor offsets before
+            // forming pointers; the planner bounds row_bytes by INT_MAX.
+            if (pixel_bytes > row_bytes || first > row_bytes - pixel_bytes ||
+                source_bytes > row_bytes - first ||
+                row_bytes > padded.step || source_bytes > src->step) {
+                return invalid_argument("unsafe subpixel padding byte extent");
             }
-            cv::copyMakeBorder(snapshot, padded, guard.top, guard.bottom + 1,
-                               guard.left, guard.right,
-                               cv::BORDER_REPLICATE | cv::BORDER_ISOLATED);
+            const size_t last = first + source_bytes - pixel_bytes;
+            const size_t right_begin = first + source_bytes;
+            if (size_t(guard.right) * pixel_bytes != row_bytes - right_begin) {
+                return invalid_argument("unsafe subpixel padding guard extent");
+            }
+            for (int row = 0; row < src->rows; ++row) {
+                uchar *target = padded.ptr<uchar>(guard.top + row);
+                std::memcpy(target + first, src->ptr<uchar>(row), source_bytes);
+                // x*pixel_bytes < first; all donors are initialized and
+                // disjoint from their guard destinations within this row.
+                for (int x = 0; x < guard.left; ++x) {
+                    std::memcpy(target + size_t(x) * pixel_bytes,
+                                target + first, pixel_bytes);
+                }
+                for (int x = 0; x < guard.right; ++x) {
+                    std::memcpy(target + right_begin + size_t(x) * pixel_bytes,
+                                target + last, pixel_bytes);
+                }
+            }
+            const int bottom_begin = guard.top + src->rows;
+            for (int row = 0; row < guard.top; ++row) {
+                std::memcpy(padded.ptr<uchar>(row),
+                            padded.ptr<uchar>(guard.top), row_bytes);
+            }
+            for (int row = bottom_begin; row < padded.rows; ++row) {
+                std::memcpy(padded.ptr<uchar>(row),
+                            padded.ptr<uchar>(bottom_begin - 1), row_bytes);
+            }
             guarded = padded(cv::Rect(guard.left, guard.top, src->cols, src->rows));
             input = &guarded;
         }

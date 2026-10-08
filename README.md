@@ -5510,9 +5510,11 @@ be finite. Center must be finite and inside the logical Source.
 **Portability/safety:** OpenCV 4.1/4.10/5.0 contain historical border-path
 pointer formations that are not valid for tightly backed edge requests. The
 binding preserves the same logical Source geometry and Center but uses a
-private isolated replicated guard allocation for border-touching requests,
+private bytewise replicated guard allocation for border-touching requests,
 preventing those pointers from leaving their allocation while retaining native
-sampling semantics. This does not fix upstream OpenCV. Region parent pixels
+sampling semantics. Padding uses only byte copies, preserving Float32 pixel
+representations without the historical copyMakeBorder integer-aliasing path.
+This does not fix upstream OpenCV. Region parent pixels
 do not participate. Arithmetic and backend representability limits may reject
 extreme dimensions/steps before native entry.
 
