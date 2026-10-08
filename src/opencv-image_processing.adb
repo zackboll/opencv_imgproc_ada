@@ -918,6 +918,60 @@ package body OpenCV.Image_Processing is
       end if;
    end Validate_Integral;
 
+   function Extract_Subpixel_Patch
+     (Source       : OpenCV.Core.Mat;
+      Patch_Size   : OpenCV.Size;
+      Center       : OpenCV.Float32_Point;
+      Output_Depth : Subpixel_Patch_Output_Depth := Preserve_Source_Depth)
+      return OpenCV.Core.Mat
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Float32_Value;
+      use type OpenCV.Float64_Value;
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status;
+      procedure Input (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output
+           (Target : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Extract_Subpixel_Patch
+                (Handle,
+                 Interfaces.C.int (Patch_Size.Width),
+                 Interfaces.C.int (Patch_Size.Height),
+                 Interfaces.C.C_float (Center.X),
+                 Interfaces.C.C_float (Center.Y),
+                 Subpixel_Patch_Output_Depth'Pos (Output_Depth),
+                 Target);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle (Result, Output'Access);
+      end Input;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth not in OpenCV.Core.UInt8 | OpenCV.Core.Float32
+        or else Source.Channels not in 1 | 3
+        or else Patch_Size.Width = 0
+        or else Patch_Size.Height = 0
+        or else not Is_Finite_32 (Center.X)
+        or else not Is_Finite_32 (Center.Y)
+        or else Center.X < 0.0
+        or else Center.Y < 0.0
+        or else OpenCV.Float64_Value (Center.X)
+                >= OpenCV.Float64_Value (Source.Columns)
+        or else OpenCV.Float64_Value (Center.Y)
+                >= OpenCV.Float64_Value (Source.Rows)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity, "Invalid subpixel patch request");
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Extract_Subpixel_Patch");
+      return Result;
+   end Extract_Subpixel_Patch;
+
    function Spatial_Gradient
      (Source : OpenCV.Core.Mat;
       Border : OpenCV.Border_Kind := OpenCV.Reflect_101)

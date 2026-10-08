@@ -48,6 +48,7 @@ with Segmentation_Tests;
 with Int32_Flood_Fill_Tests;
 with Spatial_Derivative_Tests;
 with Spatial_Gradient_Tests;
+with Subpixel_Patch_Tests;
 with Template_Matching_Tests;
 with Threshold_Tests;
 with Warp_Affine_Tests;
@@ -65,7 +66,24 @@ procedure Tests is
    function Selected return AUnit.Test_Suites.Access_Test_Suite is
    begin
       if Ada.Command_Line.Argument_Count = 1 then
-         if Ada.Command_Line.Argument (1) = "spatial-gradient" then
+         if Ada.Command_Line.Argument (1) = "subpixel-patch" then
+            return Subpixel_Patch_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "subpixel-patch-adapter" then
+            return Subpixel_Patch_Tests.Suite (Only_Adapter => True);
+         elsif Ada.Command_Line.Argument (1) = "subpixel-patch-historical" then
+            return Subpixel_Patch_Tests.Suite (Only_Historical => True);
+         elsif Ada.Command_Line.Argument (1) = "warp-remap" then
+            declare
+               S : constant AUnit.Test_Suites.Access_Test_Suite :=
+                 Warp_Affine_Tests.Suite;
+            begin
+               S.Add_Test (Warp_Perspective_Tests.Suite);
+               S.Add_Test (Remap_Tests.Suite);
+               return S;
+            end;
+         elsif Ada.Command_Line.Argument (1) = "corners" then
+            return Corner_Analysis_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "spatial-gradient" then
             return Spatial_Gradient_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "spatial-gradient-adapter" then
             return Spatial_Gradient_Tests.Suite (Only_Adapter => True);
@@ -129,6 +147,7 @@ begin
    Suite.Add_Test (Corner_Analysis_Tests.Suite);
    Suite.Add_Test (Spatial_Derivative_Tests.Suite);
    Suite.Add_Test (Spatial_Gradient_Tests.Suite);
+   Suite.Add_Test (Subpixel_Patch_Tests.Suite);
    Suite.Add_Test (Threshold_Tests.Suite);
    Suite.Add_Test (Automatic_Threshold_Tests.Suite);
    Suite.Add_Test (Adaptive_Threshold_Tests.Suite);

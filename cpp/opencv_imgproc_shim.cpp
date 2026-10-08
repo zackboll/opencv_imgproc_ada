@@ -9,6 +9,7 @@
 #include "colormap_layout_fits.hpp"
 #include "flood_fill_int32_fits.hpp"
 #include "blend_linear_layout_fits.hpp"
+#include "subpixel_patch_guard.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -6434,6 +6435,104 @@ opencv_imgproc_contour_hierarchy(
     *first_child = entry[2];
     *parent = entry[3];
     return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_extract_subpixel_patch(
+    const opencv_core_mat_handle *source, int32_t width, int32_t height,
+    float cx, float cy, int32_t output_depth,
+    opencv_core_mat_handle *destination)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK ||
+            src == nullptr ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK ||
+            dst == nullptr)
+            return invalid_argument("invalid subpixel patch Mat handle");
+        // ABI safety: publication must not rebind the borrowed source object.
+        if (src == dst)
+            return invalid_argument("subpixel patch Mat objects must differ");
+        // ABI safety: the private adapter constructs a 2-D ROI and uses the
+        // reviewed sampler's byte/float C1/C3 indexing. Other geometry/types
+        // cannot satisfy those pointer and storage bounds.
+        if (src->empty() || src->dims != 2 ||
+            (src->depth() != CV_8U && src->depth() != CV_32F) ||
+            (src->channels() != 1 && src->channels() != 3))
+            return invalid_argument("subpixel patch requires 2-D UInt8/Float32 C1/C3");
+        if (output_depth != 0 && output_depth != 1)
+            return invalid_argument("invalid subpixel patch output selector");
+        const int depth = output_depth == 1 ? CV_32F : src->depth();
+        opencv_imgproc_subpixel::Guard guard;
+        // ABI safety: finite in-image centers and positive dimensions are
+        // required by the cvFloor, adjustRect and guard provenance proof.
+        if (!opencv_imgproc_subpixel::plan(
+                src->cols, src->rows, width, height, cx, cy, src->channels(),
+                int(src->elemSize1()), depth == CV_32F ? 4 : 1,
+                src->depth() == CV_8U && depth == CV_32F, guard))
+            return invalid_argument("unsafe subpixel patch geometry or arithmetic");
+        cv::Mat padded, guarded;
+        const cv::Mat *input = src;
+        if (!guard.direct) {
+            // ABI safety: use only bytewise copies, not copyMakeBorder's
+            // aligned int-pointer optimization on Float32 object storage.
+            // The checked plan retains the extra initialized bottom row.
+            padded.create(guard.rows + 1, guard.columns, src->type());
+            const size_t pixel_bytes = src->elemSize();
+            const size_t row_bytes = size_t(guard.columns) * pixel_bytes;
+            const size_t source_bytes = size_t(src->cols) * pixel_bytes;
+            const size_t first = size_t(guard.left) * pixel_bytes;
+            // ABI safety: establish all row-copy and donor offsets before
+            // forming pointers; the planner bounds row_bytes by INT_MAX.
+            if (pixel_bytes > row_bytes || first > row_bytes - pixel_bytes ||
+                source_bytes > row_bytes - first ||
+                row_bytes > padded.step || source_bytes > src->step) {
+                return invalid_argument("unsafe subpixel padding byte extent");
+            }
+            const size_t last = first + source_bytes - pixel_bytes;
+            const size_t right_begin = first + source_bytes;
+            if (size_t(guard.right) * pixel_bytes != row_bytes - right_begin) {
+                return invalid_argument("unsafe subpixel padding guard extent");
+            }
+            for (int row = 0; row < src->rows; ++row) {
+                uchar *target = padded.ptr<uchar>(guard.top + row);
+                std::memcpy(target + first, src->ptr<uchar>(row), source_bytes);
+                // x*pixel_bytes < first; all donors are initialized and
+                // disjoint from their guard destinations within this row.
+                for (int x = 0; x < guard.left; ++x) {
+                    std::memcpy(target + size_t(x) * pixel_bytes,
+                                target + first, pixel_bytes);
+                }
+                for (int x = 0; x < guard.right; ++x) {
+                    std::memcpy(target + right_begin + size_t(x) * pixel_bytes,
+                                target + last, pixel_bytes);
+                }
+            }
+            const int bottom_begin = guard.top + src->rows;
+            for (int row = 0; row < guard.top; ++row) {
+                std::memcpy(padded.ptr<uchar>(row),
+                            padded.ptr<uchar>(guard.top), row_bytes);
+            }
+            for (int row = bottom_begin; row < padded.rows; ++row) {
+                std::memcpy(padded.ptr<uchar>(row),
+                            padded.ptr<uchar>(bottom_begin - 1), row_bytes);
+            }
+            guarded = padded(cv::Rect(guard.left, guard.top, src->cols, src->rows));
+            input = &guarded;
+        }
+        // ABI safety: pinned C1 IPP dispatch narrows the actual input step.
+        if (!opencv_imgproc_subpixel::input_step_safe(src->channels(), input->step))
+            return invalid_argument("subpixel patch input step exceeds IPP int range");
+        cv::Mat result;
+        cv::getRectSubPix(*input, cv::Size(width, height), cv::Point2f(cx, cy),
+                          result, depth);
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
 }
 
 opencv_imgproc_status

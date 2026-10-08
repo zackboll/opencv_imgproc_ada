@@ -5496,6 +5496,28 @@ thin declarations.
 
 ---
 
+## Subpixel Patch Extraction
+
+`Extract_Subpixel_Patch` accepts a Region-local `Float32_Point` Center and
+positive `Size`. The patch may extend beyond the logical Source or exceed its
+dimensions: native bilinear interpolation uses nearest-edge extension.
+Sources are nonempty two-dimensional UInt8 or Float32, with one or three
+channels. `Preserve_Source_Depth` is the default; `Promote_To_Float32` optionally
+promotes UInt8 output (Float32 remains Float32). The result has fresh owning
+storage independent of Source, which is unchanged. Float32 pixels need not
+be finite. Center must be finite and inside the logical Source.
+
+**Portability/safety:** OpenCV 4.1/4.10/5.0 contain historical border-path
+pointer formations that are not valid for tightly backed edge requests. The
+binding preserves the same logical Source geometry and Center but uses a
+private bytewise replicated guard allocation for border-touching requests,
+preventing those pointers from leaving their allocation while retaining native
+sampling semantics. Padding uses only byte copies, preserving Float32 pixel
+representations without the historical copyMakeBorder integer-aliasing path.
+This does not fix upstream OpenCV. Region parent pixels
+do not participate. Arithmetic and backend representability limits may reject
+extreme dimensions/steps before native entry.
+
 ## License
 
 Apache License 2.0. See [`LICENSE`](LICENSE).

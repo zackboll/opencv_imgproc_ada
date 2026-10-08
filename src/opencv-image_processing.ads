@@ -1574,6 +1574,21 @@ package OpenCV.Image_Processing is
       Aperture        : Canny_Aperture := Sobel_3x3;
       Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
 
+   type Subpixel_Patch_Output_Depth is
+     (Preserve_Source_Depth, Promote_To_Float32);
+
+   --  Native bilinear extraction with nearest-edge extension. Source must be
+   --  nonempty 2-D UInt8/Float32 C1/C3. Patch dimensions must be positive;
+   --  they may exceed Source. Center must be finite and inside Source, and
+   --  is Region-local. Result owns fresh independent storage. Invalid input
+   --  and native failures raise OpenCV_Error. Source values may be nonfinite.
+   function Extract_Subpixel_Patch
+     (Source       : OpenCV.Core.Mat;
+      Patch_Size   : OpenCV.Size;
+      Center       : OpenCV.Float32_Point;
+      Output_Depth : Subpixel_Patch_Output_Depth := Preserve_Source_Depth)
+      return OpenCV.Core.Mat;
+
    type Spatial_Gradient_Result is record
       X_Derivative : OpenCV.Core.Mat;
       Y_Derivative : OpenCV.Core.Mat;
