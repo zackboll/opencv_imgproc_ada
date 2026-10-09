@@ -8,6 +8,13 @@ extern "C" {
 #endif
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
+/* Synchronous translation-only Ballard. Borrowed inputs; two distinct Core
+ * output objects, neither identical to an input. Outputs unchanged on failure.
+ * Success: owning 1xN Float32 C4 positions and Int32 C3 votes, or both empty. */
+int32_t opencv_imgproc_ballard_detect(
+    const opencv_core_mat_handle *templ, const opencv_core_mat_handle *scene,
+    int32_t low, int32_t high, int32_t threshold,
+    opencv_core_mat_handle *positions, opencv_core_mat_handle *votes);
 /* Borrowed source/destination headers must differ. On failure destination is
  * unchanged. normalize is 0 (sum) or 1 (mean); borders use the module constants.
  * Successful output is fresh owning Float64 storage of source geometry. */

@@ -11,6 +11,7 @@
 #include "blend_linear_layout_fits.hpp"
 #include "subpixel_patch_guard.hpp"
 #include "squared_box_layout_fits.hpp"
+#include "ballard_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -6504,6 +6505,94 @@ opencv_imgproc_squared_box_filter(
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_imgproc_status opencv_imgproc_ballard_detect(
+    const opencv_core_mat_handle *templ, const opencv_core_mat_handle *scene,
+    int32_t low, int32_t high, int32_t threshold,
+    opencv_core_mat_handle *positions, opencv_core_mat_handle *votes)
+{
+    clear_error();
+    try {
+        const cv::Mat *t = nullptr, *s = nullptr;
+        cv::Mat *p = nullptr, *v = nullptr;
+        if (opencv_core_module_input_mat(templ, &t) != OPENCV_CORE_OK || !t ||
+            opencv_core_module_input_mat(scene, &s) != OPENCV_CORE_OK || !s ||
+            opencv_core_module_output_mat(positions, &p) != OPENCV_CORE_OK || !p ||
+            opencv_core_module_output_mat(votes, &v) != OPENCV_CORE_OK || !v)
+            return invalid_argument("invalid Ballard Mat handle");
+        // ABI safety: publication must not rebind an input or overwrite one
+        // output with the other. Shared input storage is separately snapshotted.
+        if (p == v || p == t || p == s || v == t || v == s)
+            return invalid_argument("Ballard output objects must differ");
+        // ABI safety: row memcpy requires nonempty 2-D byte pixels; selected
+        // native arithmetic requires the planner's checked geometry domain.
+        if (t->empty() || s->empty() || t->dims != 2 || s->dims != 2 ||
+            t->type() != CV_8UC1 || s->type() != CV_8UC1 ||
+            !opencv_imgproc_ballard::fits(t->rows, t->cols, s->rows, s->cols))
+            return invalid_argument("unsafe Ballard input geometry or type");
+        // Threshold ordering is semantic policy in Ada. Native calcEdges and
+        // peak selection safely reject invalid raw thresholds through assertions.
+        const auto snapshot = [](const cv::Mat &src) {
+            const size_t bytes = static_cast<size_t>(src.cols);
+            const size_t limit = static_cast<size_t>(PTRDIFF_MAX);
+            // ABI safety: bound each strided donor row and full memcpy extent
+            // before pointer formation, including noncontinuous logical Regions.
+            if (!src.data || src.step[0] < bytes || src.step[0] > limit ||
+                size_t(src.rows - 1) > (limit - bytes) / src.step[0])
+                CV_Error(cv::Error::StsBadArg, "unsafe Ballard source span");
+            cv::Mat result(src.rows, src.cols, CV_8UC1);
+            for (int row = 0; row < src.rows; ++row)
+                std::memcpy(result.ptr(row), src.ptr(row), bytes);
+            return result;
+        };
+        cv::Mat template_copy = snapshot(*t), scene_copy = snapshot(*s);
+        const cv::Ptr<cv::GeneralizedHoughBallard> detector =
+            cv::createGeneralizedHoughBallard();
+        detector->setLevels(360);
+        detector->setDp(1.0);
+        detector->setMinDist(1.0);
+        detector->setCannyLowThresh(low);
+        detector->setCannyHighThresh(high);
+        detector->setVotesThreshold(threshold);
+        detector->setTemplate(template_copy,
+            cv::Point(template_copy.cols / 2, template_copy.rows / 2));
+        cv::Mat local_positions, local_votes;
+        detector->detect(scene_copy, local_positions, local_votes);
+        // ABI safety: verify decoding layout and counts before indexed reads
+        // or publishing storage for the Ada typed accessors.
+        if (local_positions.empty() != local_votes.empty())
+            return invalid_argument("inconsistent Ballard empty outputs");
+        if (!local_positions.empty()) {
+            if (local_positions.dims != 2 || local_votes.dims != 2 ||
+                local_positions.rows != 1 || local_votes.rows != 1 ||
+                local_positions.type() != CV_32FC4 ||
+                local_votes.type() != CV_32SC3 ||
+                local_positions.cols != local_votes.cols ||
+                int64_t(local_positions.cols) >
+                    (int64_t(s->rows) * s->cols + 1) / 2)
+                return invalid_argument("invalid Ballard output layout");
+            for (int i = 0; i < local_positions.cols; ++i) {
+                const cv::Vec4f xy = local_positions.at<cv::Vec4f>(0, i);
+                const cv::Vec3i count = local_votes.at<cv::Vec3i>(0, i);
+                // ABI safety: finite coordinates and nonnegative signed votes
+                // permit checked public decoding without invalid numeric values.
+                if (!std::isfinite(xy[0]) || !std::isfinite(xy[1]) ||
+                    xy[0] < 0 || xy[1] < 0 || count[0] < 0 ||
+                    xy[2] != 1.0f || xy[3] != 0.0f)
+                    return invalid_argument("invalid Ballard output values");
+            }
+        } else {
+            local_positions.release();
+            local_votes.release();
+        }
+        // Exact-tag cv::swap exchanges only scalar/header members, allocates
+        // nothing and calls no throwing operation. Both swaps finish before
+        // old outputs are destroyed, making two-output publication atomic.
+        cv::swap(*p, local_positions);
+        cv::swap(*v, local_votes);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_imgproc_status

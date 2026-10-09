@@ -10,6 +10,10 @@ with OpenCV.Core.Int32_Access;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Row_Access;
 with OpenCV.Core.UInt8_Access;
+with OpenCV.Core.Float32_Vec4_Access;
+with OpenCV.Core.Int32_Vec3_Access;
+with OpenCV.Core.Float32_Vec4;
+with OpenCV.Core.Int32_Vec3;
 with OpenCV.Image_Processing.Internal.C_API;
 with System;
 
@@ -21,6 +25,92 @@ package body OpenCV.Image_Processing is
    function Is_Finite_32 (Value : OpenCV.Float32_Value) return Boolean;
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
+
+   function Find_Ballard_Template_Matches
+     (Template       : OpenCV.Core.Mat;
+      Scene          : OpenCV.Core.Mat;
+      Vote_Threshold : Hough_Vote_Threshold := 20;
+      Canny_Low      : Positive := 50;
+      Canny_High     : Positive := 100) return Ballard_Template_Match_Array
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Int32_Value;
+      Positions, Votes : OpenCV.Core.Mat;
+      Status           : Internal.C_API.Status := Internal.C_API.Success;
+      procedure With_Template (T : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure With_Scene (S : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure With_Positions
+              (P : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               procedure With_Votes
+                 (V : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Ballard_Detect
+                      (T,
+                       S,
+                       Interfaces.Integer_32 (Canny_Low),
+                       Interfaces.Integer_32 (Canny_High),
+                       Interfaces.Integer_32 (Vote_Threshold),
+                       P,
+                       V);
+               end With_Votes;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Votes, With_Votes'Access);
+            end With_Positions;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Positions, With_Positions'Access);
+         end With_Scene;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Scene, With_Scene'Access);
+      end With_Template;
+   begin
+      if Template.Is_Empty
+        or else Scene.Is_Empty
+        or else Template.Dimension_Count /= 2
+        or else Scene.Dimension_Count /= 2
+        or else Template.Depth /= OpenCV.Core.UInt8
+        or else Scene.Depth /= OpenCV.Core.UInt8
+        or else Template.Channels /= 1
+        or else Scene.Channels /= 1
+        or else Canny_Low >= Canny_High
+      then
+         raise OpenCV.OpenCV_Error with "Invalid Ballard input";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Template, With_Template'Access);
+      Raise_On_Error (Status, "Find_Ballard_Template_Matches");
+      if Positions.Is_Empty then
+         return (1 .. 0 => <>);
+      end if;
+      return Result : Ballard_Template_Match_Array (0 .. Positions.Columns - 1)
+      do
+         for I in Result'Range loop
+            declare
+               P : constant OpenCV.Core.Float32_Vec4.Vector :=
+                 OpenCV.Core.Float32_Vec4_Access.Get (Positions, 0, I);
+               V : constant OpenCV.Core.Int32_Vec3.Vector :=
+                 OpenCV.Core.Int32_Vec3_Access.Get (Votes, 0, I);
+            begin
+               --  Int32_Value and Natural share the signed 32-bit maximum
+               --  on the configured GNAT targets; the conversion retains Ada's
+               --  range check. Reject negatives before conversion explicitly.
+               if V (0) < 0 then
+                  raise OpenCV.OpenCV_Error
+                    with "Unrepresentable Ballard votes";
+               end if;
+               Result (I) :=
+                 (Center => (P (0), P (1)), Votes => Natural (V (0)));
+            end;
+         end loop;
+      end return;
+   end Find_Ballard_Template_Matches;
 
    function Squared_Box_Filter
      (Source      : OpenCV.Core.Mat;

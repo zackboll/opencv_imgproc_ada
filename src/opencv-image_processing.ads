@@ -473,6 +473,26 @@ package OpenCV.Image_Processing is
    --  Minimum accumulator votes required for a Hough line or segment.
    subtype Hough_Vote_Threshold is Positive range 1 .. 2_147_483_647;
 
+   type Ballard_Template_Match is record
+      Center : OpenCV.Float32_Point;
+      Votes  : Natural;
+   end record;
+   type Ballard_Template_Match_Array is
+     array (Natural range <>) of Ballard_Template_Match;
+   --  Translation-only native Ballard on nonempty 2-D UInt8 C1 images.
+   --  Inputs are unchanged; Regions are isolated logical images. Template
+   --  center is (Columns / 2, Rows / 2). Centers are Scene-local pixels.
+   --  Votes must strictly exceed Vote_Threshold; 0 < Canny_Low < Canny_High.
+   --  Fixed levels=360, dp=1, minDist=1, scale=1, angle=0. Invalid inputs
+   --  or unsafe native arithmetic raise OpenCV_Error. Synchronous and costly
+   --  for large edge sets. Nonempty bounds start at zero; empty is 1 .. 0.
+   function Find_Ballard_Template_Matches
+     (Template       : OpenCV.Core.Mat;
+      Scene          : OpenCV.Core.Mat;
+      Vote_Threshold : Hough_Vote_Threshold := 20;
+      Canny_Low      : Positive := 50;
+      Canny_High     : Positive := 100) return Ballard_Template_Match_Array;
+
    --  Integer Canny and accumulator thresholds for gradient Hough circles.
    subtype Hough_Circle_Threshold is Positive range 1 .. 2_147_483_647;
 
