@@ -106,6 +106,15 @@ jobs:
       - name: Verify subpixel native backing bytes with ASan and UBSan
         run: SANITIZE=1 sh tests/run_subpixel_patch_native.sh
 
+      - name: Squared-box production corpus with ASan and UBSan
+        run: SANITIZE=1 sh tests/run_squared_box_consistency.sh
+
+      - name: Squared-box arithmetic boundaries
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            tests/squared_box_layout_test.cpp -o squared_box_layout_test
+          ./squared_box_layout_test
+
       - name: Verify spatial-gradient native widths with ASan and UBSan
         run: SANITIZE=1 sh tests/run_spatial_gradient_native.sh
 

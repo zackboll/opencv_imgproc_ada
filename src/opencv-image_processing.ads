@@ -5,6 +5,21 @@ private with Ada.Containers.Vectors;
 
 package OpenCV.Image_Processing is
 
+   type Squared_Box_Mode is (Mean_Square, Sum_Of_Squares);
+   --  Native squared box filtering of nonempty 2-D UInt8/Float32 C1/C3.
+   --  Fresh independent Float64 output; Source unchanged, Regions isolated.
+   --  Positive odd/even/oversized kernels; Wrap rejected. Invalid inputs
+   --  and unsafe native arithmetic raise OpenCV_Error. UInt8 effective area
+   --  is at most 33025. Normalized nonconstant singleton axes reduce to one.
+   --  Float32 retains native incremental rounding and NaN/Inf propagation,
+   --  which can persist beyond the ideal mathematical local window.
+   function Squared_Box_Filter
+     (Source      : OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Size;
+      Mode        : Squared_Box_Mode := Mean_Square;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat;
+
    --  Native cv::blendLinear, returning fresh independent owning storage.
    --  Sources: nonempty 2-D UInt8 or Float32, identical depth, channels and
    --  geometry. Any Core-valid channels with Columns*Channels <= INT_MAX.

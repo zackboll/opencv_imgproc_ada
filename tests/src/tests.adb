@@ -58,6 +58,7 @@ with Polar_Transform_Tests;
 with Phase_Correlation_Tests;
 with Kernel_Generator_Tests;
 with Linear_Blend_Tests;
+with Squared_Box_Filter_Tests;
 
 procedure Tests is
 
@@ -66,7 +67,9 @@ procedure Tests is
    function Selected return AUnit.Test_Suites.Access_Test_Suite is
    begin
       if Ada.Command_Line.Argument_Count = 1 then
-         if Ada.Command_Line.Argument (1) = "subpixel-patch" then
+         if Ada.Command_Line.Argument (1) = "squared-box" then
+            return Squared_Box_Filter_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "subpixel-patch" then
             return Subpixel_Patch_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "subpixel-patch-adapter" then
             return Subpixel_Patch_Tests.Suite (Only_Adapter => True);
@@ -136,6 +139,7 @@ begin
 
    Suite.Add_Test (Median_Blur_Tests.Suite);
    Suite.Add_Test (Box_Blur_Tests.Suite);
+   Suite.Add_Test (Squared_Box_Filter_Tests.Suite);
 
    Suite.Add_Test (Bilateral_Filter_Tests.Suite);
    Suite.Add_Test (Filter_2D_Tests.Suite);

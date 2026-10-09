@@ -10,6 +10,7 @@
 #include "flood_fill_int32_fits.hpp"
 #include "blend_linear_layout_fits.hpp"
 #include "subpixel_patch_guard.hpp"
+#include "squared_box_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -6435,6 +6436,74 @@ opencv_imgproc_contour_hierarchy(
     *first_child = entry[2];
     *parent = entry[3];
     return OPENCV_IMGPROC_OK;
+}
+
+opencv_imgproc_status
+opencv_imgproc_squared_box_filter(
+    const opencv_core_mat_handle *source, int32_t width, int32_t height,
+    int32_t normalize, int32_t border, opencv_core_mat_handle *destination)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK ||
+            src == nullptr ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK ||
+            dst == nullptr)
+            return invalid_argument("invalid squared box Mat handle");
+        // ABI safety: publication must not rebind the borrowed source object.
+        if (src == dst)
+            return invalid_argument("squared box Mat objects must differ");
+        // ABI safety: the adapter indexes 2-D rows and the reviewed native
+        // accumulators require UInt8/Float32 C1/C3 storage and positive kernels.
+        // The plan also bounds signed native arithmetic before allocation.
+        opencv_imgproc_squared_box::Layout layout;
+        int native_border = 0;
+        if (!to_opencv_border(border, native_border))
+            return invalid_argument("invalid squared box border selector");
+        if (src->empty() || src->dims != 2 ||
+            !opencv_imgproc_squared_box::plan(
+                src->rows, src->cols, src->depth(), src->channels(),
+                width, height, normalize, native_border, layout))
+            return invalid_argument("unsafe squared box geometry or arithmetic");
+        const size_t bytes = src->elemSize();
+        const size_t source_row = size_t(src->cols) * bytes;
+        const size_t pointer_limit = size_t(PTRDIFF_MAX);
+        // ABI safety: bound every donor row/pixel offset, including strided ROIs,
+        // before forming pointers. The last row includes its complete pixels.
+        if (src->step < source_row || src->step > size_t(INT_MAX) ||
+            source_row > pointer_limit ||
+            size_t(src->rows - 1) > (pointer_limit - source_row) / src->step)
+            return invalid_argument("unsafe squared box source byte extent");
+        cv::Mat parent(layout.parent_height, layout.parent_width, src->type());
+        const int ax = layout.kernel_width / 2;
+        const int ay = layout.kernel_height / 2;
+        for (int y = 0; y < parent.rows; ++y) {
+            const int sy = opencv_imgproc_squared_box::border_index(
+                int64_t(y) - ay, src->rows, native_border);
+            for (int x = 0; x < parent.cols; ++x) {
+                const int sx = opencv_imgproc_squared_box::border_index(
+                    int64_t(x) - ax, src->cols, native_border);
+                uchar *target = parent.ptr(y) + size_t(x) * bytes;
+                if (sy < 0 || sx < 0)
+                    std::memset(target, 0, bytes);
+                else
+                    std::memcpy(target, src->ptr(sy) + size_t(sx) * bytes, bytes);
+            }
+        }
+        const cv::Mat input = parent(cv::Rect(
+            0, 0, layout.native_width, layout.native_height));
+        cv::Mat native_result;
+        cv::sqrBoxFilter(input, native_result, CV_64F,
+                        cv::Size(layout.kernel_width, layout.kernel_height),
+                        cv::Point(0, 0), normalize != 0, cv::BORDER_REPLICATE);
+        cv::Mat result = native_result(cv::Rect(0, 0, src->cols, src->rows)).clone();
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
 }
 
 opencv_imgproc_status
