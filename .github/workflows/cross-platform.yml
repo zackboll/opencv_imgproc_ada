@@ -109,6 +109,9 @@ jobs:
       - name: Squared-box production corpus with ASan and UBSan
         run: SANITIZE=1 sh tests/run_squared_box_consistency.sh
 
+      - name: Ballard production corpus with ASan and UBSan
+        run: SANITIZE=1 sh tests/run_ballard_consistency.sh
+
       - name: Squared-box arithmetic boundaries
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \

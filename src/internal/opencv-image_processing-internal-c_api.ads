@@ -8,6 +8,16 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Status is new Interfaces.Integer_32;
 
+   function Ballard_Detect
+     (Template, Scene      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Low, High, Threshold : Interfaces.Integer_32;
+      Positions, Votes     : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_ballard_detect";
+
    function Squared_Box_Filter
      (Source                           :
         OpenCV.Core.Module_Interop.Input_Mat_Handle;
