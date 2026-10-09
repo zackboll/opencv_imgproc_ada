@@ -8,6 +8,12 @@ extern "C" {
 #endif
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
+/* Borrowed source/destination headers must differ. On failure destination is
+ * unchanged. normalize is 0 (sum) or 1 (mean); borders use the module constants.
+ * Successful output is fresh owning Float64 storage of source geometry. */
+int32_t opencv_imgproc_squared_box_filter(
+    const opencv_core_mat_handle *source, int32_t width, int32_t height,
+    int32_t normalize, int32_t border, opencv_core_mat_handle *destination);
 typedef struct opencv_imgproc_contours_handle opencv_imgproc_contours_handle;
 typedef struct opencv_imgproc_hough_lines_handle
     opencv_imgproc_hough_lines_handle;

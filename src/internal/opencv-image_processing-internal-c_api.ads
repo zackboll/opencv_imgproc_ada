@@ -8,6 +8,17 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Status is new Interfaces.Integer_32;
 
+   function Squared_Box_Filter
+     (Source                           :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Width, Height, Normalize, Border : Interfaces.Integer_32;
+      Destination                      :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_squared_box_filter";
+
    function Blend_Linear
      (Source_1, Source_2, Weight_1, Weight_2 :
         OpenCV.Core.Module_Interop.Input_Mat_Handle;

@@ -22,6 +22,66 @@ package body OpenCV.Image_Processing is
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
 
+   function Squared_Box_Filter
+     (Source      : OpenCV.Core.Mat;
+      Kernel_Size : OpenCV.Size;
+      Mode        : Squared_Box_Mode := Mean_Square;
+      Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
+      return OpenCV.Core.Mat
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type Interfaces.Integer_64;
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      Width  : Interfaces.Integer_64 :=
+        Interfaces.Integer_64 (Kernel_Size.Width);
+      Height : Interfaces.Integer_64 :=
+        Interfaces.Integer_64 (Kernel_Size.Height);
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Squared_Box_Filter
+                (S,
+                 Interfaces.Integer_32 (Kernel_Size.Width),
+                 Interfaces.Integer_32 (Kernel_Size.Height),
+                 (if Mode = Mean_Square then 1 else 0),
+                 To_C_Border (Border),
+                 D);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle (Result, Output'Access);
+      end Input;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth not in OpenCV.Core.UInt8 | OpenCV.Core.Float32
+        or else Source.Channels not in 1 | 3
+        or else Width <= 0
+        or else Height <= 0
+        or else Border = OpenCV.Wrap
+      then
+         raise OpenCV.OpenCV_Error with "Invalid squared box input";
+      end if;
+      if Mode = Mean_Square and then Border /= OpenCV.Constant_Border then
+         if Source.Columns = 1 then
+            Width := 1;
+         end if;
+         if Source.Rows = 1 then
+            Height := 1;
+         end if;
+      end if;
+      if Width * Height
+        > (if Source.Depth = OpenCV.Core.UInt8 then 33025 else 2**31 - 1)
+      then
+         raise OpenCV.OpenCV_Error with "Squared box kernel area overflow";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Squared_Box_Filter");
+      return Result;
+   end Squared_Box_Filter;
+
    function Blend_Linear
      (Source_1, Source_2, Weight_1, Weight_2 : OpenCV.Core.Mat)
       return OpenCV.Core.Mat

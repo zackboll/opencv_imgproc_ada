@@ -4319,6 +4319,49 @@ part of the basic error-reporting path.
 
 ## OpenCV compatibility and platform model
 
+### Squared box filtering
+
+`Squared_Box_Filter (Source, Kernel_Size, Mode := Mean_Square,
+Border := Reflect_101)` calls native `cv::sqrBoxFilter`. Sources are nonempty
+2-D UInt8 or Float32, with one or three channels. Output is fresh owning Float64
+storage with the original geometry/channels; Source remains unchanged and
+Regions use only their logical pixels. `Sum_Of_Squares` disables normalization.
+Kernels can be odd, even, rectangular or oversized; dimensions must be positive.
+Constant, Replicate, Reflect and Reflect_101 are supported; Wrap is rejected.
+Unsafe native signed arithmetic raises `OpenCV_Error`; UInt8 effective kernel
+area is limited to 33025 to protect the native signed accumulator.
+
+```ada
+declare
+   Local_Mean_Square : constant OpenCV.Core.Mat :=
+     OpenCV.Image_Processing.Squared_Box_Filter
+       (Source      => Image,
+        Kernel_Size => (Width => 5, Height => 3));
+begin
+   --  Read Float64 pixels with OpenCV.Core.Float64_Access (C1), or the
+   --  corresponding Float64_Vec3_Access for a three-channel Image.
+   Ada.Text_IO.Put_Line
+     (OpenCV.Float64_Value'Image
+        (OpenCV.Core.Float64_Access.Get (Local_Mean_Square, 0, 0)));
+end;
+```
+
+For normalized nonconstant borders, singleton source axes reduce the effective
+kernel dimension to one, matching native semantics. Constant-border singleton
+images retain the requested area and zero halo. Float32 NaN/Inf is supported
+without sanitization. Native stateful incremental arithmetic can propagate
+nonfinite values beyond the ideal window and lose tiny finite residuals after
+large values; this is not an exact per-window summation algorithm.
+
+The supported third-party FilterEngine scratch-buffer object-lifetime
+implementation is an accepted upstream assumption, not a formal ISO C++17
+proof. Binding-owned geometry, arithmetic, bytewise Region adaptation and atomic
+publication remain validated. See
+[source review and qualification](docs/squared-box-filter-source-review.md)
+for the retained historical findings and the direct exact-version comparison
+procedure. Measured corpus agreement is not a guarantee of bitwise floating
+identity across arbitrary OpenCV/compiler/architecture combinations.
+
 OpenCV is discovered through pkg-config using these package names, in order:
 
 ```text
