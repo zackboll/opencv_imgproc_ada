@@ -59,6 +59,7 @@ with Phase_Correlation_Tests;
 with Kernel_Generator_Tests;
 with Linear_Blend_Tests;
 with Squared_Box_Filter_Tests;
+with Ballard_Template_Tests;
 
 procedure Tests is
 
@@ -67,7 +68,11 @@ procedure Tests is
    function Selected return AUnit.Test_Suites.Access_Test_Suite is
    begin
       if Ada.Command_Line.Argument_Count = 1 then
-         if Ada.Command_Line.Argument (1) = "squared-box" then
+         if Ada.Command_Line.Argument (1) = "ballard" then
+            return Ballard_Template_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "hough" then
+            return Hough_Detection_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "squared-box" then
             return Squared_Box_Filter_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "subpixel-patch" then
             return Subpixel_Patch_Tests.Suite;
@@ -140,6 +145,7 @@ begin
    Suite.Add_Test (Median_Blur_Tests.Suite);
    Suite.Add_Test (Box_Blur_Tests.Suite);
    Suite.Add_Test (Squared_Box_Filter_Tests.Suite);
+   Suite.Add_Test (Ballard_Template_Tests.Suite);
 
    Suite.Add_Test (Bilateral_Filter_Tests.Suite);
    Suite.Add_Test (Filter_2D_Tests.Suite);

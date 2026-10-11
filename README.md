@@ -13,6 +13,76 @@ a small C ABI and the cross-module `Mat` bridge provided by
 This project is intentionally an **Ada API over OpenCV**, not a mechanical
 translation of `opencv2/imgproc.hpp`.
 
+## Generalized Hough Ballard template detection
+
+`Find_Ballard_Template_Matches` searches a grayscale scene for translated
+instances of a known template shape using native `GeneralizedHoughBallard`.
+Unlike Hough lines and circles, it builds an orientation-indexed R-table from
+the template's edges. This first slice searches **translation only**: scale is
+fixed at 1, angle at 0, orientation levels at 360, accumulator dp at 1, and
+minimum distance at 1. Rotation/scale search through `GeneralizedHoughGuil`
+is deferred; it is not simulated by this operation.
+
+Both inputs must be nonempty 2-D UInt8 C1 Mats. They remain unchanged. Private
+owning snapshots copy only logical pixels, so noncontinuous Regions are
+supported and their parent pixels never influence preprocessing. Results use
+Scene-local coordinates, not parent coordinates. The template center is the
+native integer center `(Template.Columns / 2, Template.Rows / 2)`.
+
+Native preprocessing uses Canny (3x3, L1 magnitude) and Float32 Sobel
+derivatives. Defaults are Canny low/high 50/100, with `0 < low < high` and no
+silent threshold scaling. Matches require integer votes **strictly greater
+than** `Vote_Threshold` (default 20), plus native local-maximum conditions.
+Votes are decoded directly from Int32, never rounded through Float32.
+Multiple detections are possible; order is not a ranking guarantee. Nonempty
+arrays start at zero; no detections returns range `1 .. 0`.
+
+```ada
+with Ada.Text_IO;
+with OpenCV.Core;
+with OpenCV.Image_Processing;
+
+procedure Locate_Landmark
+  (Landmark_Template, Grayscale_Scene : OpenCV.Core.Mat)
+is
+   Matches : constant
+     OpenCV.Image_Processing.Ballard_Template_Match_Array :=
+       OpenCV.Image_Processing.Find_Ballard_Template_Matches
+         (Template       => Landmark_Template,
+          Scene          => Grayscale_Scene,
+          Vote_Threshold => 20,
+          Canny_Low      => 50,
+          Canny_High     => 100);
+begin
+   for Match of Matches loop
+      Ada.Text_IO.Put_Line
+        ("Candidate center: " & Match.Center.X'Image & ","
+         & Match.Center.Y'Image & "; votes:" & Match.Votes'Image);
+   end loop;
+end Locate_Landmark;
+```
+
+The operation is synchronous and can be computationally expensive: many
+template edges in the same orientation bin multiply work at each Scene edge.
+It also allocates private images, derivatives, a Scene-sized histogram, and
+result buffers. Derived native arithmetic restrictions raise `OpenCV_Error`;
+allocation failure is translated normally. These are safety bounds, not
+arbitrary application resource caps. Float32 centers retain native precision
+(not every integer above 2^24 is representable).
+
+The deterministic production-shim corpus is qualified against exact OpenCV
+4.1.0, 4.10.0 and 5.0.0 on Linux x86_64, requiring identical sorted detection
+sets, centers and integer votes, including empty results. This is measured
+agreement for the documented corpus, not a universal numerical guarantee for
+arbitrary builds, backends or photographs. See
+[`docs/generalized-hough-ballard-source-review.md`](docs/generalized-hough-ballard-source-review.md)
+for arithmetic bounds, runtime provenance and the reusable qualification
+commands. Linux CI runs a single-installation native regression and the normal
+AUnit suite; it does not claim hosted three-version qualification.
+
+This supplies one candidate landmark-detection primitive, not a complete
+GPS-denied navigation pipeline.
+
 > **Version:** `0.1.0-dev`
 >
 > **Ada package:** `OpenCV.Image_Processing`
