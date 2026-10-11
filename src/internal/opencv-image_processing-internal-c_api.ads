@@ -8,6 +8,22 @@ package OpenCV.Image_Processing.Internal.C_API is
 
    type Status is new Interfaces.Integer_32;
 
+   type Guil_Parameters is record
+      Minimum_Angle, Maximum_Angle, Angle_Step : Interfaces.C.double;
+      Minimum_Scale, Maximum_Scale, Scale_Step : Interfaces.C.double;
+      Canny_Low, Canny_High                    : Interfaces.Integer_32;
+      Angle_Threshold, Scale_Threshold         : Interfaces.Integer_32;
+      Position_Threshold                       : Interfaces.Integer_32;
+   end record
+   with Convention => C;
+
+   function Guil_Detect
+     (Template, Scene  : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Parameters       : Guil_Parameters;
+      Positions, Votes : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_guil_detect";
+
    function Ballard_Detect
      (Template, Scene      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Low, High, Threshold : Interfaces.Integer_32;
