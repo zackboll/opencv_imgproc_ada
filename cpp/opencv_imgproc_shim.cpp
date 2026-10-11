@@ -6533,13 +6533,14 @@ opencv_imgproc_status opencv_imgproc_guil_detect(
             parameters->maximum_scale, parameters->scale_step,
             parameters->angle_threshold, parameters->scale_threshold,
             parameters->position_threshold};
+        opencv_imgproc_guil::Layout layout;
         // ABI safety: row memcpy requires nonempty 2-D byte pixels. The planner
         // rejects geometry whose native area, histogram, rounding, vote or
         // output-copy arithmetic is not representable.
         if (t->empty() || s->empty() || t->dims != 2 || s->dims != 2 ||
             t->type() != CV_8UC1 || s->type() != CV_8UC1 ||
-            !opencv_imgproc_guil::fits(
-                t->rows, t->cols, s->rows, s->cols, checked))
+            !opencv_imgproc_guil::plan(
+                t->rows, t->cols, s->rows, s->cols, checked, layout))
             return invalid_argument("unsafe Guil input geometry or type");
         const auto snapshot = [](const cv::Mat &src) {
             const size_t bytes = static_cast<size_t>(src.cols);
@@ -6579,13 +6580,8 @@ opencv_imgproc_status opencv_imgproc_guil_detect(
         cv::Mat local_positions, local_votes;
         detector->detect(scene_copy, local_positions, local_votes);
         const std::int64_t output_limit =
-            std::int64_t(std::ceil(
-                (parameters->maximum_angle - parameters->minimum_angle) /
-                parameters->angle_step)) *
-            std::int64_t(std::ceil(
-                (parameters->maximum_scale - parameters->minimum_scale) /
-                parameters->scale_step)) *
-            std::int64_t(s->rows) * s->cols;
+            (std::int64_t(layout.angle_bins) * layout.scale_bins) *
+            (std::int64_t(s->rows) * s->cols);
         // ABI safety: verify decoding layout and counts before indexed reads
         // or publishing storage for the Ada typed accessors.
         if (local_positions.empty() != local_votes.empty())

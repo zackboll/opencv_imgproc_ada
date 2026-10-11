@@ -44,77 +44,90 @@ inline bool image_fits(int rows, int cols) noexcept
         ((w + 127) / 64) * ((h + 127) / 64) <= limit;
 }
 
-inline bool parameters_fit(const Parameters &p) noexcept
+struct Layout {
+    int angle_bins;
+    int scale_bins;
+};
+
+// Native range is cvCeil(span * (1 / step)), not cvCeil(span / step).
+inline bool histogram_bins(double minimum, double maximum, double step,
+                           int &bins) noexcept
+{
+    constexpr auto limit = std::numeric_limits<int>::max();
+    if (!std::isfinite(minimum) || !std::isfinite(maximum) ||
+        !finite_positive(step) || !(minimum < maximum))
+        return false;
+    const double span = maximum - minimum;
+    const double reciprocal = 1.0 / step;
+    if (!std::isfinite(span) || !std::isfinite(reciprocal)) return false;
+    const double scaled = span * reciprocal;
+    if (!std::isfinite(scaled)) return false;
+    const double count = std::ceil(scaled);
+    const double index = std::round(scaled);
+    if (!std::isfinite(count) || !std::isfinite(index) ||
+        count < 1.0 || count > double(limit - 1) || index > count)
+        return false;
+    bins = static_cast<int>(count);
+    return true;
+}
+
+inline bool plan(int template_rows, int template_columns,
+                 int scene_rows, int scene_columns,
+                 const Parameters &parameters, Layout &layout) noexcept
 {
     using W = std::int64_t;
     constexpr W limit = std::numeric_limits<int>::max();
-    if (!std::isfinite(p.minimum_angle) || !std::isfinite(p.maximum_angle) ||
-        !finite_positive(p.angle_step) || !finite_positive(p.minimum_scale) ||
-        !std::isfinite(p.maximum_scale) || !finite_positive(p.scale_step) ||
-        p.angle_threshold <= 0 || p.scale_threshold <= 0 ||
-        p.position_threshold <= 0)
+    constexpr W pointer = std::numeric_limits<std::ptrdiff_t>::max();
+    layout = {};
+    if (!image_fits(template_rows, template_columns) ||
+        !image_fits(scene_rows, scene_columns) ||
+        parameters.angle_threshold <= 0 || parameters.scale_threshold <= 0 ||
+        parameters.position_threshold <= 0 ||
+        !(parameters.minimum_angle >= 0.0 &&
+          parameters.maximum_angle <= 360.0 &&
+          parameters.angle_step < 360.0))
         return false;
-    if (!(p.minimum_angle >= 0.0 && p.minimum_angle < p.maximum_angle &&
-          p.maximum_angle <= 360.0 && p.angle_step < 360.0 &&
-          p.minimum_scale < p.maximum_scale))
+    int angle_bins = 0, scale_bins = 0;
+    if (!histogram_bins(parameters.minimum_angle, parameters.maximum_angle,
+                        parameters.angle_step, angle_bins) ||
+        !histogram_bins(parameters.minimum_scale, parameters.maximum_scale,
+                        parameters.scale_step, scale_bins))
         return false;
-    const double angle_span = p.maximum_angle - p.minimum_angle;
-    const double scale_span = p.maximum_scale - p.minimum_scale;
-    const double angle_reciprocal = 1.0 / p.angle_step;
-    const double scale_reciprocal = 1.0 / p.scale_step;
-    if (!std::isfinite(angle_reciprocal) || !std::isfinite(scale_reciprocal) ||
-        !std::isfinite(angle_span * angle_reciprocal) ||
-        !std::isfinite(scale_span * scale_reciprocal))
+    // Divide before multiplying so the candidate product is exact in int64.
+    constexpr W bins = 361;
+    constexpr W cap = 1000;
+    const W rows = scene_rows, columns = scene_columns;
+    const W peaks = rows * columns;
+    const W angle_limit = limit / 16;
+    if (W(angle_bins) > angle_limit || W(scale_bins) > limit ||
+        peaks > angle_limit ||
+        W(scale_bins) > angle_limit / W(angle_bins) ||
+        peaks > angle_limit / (W(angle_bins) * W(scale_bins)))
         return false;
-    // cvCeil result and the extra histogram bin must fit signed int.
-    const double angle_bins = std::ceil(angle_span * angle_reciprocal);
-    const double scale_bins = std::ceil(scale_span * scale_reciprocal);
-    if (angle_bins < 1.0 || scale_bins < 1.0 ||
-        angle_bins > double(limit - 1) || scale_bins > double(limit - 1))
+    const W outputs = W(angle_bins) * W(scale_bins) * peaks;
+    const W votes = (bins * cap) * cap;
+    if (votes > limit || rows > limit - 1 || columns > limit - 1 ||
+        (rows + 2) > pointer / 4 / (columns + 2) ||
+        outputs > pointer / 16 || outputs > pointer / 12)
         return false;
-    // A value equal to the maximum rounds into the extra bin. The next
-    // representable step past that maximum would index one further.
-    const double angle_index =
-        std::round(angle_span * angle_reciprocal);
-    const double scale_index =
-        std::round(scale_span * scale_reciprocal);
-    return std::isfinite(angle_index) && std::isfinite(scale_index) &&
-        angle_index <= angle_bins && scale_index <= scale_bins;
+    layout.angle_bins = angle_bins;
+    layout.scale_bins = scale_bins;
+    return true;
+}
+
+inline bool parameters_fit(const Parameters &p) noexcept
+{
+    Layout layout;
+    return plan(1, 1, 1, 1, p, layout);
 }
 
 inline bool fits(int template_rows, int template_columns,
                  int scene_rows, int scene_columns,
                  const Parameters &parameters) noexcept
 {
-    using W = std::int64_t;
-    constexpr W limit = std::numeric_limits<int>::max();
-    constexpr W pointer = std::numeric_limits<std::ptrdiff_t>::max();
-    if (!image_fits(template_rows, template_columns) ||
-        !image_fits(scene_rows, scene_columns) ||
-        !parameters_fit(parameters))
-        return false;
-    const double angle_bins = std::ceil(
-        (parameters.maximum_angle - parameters.minimum_angle) /
-        parameters.angle_step);
-    const double scale_bins = std::ceil(
-        (parameters.maximum_scale - parameters.minimum_scale) /
-        parameters.scale_step);
-    // One local-maximum peak per spatial cell, per accepted hypothesis.
-    // 361 orientation bins and the 1000-entry cap bound votes per cell.
-    constexpr W bins = 361;
-    constexpr W cap = 1000;
-    const W peaks = W(scene_rows) * scene_columns;
-    if (angle_bins > double(limit / 16) || scale_bins > double(limit) ||
-        peaks > limit / 16 ||
-        angle_bins * scale_bins > double(limit) / double(peaks))
-        return false;
-    const W outputs = W(angle_bins) * W(scale_bins) * peaks;
-    const W votes = bins * cap * cap;
-    // Position centers are cvRound of a value strictly below the dimension.
-    return outputs <= limit / 16 && votes <= limit &&
-        W(scene_rows) <= limit - 1 && W(scene_columns) <= limit - 1 &&
-        (W(scene_rows) + 2) * (W(scene_columns) + 2) <= pointer / 4 &&
-        outputs * 16 <= pointer && outputs * 12 <= pointer;
+    Layout layout;
+    return plan(template_rows, template_columns, scene_rows, scene_columns,
+                parameters, layout);
 }
 } // namespace opencv_imgproc_guil
 #endif

@@ -43,13 +43,23 @@ per-cell edge bound is not reused; the Guil cell bound is this pair product.
 
 ## Histogram preflight
 
-Angle bins are `cvCeil((max - min) / step)`, then one extra bin is allocated.
-`cvRound((value - min) / step)` can land on that extra bin when the value
+Angle bins follow the native reciprocal product, not direct division. One extra bin is allocated.
+`cvRound(span * (1 / step))` can land on that extra bin when the value
 equals the maximum. The planner requires finite parameters, a positive
-reciprocal, a `cvCeil` result in `1 .. INT_MAX - 1`, and a rounded maximum
-index no larger than that extra bin. Scale uses the same rule. Angle must
+reciprocal, a `cvCeil(span * (1 / step))` result in `1 .. INT_MAX - 1`, and a
+rounded maximum index no larger than that extra bin. Scale uses the same
+product. Angle must
 also satisfy the native assert `0 <= min < max <= 360` and `0 < step < 360`.
 Scale must satisfy `0 < min < max` and `step > 0`.
+
+`span / step` is not equivalent. For minimum 0.1, maximum 0.8, and step 0.1,
+`(0.8 - 0.1) * (1 / 0.1)` is `7.000000000000000888` and `cvCeil` returns 8.
+Direct division is exactly 7. Scale 0.5..0.6 step 0.2 is 0.5 either way, so
+`cvCeil` returns 1. The first planner checked parameters with the native
+product but recomputed output limits with direct division. `histogram_bins`
+is now the only range calculation. `plan` returns both integer counts, and
+histogram room, candidate bounds, signed narrowing, byte widths, and the
+shim's post-detection count check all reuse those counts.
 
 Position uses `cvRound` after a coordinate that the source accepts only when
 strictly below the histogram dimension. With dp = 1 the rounded coordinate is
@@ -60,18 +70,21 @@ its byte size is bounded before allocation.
 ## Output bound
 
 Each accepted angle and scale can emit one local-maximum peak per spatial
-cell. The conservative count is:
+cell. The count is the product of the two native histogram counts and the
+scene area. Widened int64 division precedes every multiplication, so the
+product and its 16-byte and 12-byte copies are proven before overflow. The
+signed narrowing limit is `INT_MAX / 16` (134,217,728).
 
-```text
-ceil(angle span / step) * ceil(scale span / step) * scene rows * scene cols
-```
+A full 0..360 by 1 degree and 0.5..2.0 by 0.05 search has 360 and 30 bins.
+On a 48×40 template, without allocating either image:
 
-Widened arithmetic requires that count, times 16 bytes for the Float32 C4
-copy and times 12 bytes for the Int32 C3 copy, to fit `ptrdiff_t`, and the
-count itself to fit the signed narrowing in `convertTo`. This can reject a
-very large scene combined with a broad search even when each image alone is
-representable. That is an output-safety limit. A narrower angle or scale
-window reduces the product and can admit the same scene.
+- 4096×4096 is rejected. Its candidate count is 181,193,932,800, or 1350
+  times 134,217,728.
+- 4096×3 is accepted (132,710,400 candidates).
+- 4096×4 is rejected (176,947,200 candidates).
+
+A narrower window still admits a larger scene. This is output safety, not a
+scene-size cap.
 
 ## Publication
 
