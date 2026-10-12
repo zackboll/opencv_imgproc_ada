@@ -13,6 +13,7 @@
 #include "squared_box_layout_fits.hpp"
 #include "ballard_layout_fits.hpp"
 #include "guil_layout_fits.hpp"
+#include "masked_template_layout_fits.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -8051,6 +8052,68 @@ opencv_imgproc_match_template(
 
         cv::matchTemplate(*src, *tpl, *dst, opencv_method);
 
+        return OPENCV_IMGPROC_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_imgproc_status
+opencv_imgproc_match_template_masked(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *templ,
+    const opencv_core_mat_handle *mask,
+    opencv_core_mat_handle *destination,
+    int32_t method)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr, *tpl = nullptr, *msk = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src ||
+            opencv_core_module_input_mat(templ, &tpl) != OPENCV_CORE_OK || !tpl ||
+            opencv_core_module_input_mat(mask, &msk) != OPENCV_CORE_OK || !msk ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid masked template Mat handle");
+        // ABI safety: this adapter selects only the historically qualified
+        // branch; other selectors have different native arithmetic paths.
+        if (method != 0)
+            return invalid_argument("masked template method must be SQDIFF");
+        // ABI safety: the row-wise snapshot below reads exactly cols UInt8
+        // elements. Other types/ND/empty Mats cannot supply that geometry.
+        for (const cv::Mat *input : {src, tpl, msk}) {
+            if (input->dims != 2 || input->empty() || input->type() != CV_8UC1 ||
+                !opencv_imgproc_masked_template::span_fits(
+                    input->rows, input->cols, input->step[0]))
+                return invalid_argument("unsafe masked template snapshot layout");
+        }
+        // ABI safety: the binary mask and template are multiplied by native
+        // kernels, and negative correlation extents reach native allocation.
+        if (msk->rows != tpl->rows || msk->cols != tpl->cols ||
+            !opencv_imgproc_masked_template::fits(
+                src->rows, src->cols, tpl->rows, tpl->cols))
+            return invalid_argument("unsafe masked template correlation geometry");
+        // ABI safety: native-object identity would mutate an input header
+        // on publication.
+        // Shared pixel storage with distinct headers is safe after snapshots.
+        if (dst == src || dst == tpl || dst == msk)
+            return invalid_argument("masked template destination aliases an input object");
+        auto snapshot = [](const cv::Mat &input, bool binary) {
+            cv::Mat output(input.rows, input.cols, CV_32FC1);
+            for (int y = 0; y < input.rows; ++y) {
+                const auto *in = input.ptr<uchar>(y);
+                auto *out = output.ptr<float>(y);
+                for (int x = 0; x < input.cols; ++x)
+                    out[x] = binary ? (in[x] == 0 ? 0.0f : 1.0f) : float(in[x]);
+            }
+            return output;
+        };
+        const cv::Mat image = snapshot(*src, false);
+        const cv::Mat patch = snapshot(*tpl, false);
+        const cv::Mat binary_mask = snapshot(*msk, true);
+        cv::Mat result;
+        cv::matchTemplate(image, patch, result, cv::TM_SQDIFF, binary_mask);
+        *dst = std::move(result);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
         return translate_current_exception();

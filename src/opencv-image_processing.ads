@@ -1135,13 +1135,27 @@ package OpenCV.Image_Processing is
    --  match is the maximum. Use OpenCV.Core.Min_Max_Loc on Destination to
    --  recover those extrema. Source and Template are read-only and may share
    --  storage. Destination must not share storage with Source or Template.
-   --  Masked template matching is not bound. Contract violations and failures
+   --  Contract violations and failures
    --  reported by OpenCV raise OpenCV.OpenCV_Error.
    procedure Match_Template
      (Source      : OpenCV.Core.Mat;
       Template    : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Method      : Template_Matching_Method);
+
+   --  Masked SQDIFF: all inputs must be nonempty 2-D UInt8 C1. Mask must
+   --  match Template dimensions and Template must fit Source. Every nonzero
+   --  mask byte includes a pixel with weight one. An all-zero mask yields
+   --  zero scores. Private logical snapshots isolate Regions and shared
+   --  storage. Destination receives fresh owning Float32 C1 storage only on
+   --  success, in original squared UInt8 intensity units (not normalized).
+   --  Only Squared_Difference is supported; violations raise OpenCV_Error.
+   procedure Match_Template
+     (Source      : OpenCV.Core.Mat;
+      Template    : OpenCV.Core.Mat;
+      Mask        : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Method      : Template_Matching_Method := Squared_Difference);
 
    --  Warp_Affine applies a 2x3 affine Transform to Source and writes the
    --  warped image to Destination. Source must be a non-empty two-dimensional
