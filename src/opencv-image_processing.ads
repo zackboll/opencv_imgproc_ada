@@ -1150,6 +1150,11 @@ package OpenCV.Image_Processing is
    --  Float32 C1 storage only on success, sized Source minus Template plus
    --  one. Squared_Difference scores are unnormalized sums of squared
    --  differences (lower is better); an all-zero mask yields zero scores.
+   --  Cross_Correlation is the unnormalized sum of included intensity
+   --  products in original UInt8 units: choose the maximum-scoring location.
+   --  It supports black Templates and all-zero masks, with zero correlation.
+   --  Native unmasked correlation uses an owning zeroed Float32 Template on
+   --  every supported OpenCV version. Scores retain native rounding.
    --  Normalized_Cross_Correlation scores are native cosine similarities
    --  (higher is better) and require at least one pixel where both Mask and
    --  Template are nonzero. Ideal defined scores lie in [0, 1]; native

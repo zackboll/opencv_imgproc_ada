@@ -1,7 +1,8 @@
 # Portable masked template matching
 
-The masked `Match_Template` overload supports `Squared_Difference` and
-`Normalized_Cross_Correlation`. Its default remains `Squared_Difference`.
+The masked `Match_Template` overload supports `Squared_Difference`,
+`Cross_Correlation`, and `Normalized_Cross_Correlation`.
+Its default remains `Squared_Difference`.
 Source, Template, and Mask must be nonempty 2-D UInt8 C1 Mats. Mask dimensions
 must equal Template dimensions, and Template must fit Source. Zero mask bytes
 exclude pixels; every nonzero byte (including 1, 127, and 255) includes a pixel
@@ -15,6 +16,32 @@ Squared difference scores are sums of squared differences in original 0..255
 intensity units, not normalized by 255 or 65025. **Lower is better**, so use
 `Minimum_Location` from `OpenCV.Core.Min_Max_Loc`. An all-zero mask produces
 all-zero scores.
+
+| Method | Best match | Score semantics |
+|---|---|---|
+| Squared_Difference | Minimum | Squared intensity error |
+| Cross_Correlation | Maximum | Unnormalized intensity-product sum |
+| Normalized_Cross_Correlation | Maximum | Cosine similarity |
+
+Cross-correlation computes `sum(M*T*I)` in original UInt8 intensity units.
+**Higher is better**; scores are not restricted to [0,1] and increase with
+brightness. Black templates and all-zero masks yield numerical zero (either
+IEEE zero sign is permitted). OpenCV 4.1.0 does not implement masked native
+`TM_CCORR`. On every supported version the binding instead constructs an
+owning Float32 Template with excluded samples zeroed, then calls native
+**unmasked** `TM_CCORR` without a mask argument. For binary masks this is
+mathematically equivalent to the newer masked Template-times-Mask-squared
+formula; it is not a custom correlation kernel.
+
+Native DFT rounding is retained, including tiny negative residuals at
+mathematically zero windows. Qualification compares to the rounded integer
+oracle within `max(1e-4, 4 * Float32_ULP(rounded oracle))` in absolute score
+units. This is a bounded qualification policy, not a universal backend error
+guarantee. Float32 cannot represent every integer above 2^24. The deterministic
+three-version corpus additionally requires exact score bits and robust
+landmark margins exceeding the combined uncertainty budget. Near-ties and
+mathematical ties must not be interpreted as unique reliable matches. See
+[CCORR source review and qualification](docs/masked-cross-correlation-source-review.md).
 
 Normalized cross-correlation is the native masked cosine similarity:
 
@@ -58,7 +85,7 @@ begin
       Landmark,
       Visibility,
       Scores,
-      OpenCV.Image_Processing.Normalized_Cross_Correlation);
+      OpenCV.Image_Processing.Cross_Correlation);
    Best := OpenCV.Core.Min_Max_Loc (Scores);
    --  Best.Maximum_Location is the landmark's top-left point in Scene.
 end;
@@ -67,7 +94,8 @@ end;
 Private logical snapshots isolate noncontinuous and overlapping Regions from
 surrounding parent pixels. Output does not retain their storage.
 Snapshot/conversion cost is linear in input pixels and adds three Float32
-input allocations; OpenCV performs native DFT-based masked correlation. Do not
+input allocations; CCORR adds an owning zeroed Template allocation. OpenCV
+performs native correlation (DFT or an optimized backend). Do not
 mutate inputs concurrently during the call.
 
 Canonical unscaled Float32 source/template and exact binary Float32 mask inputs
@@ -1530,8 +1558,8 @@ Source and Template are read-only and may share storage, including using the
 same Mat or a Template that is a `Region` of Source. Destination must not share
 storage with Source or Template.
 
-Masked template matching supports squared difference and normalized
-cross-correlation through the UInt8 C1 overload described in
+Masked template matching supports squared difference, cross-correlation, and
+normalized cross-correlation through the UInt8 C1 overload described in
 [Portable masked template matching](#portable-masked-template-matching).
 
 ---
