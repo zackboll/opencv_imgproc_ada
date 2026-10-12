@@ -1029,6 +1029,17 @@ opencv_imgproc_match_template(
     opencv_core_mat_handle *destination,
     int32_t method);
 
+/* Borrowed inputs; fresh owning output is published only on success.
+ * UInt8 C1 logical snapshots are converted to unscaled Float32; mask != 0
+ * becomes exactly 1.0f. Only method 0 (SQDIFF) is supported. */
+opencv_imgproc_status
+opencv_imgproc_match_template_masked(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *templ,
+    const opencv_core_mat_handle *mask,
+    opencv_core_mat_handle *destination,
+    int32_t method);
+
 opencv_imgproc_status
 opencv_imgproc_warp_affine(
     const opencv_core_mat_handle *source,

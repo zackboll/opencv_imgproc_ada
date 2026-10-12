@@ -5397,6 +5397,76 @@ package body OpenCV.Image_Processing is
       Raise_On_Error (Status, "Match_Template");
    end Match_Template;
 
+   procedure Match_Template
+     (Source      : OpenCV.Core.Mat;
+      Template    : OpenCV.Core.Mat;
+      Mask        : OpenCV.Core.Mat;
+      Destination : in out OpenCV.Core.Mat;
+      Method      : Template_Matching_Method := Squared_Difference)
+   is
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+
+      procedure Validate (Image : OpenCV.Core.Mat) is
+         use type OpenCV.Core.Depth_Type;
+         use type OpenCV.Core.Channel_Count;
+      begin
+         if Image.Is_Empty
+           or else Image.Dimension_Count /= 2
+           or else Image.Depth /= OpenCV.Core.UInt8
+           or else Image.Channels /= 1
+         then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV.OpenCV_Error'Identity,
+               "Masked Match_Template requires nonempty 2-D UInt8 C1");
+         end if;
+      end Validate;
+
+      procedure Source_Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure Template_Input
+           (T : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure Mask_Input
+              (M : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+            is
+               procedure Output
+                 (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Match_Template_Masked
+                      (S, T, M, D, To_C_Template_Matching_Method (Method));
+               end Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Destination, Output'Access);
+            end Mask_Input;
+         begin
+            OpenCV.Core.Module_Interop.With_Input_Handle
+              (Mask, Mask_Input'Access);
+         end Template_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Template, Template_Input'Access);
+      end Source_Input;
+   begin
+      Validate (Source);
+      Validate (Template);
+      Validate (Mask);
+      if Method /= Squared_Difference
+        or else Mask.Rows /= Template.Rows
+        or else Mask.Columns /= Template.Columns
+        or else Template.Rows > Source.Rows
+        or else Template.Columns > Source.Columns
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV.OpenCV_Error'Identity,
+            "Invalid masked Match_Template geometry or method");
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Source, Source_Input'Access);
+      Raise_On_Error (Status, "Masked Match_Template");
+   end Match_Template;
+
    procedure Warp_Affine
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;

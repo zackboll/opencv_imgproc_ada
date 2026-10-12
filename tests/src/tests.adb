@@ -50,6 +50,7 @@ with Spatial_Derivative_Tests;
 with Spatial_Gradient_Tests;
 with Subpixel_Patch_Tests;
 with Template_Matching_Tests;
+with Masked_Template_Tests;
 with Threshold_Tests;
 with Warp_Affine_Tests;
 with Warp_Perspective_Tests;
@@ -69,7 +70,11 @@ procedure Tests is
    function Selected return AUnit.Test_Suites.Access_Test_Suite is
    begin
       if Ada.Command_Line.Argument_Count = 1 then
-         if Ada.Command_Line.Argument (1) = "guil" then
+         if Ada.Command_Line.Argument (1) = "masked-template" then
+            return Masked_Template_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "template-matching" then
+            return Template_Matching_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "guil" then
             return Guil_Template_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "ballard" then
             return Ballard_Template_Tests.Suite;
@@ -140,6 +145,7 @@ begin
    Suite.Add_Test (Pyramid_Tests.Suite);
    Suite.Add_Test (Pyramid_Construction_Tests.Suite);
    Suite.Add_Test (Template_Matching_Tests.Suite);
+   Suite.Add_Test (Masked_Template_Tests.Suite);
    Suite.Add_Test (Warp_Affine_Tests.Suite);
    Suite.Add_Test (Warp_Perspective_Tests.Suite);
    Suite.Add_Test (Remap_Tests.Suite);

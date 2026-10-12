@@ -1290,6 +1290,17 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_match_template";
 
+   function Match_Template_Masked
+     (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Template    : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Mask        : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Method      : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_match_template_masked";
+
    function Warp_Affine
      (Source         : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Transform      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
