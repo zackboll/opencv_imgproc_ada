@@ -112,6 +112,16 @@ jobs:
       - name: Ballard production corpus with ASan and UBSan
         run: SANITIZE=1 sh tests/run_ballard_consistency.sh
 
+      - name: Guil histogram arithmetic boundaries
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+            tests/guil_layout_test.cpp -o guil_layout_test
+          ./guil_layout_test
+
+      - name: Guil production corpus with ASan and UBSan
+        run: SANITIZE=1 sh tests/run_guil_consistency.sh
+
       - name: Squared-box arithmetic boundaries
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \

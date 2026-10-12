@@ -112,6 +112,132 @@ package body OpenCV.Image_Processing is
       end return;
    end Find_Ballard_Template_Matches;
 
+   function Find_Guil_Template_Matches
+     (Template   : OpenCV.Core.Mat;
+      Scene      : OpenCV.Core.Mat;
+      Parameters : Guil_Search_Parameters :=
+        (Canny_Low          => 50,
+         Canny_High         => 100,
+         Minimum_Angle      => 0.0,
+         Maximum_Angle      => 360.0,
+         Angle_Step         => 5.0,
+         Minimum_Scale      => 0.5,
+         Maximum_Scale      => 2.0,
+         Scale_Step         => 0.05,
+         Angle_Threshold    => 100,
+         Scale_Threshold    => 100,
+         Position_Threshold => 20)) return Guil_Template_Match_Array
+   is
+      use type OpenCV.Float64_Value;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Int32_Value;
+      Positions, Votes : OpenCV.Core.Mat;
+      Status           : Internal.C_API.Status := Internal.C_API.Success;
+      procedure With_Template (T : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+      is
+         procedure With_Scene (S : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            procedure With_Positions
+              (P : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               procedure With_Votes
+                 (V : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+               is
+                  Raw : Internal.C_API.Guil_Parameters;
+               begin
+                  Raw.Minimum_Angle :=
+                    Interfaces.C.double (Parameters.Minimum_Angle);
+                  Raw.Maximum_Angle :=
+                    Interfaces.C.double (Parameters.Maximum_Angle);
+                  Raw.Angle_Step :=
+                    Interfaces.C.double (Parameters.Angle_Step);
+                  Raw.Minimum_Scale :=
+                    Interfaces.C.double (Parameters.Minimum_Scale);
+                  Raw.Maximum_Scale :=
+                    Interfaces.C.double (Parameters.Maximum_Scale);
+                  Raw.Scale_Step :=
+                    Interfaces.C.double (Parameters.Scale_Step);
+                  Raw.Canny_Low :=
+                    Interfaces.Integer_32 (Parameters.Canny_Low);
+                  Raw.Canny_High :=
+                    Interfaces.Integer_32 (Parameters.Canny_High);
+                  Raw.Angle_Threshold :=
+                    Interfaces.Integer_32 (Parameters.Angle_Threshold);
+                  Raw.Scale_Threshold :=
+                    Interfaces.Integer_32 (Parameters.Scale_Threshold);
+                  Raw.Position_Threshold :=
+                    Interfaces.Integer_32 (Parameters.Position_Threshold);
+                  Status := Internal.C_API.Guil_Detect (T, S, Raw, P, V);
+               end With_Votes;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Votes, With_Votes'Access);
+            end With_Positions;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Positions, With_Positions'Access);
+         end With_Scene;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Scene, With_Scene'Access);
+      end With_Template;
+   begin
+      if Template.Is_Empty
+        or else Scene.Is_Empty
+        or else Template.Dimension_Count /= 2
+        or else Scene.Dimension_Count /= 2
+        or else Template.Depth /= OpenCV.Core.UInt8
+        or else Scene.Depth /= OpenCV.Core.UInt8
+        or else Template.Channels /= 1
+        or else Scene.Channels /= 1
+        or else Parameters.Canny_Low >= Parameters.Canny_High
+        or else not Is_Finite (Parameters.Minimum_Angle)
+        or else not Is_Finite (Parameters.Maximum_Angle)
+        or else not Is_Finite (Parameters.Angle_Step)
+        or else not Is_Finite (Parameters.Minimum_Scale)
+        or else not Is_Finite (Parameters.Maximum_Scale)
+        or else not Is_Finite (Parameters.Scale_Step)
+        or else Parameters.Minimum_Angle < 0.0
+        or else Parameters.Minimum_Angle >= Parameters.Maximum_Angle
+        or else Parameters.Maximum_Angle > 360.0
+        or else Parameters.Angle_Step <= 0.0
+        or else Parameters.Angle_Step >= 360.0
+        or else Parameters.Minimum_Scale <= 0.0
+        or else Parameters.Minimum_Scale >= Parameters.Maximum_Scale
+        or else Parameters.Scale_Step <= 0.0
+      then
+         raise OpenCV.OpenCV_Error with "Invalid Guil input";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Template, With_Template'Access);
+      Raise_On_Error (Status, "Find_Guil_Template_Matches");
+      if Positions.Is_Empty then
+         return (1 .. 0 => <>);
+      end if;
+      return Result : Guil_Template_Match_Array (0 .. Positions.Columns - 1) do
+         for I in Result'Range loop
+            declare
+               P : constant OpenCV.Core.Float32_Vec4.Vector :=
+                 OpenCV.Core.Float32_Vec4_Access.Get (Positions, 0, I);
+               V : constant OpenCV.Core.Int32_Vec3.Vector :=
+                 OpenCV.Core.Int32_Vec3_Access.Get (Votes, 0, I);
+            begin
+               if V (0) < 0 or else V (1) < 0 or else V (2) < 0 then
+                  raise OpenCV.OpenCV_Error with "Unrepresentable Guil votes";
+               end if;
+               Result (I) :=
+                 (Center         => (P (0), P (1)),
+                  Scale          => P (2),
+                  Angle_Degrees  => P (3),
+                  Position_Votes => Natural (V (0)),
+                  Scale_Votes    => Natural (V (1)),
+                  Angle_Votes    => Natural (V (2)));
+            end;
+         end loop;
+      end return;
+   end Find_Guil_Template_Matches;
+
    function Squared_Box_Filter
      (Source      : OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Size;
@@ -196,7 +322,8 @@ package body OpenCV.Image_Processing is
 
       procedure Weight (Image : OpenCV.Core.Mat) is
          procedure Check_Row
-           (Data : aliased OpenCV.Core.Float32_Row_Access.Row_Array) is
+           (Data : aliased OpenCV.Core.Float32_Row_Access.Row_Array)
+         is
             --  Foreign binary32 may legitimately contain NaN/Inf. Classify
             --  it here rather than letting -gnatVa raise Constraint_Error
             --  while loading a sample, before the public OpenCV_Error check.
@@ -8858,16 +8985,19 @@ package body OpenCV.Image_Processing is
                Segmentation_Error
                  ("Flood_Fill requires nonnegative differences");
             elsif Image.Depth = OpenCV.Core.Int32
-              and then
-                ((Use_New_Value
-                  and then
-                    (Value < OpenCV.Float64_Value (OpenCV.Int32_Value'First)
-                     or else
-                       Value > OpenCV.Float64_Value (OpenCV.Int32_Value'Last)))
-                 or else
-                   Lower > OpenCV.Float64_Value (OpenCV.Int32_Value'Last)
-                 or else
-                   Upper > OpenCV.Float64_Value (OpenCV.Int32_Value'Last))
+              and then ((Use_New_Value
+                         and then (Value
+                                   < OpenCV.Float64_Value
+                                       (OpenCV.Int32_Value'First)
+                                   or else Value
+                                           > OpenCV.Float64_Value
+                                               (OpenCV.Int32_Value'Last)))
+                        or else Lower
+                                > OpenCV.Float64_Value
+                                    (OpenCV.Int32_Value'Last)
+                        or else Upper
+                                > OpenCV.Float64_Value
+                                    (OpenCV.Int32_Value'Last))
             then
                Segmentation_Error
                  ("Flood_Fill Int32 components exceed the native"

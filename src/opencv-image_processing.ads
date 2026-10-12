@@ -493,6 +493,59 @@ package OpenCV.Image_Processing is
       Canny_Low      : Positive := 50;
       Canny_High     : Positive := 100) return Ballard_Template_Match_Array;
 
+   type Guil_Template_Match is record
+      Center         : OpenCV.Float32_Point;
+      Scale          : OpenCV.Float32_Value;
+      Angle_Degrees  : OpenCV.Float32_Value;
+      Position_Votes : Natural;
+      Scale_Votes    : Natural;
+      Angle_Votes    : Natural;
+   end record;
+   type Guil_Template_Match_Array is
+     array (Natural range <>) of Guil_Template_Match;
+   --  Native Guil on nonempty 2-D UInt8 C1 images. Inputs are unchanged.
+   --  Regions are isolated logical images. Template center is
+   --  (Columns / 2, Rows / 2). Centers are Scene-local pixels. Angle_Degrees
+   --  is degrees, never radians, and is not normalized by this binding.
+   --  Scale is the native positive estimate. Votes are decoded from Int32.
+   --  A hypothesis is kept only when each vote count meets or exceeds its
+   --  threshold. Fixed levels=360, xi=90 degrees, angle epsilon=1 degree,
+   --  dp=1, minimum distance=1, and 1000 features per orientation bin.
+   --  0 <= Minimum_Angle < Maximum_Angle <= 360, 0 < Angle_Step < 360,
+   --  0 < Minimum_Scale < Maximum_Scale, and Scale_Step > 0. All floats must
+   --  be finite, and 0 < Canny_Low < Canny_High. Invalid inputs or unsafe
+   --  native arithmetic raise OpenCV_Error. Feature construction is quadratic
+   --  in edge count. Nonempty bounds start at zero; empty is 1 .. 0.
+   type Guil_Search_Parameters is record
+      Canny_Low          : Positive := 50;
+      Canny_High         : Positive := 100;
+      Minimum_Angle      : OpenCV.Float64_Value := 0.0;
+      Maximum_Angle      : OpenCV.Float64_Value := 360.0;
+      Angle_Step         : OpenCV.Float64_Value := 5.0;
+      Minimum_Scale      : OpenCV.Float64_Value := 0.5;
+      Maximum_Scale      : OpenCV.Float64_Value := 2.0;
+      Scale_Step         : OpenCV.Float64_Value := 0.05;
+      Angle_Threshold    : Positive := 100;
+      Scale_Threshold    : Positive := 100;
+      Position_Threshold : Positive := 20;
+   end record;
+
+   function Find_Guil_Template_Matches
+     (Template   : OpenCV.Core.Mat;
+      Scene      : OpenCV.Core.Mat;
+      Parameters : Guil_Search_Parameters :=
+        (Canny_Low          => 50,
+         Canny_High         => 100,
+         Minimum_Angle      => 0.0,
+         Maximum_Angle      => 360.0,
+         Angle_Step         => 5.0,
+         Minimum_Scale      => 0.5,
+         Maximum_Scale      => 2.0,
+         Scale_Step         => 0.05,
+         Angle_Threshold    => 100,
+         Scale_Threshold    => 100,
+         Position_Threshold => 20)) return Guil_Template_Match_Array;
+
    --  Integer Canny and accumulator thresholds for gradient Hough circles.
    subtype Hough_Circle_Threshold is Positive range 1 .. 2_147_483_647;
 

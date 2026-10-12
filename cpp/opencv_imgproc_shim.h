@@ -8,6 +8,29 @@ extern "C" {
 #endif
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
+/* Synchronous Guil rotation/scale detection. Borrowed inputs; two distinct
+ * Core output objects, neither identical to an input. Outputs unchanged on
+ * failure. Angles are degrees. Success publishes owning 1xN Float32 C4
+ * (x, y, scale, angle) and Int32 C3 (position, scale, angle) votes, or both
+ * empty. Fixed levels=360, xi=90, angle epsilon=1, dp=1, minDist=1, buffer=1000. */
+typedef struct {
+    double minimum_angle;
+    double maximum_angle;
+    double angle_step;
+    double minimum_scale;
+    double maximum_scale;
+    double scale_step;
+    int32_t canny_low;
+    int32_t canny_high;
+    int32_t angle_threshold;
+    int32_t scale_threshold;
+    int32_t position_threshold;
+} opencv_imgproc_guil_parameters;
+
+int32_t opencv_imgproc_guil_detect(
+    const opencv_core_mat_handle *templ, const opencv_core_mat_handle *scene,
+    const opencv_imgproc_guil_parameters *parameters,
+    opencv_core_mat_handle *positions, opencv_core_mat_handle *votes);
 /* Synchronous translation-only Ballard. Borrowed inputs; two distinct Core
  * output objects, neither identical to an input. Outputs unchanged on failure.
  * Success: owning 1xN Float32 C4 positions and Int32 C3 votes, or both empty. */

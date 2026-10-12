@@ -83,6 +83,79 @@ AUnit suite; it does not claim hosted three-version qualification.
 This supplies one candidate landmark-detection primitive, not a complete
 GPS-denied navigation pipeline.
 
+## Generalized Hough Guil rotation and scale detection
+
+`Find_Guil_Template_Matches` searches a grayscale scene for a template that
+may also be rotated and scaled, using native `GeneralizedHoughGuil`. Ballard
+remains the translation-only operation. Guil reports a Scene-local center, a
+positive scale, an angle in **degrees** (not radians), and three Int32 vote
+counts: position, scale, and angle. Vote counts are not converted through
+Float32, and native angle/scale values are not renormalized.
+
+Both inputs must be nonempty 2-D UInt8 C1 Mats and are snapshotted before
+native preprocessing, so neither input changes. Noncontinuous Regions are
+logical images: only Region pixels are copied, and result coordinates are
+Region-local. The template center is `(Columns / 2, Rows / 2)`.
+
+The public record sets Canny thresholds and the angle/scale search. Defaults
+are Canny 50/100, angles 0..360 by 5 degrees, scales 0.5..2.0 by 0.05, and
+vote thresholds 100/100/20. These are convenient starting values, not measured
+performance recommendations; a narrow window is much faster and less ambiguous.
+A hypothesis is retained when its angle votes, scale votes, and position votes
+each meet or exceed the corresponding threshold. The angle window must satisfy
+`0 <= Minimum < Maximum <= 360` and `0 < Step < 360`. The scale window must
+satisfy `0 < Minimum < Maximum` and `Step > 0`. Every floating parameter must
+be finite, and `0 < Canny_Low < Canny_High`.
+
+Fixed internal settings are orientation levels 360, xi 90 degrees, angle
+epsilon 1 degree, accumulator dp 1, minimum distance 1, and 1000 features per
+orientation bin. Minimum distance 1 avoids native peak-grid filtering. Xi,
+levels, buffer size, dp, and minimum distance are not public options.
+
+Feature construction compares pairs of edge points, so runtime grows
+quadratically with the number of detected edges and again across accepted
+angle/scale hypotheses. Do not use a dense high-resolution edge image as a
+routine query. Derived arithmetic limits reject searches whose native contour
+area, histogram index, per-cell vote, or output-copy width cannot be
+represented; they are not an arbitrary scene-size cap. Narrower ranges allow
+larger scenes. Invalid input and unsafe arithmetic raise `OpenCV_Error`.
+Nonempty arrays start at zero; no detections returns `1 .. 0`.
+
+```ada
+with Ada.Text_IO;
+with OpenCV.Core;
+with OpenCV.Image_Processing;
+
+procedure Locate_Rotated_Landmark
+  (Landmark_Template, Grayscale_Scene : OpenCV.Core.Mat)
+is
+   Search : OpenCV.Image_Processing.Guil_Search_Parameters :=
+     (Canny_Low => 50, Canny_High => 100, Minimum_Angle => 80.0,
+      Maximum_Angle => 100.0, Angle_Step => 1.0, Minimum_Scale => 0.9,
+      Maximum_Scale => 1.1, Scale_Step => 0.05, Angle_Threshold => 100,
+      Scale_Threshold => 100, Position_Threshold => 20);
+   Matches : OpenCV.Image_Processing.Guil_Template_Match_Array :=
+     (1 .. 0 => <>);
+begin
+   Matches :=
+     OpenCV.Image_Processing.Find_Guil_Template_Matches
+       (Landmark_Template, Grayscale_Scene, Search);
+   for Match of Matches loop
+      Ada.Text_IO.Put_Line
+        ("Center" & Match.Center.X'Image & "," & Match.Center.Y'Image
+         & "; scale" & Match.Scale'Image
+         & "; degrees" & Match.Angle_Degrees'Image
+         & "; votes" & Match.Position_Votes'Image);
+   end loop;
+end Locate_Rotated_Landmark;
+```
+
+The same production-shim corpus is exactly equal on OpenCV 4.1.0, 4.10.0, and
+5.0.0 for Linux x86_64. That is measured agreement for the documented synthetic
+fixtures, not a universal numerical guarantee. See
+[`docs/generalized-hough-guil-source-review.md`](docs/generalized-hough-guil-source-review.md).
+Estimating rotation and scale does not by itself produce a navigation solution.
+
 > **Version:** `0.1.0-dev`
 >
 > **Ada package:** `OpenCV.Image_Processing`
