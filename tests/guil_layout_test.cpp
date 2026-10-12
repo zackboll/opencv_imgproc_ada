@@ -36,6 +36,12 @@ int main() {
     check(plan(48, 40, 64, 64, split, layout), "split ranges accepted");
     check(layout.angle_bins == 8 && layout.scale_bins == 1,
           "planned native counts");
+    check(!plan(48, 40, 4096, 4096, split, layout),
+          "native reciprocal count rejects boundary scene");
+    check(plan(48, 40, 4096, 4095, split, layout),
+          "adjacent safe boundary is accepted");
+    check(layout.angle_bins == 8 && layout.scale_bins == 1,
+          "accepted boundary retains native counts");
 
     const auto wide = make(0.0, 360.0, 1.0, 0.5, 2.0, 0.05);
     check(!plan(48, 40, 4096, 4096, wide, layout), "4096 scene rejected");
