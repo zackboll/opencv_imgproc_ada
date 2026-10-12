@@ -8,6 +8,13 @@
 #include <limits>
 
 namespace opencv_imgproc_masked_template {
+// ABI safety: ipp_matchTemplate evaluates template.area()*4 in signed int.
+// Snapshot/output row steps fit int because their widths do not exceed Source.
+inline bool unmasked_fits(int rows, int cols) noexcept
+{
+    return rows > 0 && cols > 0 && std::int64_t(rows) * cols <=
+        std::numeric_limits<int>::max() / 4;
+}
 // Allocation-free preflight for the C1 Float32 crossCorr path in all three
 // qualified tags. OpenCV remains trusted for its DFT implementation.
 inline bool fits(int rows, int cols, int tr, int tc)

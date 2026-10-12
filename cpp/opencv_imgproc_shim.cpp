@@ -8076,14 +8076,15 @@ opencv_imgproc_match_template_masked(
             opencv_core_module_input_mat(mask, &msk) != OPENCV_CORE_OK || !msk ||
             opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
             return invalid_argument("invalid masked template Mat handle");
-        // ABI safety: only the historically qualified SQDIFF and CCORR_NORMED
+        // ABI safety: only the selected SQDIFF, CCORR and CCORR_NORMED
         // branches are selected. Other selectors have different native
         // arithmetic, including coefficient centering that this preflight
         // does not cover.
         if (method != OPENCV_IMGPROC_TEMPLATE_SQDIFF &&
+            method != OPENCV_IMGPROC_TEMPLATE_CCORR &&
             method != OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED)
             return invalid_argument(
-                "masked template method must be SQDIFF or CCORR_NORMED");
+                "masked template method must be SQDIFF, CCORR or CCORR_NORMED");
         // ABI safety: the row-wise snapshot below reads exactly cols UInt8
         // elements. Other types/ND/empty Mats cannot supply that geometry.
         for (const cv::Mat *input : {src, tpl, msk}) {
@@ -8098,6 +8099,11 @@ opencv_imgproc_match_template_masked(
             !opencv_imgproc_masked_template::fits(
                 src->rows, src->cols, tpl->rows, tpl->cols))
             return invalid_argument("unsafe masked template correlation geometry");
+        // ABI safety: the unmasked IPP probe forms template.area()*4 in
+        // signed int before deciding whether to use the optimized kernel.
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR &&
+            !opencv_imgproc_masked_template::unmasked_fits(tpl->rows, tpl->cols))
+            return invalid_argument("unsafe unmasked correlation IPP area");
         // ABI safety: native-object identity would mutate an input header
         // on publication.
         // Shared pixel storage with distinct headers is safe after snapshots.
@@ -8135,11 +8141,17 @@ opencv_imgproc_match_template_masked(
                     "masked NCC requires positive template energy");
         }
         cv::Mat result;
-        cv::matchTemplate(
-            image, patch, result,
-            method == OPENCV_IMGPROC_TEMPLATE_SQDIFF ?
-                cv::TM_SQDIFF : cv::TM_CCORR_NORMED,
-            binary_mask);
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR) {
+            const cv::Mat masked_patch = patch.mul(binary_mask);
+            // No mask argument: this route also works on OpenCV 4.1.0.
+            cv::matchTemplate(image, masked_patch, result, cv::TM_CCORR);
+        } else {
+            cv::matchTemplate(
+                image, patch, result,
+                method == OPENCV_IMGPROC_TEMPLATE_SQDIFF ?
+                    cv::TM_SQDIFF : cv::TM_CCORR_NORMED,
+                binary_mask);
+        }
         if (method == OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED)
             opencv_imgproc_masked_template::normalize_zero_scene(
                 image, binary_mask, result);
