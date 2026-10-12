@@ -14,6 +14,7 @@
 #include "ballard_layout_fits.hpp"
 #include "guil_layout_fits.hpp"
 #include "masked_template_layout_fits.hpp"
+#include "masked_ncc_zero_support.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -8119,8 +8120,8 @@ opencv_imgproc_match_template_masked(
         // energy is below DBL_EPSILON, while 4.10.0 and 5.0.0 divide by
         // zero and produce NaN. The scan uses the canonical snapshots so a
         // raw caller cannot reach those divergent native paths. A zero
-        // Scene window is not rejected: qualified snapshots return a finite
-        // native zero there.
+        // Scene window is not rejected: exact zero support is normalized
+        // after the complete native map has been computed.
         if (method == OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED) {
             bool positive = false;
             for (int y = 0; y < patch.rows && !positive; ++y) {
@@ -8139,6 +8140,9 @@ opencv_imgproc_match_template_masked(
             method == OPENCV_IMGPROC_TEMPLATE_SQDIFF ?
                 cv::TM_SQDIFF : cv::TM_CCORR_NORMED,
             binary_mask);
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED)
+            opencv_imgproc_masked_template::normalize_zero_scene(
+                image, binary_mask, result);
         *dst = std::move(result);
         return OPENCV_IMGPROC_OK;
     } catch (...) {

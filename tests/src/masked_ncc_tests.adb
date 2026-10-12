@@ -267,20 +267,37 @@ package body Masked_NCC_Tests is
       OpenCV.Core.UInt8_Access.Set (Template, 0, 1, 6);
       OpenCV.Core.UInt8_Access.Set (Mask, 0, 0, 1);
       OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
+      for Neighbor in 8 .. 10 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Source, 0, 2, Interfaces.Unsigned_8 (Neighbor));
+         OpenCV.Image_Processing.Match_Template
+           (Source,
+            Template,
+            Mask,
+            Destination,
+            OpenCV.Image_Processing.Normalized_Cross_Correlation);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Destination, 0, 0) = 0.0,
+            "portable zero-energy window");
+         AUnit.Assertions.Assert
+           (abs (OpenCV.Core.Float32_Access.Get (Destination, 0, 1)
+                 - OpenCV.Float32_Value (Score (Source, Template, Mask, 0, 1)))
+            <= 0.0001,
+            "adjacent positive window");
+      end loop;
+      --  The positive neighbor is excluded from the first sparse window.
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 0);
       OpenCV.Image_Processing.Match_Template
         (Source,
          Template,
          Mask,
          Destination,
          OpenCV.Image_Processing.Normalized_Cross_Correlation);
-      AUnit.Assertions.Assert
-        (OpenCV.Core.Float32_Access.Get (Destination, 0, 0) = 0.0,
-         "qualified zero-energy window is exact zero");
-      AUnit.Assertions.Assert
-        (abs (OpenCV.Core.Float32_Access.Get (Destination, 0, 1)
-              - OpenCV.Float32_Value (Score (Source, Template, Mask, 0, 1)))
-         <= 0.0001,
-         "adjacent positive window");
+      for Column in 0 .. 1 loop
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Destination, 0, Column) = 0.0,
+            "multiple sparse zero-energy windows");
+      end loop;
    end Zero_Window;
 
    procedure Degenerate (Test : in out Fixture) is

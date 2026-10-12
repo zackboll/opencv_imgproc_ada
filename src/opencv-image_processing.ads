@@ -1154,8 +1154,12 @@ package OpenCV.Image_Processing is
    --  (higher is better) and require at least one pixel where both Mask and
    --  Template are nonzero. Ideal defined scores lie in [0, 1]; native
    --  rounding is retained, including values slightly outside that interval.
-   --  A Scene window whose included samples are all zero keeps the native
-   --  finite score. Other methods and contract violations raise OpenCV_Error.
+   --  A Scene window whose included samples are all zero receives exact
+   --  Float32 +0.0 through a binding-owned compatibility rule. Positive-energy
+   --  windows preserve native scores without clipping or nonfinite repair.
+   --  The check adds packed Scene support and one output-row bitset; work is
+   --  proportional to output rows * active mask pixels * output columns / 64.
+   --  Other methods and contract violations raise OpenCV_Error.
    procedure Match_Template
      (Source      : OpenCV.Core.Mat;
       Template    : OpenCV.Core.Mat;

@@ -15,6 +15,7 @@ def load(path):
     cases = {}
     version = None
     case = None
+    native = []
     with open(path, encoding="ascii") as stream:
         for line in stream:
             fields = line.split()
@@ -24,12 +25,26 @@ def load(path):
                 geometry = tuple(fields[2:])
                 case = [geometry, [], None]
                 cases[fields[1]] = case
+            elif fields[0] == "NATIVE":
+                native.append((fields[1], fields[2], int(fields[3])))
             elif fields[0] == "SCORE":
-                case[1].append(int(fields[1], 16))
+                bits = int(fields[1], 16)
+                raw, classification, energy = native[-1]
+                if energy == 0:
+                    assert bits == 0, "zero-energy score is not exact +0"
+                else:
+                    assert classification == "finite", (
+                        "POSITIVE_ENERGY_NATIVE_NONFINITE", path, raw)
+                    assert bits == int(raw, 16), "native positive score changed"
+                case[1].append(bits)
             elif fields[0] == "MAX":
                 case[2] = (
                     int(fields[1]), int(fields[2]), int(fields[3]),
                     float.fromhex(fields[4]), float.fromhex(fields[5]))
+    print("NATIVE_CLASSIFICATIONS", version,
+          {kind: sum(item[1] == kind for item in native)
+           for kind in ("finite", "nan", "inf")},
+          "exact_zero_windows", sum(item[2] == 0 for item in native))
     return version, cases
 
 

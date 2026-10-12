@@ -29,11 +29,19 @@ multiplicative brightness change without saturation keeps the correct location
 near one. Additive illumination offsets are not invariant. At least one pixel
 must have both a nonzero mask and a nonzero template; otherwise OpenCV 4.1.0
 returns ones while 4.10.0 and 5.0.0 return NaN, so the call is rejected. A
-Scene window whose every included pixel is zero keeps the native finite score;
-on the qualified snapshots that score is exact zero. A mixed zero and positive
-window can differ by a fraction of an ULP across versions and is not rewritten.
-Genuine near-ties can change
-documented rounding allowance; do not treat a tiny margin as a unique landmark.
+Scene window whose every included pixel is zero receives exact Float32 +0.0
+(bits `0x00000000`) through a binding-owned compatibility rule. Native NCC
+still computes the complete map; only proven zero-energy windows are changed.
+All positive-energy scores retain their native bits, including rounding and
+any nonfinite values. Finite scores are qualified within `1e-4`, not promised
+bitwise identical across versions. Genuine near-ties can change rankings;
+do not treat a tiny margin as a unique landmark.
+
+The exact check packs nonzero Scene support into 64-bit words and ORs shifted
+support at active mask offsets. Additional storage is about one bit per Scene
+pixel plus one output-row bitset. Worst-case work is proportional to output
+rows times active mask pixels times output columns / 64; dense large masks
+can add material overhead. See the source-review document for measurements.
 
 Unsupported methods and invalid inputs raise `OpenCV.OpenCV_Error` without
 replacing an existing Destination.
