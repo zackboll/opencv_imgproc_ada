@@ -5452,7 +5452,8 @@ package body OpenCV.Image_Processing is
       Validate (Source);
       Validate (Template);
       Validate (Mask);
-      if Method /= Squared_Difference
+      if (Method /= Squared_Difference
+          and then Method /= Normalized_Cross_Correlation)
         or else Mask.Rows /= Template.Rows
         or else Mask.Columns /= Template.Columns
         or else Template.Rows > Source.Rows

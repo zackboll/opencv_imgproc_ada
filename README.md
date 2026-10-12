@@ -1,15 +1,40 @@
 # Portable masked template matching
 
-The masked `Match_Template` overload supports only `Squared_Difference`.
+The masked `Match_Template` overload supports `Squared_Difference` and
+`Normalized_Cross_Correlation`. Its default remains `Squared_Difference`.
 Source, Template, and Mask must be nonempty 2-D UInt8 C1 Mats. Mask dimensions
 must equal Template dimensions, and Template must fit Source. Zero mask bytes
 exclude pixels; every nonzero byte (including 1, 127, and 255) includes a pixel
-with weight one. An all-zero mask produces all-zero scores.
+with weight one.
 
 Destination receives fresh owning Float32 C1 storage only after success. Its
-dimensions are Source minus Template plus one. Scores are sums of squared
-differences in original 0..255 intensity units, not normalized by 255 or 65025.
-Lower is better; use `OpenCV.Core.Min_Max_Loc` to recover the best location.
+dimensions are Source minus Template plus one. Inputs, including overlapping
+Regions, are snapshotted and left unchanged.
+
+Squared difference scores are sums of squared differences in original 0..255
+intensity units, not normalized by 255 or 65025. **Lower is better**, so use
+`Minimum_Location` from `OpenCV.Core.Min_Max_Loc`. An all-zero mask produces
+all-zero scores.
+
+Normalized cross-correlation is the native masked cosine similarity:
+
+```text
+sum(M*T*I) / sqrt(sum(M*T*T) * sum(M*I*I))
+```
+
+**Higher is better**, so use `Maximum_Location`. For nonnegative intensities an
+ideal defined score lies in [0, 1]. Native rounding is retained and is not
+clipped, including values slightly outside that interval. A positive
+multiplicative brightness change without saturation keeps the correct location
+near one. Additive illumination offsets are not invariant. At least one pixel
+must have both a nonzero mask and a nonzero template; otherwise OpenCV 4.1.0
+returns ones while 4.10.0 and 5.0.0 return NaN, so the call is rejected. A
+Scene window whose every included pixel is zero keeps the native finite score;
+on the qualified snapshots that score is exact zero. A mixed zero and positive
+window can differ by a fraction of an ULP across versions and is not rewritten.
+Genuine near-ties can change
+documented rounding allowance; do not treat a tiny margin as a unique landmark.
+
 Unsupported methods and invalid inputs raise `OpenCV.OpenCV_Error` without
 replacing an existing Destination.
 
@@ -21,29 +46,35 @@ declare
    Best   : OpenCV.Core.Min_Max_Result;
 begin
    OpenCV.Image_Processing.Match_Template
-     (Scene, Landmark, Visibility, Scores);
+     (Scene,
+      Landmark,
+      Visibility,
+      Scores,
+      OpenCV.Image_Processing.Normalized_Cross_Correlation);
    Best := OpenCV.Core.Min_Max_Loc (Scores);
-   --  Best.Minimum_Location is the landmark's top-left point in Scene.
+   --  Best.Maximum_Location is the landmark's top-left point in Scene.
 end;
 ```
 
 Private logical snapshots isolate noncontinuous and overlapping Regions from
-surrounding parent pixels. Inputs remain unchanged and output does not retain
-their storage. Snapshot/conversion cost is linear in input pixels and adds three
-Float32 input allocations; OpenCV performs native DFT-based masked correlation.
-Do not mutate inputs concurrently during the call.
+surrounding parent pixels. Output does not retain their storage.
+Snapshot/conversion cost is linear in input pixels and adds three Float32
+input allocations; OpenCV performs native DFT-based masked correlation. Do not
+mutate inputs concurrently during the call.
 
 Canonical unscaled Float32 source/template and exact binary Float32 mask inputs
 avoid OpenCV 4.1.0's historical UInt8 `1/255` conversion, absent in 4.10.0 and
-5.0.0. Native accumulation/rounding still differs: near-zero scores may show
-cancellation, and scores are not guaranteed bit-identical across backends.
-There is no clamping or second normalization. See
-[the source review and bounded exact-version qualification](docs/masked-template-matching-source-review.md)
-for the numerical policy, safety limits and measured differences.
+5.0.0. Native accumulation/rounding still differs between 4.1.0's separate
+square-root normalization and later combined normalization. Scores are not
+guaranteed bit-identical across backends. See
+[the NCC source review](docs/masked-normalized-correlation-source-review.md)
+and
+[the squared-difference qualification](docs/masked-template-matching-source-review.md).
 
 Masks do not automatically provide rotation or scale invariance. Generalized
 Hough Ballard and Guil remain separate detector options. The existing unmasked
 overload and its six-method contract are unchanged.
+
 
 # OpenCV Imgproc for Ada
 
@@ -1491,8 +1522,9 @@ Source and Template are read-only and may share storage, including using the
 same Mat or a Template that is a `Region` of Source. Destination must not share
 storage with Source or Template.
 
-Masked template matching is available through the UInt8 C1 SQDIFF overload
-described in [Portable masked template matching](#portable-masked-template-matching).
+Masked template matching supports squared difference and normalized
+cross-correlation through the UInt8 C1 overload described in
+[Portable masked template matching](#portable-masked-template-matching).
 
 ---
 

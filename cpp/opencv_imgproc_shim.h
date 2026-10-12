@@ -1031,7 +1031,9 @@ opencv_imgproc_match_template(
 
 /* Borrowed inputs; fresh owning output is published only on success.
  * UInt8 C1 logical snapshots are converted to unscaled Float32; mask != 0
- * becomes exactly 1.0f. Only method 0 (SQDIFF) is supported. */
+ * becomes exactly 1.0f. method is OPENCV_IMGPROC_TEMPLATE_SQDIFF (0) or
+ * OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED (3). NCC requires positive masked
+ * template energy. */
 opencv_imgproc_status
 opencv_imgproc_match_template_masked(
     const opencv_core_mat_handle *source,

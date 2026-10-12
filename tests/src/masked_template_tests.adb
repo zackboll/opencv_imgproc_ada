@@ -264,7 +264,10 @@ package body Masked_Template_Tests is
       Check (Good, Good, Bad);
       Check (Bad, Good, Good);
       for Method in OpenCV.Image_Processing.Template_Matching_Method loop
-         if Method /= OpenCV.Image_Processing.Squared_Difference then
+         if Method /= OpenCV.Image_Processing.Squared_Difference
+           and then Method
+                    /= OpenCV.Image_Processing.Normalized_Cross_Correlation
+         then
             Check (Good, Good, Good, Method);
          end if;
       end loop;
