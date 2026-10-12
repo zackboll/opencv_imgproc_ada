@@ -14,6 +14,7 @@
 #include "ballard_layout_fits.hpp"
 #include "guil_layout_fits.hpp"
 #include "masked_template_layout_fits.hpp"
+#include "masked_ncc_zero_support.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -8075,10 +8076,14 @@ opencv_imgproc_match_template_masked(
             opencv_core_module_input_mat(mask, &msk) != OPENCV_CORE_OK || !msk ||
             opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
             return invalid_argument("invalid masked template Mat handle");
-        // ABI safety: this adapter selects only the historically qualified
-        // branch; other selectors have different native arithmetic paths.
-        if (method != 0)
-            return invalid_argument("masked template method must be SQDIFF");
+        // ABI safety: only the historically qualified SQDIFF and CCORR_NORMED
+        // branches are selected. Other selectors have different native
+        // arithmetic, including coefficient centering that this preflight
+        // does not cover.
+        if (method != OPENCV_IMGPROC_TEMPLATE_SQDIFF &&
+            method != OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED)
+            return invalid_argument(
+                "masked template method must be SQDIFF or CCORR_NORMED");
         // ABI safety: the row-wise snapshot below reads exactly cols UInt8
         // elements. Other types/ND/empty Mats cannot supply that geometry.
         for (const cv::Mat *input : {src, tpl, msk}) {
@@ -8111,8 +8116,33 @@ opencv_imgproc_match_template_masked(
         const cv::Mat image = snapshot(*src, false);
         const cv::Mat patch = snapshot(*tpl, false);
         const cv::Mat binary_mask = snapshot(*msk, true);
+        // ABI safety: 4.1.0 returns an all-one map when masked template
+        // energy is below DBL_EPSILON, while 4.10.0 and 5.0.0 divide by
+        // zero and produce NaN. The scan uses the canonical snapshots so a
+        // raw caller cannot reach those divergent native paths. A zero
+        // Scene window is not rejected: exact zero support is normalized
+        // after the complete native map has been computed.
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED) {
+            bool positive = false;
+            for (int y = 0; y < patch.rows && !positive; ++y) {
+                const float *values = patch.ptr<float>(y);
+                const float *weights = binary_mask.ptr<float>(y);
+                for (int x = 0; x < patch.cols && !positive; ++x)
+                    positive = values[x] != 0.0f && weights[x] != 0.0f;
+            }
+            if (!positive)
+                return invalid_argument(
+                    "masked NCC requires positive template energy");
+        }
         cv::Mat result;
-        cv::matchTemplate(image, patch, result, cv::TM_SQDIFF, binary_mask);
+        cv::matchTemplate(
+            image, patch, result,
+            method == OPENCV_IMGPROC_TEMPLATE_SQDIFF ?
+                cv::TM_SQDIFF : cv::TM_CCORR_NORMED,
+            binary_mask);
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED)
+            opencv_imgproc_masked_template::normalize_zero_scene(
+                image, binary_mask, result);
         *dst = std::move(result);
         return OPENCV_IMGPROC_OK;
     } catch (...) {

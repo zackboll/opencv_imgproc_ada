@@ -1143,13 +1143,23 @@ package OpenCV.Image_Processing is
       Destination : in out OpenCV.Core.Mat;
       Method      : Template_Matching_Method);
 
-   --  Masked SQDIFF: all inputs must be nonempty 2-D UInt8 C1. Mask must
+   --  Masked matching accepts nonempty 2-D UInt8 C1 inputs. Mask must
    --  match Template dimensions and Template must fit Source. Every nonzero
-   --  mask byte includes a pixel with weight one. An all-zero mask yields
-   --  zero scores. Private logical snapshots isolate Regions and shared
-   --  storage. Destination receives fresh owning Float32 C1 storage only on
-   --  success, in original squared UInt8 intensity units (not normalized).
-   --  Only Squared_Difference is supported; violations raise OpenCV_Error.
+   --  mask byte includes a pixel with weight one. Private logical snapshots
+   --  isolate Regions and shared storage. Destination receives fresh owning
+   --  Float32 C1 storage only on success, sized Source minus Template plus
+   --  one. Squared_Difference scores are unnormalized sums of squared
+   --  differences (lower is better); an all-zero mask yields zero scores.
+   --  Normalized_Cross_Correlation scores are native cosine similarities
+   --  (higher is better) and require at least one pixel where both Mask and
+   --  Template are nonzero. Ideal defined scores lie in [0, 1]; native
+   --  rounding is retained, including values slightly outside that interval.
+   --  A Scene window whose included samples are all zero receives exact
+   --  Float32 +0.0 through a binding-owned compatibility rule. Positive-energy
+   --  windows preserve native scores without clipping or nonfinite repair.
+   --  The check adds packed Scene support and one output-row bitset; work is
+   --  proportional to output rows * active mask pixels * output columns / 64.
+   --  Other methods and contract violations raise OpenCV_Error.
    procedure Match_Template
      (Source      : OpenCV.Core.Mat;
       Template    : OpenCV.Core.Mat;

@@ -125,6 +125,9 @@ jobs:
       - name: Masked-template production regression with ASan and UBSan
         run: SANITIZE=1 sh tests/run_masked_template_consistency.sh
 
+      - name: Masked NCC production regression with ASan and UBSan
+        run: SANITIZE=1 sh tests/run_masked_ncc_consistency.sh
+
       - name: Squared-box arithmetic boundaries
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
