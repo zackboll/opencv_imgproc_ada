@@ -49,7 +49,16 @@ result: 4.1.0, 4.10.0, and 5.0.0 published identical score bits, identical
 minima, and the same sentinel. That identity is a measurement of this
 corpus, not a promise for every DFT size.
 
-No public semantic validation is duplicated in the C++ shim except the
-positive-energy scan and the zero-Scene rewrite. Both are ABI safety: the
-first avoids version-dependent divide-by-zero or `StsNotImplemented`, and
-the second replaces a native nonfinite payload with one rankable value.
+The native 4.10 and 5.0 branch calls masked `TM_SQDIFF_NORMED` directly. It
+does not call unmasked `TM_CCORR`, so it does not reach the IPP
+`template.area()*4` probe. The `unmasked_fits` guard stays on CCORR for every
+version and on normalized SQDIFF only inside the 4.1 compatibility branch.
+Shared `fits` and `span_fits` checks still cover both branches.
+
+The 4.1 composition uses native masked `TM_SQDIFF` for the numerator, a
+checked scalar sum for template energy, an owning squared scene, native
+unmasked `TM_CCORR` of that squared scene with the binary mask, then native
+square root and division. Zero included scene energy is classified from the
+packed scene bits and published as `0x7F7FFFFF`. Positive-energy samples are
+compared with the raw map and left unchanged. A trace environment variable
+prints the raw bits for qualification; it does not alter the published Mat.

@@ -194,6 +194,89 @@ int main() {
                     good.handle, patch.handle, weight.handle, bad.handle,
                     OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) == OPENCV_IMGPROC_OK,
                 "recovery");
+        cv::Mat wide(3, 8, CV_8U, cv::Scalar(4));
+        wide.at<uchar>(1, 5) = 40;
+        wide.at<uchar>(1, 6) = 50;
+        wide.at<uchar>(2, 5) = 60;
+        cv::Mat mark = wide(cv::Rect(5, 1, 2, 2)).clone();
+        run("translated", wide, mark, cv::Mat(2, 2, CV_8U, cv::Scalar(1)));
+        cv::Mat nonbinary = cv::Mat(2, 2, CV_8U, cv::Scalar(1));
+        nonbinary.at<uchar>(0, 0) = 9;
+        nonbinary.at<uchar>(1, 1) = 200;
+        run("nonbinary", image, templ, nonbinary);
+        cv::Mat column(5, 1, CV_8U);
+        for (int y = 0; y < 5; ++y)
+            column.at<uchar>(y, 0) = static_cast<uchar>(3 + y * 11);
+        run("one-column", column, column.rowRange(1, 3),
+            cv::Mat(2, 1, CV_8U, cv::Scalar(255)));
+        cv::Mat zeros(4, 4, CV_8U, cv::Scalar(0));
+        zeros.at<uchar>(1, 2) = 12;
+        zeros.at<uchar>(3, 3) = 15;
+        cv::Mat probe(2, 2, CV_8U, cv::Scalar(7));
+        run("several-zero-windows", zeros, probe,
+            cv::Mat(2, 2, CV_8U, cv::Scalar(1)));
+        cv::Mat parent(8, 9, CV_8U);
+        for (int y = 0; y < 8; ++y)
+            for (int x = 0; x < 9; ++x)
+                parent.at<uchar>(y, x) = static_cast<uchar>(17 + y * 5 + x);
+        cv::Mat region = parent(cv::Rect(1, 1, 6, 5));
+        cv::Mat overlap = region(cv::Rect(2, 1, 3, 2));
+        run("region-overlap", region, overlap,
+            cv::Mat(2, 3, CV_8U, cv::Scalar(3)));
+        cv::Mat tied(3, 4, CV_8U, cv::Scalar(8));
+        tied.at<uchar>(0, 0) = 30;
+        tied.at<uchar>(0, 3) = 30;
+        cv::Mat tile(1, 1, CV_8U, cv::Scalar(30));
+        run("tie", tied, tile, cv::Mat(1, 1, CV_8U, cv::Scalar(1)));
+        cv::Mat near_scene(1, 3, CV_8U);
+        near_scene.at<uchar>(0, 0) = 100;
+        near_scene.at<uchar>(0, 1) = 101;
+        near_scene.at<uchar>(0, 2) = 180;
+        run("near-tie", near_scene, cv::Mat(1, 1, CV_8U, cv::Scalar(100)),
+            cv::Mat(1, 1, CV_8U, cv::Scalar(1)));
+        cv::Mat large(48, 64, CV_8U);
+        for (int y = 0; y < large.rows; ++y)
+            for (int x = 0; x < large.cols; ++x)
+                large.at<uchar>(y, x) =
+                    static_cast<uchar>((y * 13 + x * 29) % 251);
+        cv::Mat patch_l = large(cv::Rect(20, 12, 11, 9)).clone();
+        cv::Mat mask_l(9, 11, CV_8U, cv::Scalar(0));
+        mask_l.at<uchar>(0, 0) = 255;
+        mask_l.at<uchar>(4, 6) = 17;
+        mask_l.at<uchar>(8, 10) = 1;
+        run("dft", large, patch_l, mask_l);
+        using opencv_imgproc_masked_template::unmasked_fits;
+        const int boundary = std::numeric_limits<int>::max() / 4;
+        require(unmasked_fits(1, boundary), "IPP boundary accepted");
+        require(!unmasked_fits(1, boundary + 1), "IPP overflow rejected");
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+        cv::Mat native_header(2, 2, CV_8U, cv::Scalar(4));
+        native_header.cols = boundary + 1;
+        Mat native_in(native_header);
+        Mat native_out(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
+        require(opencv_imgproc_match_template_masked(
+                    native_in.handle, native_in.handle, native_in.handle,
+                    native_out.handle,
+                    OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) ==
+                    OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT,
+                "native oversized header rejected by shared geometry");
+        require(native_out.value->at<uchar>(0, 0) == 73, "native atomicity");
+        require(std::string(opencv_imgproc_last_error_message()).find(
+                    "IPP area") == std::string::npos,
+                "native branch does not use the unmasked IPP area guard");
+#else
+        cv::Mat legacy(2, 2, CV_8U, cv::Scalar(4));
+        legacy.cols = boundary + 1;
+        Mat legacy_in(legacy);
+        Mat legacy_out(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
+        require(opencv_imgproc_match_template_masked(
+                    legacy_in.handle, legacy_in.handle, legacy_in.handle,
+                    legacy_out.handle,
+                    OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) ==
+                    OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT,
+                "legacy IPP area rejected");
+        require(legacy_out.value->at<uchar>(0, 0) == 73, "legacy atomicity");
+#endif
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';
         return 1;

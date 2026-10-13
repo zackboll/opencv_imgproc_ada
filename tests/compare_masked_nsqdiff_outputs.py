@@ -52,6 +52,10 @@ for (lv, _, left), (rv, _, right) in itertools.combinations(loaded, 2):
     for name, (geometry, scores, minimum) in left.items():
         other_geometry, other_scores, other_minimum = right[name]
         assert geometry[1:] == other_geometry[1:]
+        rows = int(geometry[-2])
+        cols = int(geometry[-1])
+        assert len(scores) == rows * cols, (name, len(scores), rows, cols)
+        assert len(scores) == len(other_scores), (name, len(scores), len(other_scores))
         for a, b in zip(scores, other_scores):
             if a == b:
                 continue

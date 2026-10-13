@@ -23,6 +23,7 @@
 #include <array>
 #include <cfloat>
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
@@ -8102,11 +8103,16 @@ opencv_imgproc_match_template_masked(
             return invalid_argument("unsafe masked template correlation geometry");
         // ABI safety: the unmasked IPP probe forms template.area()*4 in
         // signed int before deciding whether to use the optimized kernel.
-        // SQDIFF_NORMED on 4.1 uses that unmasked CCORR path for Scene energy.
-        if ((method == OPENCV_IMGPROC_TEMPLATE_CCORR ||
-             method == OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) &&
-            !opencv_imgproc_masked_template::unmasked_fits(tpl->rows, tpl->cols))
-            return invalid_argument("unsafe unmasked correlation IPP area");
+        // SQDIFF_NORMED reaches that probe only in the 4.1 composition.
+        // The native masked branch never calls unmasked CCORR.
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR
+#if !(CV_VERSION_MAJOR > 4 || \
+      (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10))
+            || method == OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED
+#endif
+            )
+            if (!opencv_imgproc_masked_template::unmasked_fits(tpl->rows, tpl->cols))
+                return invalid_argument("unsafe unmasked correlation IPP area");
         // ABI safety: native-object identity would mutate an input header
         // on publication.
         // Shared pixel storage with distinct headers is safe after snapshots.
@@ -8174,6 +8180,7 @@ opencv_imgproc_match_template_masked(
             cv::sqrt(scene_energy * template_energy, denominator);
             cv::divide(numerator, denominator, result);
 #endif
+            cv::Mat raw = result.clone();
             // ABI safety: zero included Scene energy is undefined to OpenCV.
             // Publish Float32'Last only there. Positive-energy samples,
             // including a genuine 0 perfect match, stay native.
@@ -8181,10 +8188,29 @@ opencv_imgproc_match_template_masked(
                 image, binary_mask, result);
             for (int y = 0; y < result.rows; ++y) {
                 const float *scores = result.ptr<float>(y);
+                const float *before = raw.ptr<float>(y);
                 for (int x = 0; x < result.cols; ++x) {
                     if (!std::isfinite(scores[x]))
                         throw std::runtime_error(
                             "masked normalized SQDIFF positive-energy score is nonfinite");
+                    if (scores[x] != before[x] &&
+                        scores[x] != std::numeric_limits<float>::max())
+                        throw std::runtime_error(
+                            "masked normalized SQDIFF changed a native score");
+                }
+            }
+            if (const char *trace = std::getenv("OPENCV_IMGPROC_NSQDIFF_TRACE")) {
+                if (trace[0] == '1') {
+                    std::fprintf(stderr, "RAW");
+                    for (int y = 0; y < raw.rows; ++y) {
+                        const float *row = raw.ptr<float>(y);
+                        for (int x = 0; x < raw.cols; ++x) {
+                            std::uint32_t bits = 0;
+                            std::memcpy(&bits, &row[x], 4);
+                            std::fprintf(stderr, " %08x", bits);
+                        }
+                    }
+                    std::fprintf(stderr, "\n");
                 }
             }
         } else {
