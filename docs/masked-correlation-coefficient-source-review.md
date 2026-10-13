@@ -73,11 +73,26 @@ image is allocated.
   sign disagreements and maximum-location differences are reported.
 * Gate C: raw score bits equal the selected native control (>= 4.10) or the
   composition rebuilt in the harness (4.1).
-* Gate D: designated robust landmarks must have a unique oracle maximum whose
-  margin exceeds twice the uncertainty budget and agrees with the native
-  maximum.
+* Corrected Gate D: retain each exact oracle coefficient and integer `STI`.
+  With `E[i] = 1e-4 + 2^-20 * abs(STI[i])`, require a unique oracle winner
+  and `O[best] - E[best] > max(O[j] + E[j], j != best)`. All candidates
+  participate, not only the runner-up by score. Designated landmarks also
+  require a unique native maximum at the same coordinates. Mathematical ties
+  and overlapping uncertainty intervals are never robust.
 
-## Results
+The original feature commit incorrectly scaled Gate D with the centered
+coefficient and checked only its score margin. That coefficient can be tiny
+while the two uncentered correlations being subtracted are large; it is not
+an appropriate rounding-error scale. Previously reported robustness is not
+proof under the corrected budget. Gates A/B and cross-version score
+consistency were unaffected. The original ranking claim is superseded by
+this corrective evaluation.
+
+## Original 24-case qualification history
+
+The following results describe the original feature commit, including its
+unmodified `corrupt-scene` clone and defective Gate D. They establish score
+consistency for that original corpus, not corrected ranking robustness.
 
 Corpus: 24 cases, 49,238 scores per version. Every version reports
 `FAILURES 0`. Cross-version comparison for all three pairs:
@@ -97,6 +112,93 @@ others): 0.0169 `landmark-full`, 0.0066 `landmark-sparse`, 0.0144 `inverted`,
 bound of about 1.03 at that scale. Textured cases hold roughly 800 negative
 and 800 positive scores each, so both covariance domains are exercised.
 Black, constant, one-pixel and 1x1 cases score exactly 0 on every window.
+
+## Corrective qualification of PR #51
+
+Starting feature HEAD: `2790aa4aad7ba7fe8523d66c97d178c3dd400fca`.
+Production C++/Ada and workflows are unchanged. The original 24 fixture names
+and 49,238 output windows remain; one two-window qualification fixture was
+added (25 fixtures / 49,240 scores total).
+
+### Ranking results (identical across versions and compilers)
+
+| Designated landmark | Oracle/native maximum | Score margin | Winner E | Alternative E | Worst separation |
+|---|---|---:|---:|---:|---:|
+| landmark-full | (21,13) | 110717.190476 | 1.409287317 | 1.214355333 | 110714.566834 |
+| landmark-sparse | (21,13) | 55048.191489 | 0.963464601 | 0.952700479 | 55046.275324 |
+| dft-large | (60,40) | 1304627.621723 | 10.940733774 | 9.635524614 | 1304607.045464 |
+
+Each has exactly one oracle and native maximum, and passes corrected Gate D.
+The old gate required a margin above `4e-4 + 2^-18 * abs(best)`:
+approximately 1.28293, 0.95238 and 10.67177 respectively. The corrected
+winner-plus-most-competitive-alternative allowances are 2.62364, 1.91617
+and 20.57626. These landmarks remain robust, but only the new all-candidate
+calculation supplies that evidence.
+
+`exact-ties` has two oracle/native maxima and zero margin. The original
+`near-tie` is actually an exact tie with five oracle/native maxima; its
+uncertainty-adjusted separation is -0.0689599182. Both remain explicitly tied.
+The new `ambiguous-near-tie` uses 100 Template pixels: 99 values of 254 and
+one of 255, against two windows with one and two 255 values. Its unique
+oracle winner has margin 0.01, winner E 6.153310640 and worst separation
+-12.296863513. It is ambiguous even though every version selects the same
+native maximum. Synthetic ranking regressions additionally cover exact ties,
+overlapping near-ties, and a competitive alternative other than the score
+runner-up. Scores 10 and 9 with STI 100,000,000 would pass the old threshold
+0.000438147, but their corrected combined budget is 190.735063281 and they
+are rejected. These tests do not involve OpenCV or DFT rounding.
+
+Every RANK record includes oracle/native coordinates and tie counts, best
+and second score, margin, winner bound, most competitive alternative index,
+score and bound, worst separation, classification and required-landmark flag.
+The comparator independently reconstructs these facts, checks all samples
+and bounds, rejects missing/duplicate ranking records and truncated maps,
+and requires successful final termination. One binary64 ULP is allowed only
+when reconstructing serialized long-double bounds; score gates are unchanged.
+
+### Genuine excluded Scene corruption
+
+Only excluded mask positions within the landmark at Scene (21,13), size
+9 x 7, are inverted with `255 - pixel`. The 16 local (u,v) positions are:
+(0,0), (4,0), (8,0), (1,1), (5,1), (2,2), (6,2), (3,3), (7,3),
+(0,4), (4,4), (8,4), (1,5), (5,5), (2,6), (6,6).
+Absolute Scene coordinates are (21+u,13+v):
+(21,13), (25,13), (29,13), (22,14), (26,14), (23,15), (27,15),
+(24,16), (28,16), (21,17), (25,17), (29,17), (22,18), (26,18),
+(23,19), (27,19).
+
+All 16 change; included pixels and every other Scene pixel remain unchanged.
+The original Scene is checked unchanged. All four exact sums at (21,13)
+remain identical, including STI 1,010,161; hence coefficient and Gate A bound
+are unchanged. Both production scores pass Gate A and differ by 0 in all
+runs, against the justified sum-of-two-error-bounds allowance 1.9269292023.
+Other sliding windows are independently qualified against their own integer
+oracles; whole-map equality is neither asserted nor expected. The existing
+Template-corruption and Region/source-immutability tests remain.
+
+### Requalification
+
+Header/runtime equality (`CV_VERSION == cv::getVersionString()`) is asserted
+before the corpus. Exact version/branch records are 4.1.0 compatibility,
+4.10.0 native and 5.0.0 native. Existing Linux loader checks verify both
+core and imgproc resolve within `/tmp/ocv/inst-4.1.0/lib`,
+`/tmp/ocv/inst-4.10.0/lib`, and
+`/var/tmp/geometry-026/install-5.0.0/lib`, respectively, not just header
+or pkg-config identity.
+
+Strict C++17 GCC and Clang 19 runs pass Gates A/C/D on all 49,240 scores.
+Gate B across all three version pairs reports maximum absolute/relative/ULP
+difference 0, no nonfinite values, sign disagreements or maximum-location
+differences. Native-control bit mismatches are 0. GCC and Clang 19 ASan/UBSan
+runs also pass on all three versions; only project shim/harness sources,
+not prebuilt OpenCV libraries, are sanitizer-instrumented.
+
+Focused AUnit results: CCOEFF 6/6, masked SQDIFF 6/6, normalized SQDIFF 7/7,
+CCORR 6/6, NCC 9/9, unmasked template matching 10/10. Full suite: 1129/1129.
+No Ada source changed, so strict changed-Ada compilation is not applicable.
+Shell syntax and `git diff --check` pass. Local logs are preserved under
+`/tmp/ccoeff-correct-*.log`; exact-version output/build/loader records are
+under `tests/bin/masked-ccoeff-qualification` (ignored build artifacts).
 
 ## Limits of this evidence
 

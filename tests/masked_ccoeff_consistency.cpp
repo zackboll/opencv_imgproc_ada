@@ -3,7 +3,8 @@
 //   Gate A  |score - oracle| <= 1e-4 + 2^-20 * |Sum(M*T*I)|
 //   Gate B  |a - b| <= 1e-4 + 2^-20 * |Sum(M*T*I)|  (compare script)
 //   Gate C  raw bits equal to the selected native / composed control
-//   Gate D  oracle margin > 2 * budget on designated robust landmarks
+//   Gate D  winner lower bound > every alternative upper bound
+//           on designated robust landmarks (budgets scale with STI)
 #include "../cpp/opencv_imgproc_shim.cpp"
 #include "opencv_core_shim.h"
 
@@ -42,6 +43,74 @@ std::uint64_t checked_mul(std::uint64_t a, std::uint64_t b) {
     return a * b;
 }
 
+std::uint64_t checked_add(std::uint64_t a, std::uint64_t b) {
+    if (b > UINT64_MAX - a)
+        throw std::overflow_error("oracle sum exceeds UInt64");
+    return a + b;
+}
+
+long double error_bound(std::uint64_t sti) {
+    return 1e-4L + std::ldexp(1.0L, -20) * sti;
+}
+
+struct Candidate {
+    long double score;
+    std::uint64_t sti;
+    long double bound() const { return error_bound(sti); }
+};
+
+struct Ranking {
+    std::size_t best = 0, alternative = 0;
+    int ties = 0;
+    long double second = 0, separation = 0;
+    bool robust = false;
+};
+
+Ranking ranking(const std::vector<Candidate> &c) {
+    require(!c.empty(), "empty ranking");
+    Ranking r;
+    for (std::size_t i = 1; i < c.size(); ++i)
+        if (c[i].score > c[r.best].score)
+            r.best = i;
+    for (const auto &v : c)
+        r.ties += v.score == c[r.best].score;
+    if (c.size() == 1) {
+        r.second = c[r.best].score;
+        r.alternative = r.best;
+        return r; // No competing location: not a designated landmark.
+    }
+    r.alternative = r.best == 0 ? 1 : 0;
+    r.second = c[r.alternative].score;
+    for (std::size_t i = 0; i < c.size(); ++i) {
+        if (i == r.best)
+            continue;
+        r.second = std::fmax(r.second, c[i].score);
+        if (c[i].score + c[i].bound() >
+            c[r.alternative].score + c[r.alternative].bound())
+            r.alternative = i;
+    }
+    r.separation = c[r.best].score - c[r.best].bound() -
+                   (c[r.alternative].score + c[r.alternative].bound());
+    r.robust = r.ties == 1 && r.separation > 0;
+    return r;
+}
+
+void ranking_regression() {
+    const std::vector<Candidate> cancellation{{10, 100000000},
+                                             {9, 100000000}};
+    const long double old_budget =
+        1e-4L + std::ldexp(1.0L, -20) * 10 * 2;
+    require(1 > 2 * old_budget && !ranking(cancellation).robust,
+            "STI regression: old budget falsely accepts cancellation");
+    const auto alternative = ranking({{10, 0}, {9, 0}, {8, 100000000}});
+    require(alternative.alternative == 2 && !alternative.robust,
+            "ranking must inspect more than the score runner-up");
+    require(ranking({{10, 0}, {9, 0}}).robust, "separated ranking");
+    require(!ranking({{10, 0}, {10, 0}}).robust, "ties not robust");
+    require(!ranking({{10, 0}, {9.9999L, 0}}).robust,
+            "overlapping near-tie intervals not robust");
+}
+
 // Exact integer sums. The numerator count*STI - ST*SI is formed from two
 // checked UInt64 products and subtracted as sign and magnitude, then divided
 // once by count. Fixtures are bounded so neither product can overflow;
@@ -67,10 +136,10 @@ Sums sums(const cv::Mat &s, const cv::Mat &t, const cv::Mat &m, int y, int x) {
                 continue;
             const std::uint64_t tv = t.at<uchar>(v, u);
             const std::uint64_t iv = s.at<uchar>(y + v, x + u);
-            ++r.count;
-            r.st += tv;
-            r.si += iv;
-            r.sti += tv * iv;
+            r.count = checked_add(r.count, 1);
+            r.st = checked_add(r.st, tv);
+            r.si = checked_add(r.si, iv);
+            r.sti = checked_add(r.sti, checked_mul(tv, iv));
         }
     return r;
 }
@@ -114,7 +183,7 @@ cv::Mat control(const cv::Mat &s, const cv::Mat &t, const cv::Mat &m) {
 
 int failures = 0;
 
-void run(const std::string &id, const cv::Mat &s, const cv::Mat &t,
+cv::Mat run(const std::string &id, const cv::Mat &s, const cv::Mat &t,
          const cv::Mat &m, bool robust = false) {
     Mat source(s), templ(t), mask(m);
     Mat result(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
@@ -134,8 +203,8 @@ void run(const std::string &id, const cv::Mat &s, const cv::Mat &t,
     const cv::Mat ctl = control(s, t, m);
     require(ctl.size() == r.size(), "control size");
     std::printf("CASE %s %s %d %d\n", id.c_str(), branch(), r.rows, r.cols);
-    long double best = -1e300L, second = -1e300L;
-    int bx = 0, by = 0, ties = 0, control_mismatch = 0;
+    std::vector<Candidate> candidates;
+    int control_mismatch = 0;
     double worst_abs = 0;
     for (int y = 0; y < r.rows; ++y)
         for (int x = 0; x < r.cols; ++x) {
@@ -158,40 +227,44 @@ void run(const std::string &id, const cv::Mat &s, const cv::Mat &t,
                         (unsigned long long)q.count,
                         (unsigned long long)q.st, (unsigned long long)q.si,
                         (unsigned long long)q.sti);
-            if (o > best) {
-                second = best;
-                best = o;
-                bx = x;
-                by = y;
-                ties = 1;
-            } else if (o == best) {
-                ++ties;
-                second = o;
-            } else if (o > second) {
-                second = o;
-            }
+            candidates.push_back({o, q.sti});
+            std::printf("BOUND %.17Lg\n", error_bound(q.sti));
         }
     cv::Point native_max;
     cv::minMaxLoc(r, nullptr, nullptr, nullptr, &native_max);
-    const long double margin = second < -1e299L ? 0.0L : best - second;
-    std::printf("RANK %d %d %d %d %d %.17Lg %.17Lg %.17Lg\n", bx, by,
-                native_max.x, native_max.y, ties, best, second, margin);
+    const Ranking rank = ranking(candidates);
+    const Candidate &winner = candidates[rank.best];
+    const Candidate &other = candidates[rank.alternative];
+    const int bx = static_cast<int>(rank.best) % r.cols;
+    const int by = static_cast<int>(rank.best) / r.cols;
+    int native_ties = 0;
+    for (int y = 0; y < r.rows; ++y)
+        for (int x = 0; x < r.cols; ++x)
+            native_ties += r.at<float>(y, x) ==
+                           r.at<float>(native_max.y, native_max.x);
+    const char *classification = candidates.size() == 1 ? "single" :
+        rank.ties > 1 ? "tie" : rank.robust ? "robust" : "ambiguous";
+    // x/y oracle, x/y native, oracle/native ties, best, second, margin,
+    // winner bound, alternative index/score/bound, separation, class, required.
+    std::printf("RANK %d %d %d %d %d %d %.17Lg %.17Lg %.17Lg "
+                "%.17Lg %zu %.17Lg %.17Lg %.17Lg %s %d\n",
+                bx, by, native_max.x, native_max.y, rank.ties, native_ties,
+                winner.score, rank.second, winner.score - rank.second,
+                winner.bound(), rank.alternative, other.score, other.bound(),
+                rank.separation, classification, robust ? 1 : 0);
     std::printf("CONTROL %d %.9g\n", control_mismatch, worst_abs);
     if (control_mismatch != 0) {
         ++failures;
         std::fprintf(stderr, "GATE_C %s %d mismatches\n", id.c_str(),
                      control_mismatch);
     }
-    if (robust) {
-        const long double budget =
-            1e-4L + std::ldexp(1.0L, -20) * std::fabs(best) * 2;
-        if (!(ties == 1 && margin > 2 * budget && native_max.x == bx &&
-              native_max.y == by)) {
-            ++failures;
-            std::fprintf(stderr, "GATE_D %s margin %Lg budget %Lg\n",
-                         id.c_str(), margin, budget);
-        }
+    if (robust && !(rank.robust && native_ties == 1 &&
+                    native_max.x == bx && native_max.y == by)) {
+        ++failures;
+        std::fprintf(stderr, "GATE_D %s separation %Lg\n",
+                     id.c_str(), rank.separation);
     }
+    return r.clone();
 }
 
 cv::Mat texture(int rows, int cols, int salt = 0) {
@@ -227,13 +300,17 @@ void expect_rejected(const char *label, const cv::Mat &s, const cv::Mat &t,
 
 int main() {
     try {
+        require(std::string(CV_VERSION) == cv::getVersionString(),
+                "OpenCV header/runtime version mismatch");
+        ranking_regression();
         std::printf("VERSION %s %s\n", CV_VERSION, branch());
         const cv::Mat scene = texture(40, 56);
         const cv::Mat patch = scene(cv::Rect(21, 13, 9, 7)).clone();
         const cv::Mat full(7, 9, CV_8U, cv::Scalar(1));
         const cv::Mat sparse = sparse_mask(7, 9);
         run("landmark-full", scene, patch, full, true);
-        run("landmark-sparse", scene, patch, sparse, true);
+        const cv::Mat sparse_scores =
+            run("landmark-sparse", scene, patch, sparse, true);
         cv::Mat nonbinary(7, 9, CV_8U, cv::Scalar(0));
         const int bytes[] = {1, 7, 127, 255};
         for (int i = 0; i < 28; ++i)
@@ -251,7 +328,52 @@ int main() {
         cv::Mat corrupt_t = patch.clone(), corrupt_s = scene.clone();
         corrupt_t.setTo(255, sparse == 0);
         run("corrupt-template", scene, corrupt_t, sparse);
-        run("corrupt-scene", corrupt_s, patch, sparse);
+        const cv::Mat original = scene.clone();
+        int changed = 0;
+        for (int v = 0; v < patch.rows; ++v)
+            for (int u = 0; u < patch.cols; ++u) {
+                if (sparse.at<uchar>(v, u) == 0) {
+                    uchar &pixel = corrupt_s.at<uchar>(13 + v, 21 + u);
+                    const uchar before = pixel;
+                    pixel = static_cast<uchar>(255 - pixel);
+                    require(pixel != before, "excluded pixel unchanged");
+                    ++changed;
+                } else {
+                    require(corrupt_s.at<uchar>(13 + v, 21 + u) ==
+                            scene.at<uchar>(13 + v, 21 + u),
+                            "included corruption pixel changed");
+                }
+            }
+        require(changed > 0, "no excluded Scene corruption");
+        for (int y = 0; y < scene.rows; ++y)
+            for (int x = 0; x < scene.cols; ++x) {
+                const bool excluded = x >= 21 && x < 30 &&
+                    y >= 13 && y < 20 &&
+                    sparse.at<uchar>(y - 13, x - 21) == 0;
+                require((corrupt_s.at<uchar>(y, x) !=
+                         scene.at<uchar>(y, x)) == excluded,
+                        "corruption outside excluded landmark positions");
+            }
+        const Sums before = sums(scene, patch, sparse, 13, 21);
+        const Sums after = sums(corrupt_s, patch, sparse, 13, 21);
+        require(before.count == after.count && before.st == after.st &&
+                before.si == after.si && before.sti == after.sti &&
+                before.coefficient() == after.coefficient() &&
+                error_bound(before.sti) == error_bound(after.sti),
+                "excluded corruption changed landmark oracle/bound");
+        const cv::Mat corrupt_scores =
+            run("corrupt-scene", corrupt_s, patch, sparse);
+        const long double delta = std::fabs(
+            static_cast<long double>(sparse_scores.at<float>(13, 21)) -
+            corrupt_scores.at<float>(13, 21));
+        const long double comparison_bound =
+            error_bound(before.sti) + error_bound(after.sti);
+        require(delta <= comparison_bound,
+                "excluded corruption landmark comparison");
+        require(cv::norm(scene, original, cv::NORM_INF) == 0,
+                "original Scene changed by corruption fixture");
+        std::printf("CORRUPTION %d %llu %.17Lg %.17Lg\n", changed,
+                    (unsigned long long)before.sti, delta, comparison_bound);
         run("black-template", scene, cv::Mat(7, 9, CV_8U, cv::Scalar(0)), full);
         run("black-scene", cv::Mat(40, 56, CV_8U, cv::Scalar(0)), patch, full);
         run("constant-template", scene, cv::Mat(7, 9, CV_8U, cv::Scalar(100)),
@@ -281,6 +403,12 @@ int main() {
         cv::Mat near_t(1, 2, CV_8U, cv::Scalar(100));
         near_t.at<uchar>(0, 1) = 200;
         run("near-tie", near, near_t, cv::Mat(1, 2, CV_8U, cv::Scalar(1)));
+        cv::Mat ambiguous(1, 101, CV_8U, cv::Scalar(254));
+        ambiguous.at<uchar>(0, 99) = 255;
+        ambiguous.at<uchar>(0, 100) = 255;
+        const cv::Mat ambiguous_t = ambiguous.colRange(0, 100).clone();
+        run("ambiguous-near-tie", ambiguous, ambiguous_t,
+            cv::Mat(1, 100, CV_8U, cv::Scalar(1)));
         const cv::Mat large = texture(150, 200);
         run("dft-large", large, large(cv::Rect(60, 40, 31, 23)).clone(),
             sparse_mask(23, 31), true);
