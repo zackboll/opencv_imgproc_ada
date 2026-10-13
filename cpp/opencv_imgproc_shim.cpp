@@ -8077,15 +8077,16 @@ opencv_imgproc_match_template_masked(
             opencv_core_module_input_mat(mask, &msk) != OPENCV_CORE_OK || !msk ||
             opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
             return invalid_argument("invalid masked template Mat handle");
-        // ABI safety: only the selected SQDIFF, SQDIFF_NORMED, CCORR and
-        // CCORR_NORMED branches are selected. Coefficient methods center the
-        // window, which this preflight does not cover.
+        // ABI safety: only the selected SQDIFF, SQDIFF_NORMED, CCORR,
+        // CCORR_NORMED and CCOEFF branches are preflighted. CCOEFF_NORMED
+        // needs window-variance arithmetic this preflight does not cover.
         if (method != OPENCV_IMGPROC_TEMPLATE_SQDIFF &&
             method != OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED &&
             method != OPENCV_IMGPROC_TEMPLATE_CCORR &&
-            method != OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED)
+            method != OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED &&
+            method != OPENCV_IMGPROC_TEMPLATE_CCOEFF)
             return invalid_argument(
-                "masked template method must be SQDIFF, SQDIFF_NORMED, CCORR or CCORR_NORMED");
+                "masked template method must be SQDIFF, SQDIFF_NORMED, CCORR, CCORR_NORMED or CCOEFF");
         // ABI safety: the row-wise snapshot below reads exactly cols UInt8
         // elements. Other types/ND/empty Mats cannot supply that geometry.
         for (const cv::Mat *input : {src, tpl, msk}) {
@@ -8103,11 +8104,13 @@ opencv_imgproc_match_template_masked(
         // ABI safety: the unmasked IPP probe forms template.area()*4 in
         // signed int before deciding whether to use the optimized kernel.
         // SQDIFF_NORMED reaches that probe only in the 4.1 composition.
-        // The native masked branch never calls unmasked CCORR.
+        // The native masked branch never calls unmasked CCORR. The 4.1
+        // CCOEFF composition makes two unmasked CCORR calls.
         if (method == OPENCV_IMGPROC_TEMPLATE_CCORR
 #if !(CV_VERSION_MAJOR > 4 || \
       (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10))
             || method == OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED
+            || method == OPENCV_IMGPROC_TEMPLATE_CCOEFF
 #endif
             )
             if (!opencv_imgproc_masked_template::unmasked_fits(tpl->rows, tpl->cols))
@@ -8151,8 +8154,57 @@ opencv_imgproc_match_template_masked(
                         ? "masked NCC requires positive template energy"
                         : "masked normalized SQDIFF requires positive template energy");
         }
+        // ABI safety: with no included pixel the masked mean divides by
+        // zero. 4.1.0 composition and 4.10.0/5.0.0 native both yield NaN
+        // scores (4.1.0 native masked CCOEFF throws StsNotImplemented), so
+        // the request is rejected before any native execution.
+        std::uint64_t included = 0;
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCOEFF) {
+            for (int y = 0; y < binary_mask.rows; ++y) {
+                const float *weights = binary_mask.ptr<float>(y);
+                for (int x = 0; x < binary_mask.cols; ++x)
+                    included += weights[x] != 0.0f ? 1u : 0u;
+            }
+            if (included == 0)
+                return invalid_argument(
+                    "masked correlation coefficient requires an included pixel");
+        }
         cv::Mat result;
-        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR) {
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCOEFF) {
+#if CV_VERSION_MAJOR > 4 || \
+    (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+            // Native masked method. Scores are published unmodified.
+            cv::matchTemplate(
+                image, patch, result, cv::TM_CCOEFF, binary_mask);
+#else
+            // 4.1 composition of the 4.10/5.0 native algorithm using native
+            // unmasked CCORR only:
+            //   Centered = M * (T - mean), mean over included pixels
+            //   Result   = CCORR(I, Centered)
+            //              - sum(Centered)/n * CCORR(I, M)
+            // The residual term corrects Float32 centering error.
+            std::uint64_t template_sum = 0;
+            for (int y = 0; y < patch.rows; ++y) {
+                const float *values = patch.ptr<float>(y);
+                const float *weights = binary_mask.ptr<float>(y);
+                for (int x = 0; x < patch.cols; ++x)
+                    if (weights[x] != 0.0f)
+                        template_sum += static_cast<std::uint64_t>(values[x]);
+            }
+            const double mean =
+                static_cast<double>(template_sum) /
+                static_cast<double>(included);
+            const cv::Mat centered =
+                binary_mask.mul(patch - cv::Scalar::all(mean));
+            const double correction =
+                cv::sum(centered)[0] / static_cast<double>(included);
+            cv::Mat centered_corr, mask_corr, scaled;
+            cv::matchTemplate(image, centered, centered_corr, cv::TM_CCORR);
+            cv::matchTemplate(image, binary_mask, mask_corr, cv::TM_CCORR);
+            cv::multiply(mask_corr, cv::Scalar::all(correction), scaled);
+            cv::subtract(centered_corr, scaled, result);
+#endif
+        } else if (method == OPENCV_IMGPROC_TEMPLATE_CCORR) {
             const cv::Mat masked_patch = patch.mul(binary_mask);
             // No mask argument: this route also works on OpenCV 4.1.0.
             cv::matchTemplate(image, masked_patch, result, cv::TM_CCORR);

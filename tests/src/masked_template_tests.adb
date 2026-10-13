@@ -270,6 +270,7 @@ package body Masked_Template_Tests is
            and then Method /= OpenCV.Image_Processing.Cross_Correlation
            and then Method
                     /= OpenCV.Image_Processing.Normalized_Cross_Correlation
+           and then Method /= OpenCV.Image_Processing.Correlation_Coefficient
          then
             Check (Good, Good, Good, Method);
          end if;

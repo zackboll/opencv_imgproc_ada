@@ -1032,8 +1032,15 @@ opencv_imgproc_match_template(
 /* Borrowed inputs; fresh owning output is published only on success.
  * UInt8 C1 logical snapshots are converted to unscaled Float32; mask != 0
  * becomes exactly 1.0f. method is OPENCV_IMGPROC_TEMPLATE_SQDIFF (0),
- * OPENCV_IMGPROC_TEMPLATE_CCORR (2), or
- * OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED (3). CCORR uses native
+ * OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED (1),
+ * OPENCV_IMGPROC_TEMPLATE_CCORR (2),
+ * OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED (3), or
+ * OPENCV_IMGPROC_TEMPLATE_CCOEFF (4); CCOEFF_NORMED (5) is rejected.
+ * CCOEFF is the unnormalized masked covariance numerator
+ * Sum(M*T*I) - Sum(M*T)*Sum(M*I)/Sum(M). OpenCV 4.10 and 5.0 call native
+ * masked TM_CCOEFF; 4.1 composes native unmasked CCORR of the centered
+ * template and of the mask with the native residual-mean correction.
+ * An all-zero mask is rejected before native execution. CCORR uses native
  * unmasked correlation with an owning zeroed template on every version;
  * zero template energy is allowed and native rounding is retained.
  * NCC requires positive masked template energy. Exactly zero masked Scene

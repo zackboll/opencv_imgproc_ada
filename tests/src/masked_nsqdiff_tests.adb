@@ -313,8 +313,6 @@ package body Masked_NSQDIFF_Tests is
       Bad := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
       Check (Good, Good, Bad);
       Check
-        (Good, Good, Good, OpenCV.Image_Processing.Correlation_Coefficient);
-      Check
         (Good,
          Good,
          Good,
@@ -338,7 +336,7 @@ package body Masked_NSQDIFF_Tests is
          begin
             Status :=
               API.Match_Template_Masked
-                (S, S, S, D, API.Template_Correlation_Coefficient);
+                (S, S, S, D, API.Template_Normalized_Correlation_Coefficient);
          end Output;
       begin
          OpenCV.Core.Module_Interop.With_Output_Handle

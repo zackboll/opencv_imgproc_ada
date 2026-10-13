@@ -139,8 +139,7 @@ void guards() {
     require(!fits(1, INT_MAX, 1, 1), "signed byte width");
     Mat a(cv::Mat(2, 2, CV_8U, cv::Scalar(1)));
     Mat out(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
-    for (int selector : {OPENCV_IMGPROC_TEMPLATE_CCOEFF,
-                         OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED})
+    for (int selector : {-1, OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED})
         require(opencv_imgproc_match_template_masked(
             a.handle, a.handle, a.handle, out.handle, selector) ==
             OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT, "selector");

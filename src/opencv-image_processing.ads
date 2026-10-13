@@ -1174,7 +1174,30 @@ package OpenCV.Image_Processing is
    --  native normalization. Positive-energy scores are not repaired.
    --  The check adds packed Scene support and one output-row bitset; work is
    --  proportional to output rows * active mask pixels * output columns / 64.
-   --  Other methods and contract violations raise OpenCV_Error.
+   --  Correlation_Coefficient is the unnormalized masked covariance numerator
+   --  R = Sum(M*T*I) - Sum(M*T)*Sum(M*I)/Sum(M): both means are taken over
+   --  included pixels only. It is mean-centered but not scale-normalized, so
+   --  it is not a Pearson coefficient and is not limited to [-1, 1]. Higher
+   --  is better. Scores may be positive, zero or negative (an inverted
+   --  pattern scores negative), and a score near zero is not a landmark.
+   --  Adding a constant offset to Source or Template leaves the ideal score
+   --  unchanged; Float32 cancellation leaves a small error, so compare with
+   --  a tolerance that scales with the correlation magnitude, not exactly.
+   --  Multiplying intensities by a positive factor scales the score. A
+   --  constant included Template, a constant Scene window, and a single
+   --  included pixel all have ideal score zero and are accepted. An all-zero
+   --  mask has an undefined mean and is rejected. OpenCV 4.10 and 5 call
+   --  native masked TM_CCOEFF. OpenCV 4.1 composes the same result from
+   --  native unmasked correlation of the centered Template and of the mask,
+   --  including the native residual-mean correction. Scores retain native
+   --  rounding without clamping. Example:
+   --
+   --     Match_Template
+   --       (Scene, Patch, Mask, Scores, Correlation_Coefficient);
+   --     Min_Max_Loc (Scores, Minimum, Maximum, Min_At, Max_At);
+   --     --  Max_At is the best match; an offset Scene still finds it.
+   --
+   --  TM_CCOEFF_NORMED and contract violations raise OpenCV_Error.
    procedure Match_Template
      (Source      : OpenCV.Core.Mat;
       Template    : OpenCV.Core.Mat;

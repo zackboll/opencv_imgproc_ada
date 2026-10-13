@@ -134,6 +134,9 @@ jobs:
       - name: Masked normalized SQDIFF production regression with ASan and UBSan
         run: SANITIZE=1 sh tests/run_masked_nsqdiff_consistency.sh
 
+      - name: Masked CCOEFF production regression with ASan and UBSan
+        run: SANITIZE=1 sh tests/run_masked_ccoeff_consistency.sh
+
       - name: Squared-box arithmetic boundaries
         run: |
           c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \

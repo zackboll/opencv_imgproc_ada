@@ -81,8 +81,7 @@ void guards() {
     Mat a(cv::Mat(2, 2, CV_8U, cv::Scalar(1))), out(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
     require(opencv_imgproc_match_template_masked(nullptr, a.handle, a.handle,
         out.handle, 0) == OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT, "null handle");
-    for (int selector : {OPENCV_IMGPROC_TEMPLATE_CCOEFF,
-                         OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED})
+    for (int selector : {-1, OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED})
         require(opencv_imgproc_match_template_masked(a.handle, a.handle, a.handle,
             out.handle, selector) == OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT,
             "unsupported selector");

@@ -5455,7 +5455,8 @@ package body OpenCV.Image_Processing is
       if (Method /= Squared_Difference
           and then Method /= Normalized_Squared_Difference
           and then Method /= Cross_Correlation
-          and then Method /= Normalized_Cross_Correlation)
+          and then Method /= Normalized_Cross_Correlation
+          and then Method /= Correlation_Coefficient)
         or else Mask.Rows /= Template.Rows
         or else Mask.Columns /= Template.Columns
         or else Template.Rows > Source.Rows
