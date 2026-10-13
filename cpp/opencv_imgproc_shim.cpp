@@ -23,7 +23,6 @@
 #include <array>
 #include <cfloat>
 #include <cstdio>
-#include <cstdlib>
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
@@ -8180,7 +8179,6 @@ opencv_imgproc_match_template_masked(
             cv::sqrt(scene_energy * template_energy, denominator);
             cv::divide(numerator, denominator, result);
 #endif
-            cv::Mat raw = result.clone();
             // ABI safety: zero included Scene energy is undefined to OpenCV.
             // Publish Float32'Last only there. Positive-energy samples,
             // including a genuine 0 perfect match, stay native.
@@ -8188,29 +8186,10 @@ opencv_imgproc_match_template_masked(
                 image, binary_mask, result);
             for (int y = 0; y < result.rows; ++y) {
                 const float *scores = result.ptr<float>(y);
-                const float *before = raw.ptr<float>(y);
                 for (int x = 0; x < result.cols; ++x) {
                     if (!std::isfinite(scores[x]))
                         throw std::runtime_error(
                             "masked normalized SQDIFF positive-energy score is nonfinite");
-                    if (scores[x] != before[x] &&
-                        scores[x] != std::numeric_limits<float>::max())
-                        throw std::runtime_error(
-                            "masked normalized SQDIFF changed a native score");
-                }
-            }
-            if (const char *trace = std::getenv("OPENCV_IMGPROC_NSQDIFF_TRACE")) {
-                if (trace[0] == '1') {
-                    std::fprintf(stderr, "RAW");
-                    for (int y = 0; y < raw.rows; ++y) {
-                        const float *row = raw.ptr<float>(y);
-                        for (int x = 0; x < raw.cols; ++x) {
-                            std::uint32_t bits = 0;
-                            std::memcpy(&bits, &row[x], 4);
-                            std::fprintf(stderr, " %08x", bits);
-                        }
-                    }
-                    std::fprintf(stderr, "\n");
                 }
             }
         } else {

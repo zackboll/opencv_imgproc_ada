@@ -55,10 +55,25 @@ does not call unmasked `TM_CCORR`, so it does not reach the IPP
 version and on normalized SQDIFF only inside the 4.1 compatibility branch.
 Shared `fits` and `span_fits` checks still cover both branches.
 
-The 4.1 composition uses native masked `TM_SQDIFF` for the numerator, a
-checked scalar sum for template energy, an owning squared scene, native
-unmasked `TM_CCORR` of that squared scene with the binary mask, then native
-square root and division. Zero included scene energy is classified from the
-packed scene bits and published as `0x7F7FFFFF`. Positive-energy samples are
-compared with the raw map and left unchanged. A trace environment variable
-prints the raw bits for qualification; it does not alter the published Mat.
+The production function no longer clones the result or reads
+`OPENCV_IMGPROC_NSQDIFF_TRACE`. Native-versus-published bits are compared in
+the qualification harness, which calls native masked `TM_SQDIFF_NORMED` on
+4.10 and 5.0 and repeats the 4.1 composition independently. Positive-energy
+published bits must match that map. Only exact zero scene energy becomes
+`0x7F7FFFFF`.
+
+A 1-by-`INT_MAX/4+1` row has a representable stride, so `span_fits` accepts
+it, but `fits` rejects it before the IPP area guard. Every larger sampled
+row that fails `unmasked_fits` also fails `fits`. The largest sampled row
+that `fits` accepts, `INT_MAX/9`, also passes `unmasked_fits`. There is
+therefore no allocation-free header that reaches the IPP guard after the
+shared preflight. The version-specific guard remains in the 4.1 composition
+because that branch calls unmasked CCORR; the predicate boundary is tested
+directly, and no production call with a forged pointer is claimed.
+
+The corpus keeps the original 14 fixtures. Ranking records the oracle and
+production minima, tie counts, margins, and a `2e-4` uncertainty budget.
+The translated landmark is `(5, 1)` and its margin exceeds the budget.
+The exact-tie fixture has two equal minima. The near-tie has a unique
+mathematical minimum, but its margin is below `2e-4`, so it is recorded and
+not claimed as a robust unique detection.

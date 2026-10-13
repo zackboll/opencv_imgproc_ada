@@ -39,6 +39,8 @@ def load(path):
                 case[1].append(bits)
             elif fields[0] == "MIN":
                 case.append(tuple(fields[1:]))
+            elif fields[0] == "RANK":
+                case.append(tuple(fields[1:]))
     return version, branch, cases
 
 
@@ -49,13 +51,15 @@ failed = False
 for (lv, _, left), (rv, _, right) in itertools.combinations(loaded, 2):
     assert left.keys() == right.keys()
     worst_abs = worst_ulp = 0
-    for name, (geometry, scores, minimum) in left.items():
-        other_geometry, other_scores, other_minimum = right[name]
+    for name, (geometry, scores, minimum, rank) in left.items():
+        other_geometry, other_scores, other_minimum, other_rank = right[name]
         assert geometry[1:] == other_geometry[1:]
         rows = int(geometry[-2])
         cols = int(geometry[-1])
         assert len(scores) == rows * cols, (name, len(scores), rows, cols)
         assert len(scores) == len(other_scores), (name, len(scores), len(other_scores))
+        assert rank == other_rank, (name, rank, other_rank)
+        assert rank[0:3] == rank[3:6], (name, rank)
         for a, b in zip(scores, other_scores):
             if a == b:
                 continue

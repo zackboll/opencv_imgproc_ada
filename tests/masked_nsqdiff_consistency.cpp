@@ -91,19 +91,41 @@ void run(const std::string &id, const cv::Mat &s, const cv::Mat &t,
                 cv::norm(t, tb, cv::NORM_INF) == 0 &&
                 cv::norm(m, mb, cv::NORM_INF) == 0,
             "input mutation");
+    cv::Mat image, patch, weights, raw;
+    s.convertTo(image, CV_32F);
+    t.convertTo(patch, CV_32F);
+    cv::compare(m, 0, weights, cv::CMP_NE);
+    weights.convertTo(weights, CV_32F, 1.0 / 255.0);
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+    cv::matchTemplate(image, patch, raw, cv::TM_SQDIFF_NORMED, weights);
+#else
+    cv::Mat numerator, energy, denominator;
+    cv::matchTemplate(image, patch, numerator, cv::TM_SQDIFF, weights);
+    double template_energy = 0;
+    for (int y = 0; y < patch.rows; ++y)
+        for (int x = 0; x < patch.cols; ++x)
+            if (weights.at<float>(y, x) != 0)
+                template_energy += double(patch.at<float>(y, x)) *
+                                   patch.at<float>(y, x);
+    cv::matchTemplate(image.mul(image), weights, energy, cv::TM_CCORR);
+    cv::sqrt(energy * template_energy, denominator);
+    cv::divide(numerator, denominator, raw);
+#endif
     std::cout << "CASE " << id << ' ' << branch() << ' ' << s.rows << ' '
               << s.cols << ' ' << t.rows << ' ' << t.cols << ' '
               << cv::countNonZero(m) << ' ' << r.rows << ' ' << r.cols << '\n';
-    int best_count = 0;
+    int best_count = 0, oracle_count = 0;
     float best = std::numeric_limits<float>::infinity();
-    float second = best;
-    cv::Point best_at(-1, -1);
+    float second = best, oracle_best = best, oracle_second = best;
+    cv::Point best_at(-1, -1), oracle_at(-1, -1);
     for (int y = 0; y < r.rows; ++y) {
         for (int x = 0; x < r.cols; ++x) {
             const Sums value = sums(s, t, m, y, x);
             const float score = r.at<float>(y, x);
-            std::uint32_t bits = 0;
+            const float native = raw.at<float>(y, x);
+            std::uint32_t bits = 0, native_bits = 0;
             std::memcpy(&bits, &score, 4);
+            std::memcpy(&native_bits, &native, 4);
             float reference = std::numeric_limits<float>::max();
             if (value.scene != 0) {
                 const long double ideal =
@@ -116,6 +138,7 @@ void run(const std::string &id, const cv::Mat &s, const cv::Mat &t,
                 const float step = std::fabs(reference - neighbor);
                 require(std::isfinite(score), "positive-energy nonfinite");
                 require(gap <= std::max(1.0e-4f, 4.0f * step), "oracle ceiling");
+                require(bits == native_bits, "positive-energy native bits changed");
             } else {
                 require(bits == 0x7f7fffffu, "zero-scene sentinel bits");
             }
@@ -133,11 +156,37 @@ void run(const std::string &id, const cv::Mat &s, const cv::Mat &t,
             } else if (score < second) {
                 second = score;
             }
+            if (reference < oracle_best) {
+                oracle_second = oracle_best;
+                oracle_best = reference;
+                oracle_at = cv::Point(x, y);
+                oracle_count = 1;
+            } else if (reference == oracle_best) {
+                ++oracle_count;
+            } else if (reference < oracle_second) {
+                oracle_second = reference;
+            }
         }
     }
     std::cout << "MIN " << best_at.x << ' ' << best_at.y << ' ' << best_count
               << ' ' << std::hexfloat << best << ' ' << second
               << std::defaultfloat << '\n';
+    const double budget = 2.0e-4;
+    std::cout << "RANK " << oracle_at.x << ' ' << oracle_at.y << ' '
+              << oracle_count << ' ' << best_at.x << ' ' << best_at.y << ' '
+              << best_count << ' ' << std::hexfloat << oracle_best << ' '
+              << oracle_second << ' ' << (oracle_second - oracle_best) << ' '
+              << budget << std::defaultfloat << '\n';
+    if (id == "translated")
+        require(best_at == cv::Point(5, 1) && oracle_at == best_at &&
+                    best_count == 1,
+                "translated landmark");
+    if (id == "tie")
+        require(best_count == 2 && oracle_count == 2, "exact tie");
+    if (id == "near-tie")
+        require(best_count == 1 && oracle_count == 1 &&
+                    oracle_second - oracle_best < budget,
+                "near-tie is recorded but not a robust unique detection");
 }
 
 void reject(const cv::Mat &s, const cv::Mat &t, const cv::Mat &m) {
@@ -246,37 +295,18 @@ int main() {
         mask_l.at<uchar>(8, 10) = 1;
         run("dft", large, patch_l, mask_l);
         using opencv_imgproc_masked_template::unmasked_fits;
+        using opencv_imgproc_masked_template::fits;
+        using opencv_imgproc_masked_template::span_fits;
         const int boundary = std::numeric_limits<int>::max() / 4;
         require(unmasked_fits(1, boundary), "IPP boundary accepted");
         require(!unmasked_fits(1, boundary + 1), "IPP overflow rejected");
-#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
-        cv::Mat native_header(2, 2, CV_8U, cv::Scalar(4));
-        native_header.cols = boundary + 1;
-        Mat native_in(native_header);
-        Mat native_out(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
-        require(opencv_imgproc_match_template_masked(
-                    native_in.handle, native_in.handle, native_in.handle,
-                    native_out.handle,
-                    OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) ==
-                    OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT,
-                "native oversized header rejected by shared geometry");
-        require(native_out.value->at<uchar>(0, 0) == 73, "native atomicity");
-        require(std::string(opencv_imgproc_last_error_message()).find(
-                    "IPP area") == std::string::npos,
-                "native branch does not use the unmasked IPP area guard");
-#else
-        cv::Mat legacy(2, 2, CV_8U, cv::Scalar(4));
-        legacy.cols = boundary + 1;
-        Mat legacy_in(legacy);
-        Mat legacy_out(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
-        require(opencv_imgproc_match_template_masked(
-                    legacy_in.handle, legacy_in.handle, legacy_in.handle,
-                    legacy_out.handle,
-                    OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) ==
-                    OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT,
-                "legacy IPP area rejected");
-        require(legacy_out.value->at<uchar>(0, 0) == 73, "legacy atomicity");
-#endif
+        require(span_fits(1, boundary + 1, std::size_t(boundary) + 1),
+                "oversized row has a representable stride");
+        require(!fits(1, boundary + 1, 1, boundary + 1),
+                "shared geometry rejects the IPP-overflow row first");
+        const int admitted = std::numeric_limits<int>::max() / 9;
+        require(fits(1, admitted, 1, admitted) && unmasked_fits(1, admitted),
+                "largest sampled row admitted by both guards");
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';
         return 1;
