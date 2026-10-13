@@ -62,14 +62,16 @@ the qualification harness, which calls native masked `TM_SQDIFF_NORMED` on
 published bits must match that map. Only exact zero scene energy becomes
 `0x7F7FFFFF`.
 
-A 1-by-`INT_MAX/4+1` row has a representable stride, so `span_fits` accepts
-it, but `fits` rejects it before the IPP area guard. Every larger sampled
-row that fails `unmasked_fits` also fails `fits`. The largest sampled row
-that `fits` accepts, `INT_MAX/9`, also passes `unmasked_fits`. There is
-therefore no allocation-free header that reaches the IPP guard after the
-shared preflight. The version-specific guard remains in the 4.1 composition
-because that branch calls unmasked CCORR; the predicate boundary is tested
-directly, and no production call with a forged pointer is claimed.
+A 1-by-`INT_MAX/4+1` row is rejected by `fits` before the IPP guard, but
+that does not mean every IPP-overflow shape is rejected first. A 30000 by
+20000 template has area 600000000, above `INT_MAX/4` (536870911). Its stride
+passes `span_fits`, the equal source and template pass `fits`, and the
+optimal DFT size is 20000 by 30000. `unmasked_fits` fails. The 4.1
+composition therefore needs the IPP guard: it calls unmasked CCORR. The
+native 4.10 and 5.0 branch never calls that probe, so it does not use the
+guard. A 2 by 2 backing Mat with those header fields reaches the 4.1 IPP
+message, or object identity on the newer branch, before a snapshot. The
+existing destination stays unchanged. No 600-million-pixel Mat is allocated.
 
 The corpus keeps the original 14 fixtures. Ranking records the oracle and
 production minima, tie counts, margins, and a `2e-4` uncertainty budget.

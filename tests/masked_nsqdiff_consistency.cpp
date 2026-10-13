@@ -307,6 +307,40 @@ int main() {
         const int admitted = std::numeric_limits<int>::max() / 9;
         require(fits(1, admitted, 1, admitted) && unmasked_fits(1, admitted),
                 "largest sampled row admitted by both guards");
+        require(span_fits(30000, 20000, 20000), "30000x20000 stride");
+        require(fits(30000, 20000, 30000, 20000), "30000x20000 shared geometry");
+        require(!unmasked_fits(30000, 20000), "30000x20000 exceeds IPP area");
+        require(cv::getOptimalDFTSize(20000) == 20000 &&
+                    cv::getOptimalDFTSize(30000) == 30000,
+                "30000x20000 DFT size");
+        cv::Mat forged(2, 2, CV_8U, cv::Scalar(4));
+        forged.rows = 30000;
+        forged.cols = 20000;
+        forged.step[0] = 20000;
+        Mat forged_in(forged);
+        Mat forged_out(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+        require(opencv_imgproc_match_template_masked(
+                    forged_in.handle, forged_in.handle, forged_in.handle,
+                    forged_in.handle, OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) ==
+                    OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT,
+                "native forged header rejected");
+        require(std::string(opencv_imgproc_last_error_message()).find(
+                    "aliases an input") != std::string::npos,
+                "native rejection is object identity");
+#else
+        require(opencv_imgproc_match_template_masked(
+                    forged_in.handle, forged_in.handle, forged_in.handle,
+                    forged_out.handle,
+                    OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) ==
+                    OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT,
+                "legacy forged header rejected");
+        require(std::string(opencv_imgproc_last_error_message()).find(
+                    "IPP area") != std::string::npos,
+                "legacy rejection names the IPP area guard");
+#endif
+        require(forged_out.value->at<uchar>(0, 0) == 73,
+                "forged rejection leaves destination unchanged");
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';
         return 1;
