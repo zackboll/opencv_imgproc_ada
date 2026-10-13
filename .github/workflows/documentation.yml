@@ -1,0 +1,105 @@
+name: Ada API Documentation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize main publication; cancel superseded runs before they can deploy.
+concurrency:
+  group: documentation-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: imgproc
+    steps:
+      - name: Checkout Imgproc
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: imgproc
+      # alire.toml pins opencv_core to ../core, as in the cross-platform CI.
+      - name: Checkout Core
+        uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: main
+          path: core
+      - name: Record checkout identities
+        run: |
+          echo "Imgproc: $(git rev-parse HEAD)"
+          echo "Core:    $(git -C ../core rev-parse HEAD)"
+      - name: Install native prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential libopencv-dev pkg-config unzip python3
+      - name: Install Alire 2.1.1
+        run: |
+          curl --fail --location --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          unzip /tmp/alire.zip -d /tmp/alire
+          sudo install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr
+      - name: Select qualified compiler and project tools
+        run: |
+          alr -n --force toolchain --select gnat_native=16.1.0 gprbuild=26.0.1
+          alr toolchain
+      - name: Test warning comparison
+        run: python3 -m unittest discover -s scripts -p 'test_compare_gnatdoc_warnings.py' -v
+      - name: Test documentation validator
+        run: python3 -m unittest discover -s scripts -p 'test_validate_docs.py' -v
+      - name: Generate and validate public API
+        run: sh scripts/generate_docs.sh
+      - name: Qualify generated site against validator mutations
+        run: python3 -m unittest discover -s scripts -p 'test_validate_docs.py' -v
+      - name: Qualify deterministic fresh generation
+        run: |
+          cp -a _site /tmp/documentation-first
+          sh scripts/generate_docs.sh
+          diff -r /tmp/documentation-first _site
+      - name: Compile and run the landing-page example
+        run: |
+          alr exec -- gprbuild -P docs/example.gpr
+          obj/docs-example/example
+      - name: Upload review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ada-api-${{ github.event.pull_request.head.sha || github.sha }}
+          path: imgproc/_site/
+          if-no-files-found: error
+      - name: Upload generator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnatdoc-diagnostics-${{ github.event.pull_request.head.sha || github.sha }}
+          path: imgproc/obj/docs/gnatdoc.log
+      - name: Configure Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: imgproc/_site/
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

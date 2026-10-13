@@ -1,0 +1,15 @@
+with "../opencv_imgproc.gpr";
+
+--  Compiles the landing-page example; never part of the library build.
+project Example is
+   for Source_Dirs use (".");
+   for Source_Files use ("example.adb");
+   for Object_Dir use "../obj/docs-example";
+   for Exec_Dir use "../obj/docs-example";
+   for Create_Missing_Dirs use "True";
+   for Main use ("example.adb");
+   package Compiler is
+      for Default_Switches ("Ada") use
+        ("-gnat2022", "-gnata", "-gnatwa", "-Werror");
+   end Compiler;
+end Example;

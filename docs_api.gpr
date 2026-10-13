@@ -1,0 +1,24 @@
+with "config/opencv_imgproc_config.gpr";
+with "docs_internal.gpr";
+with "opencv_core.gpr";
+
+--  Parse the public sources with the production compiler configuration.
+--  Internal and opencv_core sources remain available for resolution, but
+--  are not published.
+project Docs_API is
+   for Languages use ("Ada");
+   for Source_Dirs use ("src");
+   for Object_Dir use "obj/docs";
+
+   package Compiler is
+      for Default_Switches ("Ada") use
+        Opencv_Imgproc_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Documentation is
+      for Excluded_Project_Files use
+        ("docs_internal.gpr",
+         "config/opencv_imgproc_config.gpr",
+         OpenCV_Core'Project_Dir & "opencv_core.gpr");
+   end Documentation;
+end Docs_API;

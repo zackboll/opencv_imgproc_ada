@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenCV Imgproc Ada</title>
+<body>
+<main>
+<h1>OpenCV Imgproc Ada</h1>
+<p>A thick, idiomatic Ada 2022 binding for the OpenCV Imgproc module. It
+extends <a href="https://zackboll.github.io/opencv_core_ada/">OpenCV Core Ada</a>,
+which owns <code>OpenCV.Core.Mat</code> and the shared value types; the public
+operations are in the single package <code>OpenCV.Image_Processing</code>.</p>
+<p><a href="api/index.html">Generated Ada API reference</a></p>
+<p>The package specification is the authoritative API declaration. This
+reference is generated from the <code>main</code> branch and can describe
+operations newer than the latest Alire release. The
+<a href="https://github.com/zackboll/opencv_imgproc_ada/blob/main/README.md">repository README</a>
+describes the OpenCV versions exercised by CI and the per-feature
+compatibility notes.</p>
+<h2>Build from source</h2>
+<p>The development manifest resolves <code>opencv_core</code> from a sibling
+checkout. Install the native OpenCV development library, pkg-config and a
+C++17 compiler, then:</p>
+<pre>git clone https://github.com/zackboll/opencv_core_ada.git core
+git clone https://github.com/zackboll/opencv_imgproc_ada.git imgproc
+cd imgproc
+alr -n build</pre>
+<h2>Basic usage</h2>
+<pre>with OpenCV.Core;
+with OpenCV.Core.UInt8_Access;
+with OpenCV.Image_Processing;
+
+procedure Example is
+   use OpenCV.Core;
+   use type OpenCV.UInt8_Value;
+   Image   : Mat := Create (4, 6, (Depth =&gt; UInt8, Channels =&gt; 1));
+   Blurred : Mat;
+begin
+   Image.Set_To (OpenCV.Make_Scalar (128.0));
+   OpenCV.Image_Processing.Gaussian_Blur
+     (Source      =&gt; Image,
+      Destination =&gt; Blurred,
+      Kernel_Size =&gt; (Width =&gt; 3, Height =&gt; 3),
+      Sigma       =&gt; 1.0);
+   pragma Assert (Blurred.Rows = 4 and then Blurred.Columns = 6);
+   pragma Assert (UInt8_Access.Get (Blurred, 0, 0) = 128);
+end Example;</pre>
+<p><code>Gaussian_Blur</code> replaces <code>Destination</code> with a Mat of
+the Source's geometry, depth and channel count; Source is not modified.</p>
+<nav>
+<a href="https://github.com/zackboll/opencv_imgproc_ada">Source repository</a> ·
+<a href="https://github.com/zackboll/opencv_imgproc_ada/releases">Releases</a> ·
+<a href="https://github.com/zackboll/opencv_imgproc_ada/issues">Issue tracker</a>
+</nav>
+</main>
+</body>
+</html>
