@@ -81,9 +81,18 @@ void guards() {
     Mat a(cv::Mat(2, 2, CV_8U, cv::Scalar(1))), out(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
     require(opencv_imgproc_match_template_masked(nullptr, a.handle, a.handle,
         out.handle, 0) == OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT, "null handle");
-    require(opencv_imgproc_match_template_masked(a.handle, a.handle, a.handle,
-        out.handle, 1) == OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT, "selector");
+    for (int selector : {OPENCV_IMGPROC_TEMPLATE_CCOEFF,
+                         OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED})
+        require(opencv_imgproc_match_template_masked(a.handle, a.handle, a.handle,
+            out.handle, selector) == OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT,
+            "unsupported selector");
     require(out.value->at<uchar>(0, 0) == 73, "failed publication");
+    require(opencv_imgproc_match_template_masked(a.handle, a.handle, a.handle,
+        out.handle, OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) == OPENCV_IMGPROC_OK,
+        "normalized squared difference");
+    require(out.value->type() == CV_32FC1 && out.value->rows == 1 &&
+        out.value->cols == 1 && std::isfinite(out.value->at<float>(0, 0)),
+        "normalized squared difference result");
     require(opencv_imgproc_match_template_masked(a.handle, a.handle, a.handle,
         a.handle, 0) == OPENCV_IMGPROC_ERROR_INVALID_ARGUMENT, "identity");
     require(opencv_imgproc_match_template_masked(a.handle, a.handle, a.handle,

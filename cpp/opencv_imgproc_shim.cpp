@@ -15,6 +15,7 @@
 #include "guil_layout_fits.hpp"
 #include "masked_template_layout_fits.hpp"
 #include "masked_ncc_zero_support.hpp"
+#include "masked_nsqdiff_zero_support.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/version.hpp>
@@ -8076,15 +8077,15 @@ opencv_imgproc_match_template_masked(
             opencv_core_module_input_mat(mask, &msk) != OPENCV_CORE_OK || !msk ||
             opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
             return invalid_argument("invalid masked template Mat handle");
-        // ABI safety: only the selected SQDIFF, CCORR and CCORR_NORMED
-        // branches are selected. Other selectors have different native
-        // arithmetic, including coefficient centering that this preflight
-        // does not cover.
+        // ABI safety: only the selected SQDIFF, SQDIFF_NORMED, CCORR and
+        // CCORR_NORMED branches are selected. Coefficient methods center the
+        // window, which this preflight does not cover.
         if (method != OPENCV_IMGPROC_TEMPLATE_SQDIFF &&
+            method != OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED &&
             method != OPENCV_IMGPROC_TEMPLATE_CCORR &&
             method != OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED)
             return invalid_argument(
-                "masked template method must be SQDIFF, CCORR or CCORR_NORMED");
+                "masked template method must be SQDIFF, SQDIFF_NORMED, CCORR or CCORR_NORMED");
         // ABI safety: the row-wise snapshot below reads exactly cols UInt8
         // elements. Other types/ND/empty Mats cannot supply that geometry.
         for (const cv::Mat *input : {src, tpl, msk}) {
@@ -8101,9 +8102,16 @@ opencv_imgproc_match_template_masked(
             return invalid_argument("unsafe masked template correlation geometry");
         // ABI safety: the unmasked IPP probe forms template.area()*4 in
         // signed int before deciding whether to use the optimized kernel.
-        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR &&
-            !opencv_imgproc_masked_template::unmasked_fits(tpl->rows, tpl->cols))
-            return invalid_argument("unsafe unmasked correlation IPP area");
+        // SQDIFF_NORMED reaches that probe only in the 4.1 composition.
+        // The native masked branch never calls unmasked CCORR.
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR
+#if !(CV_VERSION_MAJOR > 4 || \
+      (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10))
+            || method == OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED
+#endif
+            )
+            if (!opencv_imgproc_masked_template::unmasked_fits(tpl->rows, tpl->cols))
+                return invalid_argument("unsafe unmasked correlation IPP area");
         // ABI safety: native-object identity would mutate an input header
         // on publication.
         // Shared pixel storage with distinct headers is safe after snapshots.
@@ -8122,13 +8130,14 @@ opencv_imgproc_match_template_masked(
         const cv::Mat image = snapshot(*src, false);
         const cv::Mat patch = snapshot(*tpl, false);
         const cv::Mat binary_mask = snapshot(*msk, true);
-        // ABI safety: 4.1.0 returns an all-one map when masked template
+        // ABI safety: 4.1.0 returns an all-one NCC map when masked template
         // energy is below DBL_EPSILON, while 4.10.0 and 5.0.0 divide by
-        // zero and produce NaN. The scan uses the canonical snapshots so a
-        // raw caller cannot reach those divergent native paths. A zero
-        // Scene window is not rejected: exact zero support is normalized
-        // after the complete native map has been computed.
-        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED) {
+        // zero and produce NaN. SQDIFF_NORMED has no 4.1.0 implementation
+        // and divides by zero on later versions. The scan uses the canonical
+        // snapshots so a raw caller cannot reach those paths. A zero Scene
+        // window is not rejected.
+        if (method == OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED ||
+            method == OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) {
             bool positive = false;
             for (int y = 0; y < patch.rows && !positive; ++y) {
                 const float *values = patch.ptr<float>(y);
@@ -8138,13 +8147,51 @@ opencv_imgproc_match_template_masked(
             }
             if (!positive)
                 return invalid_argument(
-                    "masked NCC requires positive template energy");
+                    method == OPENCV_IMGPROC_TEMPLATE_CCORR_NORMED
+                        ? "masked NCC requires positive template energy"
+                        : "masked normalized SQDIFF requires positive template energy");
         }
         cv::Mat result;
         if (method == OPENCV_IMGPROC_TEMPLATE_CCORR) {
             const cv::Mat masked_patch = patch.mul(binary_mask);
             // No mask argument: this route also works on OpenCV 4.1.0.
             cv::matchTemplate(image, masked_patch, result, cv::TM_CCORR);
+        } else if (method == OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED) {
+#if CV_VERSION_MAJOR > 4 || \
+    (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+            // Native masked method. 4.1.0 raises StsNotImplemented.
+            cv::matchTemplate(
+                image, patch, result, cv::TM_SQDIFF_NORMED, binary_mask);
+#else
+            // Compatibility: numerator from native masked SQDIFF, sliding
+            // Scene energy from native unmasked CCORR of the squared Scene
+            // with the binary mask. No custom correlation kernel.
+            const double template_energy =
+                opencv_imgproc_masked_template::masked_template_energy(
+                    patch, binary_mask);
+            cv::Mat numerator;
+            cv::matchTemplate(
+                image, patch, numerator, cv::TM_SQDIFF, binary_mask);
+            cv::Mat scene_energy;
+            cv::matchTemplate(
+                image.mul(image), binary_mask, scene_energy, cv::TM_CCORR);
+            cv::Mat denominator;
+            cv::sqrt(scene_energy * template_energy, denominator);
+            cv::divide(numerator, denominator, result);
+#endif
+            // ABI safety: zero included Scene energy is undefined to OpenCV.
+            // Publish Float32'Last only there. Positive-energy samples,
+            // including a genuine 0 perfect match, stay native.
+            opencv_imgproc_masked_template::publish_sqdiff_normed_zero_scene(
+                image, binary_mask, result);
+            for (int y = 0; y < result.rows; ++y) {
+                const float *scores = result.ptr<float>(y);
+                for (int x = 0; x < result.cols; ++x) {
+                    if (!std::isfinite(scores[x]))
+                        throw std::runtime_error(
+                            "masked normalized SQDIFF positive-energy score is nonfinite");
+                }
+            }
         } else {
             cv::matchTemplate(
                 image, patch, result,

@@ -444,6 +444,8 @@ package body Masked_NCC_Tests is
       Check (Good, Good, Bad);
       for Method in OpenCV.Image_Processing.Template_Matching_Method loop
          if Method /= OpenCV.Image_Processing.Squared_Difference
+           and then Method
+                    /= OpenCV.Image_Processing.Normalized_Squared_Difference
            and then Method /= OpenCV.Image_Processing.Cross_Correlation
            and then Method
                     /= OpenCV.Image_Processing.Normalized_Cross_Correlation

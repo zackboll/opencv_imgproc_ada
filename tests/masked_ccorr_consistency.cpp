@@ -161,7 +161,7 @@ void guards() {
             OPENCV_IMGPROC_OK, "arithmetic rejection before allocation");
         require(out.value->at<uchar>(0, 0) == 73, "arithmetic atomicity");
     }
-    for (int selector : {-1, OPENCV_IMGPROC_TEMPLATE_SQDIFF_NORMED,
+    for (int selector : {-1,
             OPENCV_IMGPROC_TEMPLATE_CCOEFF, OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED}) {
         require(opencv_imgproc_match_template_masked(s.handle, s.handle,
             s.handle, out.handle, selector) != OPENCV_IMGPROC_OK, "selector");
