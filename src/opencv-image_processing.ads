@@ -1162,6 +1162,16 @@ package OpenCV.Image_Processing is
    --  A Scene window whose included samples are all zero receives exact
    --  Float32 +0.0 through a binding-owned compatibility rule. Positive-energy
    --  windows preserve native scores without clipping or nonfinite repair.
+   --  Normalized_Squared_Difference is the included squared error divided by
+   --  sqrt(template energy * scene energy). Lower is better, and a perfect
+   --  match is zero. Scores are not clamped to [0, 1]. The method requires
+   --  positive masked Template energy; an all-zero mask is rejected. A Scene
+   --  window whose included samples are all zero receives exact Float32'Last
+   --  (IEEE 16#7F7F_FFFF#), a finite worst-match sentinel. That is not the
+   --  NCC +0.0 rule: zero would rank the undefined window as a perfect match.
+   --  OpenCV 4.10 and 5 call native masked TM_SQDIFF_NORMED. OpenCV 4.1
+   --  composes native masked SQDIFF, native Scene-energy correlation, and
+   --  native normalization. Positive-energy scores are not repaired.
    --  The check adds packed Scene support and one output-row bitset; work is
    --  proportional to output rows * active mask pixels * output columns / 64.
    --  Other methods and contract violations raise OpenCV_Error.

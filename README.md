@@ -1,7 +1,8 @@
 # Portable masked template matching
 
 The masked `Match_Template` overload supports `Squared_Difference`,
-`Cross_Correlation`, and `Normalized_Cross_Correlation`.
+`Normalized_Squared_Difference`, `Cross_Correlation`, and
+`Normalized_Cross_Correlation`.
 Its default remains `Squared_Difference`.
 Source, Template, and Mask must be nonempty 2-D UInt8 C1 Mats. Mask dimensions
 must equal Template dimensions, and Template must fit Source. Zero mask bytes
@@ -20,6 +21,7 @@ all-zero scores.
 | Method | Best match | Score semantics |
 |---|---|---|
 | Squared_Difference | Minimum | Squared intensity error |
+| Normalized_Squared_Difference | Minimum | Included squared error / sqrt(template energy * scene energy) |
 | Cross_Correlation | Maximum | Unnormalized intensity-product sum |
 | Normalized_Cross_Correlation | Maximum | Cosine similarity |
 
