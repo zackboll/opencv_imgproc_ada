@@ -236,8 +236,8 @@ int main() {
         Mat bad(cv::Mat(1, 1, CV_8U, cv::Scalar(73)));
         require(opencv_imgproc_match_template_masked(
                     good.handle, patch.handle, weight.handle, bad.handle,
-                    OPENCV_IMGPROC_TEMPLATE_CCOEFF) != OPENCV_IMGPROC_OK,
-                "coefficient selector");
+                    OPENCV_IMGPROC_TEMPLATE_CCOEFF_NORMED) != OPENCV_IMGPROC_OK,
+                "normalized coefficient selector");
         require(bad.value->at<uchar>(0, 0) == 73, "selector atomicity");
         require(opencv_imgproc_match_template_masked(
                     good.handle, patch.handle, weight.handle, bad.handle,

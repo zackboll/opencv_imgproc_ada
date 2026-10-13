@@ -1,8 +1,9 @@
 # Portable masked template matching
 
 The masked `Match_Template` overload supports `Squared_Difference`,
-`Normalized_Squared_Difference`, `Cross_Correlation`, and
-`Normalized_Cross_Correlation`.
+`Normalized_Squared_Difference`, `Cross_Correlation`,
+`Normalized_Cross_Correlation`, and `Correlation_Coefficient`.
+`Normalized_Correlation_Coefficient` remains unsupported.
 Its default remains `Squared_Difference`.
 Source, Template, and Mask must be nonempty 2-D UInt8 C1 Mats. Mask dimensions
 must equal Template dimensions, and Template must fit Source. Zero mask bytes
@@ -108,6 +109,41 @@ guaranteed bit-identical across backends. See
 [the NCC source review](docs/masked-normalized-correlation-source-review.md)
 and
 [the squared-difference qualification](docs/masked-template-matching-source-review.md).
+
+### Masked correlation coefficient
+
+`Correlation_Coefficient` (`TM_CCOEFF`) is the unnormalized masked covariance
+numerator `R = Sum(M*T*I) - Sum(M*T)*Sum(M*I)/Sum(M)`; both means are taken
+over included pixels only. It is mean-centered but **not** scale-normalized:
+it is not a Pearson coefficient and is not limited to [-1, 1]. Higher is
+better, and scores may be positive, zero, or negative (an inverted pattern
+scores negative). A score near zero everywhere is not a landmark.
+
+```ada
+Match_Template
+  (Scene, Patch, Mask, Scores, Correlation_Coefficient);
+Best := Min_Max_Loc (Scores).Maximum_Location;
+--  A Scene with a constant additive offset (no clipping) selects the same
+--  location. Its scores agree only within a tolerance that scales with
+--  Sum(M*T*I), because Float32 cancels two large correlations.
+```
+
+- **Version gate:** OpenCV 4.10 and 5.0 call native masked `TM_CCOEFF`.
+  OpenCV 4.1.0 has no masked CCOEFF (it raises not-implemented), so the shim
+  composes `CCORR(I, Centered) - Sum(Centered)/n * CCORR(I, M)` from native
+  *unmasked* `TM_CCORR`, where `Centered = M*(T - mean)`. The final term is
+  the native residual-mean correction for Float32 centering error. No custom
+  sliding-window kernel exists. The Ada API performs no version detection.
+- **Mask count:** an all-zero mask has an undefined mean. 4.1.0 throws on the
+  native call and 4.10/5.0 return NaN, so the request is rejected before
+  native execution. This applies to CCOEFF only; the other masked methods
+  keep their behavior. One included pixel and constant included Templates or
+  Scene windows have ideal score zero and are accepted.
+- **Safety:** shared `fits()`/`span_fits()` checks run on every branch. The
+  legacy `unmasked_fits()` IPP-area guard applies only to the 4.1
+  composition, because only that branch calls unmasked CCORR.
+- **Numerics:** scores keep native rounding with no clamping or zeroing. See
+  [the CCOEFF source review](docs/masked-correlation-coefficient-source-review.md).
 
 Masks do not automatically provide rotation or scale invariance. Generalized
 Hough Ballard and Guil remain separate detector options. The existing unmasked
