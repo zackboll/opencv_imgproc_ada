@@ -311,7 +311,7 @@ def workspace(mode, destination, settings):
     generate(settings, work)
     (work / "config/opencv_imgproc_config.gpr").write_text(
         f'abstract project OpenCV_Imgproc_Config is\nBuild_Profile := "{profile}";\n'
-        'Ada_Compiler_Switches := ("-gnat2022", "-gnatwa", "-gnatwe");\nend OpenCV_Imgproc_Config;\n')
+        'Ada_Compiler_Switches := ("-gnatwa", "-gnatwe");\nend OpenCV_Imgproc_Config;\n')
     shutil.copyfile(settings["config"], work / "config/target.cgpr")
     (work / "cross-evidence.json").write_text(json.dumps(dict(settings, source_sha=revision), indent=2) + "\n")
     env = dict(os.environ, GPR_PROJECT_PATH=settings["core"] + "/share/gpr",
