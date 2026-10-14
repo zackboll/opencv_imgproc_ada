@@ -66,8 +66,8 @@ branch, regenerated and qualified there.
 | DOC-002C group B morphology | `feature/imgproc-doc-002c-morphology` | #55 (DOC-002B branch) | Open; head `8c3feb6` |
 | DOC-002D group C color | `feature/imgproc-doc-002d-color` | #56 (DOC-002C branch) | Open; head `bba9821` |
 | DOC-002E group E contours and drawing | `feature/imgproc-doc-002e-contours` | #57 (DOC-002D branch) | Open; head `a465211` |
-| DOC-002F group F histograms | `feature/imgproc-doc-002f-histograms` | DOC-002E branch | Qualified locally |
-| DOC-002G group G Hough and matching | `feature/imgproc-doc-002g-matching` | stacked | Draft reviewed; next |
+| DOC-002F group F histograms | `feature/imgproc-doc-002f-histograms` | #58 (DOC-002E branch) | Open; head `56e9720` |
+| DOC-002G group G Hough and matching | `feature/imgproc-doc-002g-matching` | DOC-002F branch | Qualified locally: zero warnings, 1,512/1,512 |
 | DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | stacked | Tooling staged locally |
 | DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | stacked | Tooling staged locally |
 | DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
@@ -338,6 +338,29 @@ Branch `feature/imgproc-doc-002f-histograms` from DOC-002E head `a465211`.
 - Unverified: native zero-bin handling in histogram comparison.
 - Warnings 340 -> 131; coverage 1,172 -> 1,381 of 1,512 items.
 
+### IMGPROC-DOC-002G — group G Hough and template matching
+
+Branch `feature/imgproc-doc-002g-matching` from DOC-002F head `56e9720`.
+
+- 34 declarations documented: Hough thresholds, line, segment and circle
+  records and arrays (with votes), every Find_Hough_* function, generalized
+  Hough Ballard and Guil, Template_Matching_Method (score meaning and
+  minimum/maximum best match for each of the six methods) and both
+  Match_Template overloads (masked: five supported methods, mask rules,
+  zero-energy policies).
+- Corrections: accepted standard lines and Ballard matches need strictly more
+  votes than Hough_Vote_Threshold; unmasked Match_Template writes
+  Destination directly (only same-object or same-start aliases are rejected);
+  the masked example used a nonexistent Min_Max_Loc procedure and now uses
+  `OpenCV.Core.Min_Max_Loc (Scores).Maximum_Location`; the centers-only
+  Hough circle search skips the radius limits of Find_Hough_Circles; masked
+  normalized squared difference also rejects an all-zero included Template.
+- **Phase 2 acceptance reached:** zero GNATdoc warnings and 1,512/1,512
+  items documented. `generate_docs.sh` now fails if either baseline records
+  any identity (negative test: a baselined missing `@param` fails with
+  "documentation baselines must stay empty").
+- Warnings 131 -> 0; coverage 1,381 -> 1,512 of 1,512 items.
+
 ## Findings for the maintainers (not changed: outside documentation scope)
 
 - CLAHE (shim `opencv_imgproc_clahe`): the isolating clone is taken only for
@@ -353,6 +376,14 @@ Branch `feature/imgproc-doc-002f-histograms` from DOC-002E head `a465211`.
   the single-source Calculate_Nonuniform_Histogram appears to raise
   Constraint_Error from `Natural (0) - 1` rather than OpenCV_Error
   (DOC-002F agent reading of the body; untested).
+- Guil search defaults (72 angle by 30 scale bins) with the planner limit of
+  134217727 accumulator cells reject Scenes above 62137 pixels, so a
+  320 x 240 Scene fails with default parameters; README calls the defaults
+  "convenient starting values" (DOC-002G, confirmed by compiling the layout
+  check).
+- README "Template matching" still says the masked overload supports three
+  methods (it supports five), and `docs/task-052-*.md` predates the masked
+  Correlation_Coefficient support (DOC-002G).
 - Further items are listed in the checkpoints of the phases that found them.
 
 ## Remaining roadmap
@@ -366,8 +397,8 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 4. **IMGPROC-DOC-002D** — done (see checkpoint).
 5. **IMGPROC-DOC-002E** — done (see checkpoint).
 6. **IMGPROC-DOC-002F** — done (see checkpoint).
-7. **IMGPROC-DOC-002G** — group G Hough and template matching; zero warnings;
-   empty baseline.
+7. **IMGPROC-DOC-002G** — done (see checkpoint): zero warnings, complete
+   coverage, empty baselines enforced.
 8. **IMGPROC-DOC-003** — theme, viewport, Ada highlighting and verified type
    links: intra-page Imgproc types, and Core types (`OpenCV.Core.Mat`,
    `Mat_Array`, `Min_Max_Loc`; root `Size`, `Point`, `Scalar`, `Rect`,
@@ -387,9 +418,8 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 
 ## Next executable task
 
-Apply the reviewed group G draft (`agent-g`, diff against `f576f4a`) with
-`git apply -3` on `feature/imgproc-doc-002g-matching` from the DOC-002F
-head, regenerate both baselines (both become empty), qualify and open the
-stacked PR; then DOC-003 (staged tooling in
-`/home/zboll/git/opencv/imgproc-doc/dev-003`, local commits), DOC-004 and
-DOC-005.
+Create `feature/imgproc-doc-003-presentation` from the DOC-002G head and
+apply the staged DOC-003 tooling (`dev-003` commit `30978f9` against its
+base `f576f4a`) with `git apply -3`, regenerate, qualify (including the
+Playwright presentation harness) and open the stacked PR; then DOC-004 (the
+staged navigation work in `dev-003`) and DOC-005.
