@@ -2,6 +2,13 @@
 
 set -eu
 
+# Explicit cross mode must never fall through to host discovery or generation.
+case "${OPENCV_IMGPROC_CROSS:-False}" in
+    True) exec sh "$(dirname -- "$0")/configure_cross_opencv.sh" --check ;;
+    False) ;;
+    *) echo 'error: OPENCV_IMGPROC_CROSS must be True or False' >&2; exit 1 ;;
+esac
+
 output=config/opencv_imgproc_install.gpr
 sysname=$(uname -s)
 
@@ -182,6 +189,8 @@ abstract project OpenCV_Imgproc_Install is
    Cxx_Runtime_Switch := "${cxx_runtime_switch}";
    Cxx_Driver := "${cxx_driver}";
    Cxx_Sysroot := "${cxx_sysroot}";
+   Cross_Compiler_Switches := ();
+   Cross_Linker_Switches := ();
 end OpenCV_Imgproc_Install;
 EOF_GPR
 

@@ -1,0 +1,40 @@
+name: Cross configuration controls
+on:
+  pull_request:
+  push:
+    branches: [main, 'feature/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  configuration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Exact source identity
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir evidence
+          git rev-parse HEAD | tee evidence/source-sha.txt
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Synthetic fail-closed tests (not compilation evidence)
+        run: |
+          set -o pipefail
+          python3 -m unittest discover -s tests -p test_cross_configuration.py -v 2>&1 | tee evidence/configuration.log
+      - name: Shell syntax and static checks
+        run: |
+          sh -n scripts/configure_cross_opencv.sh scripts/cross_build_imgproc.sh scripts/validate_cross_target.sh scripts/configure_opencv.sh
+          shellcheck scripts/configure_cross_opencv.sh scripts/cross_build_imgproc.sh scripts/validate_cross_target.sh
+          python3 -m py_compile scripts/cross_configuration.py tests/test_cross_configuration.py
+          git diff --check
+      - name: Separate qualification dispositions
+        run: |
+          printf '%s\n' 'GENERIC_CONFIG_QUALIFIED: synthetic controls pass' 'Target compilation: NOT RUN' 'Target execution: NOT RUN' 'YOCTO_SCARTHGAP_PENDING' | tee evidence/dispositions.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-configuration-evidence
+          path: evidence/
