@@ -14,8 +14,18 @@ imgproc=$(setting OpenCV_Imgproc_Link_Option)
 opencv_core=$(setting OpenCV_Core_Link_Option)
 core=${OPENCV_CORE_ALIRE_PREFIX:?indexed Core must be resolved}
 mkdir -p obj/native config
+case $(uname -s) in
+    Darwin)
+        # Match the production Apple toolchain: Alire's GNAT environment can
+        # otherwise hide the SDK C++ standard headers from direct clang++.
+        sdk=$(setting Cxx_Sysroot)
+        set -- -isysroot "$sdk" -Wno-error=c11-extensions
+        ;;
+    *) set -- ;;
+esac
 "$cxx" -std=c++17 -Wall -Wextra -Wpedantic -Werror -fPIC \
-    "$include" "-I$core/cpp" -c native/reference.cpp -o obj/native/reference.o
+    "$@" "$include" "-I$core/cpp" \
+    -c native/reference.cpp -o obj/native/reference.o
 case $(uname -s) in
     MINGW*|MSYS*)
         mkdir -p ../lib

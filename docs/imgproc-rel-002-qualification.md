@@ -185,6 +185,12 @@ controls are retained. The standalone matrix runner provides independently
 executed exact-source OpenCV 4.1/4.6/4.10/5.0 evidence; ordinary hosted CI does
 not substitute its current packaged OpenCV for this pinned version matrix.
 Final source identity checks compare tested exports with the committed tree.
+The first corrective hosted macOS run built the production library but failed
+compiling the new test oracle (`limits` not found). The helper now uses the
+same explicit SDK sysroot and existing C11-header-extension policy as the
+production Apple configuration; this is a test-toolchain correction, not a
+binding change. Original hosted diagnostics are retained; corrected-head
+results must be checked again. Windows provisioning status is independent.
 
 Parent candidate hosted runs **38517425873** (all three platform jobs),
 **38517428098** (documentation) and **38517430338** (installed consumers) all
