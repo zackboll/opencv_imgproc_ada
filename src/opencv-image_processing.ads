@@ -248,67 +248,298 @@ package OpenCV.Image_Processing is
       Depth       : Hanning_Window_Depth := Float64_Hanning_Window)
       return OpenCV.Core.Mat;
 
-   --  Image/pixel accumulation, not histogram accumulation. All inputs are
-   --  nonempty 2-D Mats of identical geometry. Base is Float32 or Float64
-   --  with Source's channel count. Plain accumulation accepts UInt8, UInt16,
+   --  Image/pixel accumulation, not histogram accumulation: returns
+   --  `Base + Source` at every pixel and channel. Accumulate_Image,
+   --  Accumulate_Image_Square, Accumulate_Image_Product and
+   --  Update_Running_Average share this contract. All inputs are nonempty
+   --  2-D Mats of identical geometry. Base is Float32 or Float64 with
+   --  Source's channel count. Plain accumulation accepts UInt8, UInt16,
    --  Float32 and Float64 (Float64 requires a Float64 Base), any channels.
    --  Square, product and running average accept UInt8/Float32 C1 or C3.
-   --  Product sources have identical types. Invalid inputs raise OpenCV_Error.
-   --  Mask overloads require UInt8 C1 of matching geometry: zero preserves
-   --  Base, any nonzero sample enables every channel at that pixel.
-   --  Each function updates a private Base clone and returns fresh independent
-   --  storage only after success. Inputs and Region parents are never
-   --  modified; Regions contribute only logical pixels. All input storage
-   --  aliases are supported. Native floating overflow is not saturated or
-   --  prohibited.
+   --
+   --  Each function updates a private Base clone and returns fresh
+   --  independent storage, with Base's geometry, depth and channel count,
+   --  only after success; nothing is modified on failure. Inputs and
+   --  Region parents are never modified; Regions contribute only logical
+   --  pixels, and a Base Region yields a packed independent result. All
+   --  input storage aliases are supported, including identical and
+   --  overlapping inputs. Native floating overflow is not saturated or
+   --  prohibited: arithmetic follows IEEE, including overflow to infinity.
+   --  Each input's pixel count, channel-sample count, byte count and row
+   --  stride must not exceed 2_147_483_647 (native int layout limits).
+   --  @param Source UInt8, UInt16, Float32 or Float64 image (Float64
+   --  requires a Float64 Base) added to Base; any channel count.
+   --  @param Base Float32 or Float64 accumulator of Source's geometry and
+   --  channel count. It is read, not updated.
+   --  @return Fresh Mat typed like Base holding `Base + Source`.
+   --  @exception OpenCV_Error Raised for an empty or non-2-D input,
+   --  mismatched geometry or channel count, an unsupported depth pair,
+   --  an input beyond the native layout limits, or a native failure.
    function Accumulate_Image
      (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+
+   --  Masked Accumulate_Image: the result holds `Base + Source` only at
+   --  pixels whose Mask sample is nonzero and Base's values elsewhere. Any
+   --  nonzero Mask value enables every channel at that pixel. Depths,
+   --  geometry, fresh-result publication, Region, aliasing and layout
+   --  rules are those of the unmasked overload.
+   --  @param Source Image added at enabled pixels: UInt8, UInt16, Float32
+   --  or Float64 (Float64 requires a Float64 Base), any channel count.
+   --  @param Base Float32 or Float64 accumulator of Source's geometry and
+   --  channel count. It is read, not updated.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with Source's rows and
+   --  columns; zero preserves Base. It may share storage with Source.
+   --  @return Fresh Mat typed like Base holding the masked sum.
+   --  @exception OpenCV_Error Raised for an invalid Source or Base
+   --  as for the unmasked overload, or for a Mask that is empty, not 2-D,
+   --  not UInt8 C1 or of different geometry.
    function Accumulate_Image
      (Source, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+
+   --  Squared accumulation: returns `Base + Source * Source` at every pixel
+   --  and channel, in fresh storage typed like Base. Source is UInt8 or
+   --  Float32 with one or three channels; Base is Float32 or Float64 with
+   --  Source's geometry and channel count. Otherwise as Accumulate_Image:
+   --  nonempty 2-D inputs, private Base clone published only after
+   --  success, logical Regions, all aliases supported, native layout
+   --  limits, and unsaturated IEEE floating arithmetic.
+   --  @param Source UInt8 or Float32 C1 or C3 image whose squares are
+   --  added.
+   --  @param Base Float32 or Float64 accumulator of Source's geometry and
+   --  channel count. It is read, not updated.
+   --  @return Fresh Mat typed like Base holding the squared sum.
+   --  @exception OpenCV_Error Raised for an empty or non-2-D input,
+   --  mismatched geometry or channel count, an unsupported depth or
+   --  channel count, an input beyond the native layout limits, or a native
+   --  failure.
    function Accumulate_Image_Square
      (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+
+   --  Masked Accumulate_Image_Square: adds `Source * Source` only at pixels
+   --  whose Mask sample is nonzero; elsewhere the result keeps Base. Any
+   --  nonzero Mask value enables every channel at that pixel. Otherwise as
+   --  the unmasked overload.
+   --  @param Source UInt8 or Float32 C1 or C3 image whose squares are
+   --  added at enabled pixels.
+   --  @param Base Float32 or Float64 accumulator of Source's geometry and
+   --  channel count. It is read, not updated.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with Source's rows and
+   --  columns; zero preserves Base. It may share storage with Source.
+   --  @return Fresh Mat typed like Base holding the masked squared sum.
+   --  @exception OpenCV_Error Raised for an invalid Source or Base
+   --  as for the unmasked overload, or for a Mask that is empty, not 2-D,
+   --  not UInt8 C1 or of different geometry.
    function Accumulate_Image_Square
      (Source, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+
+   --  Product accumulation: returns `Base + Source_1 * Source_2` at every
+   --  pixel and channel, in fresh storage typed like Base. The sources are
+   --  UInt8 or Float32 C1 or C3 with identical depth, channel count and
+   --  geometry; they may be the same Mat. Base is Float32 or Float64 with
+   --  their geometry and channel count. Otherwise as Accumulate_Image:
+   --  nonempty 2-D inputs, private Base clone published only after
+   --  success, logical Regions, all aliases supported, native layout
+   --  limits, and unsaturated IEEE floating arithmetic.
+   --  @param Source_1 First UInt8 or Float32 C1 or C3 factor image.
+   --  @param Source_2 Second factor image, typed and sized like Source_1.
+   --  @param Base Float32 or Float64 accumulator of the sources' geometry
+   --  and channel count. It is read, not updated.
+   --  @return Fresh Mat typed like Base holding the product sum.
+   --  @exception OpenCV_Error Raised for an empty or non-2-D input,
+   --  sources of different type or geometry, an unsupported depth or
+   --  channel count, a mismatched Base, an input beyond the native layout
+   --  limits, or a native failure.
    function Accumulate_Image_Product
      (Source_1, Source_2, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+
+   --  Masked Accumulate_Image_Product: adds `Source_1 * Source_2` only at
+   --  pixels whose Mask sample is nonzero; elsewhere the result keeps
+   --  Base. Any nonzero Mask value enables every channel at that pixel.
+   --  Otherwise as the unmasked overload.
+   --  @param Source_1 First UInt8 or Float32 C1 or C3 factor image.
+   --  @param Source_2 Second factor image, typed and sized like Source_1.
+   --  @param Base Float32 or Float64 accumulator of the sources' geometry
+   --  and channel count. It is read, not updated.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with the sources' rows
+   --  and columns; zero preserves Base.
+   --  @return Fresh Mat typed like Base holding the masked product sum.
+   --  @exception OpenCV_Error Raised for invalid sources or Base as
+   --  for the unmasked overload, or for a Mask that is empty, not 2-D, not
+   --  UInt8 C1 or of different geometry.
    function Accumulate_Image_Product
      (Source_1, Source_2, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat;
-   --  Result = `(1 - Weight) * Base + Weight * Source` at enabled pixels.
-   --  Weight must be finite and in 0.0 .. 1.0 (otherwise OpenCV_Error).
+
+   --  Running (exponentially weighted) average: the result is
+   --  `(1 - Weight) * Base + Weight * Source` at every pixel and channel,
+   --  in fresh storage typed like Base. Weight must be finite and in
+   --  0.0 .. 1.0 (otherwise OpenCV_Error). Zero retains a finite Base; one
+   --  yields the source values converted to Base's depth. Native code may
+   --  round Weight to the accumulator precision or, on IPP paths, to
+   --  Float32. Source is UInt8 or Float32 C1 or C3; Base is Float32 or
+   --  Float64 with Source's geometry and channel count. Otherwise as
+   --  Accumulate_Image: nonempty 2-D inputs, private Base clone published
+   --  only after success, logical Regions, all aliases supported, native
+   --  layout limits, and unsaturated IEEE floating arithmetic.
+   --  @param Source UInt8 or Float32 C1 or C3 image blended into Base.
+   --  @param Base Float32 or Float64 running average of Source's geometry
+   --  and channel count. It is read, not updated.
+   --  @param Weight Finite weight of Source in 0.0 .. 1.0; larger values
+   --  forget Base faster.
+   --  @return Fresh Mat typed like Base holding the updated average.
+   --  @exception OpenCV_Error Raised for a NaN, infinite or
+   --  out-of-range Weight, an empty or non-2-D input, mismatched geometry
+   --  or channel count, an unsupported depth or channel count, an input
+   --  beyond the native layout limits, or a native failure.
    function Update_Running_Average
      (Source, Base : OpenCV.Core.Mat; Weight : OpenCV.Float64_Value)
       return OpenCV.Core.Mat;
+
+   --  Masked Update_Running_Average: the result is
+   --  `(1 - Weight) * Base + Weight * Source` only at pixels whose Mask
+   --  sample is nonzero and Base elsewhere. Any nonzero Mask value enables
+   --  every channel at that pixel. Otherwise as the unmasked overload.
+   --  @param Source UInt8 or Float32 C1 or C3 image blended into Base at
+   --  enabled pixels.
+   --  @param Base Float32 or Float64 running average of Source's geometry
+   --  and channel count. It is read, not updated.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with Source's rows and
+   --  columns; zero preserves Base. It may share storage with Source.
+   --  @param Weight Finite weight of Source in 0.0 .. 1.0.
+   --  @return Fresh Mat typed like Base holding the masked average.
+   --  @exception OpenCV_Error Raised for an invalid Weight, Source
+   --  or Base as for the unmasked overload, or for a Mask that is empty,
+   --  not 2-D, not UInt8 C1 or of different geometry.
    function Update_Running_Average
      (Source, Base, Mask : OpenCV.Core.Mat; Weight : OpenCV.Float64_Value)
       return OpenCV.Core.Mat;
 
+   --  Depth of the summed-area (Sum) and tilted-sum outputs of
+   --  Integral_Sum, Integral_Sum_And_Squares and Integral_Images. UInt8
+   --  sources accept every literal, Float32 sources Float32_Integral or
+   --  Float64_Integral, and Float64 sources only Float64_Integral; other
+   --  pairings raise OpenCV_Error.
+   --  @enum Int32_Integral Int32 sums, for UInt8 sources only. Rejected
+   --  when the actual total of any channel exceeds 2_147_483_647.
+   --  @enum Float32_Integral Float32 sums, for UInt8 or Float32 sources,
+   --  with Float32 rounding.
+   --  @enum Float64_Integral Float64 sums, for every supported source
+   --  depth; the default of every integral function.
    type Integral_Sum_Depth is
      (Int32_Integral, Float32_Integral, Float64_Integral);
+
+   --  Depth of the Squared_Sum output of Integral_Sum_And_Squares and
+   --  Integral_Images.
+   --  @enum Float32_Squared_Integral Float32 squared sums. Rejected together
+   --  with a Float64_Integral Sum, and therefore for Float64 sources.
+   --  @enum Float64_Squared_Integral Float64 squared sums, accepted with
+   --  every Sum depth; the default.
    type Integral_Squared_Depth is
      (Float32_Squared_Integral, Float64_Squared_Integral);
+
+   --  Result of Integral_Sum_And_Squares: two fresh owning Mats with
+   --  Source's channel count and (Source.Rows + 1) x (Source.Columns + 1)
+   --  geometry, each with a zero first row and first column. Channels are
+   --  summed independently.
+   --  @field Sum Summed-area table: the element at row Y, column X is the
+   --  sum of source pixels with row < Y and column < X. Its depth is
+   --  selected by Sum_Depth.
+   --  @field Squared_Sum Sum of squared source samples over the same
+   --  rectangles as Sum. Its depth is selected by Squared_Depth.
    type Integral_Sum_And_Squares_Result is record
       Sum         : OpenCV.Core.Mat;
       Squared_Sum : OpenCV.Core.Mat;
    end record;
+
+   --  Result of Integral_Images: three fresh owning Mats with Source's
+   --  channel count and (Source.Rows + 1) x (Source.Columns + 1) geometry.
+   --  Channels are summed independently.
+   --  @field Sum Summed-area table: the element at row Y, column X is the
+   --  sum of source pixels with row < Y and column < X; the first row and
+   --  column are zero. Its depth is selected by Sum_Depth.
+   --  @field Squared_Sum Sum of squared source samples over the same
+   --  rectangles as Sum, with a zero first row and column. Its depth is
+   --  selected by Squared_Depth.
+   --  @field Tilted_Sum OpenCV's 45-degree rotated sum: the element at row
+   --  Y, column X adds source pixels (x, y) with y < Y and
+   --  `abs (x - X + 1) <= Y - y - 1`. It has the same depth as Sum.
    type Integral_Images_Result is record
       Sum         : OpenCV.Core.Mat;
       Squared_Sum : OpenCV.Core.Mat;
       Tilted_Sum  : OpenCV.Core.Mat;
    end record;
 
-   --  Nonempty 2-D UInt8, Float32 or Float64 source. Each channel is
-   --  independent; results are fresh (Rows+1, Columns+1) Mats with a zero
-   --  top row and left column. A Region is its own logical image.
-   --  UInt8/Int32 is rejected if any actual channel total exceeds INT_MAX.
+   --  Computes the summed-area table of Source: the element at row Y,
+   --  column X is the sum of source pixels with row < Y and column < X.
+   --  With S (row, column) denoting that element, the rectangle
+   --  [X1, X2) x [Y1, Y2) totals
+   --  `S (Y2, X2) - S (Y1, X2) - S (Y2, X1) + S (Y1, X1)`.
+   --
+   --  Nonempty 2-D UInt8, Float32 or Float64 source with any channel
+   --  count. Each channel is independent; the result is a fresh (Rows+1,
+   --  Columns+1) Mat with Source's channel count and a zero top row and
+   --  left column. A Region is its own logical image: pixels outside it do
+   --  not participate. Source is unchanged. The sum is computed privately
+   --  and published only after success. UInt8/Int32 is rejected if any
+   --  actual channel total exceeds INT_MAX. Floating sums follow the
+   --  selected precision and IEEE rounding, overflow and NaN propagation;
+   --  there is no finite-value scan. Geometry, channel-expanded widths and
+   --  strides that would overflow OpenCV's native int arithmetic are
+   --  rejected.
+   --  @param Source Nonempty 2-D UInt8, Float32 or Float64 image to
+   --  integrate.
+   --  @param Sum_Depth Depth of the result; see Integral_Sum_Depth for the
+   --  pairings each source depth accepts. Defaults to Float64_Integral.
+   --  @return Fresh owning summed-area Mat.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  unsupported-depth Source, an unsupported Sum_Depth, an Int32 total
+   --  overflow, a native int arithmetic limit, or a native failure.
    function Integral_Sum
      (Source    : OpenCV.Core.Mat;
       Sum_Depth : Integral_Sum_Depth := Float64_Integral)
       return OpenCV.Core.Mat;
+
+   --  Computes the summed-area table and the integral of squared samples
+   --  of Source in one native call (see Integral_Sum_And_Squares_Result).
+   --  The Source contract, geometry, Region, Int32 overflow and native
+   --  limit rules are those of Integral_Sum. Both Mats are fresh owning
+   --  storage published only after complete success. Accepted
+   --  (Sum_Depth, Squared_Depth) pairs: UInt8 accepts all except
+   --  (Float64_Integral, Float32_Squared_Integral); Float32 accepts
+   --  (Float32, Float32), (Float32, Float64) and (Float64, Float64);
+   --  Float64 accepts only (Float64, Float64).
+   --  @param Source Nonempty 2-D UInt8, Float32 or Float64 image to
+   --  integrate.
+   --  @param Sum_Depth Depth of the Sum component; defaults to
+   --  Float64_Integral.
+   --  @param Squared_Depth Depth of the Squared_Sum component; defaults to
+   --  Float64_Squared_Integral.
+   --  @return Record holding the fresh Sum and Squared_Sum Mats.
+   --  @exception OpenCV_Error Raised for an invalid Source, an
+   --  unsupported depth pair, an Int32 total overflow, a native int
+   --  arithmetic limit, or a native failure.
    function Integral_Sum_And_Squares
      (Source        : OpenCV.Core.Mat;
       Sum_Depth     : Integral_Sum_Depth := Float64_Integral;
       Squared_Depth : Integral_Squared_Depth := Float64_Squared_Integral)
       return Integral_Sum_And_Squares_Result;
+
+   --  Computes the summed-area table, the squared-sample integral and
+   --  OpenCV's 45-degree tilted sum of Source in one native call (see
+   --  Integral_Images_Result). Tilted_Sum has Sum's depth. Source contract,
+   --  depth pairs, geometry, Region, Int32 overflow and publication rules
+   --  are those of Integral_Sum_And_Squares; the tilted scratch indexing
+   --  adds its own native int bound on the channel-expanded width.
+   --  @param Source Nonempty 2-D UInt8, Float32 or Float64 image to
+   --  integrate.
+   --  @param Sum_Depth Depth of the Sum and Tilted_Sum components; defaults
+   --  to Float64_Integral.
+   --  @param Squared_Depth Depth of the Squared_Sum component; defaults to
+   --  Float64_Squared_Integral.
+   --  @return Record holding the fresh Sum, Squared_Sum and Tilted_Sum
+   --  Mats.
+   --  @exception OpenCV_Error Raised for an invalid Source, an
+   --  unsupported depth pair, an Int32 total overflow, a native int
+   --  arithmetic limit, or a native failure.
    function Integral_Images
      (Source        : OpenCV.Core.Mat;
       Sum_Depth     : Integral_Sum_Depth := Float64_Integral;
@@ -4041,20 +4272,35 @@ package OpenCV.Image_Processing is
    --  enclosing parent image outside that view. Constant images retain their
    --  intensity. Destination may initially be empty or have a different size,
    --  depth, or channel count; on success it receives Source's rows and
-   --  columns with UInt8 depth and one channel. Source remains unchanged when
+   --  columns with UInt8 depth and one channel. OpenCV writes Destination
+   --  directly: it reuses Destination's storage when Destination already
+   --  is a UInt8 C1 Mat of Source's size (shallow copies of Destination
+   --  and a Region's parent then see the result) and otherwise rebinds
+   --  Destination to new storage. Source remains unchanged when
    --  Source and Destination do not share storage. Direct same-object in-place
    --  use is supported:
    --
-   --    Equalize_Histogram (Image, Image);
+   --     Equalize_Histogram (Image, Image);
    --
    --  Other Source/Destination storage-sharing combinations are an Ada binding
    --  restriction for this slice and are rejected before native writes. That
    --  includes distinct shallow aliases and partially overlapping source and
    --  destination ROIs; it is not a claim that OpenCV forbids every alias.
+   --  Source.Rows times Source.Columns must not exceed 2_147_483_647
+   --  because OpenCV counts pixels in 32-bit histogram bins.
    --  Public contract violations raise OpenCV.OpenCV_Error before Destination
    --  is modified. Failures reported by OpenCV after Destination allocation or
    --  native execution raise OpenCV.OpenCV_Error and do not roll back
    --  Destination.
+   --  @param Source Nonempty 2-D UInt8 C1 image whose own pixels define the
+   --  histogram; it is not modified unless it is Destination itself.
+   --  @param Destination Receives the equalized UInt8 C1 image of Source's
+   --  size; may be Source itself but must not otherwise share storage
+   --  with Source.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, non-UInt8
+   --  or multi-channel Source, a pixel count above 2_147_483_647, a
+   --  Destination that shares storage with a distinct Source, or a native
+   --  failure.
    procedure Equalize_Histogram
      (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat);
 
@@ -4064,12 +4310,43 @@ package OpenCV.Image_Processing is
    --  regions; Clip_Limit controls contrast limiting in each region. Source
    --  must be a non-empty two-dimensional UInt8 or UInt16 single-channel Mat.
    --  No implicit color or depth conversion is performed. Tile counts need not
-   --  divide Source dimensions evenly: OpenCV pads internally as needed.
+   --  divide Source dimensions evenly: OpenCV pads internally as needed,
+   --  using Reflect_101. Clip_Limit must be finite and greater than zero;
+   --  both tile counts must be positive.
    --  Destination may initially be empty or incompatible; on success it has
    --  Source's geometry, depth, and one channel. Direct same-object in-place
    --  use, including an ROI, is supported. Distinct Source/Destination Mats
    --  with overlapping storage are rejected before native writes. Contract
    --  violations and native failures raise OpenCV.OpenCV_Error.
+   --
+   --  When Source is Destination itself or a non-continuous Region, CLAHE
+   --  runs on a private snapshot, so padding uses only that view's pixels,
+   --  and the result is then copied into Destination. Otherwise OpenCV
+   --  writes Destination directly and reads Source in place; a continuous
+   --  Region (for example full-width rows) then remains a view of its
+   --  parent, and padding of a size not divisible by the tile counts can
+   --  read parent pixels just outside the Region. In both cases
+   --  Destination's storage is reused when it already is a Mat of
+   --  Source's size and type (shallow copies of Destination and a Region's
+   --  parent then see the result); otherwise Destination is rebound to new
+   --  storage. When storage is independent, Source remains unchanged.
+   --  Tile counts, the padded geometry and the tile area must fit native
+   --  int arithmetic, and Clip_Limit must not exceed
+   --  `2147483647.0 * 65536.0 / Tile_Area`, where Tile_Area is the pixel
+   --  count of one padded tile.
+   --  @param Source Nonempty 2-D UInt8 or UInt16 C1 image to equalize.
+   --  @param Destination Receives the equalized image with Source's
+   --  geometry and depth; may be Source itself but must not otherwise
+   --  share storage with Source.
+   --  @param Clip_Limit Contrast limit applied to each tile histogram;
+   --  finite and greater than zero. Defaults to 40.0.
+   --  @param Tile_Grid_Size Number of tiles across (Width) and down
+   --  (Height), not pixel dimensions; both positive. Defaults to 8 x 8.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D,
+   --  multi-channel or unsupported-depth Source, a nonpositive or
+   --  nonfinite Clip_Limit, a zero tile count, native int limits, a
+   --  Destination that shares storage with a distinct Source, or a native
+   --  failure.
    procedure CLAHE
      (Source         : OpenCV.Core.Mat;
       Destination    : in out OpenCV.Core.Mat;
@@ -5248,44 +5525,144 @@ package OpenCV.Image_Processing is
      (State : GrabCut_State; Row : Natural; Column : Natural)
       return GrabCut_Label;
 
+   --  Built-in ground distance between the coordinate vectors of two
+   --  signature rows, used by the Earth Mover's Distance functions.
+   --  OpenCV subtracts coordinates in Float32, accumulates in Float64 and
+   --  returns a Float32 cost.
+   --  @enum Manhattan_EMD L1 distance (OpenCV DIST_L1): the sum of absolute
+   --  coordinate differences.
+   --  @enum Euclidean_EMD L2 distance (OpenCV DIST_L2): the square root of
+   --  the sum of squared differences, narrowed to Float32 before the root.
+   --  This is the default metric.
+   --  @enum Chessboard_EMD Chebyshev distance (OpenCV DIST_C): the largest
+   --  absolute coordinate difference.
    type Earth_Mover_Metric is (Manhattan_EMD, Euclidean_EMD, Chessboard_EMD);
+
+   --  Exact transport result of Earth_Mover_Distance_With_Flow and
+   --  Earth_Mover_Distance_With_Cost_And_Flow.
+   --  @field Distance Native Float32 Earth Mover's Distance, normalized by
+   --  the larger total signature mass.
+   --  @field Flow Fresh owning Float32 C1 Mat with Signature_1.Rows rows and
+   --  Signature_2.Rows columns. The element at row I, column J is the real
+   --  mass moved from row I of Signature_1 to row J of Signature_2; mass
+   --  exchanged with the internal dummy cluster is not represented, and
+   --  zero-weight rows carry no flow.
    type Earth_Mover_Result is record
       Distance : OpenCV.Float32_Value;
       Flow     : OpenCV.Core.Mat;
    end record;
 
+   --  Exact Earth Mover's Distance between two weighted signatures under a
+   --  built-in Metric, computed by native cv::EMD with a full transport
+   --  solve.
+   --
    --  Nonempty 2-D Float32 C1 signatures: each row is (weight, coordinates).
-   --  Built-in metrics require at least one coordinate and equal column
-   --  counts.
-   --  Explicit Cost permits weights-only signatures (one column); Cost is
-   --  Float32 C1, with Rows = Signature_1.Rows and Columns = Signature_2.Rows.
+   --  Built-in metrics require at least one coordinate; both signatures
+   --  always have equal column counts.
    --  All weights are finite and nonnegative, each signature has positive
    --  total mass, and its sum must remain finite in Float32. Built-in
-   --  coordinates are finite; relevant transport costs are nonnegative and
-   --  strictly less than the native 1.0e20 Float32 sentinel. All supplied
-   --  cost entries are checked, including entries for zero-weight rows.
+   --  coordinates are finite; relevant transport costs (between rows of
+   --  positive weight, including every Float32 coordinate difference and
+   --  the Float32 L2 squared sum) are finite, nonnegative and strictly less
+   --  than the native 1.0e20 Float32 sentinel.
    --  Unequal total masses are balanced by an internal zero-cost dummy
-   --  cluster;
-   --  distance is normalized by the larger mass. Flow (when requested) is a
-   --  fresh Float32 C1 Rows_1 x Rows_2 Mat of real transported mass; dummy
-   --  mass is not represented. Inputs, including Regions, are deep-snapshotted
-   --  into packed storage before the native solve. No lower-bound shortcut is
-   --  used. Invalid inputs or native failures raise OpenCV_Error.
+   --  cluster; distance is normalized by the larger mass. Inputs, including
+   --  Regions, are deep-snapshotted into packed storage before the native
+   --  solve and are never modified. No lower-bound shortcut is used.
+   --  Signature sizes whose OpenCV 4.1 work buffer or signed row indexing
+   --  would overflow int (for example two 16_000-row signatures) are
+   --  rejected. A nonfinite native distance is not returned.
+   --  @param Signature_1 First signature; its rows index the rows of a
+   --  transport flow.
+   --  @param Signature_2 Second signature, with Signature_1's column count.
+   --  @param Metric Ground distance between coordinate vectors; defaults to
+   --  Euclidean_EMD.
+   --  @return The native Float32 distance.
+   --  @exception OpenCV_Error Raised for an invalid signature shape
+   --  or type, unequal column counts, an invalid weight, mass, coordinate
+   --  or cost, a native size limit, a nonfinite result, or a native
+   --  failure.
    function Earth_Mover_Distance
      (Signature_1, Signature_2 : OpenCV.Core.Mat;
       Metric                   : Earth_Mover_Metric := Euclidean_EMD)
       return OpenCV.Float32_Value;
+
+   --  As Earth_Mover_Distance (same signature, metric, safety and snapshot
+   --  contract, always an exact native solve), also returning the optimal
+   --  flow. Flow is a fresh Float32 C1 Rows_1 x Rows_2 Mat of real
+   --  transported mass; dummy mass is not represented. Distance and Flow
+   --  are published only after success.
+   --  @param Signature_1 First signature; its rows index the Flow rows.
+   --  @param Signature_2 Second signature, with Signature_1's column count;
+   --  its rows index the Flow columns.
+   --  @param Metric Ground distance between coordinate vectors; defaults to
+   --  Euclidean_EMD.
+   --  @return Distance and fresh owning Flow (see Earth_Mover_Result).
+   --  @exception OpenCV_Error Raised for the conditions listed for
+   --  Earth_Mover_Distance.
    function Earth_Mover_Distance_With_Flow
      (Signature_1, Signature_2 : OpenCV.Core.Mat;
       Metric                   : Earth_Mover_Metric := Euclidean_EMD)
       return Earth_Mover_Result;
+
+   --  Exact Earth Mover's Distance with an explicit ground-cost matrix
+   --  instead of a built-in metric (native DIST_USER), always solved in
+   --  full. Explicit Cost permits weights-only signatures (one column); Cost
+   --  is Float32 C1, with Rows = Signature_1.Rows and Columns =
+   --  Signature_2.Rows. The element at row I, column J is the cost of
+   --  moving mass from row I of Signature_1 to row J of Signature_2. All
+   --  supplied cost entries are checked, including entries for zero-weight
+   --  rows: each must be finite, nonnegative and strictly less than the
+   --  native 1.0e20 Float32 sentinel. Coordinate columns, when present, are
+   --  ignored, but both signatures still need equal column counts. Weight,
+   --  mass, normalization, native size and snapshot rules (Cost included)
+   --  are those of Earth_Mover_Distance.
+   --  @param Signature_1 First signature; its rows index the Cost rows.
+   --  @param Signature_2 Second signature, with Signature_1's column count;
+   --  its rows index the Cost columns.
+   --  @param Cost Nonempty 2-D Float32 C1 transport-cost matrix of
+   --  Signature_1.Rows x Signature_2.Rows; it is not modified.
+   --  @return The native Float32 distance.
+   --  @exception OpenCV_Error Raised for an invalid signature or
+   --  Cost shape or type, unequal column counts, an invalid weight, mass
+   --  or cost entry, a native size limit, a nonfinite result, or a native
+   --  failure.
    function Earth_Mover_Distance_With_Cost
      (Signature_1, Signature_2, Cost : OpenCV.Core.Mat)
       return OpenCV.Float32_Value;
+
+   --  As Earth_Mover_Distance_With_Cost (same signature, Cost, safety and
+   --  snapshot contract, always an exact native solve), also returning the
+   --  optimal flow. Flow is a fresh Float32 C1 Rows_1 x Rows_2 Mat of real
+   --  transported mass; dummy mass is not represented. Distance and Flow
+   --  are published only after success.
+   --  @param Signature_1 First signature; its rows index the Cost and Flow
+   --  rows.
+   --  @param Signature_2 Second signature, with Signature_1's column count;
+   --  its rows index the Cost and Flow columns.
+   --  @param Cost Nonempty 2-D Float32 C1 transport-cost matrix of
+   --  Signature_1.Rows x Signature_2.Rows; it is not modified.
+   --  @return Distance and fresh owning Flow (see Earth_Mover_Result).
+   --  @exception OpenCV_Error Raised for the conditions listed for
+   --  Earth_Mover_Distance_With_Cost.
    function Earth_Mover_Distance_With_Cost_And_Flow
      (Signature_1, Signature_2, Cost : OpenCV.Core.Mat)
       return Earth_Mover_Result;
 
+   --  Result of Earth_Mover_Distance_With_Lower_Bound. Never infer
+   --  exactness from Distance = Lower_Bound: an exact distance can equal
+   --  its bound.
+   --  @field Distance The exact native distance when Exact_Distance_Computed
+   --  is True; otherwise the early-exit value, equal to Lower_Bound.
+   --  @field Lower_Bound OpenCV's weighted-center bound when
+   --  Lower_Bound_Available is True: the Metric distance between the
+   --  weight-scaled coordinate sums of the two signatures divided by the
+   --  larger native mass. It is 0.0 when no bound is available.
+   --  @field Lower_Bound_Available True when the native Float32 masses
+   --  satisfy `abs (Sum_1 - Sum_2) < 1.0e-5 * Sum_1`, so OpenCV computed
+   --  the bound.
+   --  @field Exact_Distance_Computed True when the native transport solve
+   --  ran; False only when an available bound reached the threshold.
    type Earth_Mover_Bounded_Result is record
       Distance                : OpenCV.Float32_Value;
       Lower_Bound             : OpenCV.Float32_Value;
@@ -5295,7 +5672,7 @@ package OpenCV.Image_Processing is
 
    --  Same signature and native-safety contract as exact built-in EMD above.
    --  Threshold must be finite and nonnegative. When native Float32 masses
-   --  satisfy abs (Sum_1 - Sum_2) < 1.0e-5 * Sum_1, OpenCV calculates its
+   --  satisfy `abs (Sum_1 - Sum_2) < 1.0e-5 * Sum_1`, OpenCV calculates its
    --  weighted-center bound. If Bound >= Threshold, it skips transport:
    --  Distance = Lower_Bound and Exact_Distance_Computed = False.
    --  Equality exits too; zero requests bound-only whenever available.
@@ -5304,6 +5681,25 @@ package OpenCV.Image_Processing is
    --  Full safety preflight and packed Region snapshots precede the shortcut.
    --  Nonfinite native results raise OpenCV_Error. No Cost overload (native
    --  bound requires a metric) or Flow (early-exit zeros are not transport).
+   --  When the bound is available, checks guarding OpenCV 4.1's bound
+   --  arithmetic also reject a signature whose `Rows * Columns` exceeds
+   --  2_147_483_647, or signatures whose bound scratch would not fit the
+   --  native work buffer (for example very wide one-row signatures). A
+   --  negative or nonfinite available bound is an error. Inputs are never
+   --  modified.
+   --  @param Signature_1 First signature, as for Earth_Mover_Distance; its
+   --  mass is the reference of the availability tolerance.
+   --  @param Signature_2 Second signature, with Signature_1's column count.
+   --  @param Metric Ground distance used for transport and for the bound;
+   --  defaults to Euclidean_EMD.
+   --  @param Early_Exit_Threshold Finite, nonnegative threshold compared
+   --  with an available bound; the default OpenCV.Float32_Value'Last
+   --  computes the exact distance and still reports the bound.
+   --  @return Distance, bound and the two availability and exactness flags.
+   --  @exception OpenCV_Error Raised for a negative or nonfinite
+   --  Early_Exit_Threshold, any condition listed for Earth_Mover_Distance,
+   --  a bound-path native layout limit, or a negative or nonfinite native
+   --  bound.
    function Earth_Mover_Distance_With_Lower_Bound
      (Signature_1, Signature_2 : OpenCV.Core.Mat;
       Metric                   : Earth_Mover_Metric := Euclidean_EMD;
@@ -5316,6 +5712,10 @@ package OpenCV.Image_Processing is
    --  a dense histogram is stored in one N-dimensional Mat.
    Maximum_Histogram_Dimensions : constant Positive := 10;
 
+   --  Number of bins on one histogram axis. In addition, the product of the
+   --  bin counts of all axes of one histogram must not exceed
+   --  2_147_483_647; a larger product raises OpenCV_Error when the
+   --  histogram is calculated.
    subtype Histogram_Bin_Count is Positive range 1 .. 2_147_483_647;
 
    --  One uniform histogram axis of a single source. Channel is zero-based
@@ -5323,6 +5723,12 @@ package OpenCV.Image_Processing is
    --  half-open range [Lower_Bound, Upper_Bound); samples below Lower_Bound
    --  or at or above Upper_Bound are not counted. Both bounds must be finite
    --  with Lower_Bound < Upper_Bound. Internally this is source position 0.
+   --  @field Channel Zero-based channel of Source sampled on this axis; it
+   --  must be below Source.Channels. Several axes may select one channel.
+   --  @field Bin_Count Number of equal-width bins on this axis.
+   --  @field Lower_Bound Finite inclusive lower edge of the first bin.
+   --  @field Upper_Bound Finite exclusive upper edge of the last bin,
+   --  greater than Lower_Bound.
    type Histogram_Dimension is record
       Channel     : Natural;
       Bin_Count   : Histogram_Bin_Count;
@@ -5339,6 +5745,14 @@ package OpenCV.Image_Processing is
    --  array's lower bound: position 0 is Sources'First. Channel is
    --  zero-based within that selected source. Native concatenated channel
    --  numbers are not part of this type.
+   --  @field Source_Position Zero-based position of the sampled source in
+   --  Sources iteration order; it must be below Sources'Length.
+   --  @field Channel Zero-based channel within the selected source; it must
+   --  be below that source's channel count.
+   --  @field Bin_Count Number of equal-width bins on this axis.
+   --  @field Lower_Bound Finite inclusive lower edge of the first bin.
+   --  @field Upper_Bound Finite exclusive upper edge of the last bin,
+   --  greater than Lower_Bound.
    type Histogram_Source_Dimension is record
       Source_Position : Natural;
       Channel         : Natural;
@@ -5360,13 +5774,40 @@ package OpenCV.Image_Processing is
    --  One nonuniform axis. The descriptor owns a copy of Boundaries, so the
    --  caller's array may be modified or go out of scope afterwards. Edges
    --  must be finite and strictly increasing. They are not required to lie
-   --  inside the numeric range of a particular source depth.
+   --  inside the numeric range of a particular source depth. Descriptors
+   --  are built, and their edges validated, by
+   --  Nonuniform_Histogram_Dimension and
+   --  Nonuniform_Histogram_Source_Dimension.
    type Histogram_Nonuniform_Dimension is private;
 
+   --  Returns a single-source nonuniform axis (source position 0) that
+   --  counts Channel of the Source into the bins defined by Boundaries: N
+   --  edges define N - 1 bins [Edges (I), Edges (I + 1)). The descriptor
+   --  owns a copy of the edges. Channel is checked against the Source when
+   --  the histogram is calculated.
+   --  @param Channel Zero-based channel of the Source sampled on this axis.
+   --  @param Boundaries At least two finite, strictly increasing edges in
+   --  iteration order; the array's index bounds are irrelevant.
+   --  @return Axis descriptor with Boundaries'Length - 1 bins.
+   --  @exception OpenCV_Error Raised for fewer than two edges, a
+   --  nonfinite edge, or edges that are not strictly increasing.
    function Nonuniform_Histogram_Dimension
      (Channel : Natural; Boundaries : Histogram_Bin_Boundary_Array)
       return Histogram_Nonuniform_Dimension;
 
+   --  Returns a nonuniform axis of a multi-source histogram that counts
+   --  Channel of the source at Source_Position into the bins defined by
+   --  Boundaries, as for Nonuniform_Histogram_Dimension. Source_Position
+   --  and Channel are checked against the sources when the histogram is
+   --  calculated; single-source operations require position 0.
+   --  @param Source_Position Zero-based position in Mat_Array iteration
+   --  order; position 0 is Sources'First, whatever the array's bounds.
+   --  @param Channel Zero-based channel within the selected source.
+   --  @param Boundaries At least two finite, strictly increasing edges in
+   --  iteration order; the array's index bounds are irrelevant.
+   --  @return Axis descriptor with Boundaries'Length - 1 bins.
+   --  @exception OpenCV_Error Raised for fewer than two edges, a
+   --  nonfinite edge, or edges that are not strictly increasing.
    function Nonuniform_Histogram_Source_Dimension
      (Source_Position : Natural;
       Channel         : Natural;
@@ -5382,6 +5823,11 @@ package OpenCV.Image_Processing is
    --  Every axis of one Histogram uses one binning mode. Uniform axes divide
    --  [Lower_Bound, Upper_Bound) into equal bins. Nonuniform axes use the
    --  stored explicit edges.
+   --  @enum Uniform_Binning Each axis divides its range into Bin_Count
+   --  equal bins; produced by Calculate_Histogram and reported by a
+   --  default-initialized Histogram.
+   --  @enum Nonuniform_Binning Each axis uses its stored explicit edge
+   --  sequence; produced by Calculate_Nonuniform_Histogram.
    type Histogram_Binning_Mode is (Uniform_Binning, Nonuniform_Binning);
 
    --  A dense histogram of Float32 bin counts together with the source,
@@ -5392,8 +5838,16 @@ package OpenCV.Image_Processing is
    --  and Accumulate_Histogram.
    type Histogram is private;
 
+   --  Returns the number of axes of Value: 1 .. Maximum_Histogram_Dimensions
+   --  for a calculated histogram and 0 for a default-initialized one.
+   --  @param Value Histogram to inspect.
+   --  @return The stored dimension count.
    function Histogram_Dimension_Count (Value : Histogram) return Natural;
 
+   --  Returns the binning mode shared by every axis of Value. A
+   --  default-initialized Histogram reports Uniform_Binning.
+   --  @param Value Histogram to inspect.
+   --  @return Uniform_Binning or Nonuniform_Binning.
    function Histogram_Binning
      (Value : Histogram) return Histogram_Binning_Mode;
 
@@ -5402,11 +5856,22 @@ package OpenCV.Image_Processing is
    --  nonuniform axis this is the envelope: Bin_Count is the number of
    --  intervals, Lower_Bound is the first stored edge, and Upper_Bound is
    --  the last. It is not a claim that the intervals are equal.
+   --  @param Value Histogram to inspect.
+   --  @param Index One-based axis number in dimension order.
+   --  @return Channel, bin count and range or edge envelope of that axis.
+   --  @exception OpenCV_Error Raised when Index exceeds
+   --  Histogram_Dimension_Count (Value).
    function Get_Histogram_Dimension
      (Value : Histogram; Index : Positive) return Histogram_Dimension;
 
    --  Zero-based source position stored for Index. Single-source histograms
    --  always report 0. Index outside 1 .. Dimension_Count raises OpenCV_Error.
+   --  @param Value Histogram to inspect.
+   --  @param Index One-based axis number in dimension order.
+   --  @return Zero-based position, in the Sources iteration order used for
+   --  calculation, of the source sampled on that axis.
+   --  @exception OpenCV_Error Raised when Index exceeds
+   --  Histogram_Dimension_Count (Value).
    function Get_Histogram_Source_Position
      (Value : Histogram; Index : Positive) return Natural;
 
@@ -5414,6 +5879,12 @@ package OpenCV.Image_Processing is
    --  returns its two range endpoints. A nonuniform axis returns all
    --  Bin_Count + 1 edges. The result is independent of the Histogram.
    --  Index outside 1 .. Dimension_Count raises OpenCV_Error.
+   --  @param Value Histogram to inspect.
+   --  @param Index One-based axis number in dimension order.
+   --  @return New array, indexed from 1, of that axis's stored Float32
+   --  edges.
+   --  @exception OpenCV_Error Raised when Index exceeds
+   --  Histogram_Dimension_Count (Value).
    function Get_Histogram_Bin_Boundaries
      (Value : Histogram; Index : Positive) return Histogram_Bin_Boundary_Array;
 
@@ -5422,6 +5893,11 @@ package OpenCV.Image_Processing is
    --  one is Bin_Count (1) x Bin_Count (2), and higher dimensionality is an
    --  N-dimensional Mat with one extent per dimension, in dimension order.
    --  The metadata, not the Mat shape, defines the logical dimensionality.
+   --  The one-dimensional Bin_Count x 1 shape is the same on every
+   --  supported OpenCV release.
+   --  @param Value Histogram whose bin counts are copied.
+   --  @return Fresh owning Float32 C1 Mat of bin counts; changing it never
+   --  affects Value.
    function Histogram_Values (Value : Histogram) return OpenCV.Core.Mat;
 
    --  Counts Source samples into a new dense histogram (no accumulation, no
@@ -5430,13 +5906,46 @@ package OpenCV.Image_Processing is
    --  and Dimensions'Length must be 1 .. Maximum_Histogram_Dimensions. A
    --  Region is treated as the whole image. Source is not modified. Every
    --  stored source position is 0.
+   --
+   --  Each pixel adds one to the bin addressed by its selected samples,
+   --  only when every selected sample falls in a bin of its axis. The
+   --  result has Uniform_Binning, the given channels and ranges, and fresh
+   --  Float32 counts published only after success. Each dimension needs
+   --  finite bounds with Lower_Bound < Upper_Bound, and the product of all
+   --  bin counts must not exceed 2_147_483_647. Native int limits also
+   --  apply: Rows times Columns and the row stride in elements must fit
+   --  int; for UInt8 and UInt16 the bin coordinates of 0 and of the
+   --  largest sample (255 or 65535) must lie inside int; every evaluated
+   --  Float32 sample must be finite and its bin coordinate
+   --  `(Sample - Lower_Bound) * Bin_Count / (Upper_Bound - Lower_Bound)`
+   --  must lie inside int. Finite samples outside the bins remain legal.
+   --  @param Source Nonempty 2-D UInt8, UInt16 or Float32 image to sample.
+   --  @param Dimensions Axes in dimension order (any index bounds), each
+   --  selecting a Source channel and its uniform bins.
+   --  @return Fresh immutable Histogram of Float32 counts.
+   --  @exception OpenCV_Error Raised for an invalid Source, a missing
+   --  channel, a dimension count outside 1 .. 10, invalid bounds, an
+   --  excessive bin product, a native int limit, a nonfinite or
+   --  out-of-range Float32 sample, or a native failure.
    function Calculate_Histogram
      (Source : OpenCV.Core.Mat; Dimensions : Histogram_Dimension_Array)
       return Histogram;
 
-   --  As above, counting only pixels whose Mask value is nonzero. Mask must
+   --  Masked single-source Calculate_Histogram: as the unmasked overload,
+   --  counting only pixels whose Mask value is nonzero. Mask must
    --  be a nonempty two-dimensional UInt8 C1 Mat with Source's rows and
    --  columns; it may share storage with Source. Mask is not modified.
+   --  Masked-out Float32 samples are not inspected. The Mask row stride
+   --  must fit native int.
+   --  @param Source Nonempty 2-D UInt8, UInt16 or Float32 image to sample.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with Source's rows and
+   --  columns; nonzero samples select pixels.
+   --  @param Dimensions Axes in dimension order (any index bounds), each
+   --  selecting a Source channel and its uniform bins.
+   --  @return Fresh immutable Histogram of the selected pixels' counts.
+   --  @exception OpenCV_Error Raised for any condition of the
+   --  unmasked overload or for a Mask that is empty, not 2-D, not UInt8 C1,
+   --  of different geometry, or with an excessive row stride.
    function Calculate_Histogram
      (Source     : OpenCV.Core.Mat;
       Mask       : OpenCV.Core.Mat;
@@ -5450,14 +5959,43 @@ package OpenCV.Image_Processing is
    --  and must be below Sources'Length; its Channel must exist on that
    --  source. Dimensions'Length is 1 .. Maximum_Histogram_Dimensions. No
    --  source is modified. A Region is its logical view.
+   --
+   --  A location is counted only when every selected sample falls in a bin
+   --  of its axis. The result has Uniform_Binning and stores each axis's
+   --  source position, channel and range; its fresh Float32 counts are
+   --  published only after success. Bounds, bin product, native int and
+   --  Float32 sample rules are those of the single-source overload, applied
+   --  to every selected sample.
+   --  @param Sources Images sampled at the same row and column; position 0
+   --  is Sources'First.
+   --  @param Dimensions Axes in dimension order (any index bounds), each
+   --  selecting a source position, a channel and its uniform bins.
+   --  @return Fresh immutable joint Histogram of Float32 counts.
+   --  @exception OpenCV_Error Raised for an empty Sources array, an
+   --  invalid or mismatched source, an invalid source position or channel,
+   --  a dimension count outside 1 .. 10, invalid bounds, an excessive bin
+   --  product, a native int limit, a nonfinite or out-of-range Float32
+   --  sample, or a native failure.
    function Calculate_Histogram
      (Sources    : OpenCV.Core.Mat_Array;
       Dimensions : Histogram_Source_Dimension_Array) return Histogram;
 
-   --  As above, counting only locations whose Mask value is nonzero. Mask
+   --  Masked multi-source Calculate_Histogram: as the unmasked overload,
+   --  counting only locations whose Mask value is nonzero. Mask
    --  must be a nonempty 2-D UInt8 C1 Mat with the common source geometry.
    --  It is applied at the same (row, column) of every source and may share
-   --  storage with a source. Mask is not modified.
+   --  storage with a source. Mask is not modified. Masked-out Float32
+   --  samples are not inspected.
+   --  @param Sources Images sampled at the same row and column; position 0
+   --  is Sources'First.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with the common source
+   --  rows and columns; nonzero samples select locations.
+   --  @param Dimensions Axes in dimension order (any index bounds), each
+   --  selecting a source position, a channel and its uniform bins.
+   --  @return Fresh immutable joint Histogram of the selected locations.
+   --  @exception OpenCV_Error Raised for any condition of the
+   --  unmasked overload or for a Mask that is empty, not 2-D, not UInt8 C1,
+   --  of different geometry, or with an excessive row stride.
    function Calculate_Histogram
      (Sources    : OpenCV.Core.Mat_Array;
       Mask       : OpenCV.Core.Mat;
@@ -5467,11 +6005,44 @@ package OpenCV.Image_Processing is
    --  strictly increasing edges; bin I is [edge I, edge I + 1). Every stored
    --  source position must be 0. Otherwise as the uniform single-source
    --  overload: nonempty 2-D UInt8, UInt16 or Float32 Source, 1 .. 10 axes,
-   --  and an optional matching UInt8 C1 Mask. Source and Mask are not
-   --  modified.
+   --  channels below Source.Channels, a bin product of at most
+   --  2_147_483_647, the same Source size and stride limits, and fresh
+   --  Float32 counts published only after success. Source is not modified;
+   --  a Region is its own image.
+   --
+   --  The result has Nonuniform_Binning and keeps each axis's exact edges.
+   --  Float32 samples are compared directly with the edges and must be
+   --  finite. For UInt8 sources every edge must lie strictly between
+   --  -2_147_483_647.0 and 2_147_483_647.0. A request that can reach
+   --  OpenCV's IPP path (one axis on channel 0 and no mask) also needs its
+   --  first edge in that interval and, for a one-channel Source, a byte
+   --  row stride that fits int.
+   --  @param Source Nonempty 2-D UInt8, UInt16 or Float32 image to sample.
+   --  @param Dimensions Nonuniform axes in dimension order (any index
+   --  bounds); every source position must be 0.
+   --  @return Fresh immutable Histogram of Float32 counts.
+   --  @exception OpenCV_Error Raised for an invalid Source, a nonzero
+   --  source position, a missing channel, a dimension count outside
+   --  1 .. 10, an excessive bin product, an edge or native int limit, a
+   --  nonfinite Float32 sample, or a native failure.
    function Calculate_Nonuniform_Histogram
      (Source     : OpenCV.Core.Mat;
       Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
+
+   --  Masked single-source Calculate_Nonuniform_Histogram: as the unmasked
+   --  overload, counting only pixels whose matching UInt8 C1 Mask value is
+   --  nonzero. Mask is a nonempty 2-D UInt8 C1 Mat with Source's rows and
+   --  columns and a row stride that fits int. Source and Mask are not
+   --  modified; masked-out Float32 samples are not inspected.
+   --  @param Source Nonempty 2-D UInt8, UInt16 or Float32 image to sample.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with Source's rows and
+   --  columns; nonzero samples select pixels.
+   --  @param Dimensions Nonuniform axes in dimension order (any index
+   --  bounds); every source position must be 0.
+   --  @return Fresh immutable Histogram of the selected pixels' counts.
+   --  @exception OpenCV_Error Raised for any condition of the
+   --  unmasked overload or for a Mask that is empty, not 2-D, not UInt8 C1,
+   --  of different geometry, or with an excessive row stride.
    function Calculate_Nonuniform_Histogram
      (Source     : OpenCV.Core.Mat;
       Mask       : OpenCV.Core.Mat;
@@ -5479,24 +6050,64 @@ package OpenCV.Image_Processing is
 
    --  Dense nonuniform joint histogram. Source_Position is the zero-based
    --  position in Mat_Array iteration order, as for uniform multi-source
-   --  histograms. Every axis is nonuniform.
+   --  histograms. Every axis is nonuniform. Sources follow the uniform
+   --  multi-source contract (nonempty array; nonempty 2-D UInt8, UInt16 or
+   --  Float32 elements sharing the first element's rows, columns and depth;
+   --  channel counts may differ). Edge, bin product, native int and Float32
+   --  sample rules are those of the single-source nonuniform overload. The
+   --  result has Nonuniform_Binning, stores each axis's source position,
+   --  channel and exact edges, and is published only after success. No
+   --  source is modified; a Region is its logical view.
+   --  @param Sources Images sampled at the same row and column; position 0
+   --  is Sources'First.
+   --  @param Dimensions Nonuniform axes in dimension order (any index
+   --  bounds), each selecting a source position and a channel.
+   --  @return Fresh immutable joint Histogram of Float32 counts.
+   --  @exception OpenCV_Error Raised for an empty Sources array, an
+   --  invalid or mismatched source, an invalid source position or channel,
+   --  a dimension count outside 1 .. 10, an excessive bin product, an edge
+   --  or native int limit, a nonfinite Float32 sample, or a native failure.
    function Calculate_Nonuniform_Histogram
      (Sources    : OpenCV.Core.Mat_Array;
       Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
+
+   --  Masked multi-source Calculate_Nonuniform_Histogram: as the unmasked
+   --  overload, counting only locations whose Mask value is nonzero. Mask
+   --  is a nonempty 2-D UInt8 C1 Mat with the common source geometry,
+   --  applied at the same (row, column) of every source. Sources and Mask
+   --  are not modified; masked-out Float32 samples are not inspected.
+   --  @param Sources Images sampled at the same row and column; position 0
+   --  is Sources'First.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with the common source
+   --  rows and columns; nonzero samples select locations.
+   --  @param Dimensions Nonuniform axes in dimension order (any index
+   --  bounds), each selecting a source position and a channel.
+   --  @return Fresh immutable joint Histogram of the selected locations.
+   --  @exception OpenCV_Error Raised for any condition of the
+   --  unmasked overload or for a Mask that is empty, not 2-D, not UInt8 C1,
+   --  of different geometry, or with an excessive row stride.
    function Calculate_Nonuniform_Histogram
      (Sources    : OpenCV.Core.Mat_Array;
       Mask       : OpenCV.Core.Mat;
       Dimensions : Histogram_Nonuniform_Dimension_Array) return Histogram;
 
    --  OpenCV comparison metrics. None is a normalized similarity score.
-   --  Correlation: larger is more similar; identical histograms give 1.
-   --  Chi_Square: smaller is closer; asymmetric (Left is the denominator).
-   --  Intersection: sum of bin minima; larger is more similar and the scale
-   --  depends on the histogram totals.
-   --  Hellinger_Distance: OpenCV HISTCMP_BHATTACHARYYA, which computes the
-   --  Hellinger distance; smaller is closer and identical gives 0.
-   --  Alternative_Chi_Square: symmetric chi-square; smaller is closer.
-   --  Kullback_Leibler_Divergence: smaller is closer; asymmetric.
+   --  In the formulas, Left and Right are corresponding bin values and each
+   --  sum runs over all bins; zero bins follow native OpenCV handling.
+   --  @enum Correlation Correlation coefficient of the bin values: larger
+   --  is more similar and identical histograms give 1.
+   --  @enum Chi_Square `sum ((Left - Right) ** 2 / Left)`: smaller is
+   --  closer and identical gives 0; asymmetric (Left is the denominator).
+   --  @enum Intersection `sum (min (Left, Right))`, the sum of bin minima:
+   --  larger is more similar and the scale depends on the histogram
+   --  totals (identical histograms give their total count).
+   --  @enum Hellinger_Distance OpenCV HISTCMP_BHATTACHARYYA, which computes
+   --  the Hellinger distance; smaller is closer and identical gives 0.
+   --  @enum Alternative_Chi_Square Symmetric chi-square
+   --  `2 * sum ((Left - Right) ** 2 / (Left + Right))`; smaller is closer
+   --  and identical gives 0.
+   --  @enum Kullback_Leibler_Divergence `sum (Left * log (Left / Right))`:
+   --  smaller is closer and identical gives 0; asymmetric.
    type Histogram_Comparison_Method is
      (Correlation,
       Chi_Square,
@@ -5512,7 +6123,19 @@ package OpenCV.Image_Processing is
    --  edges is not enough. Uniform and nonuniform histograms are never
    --  compared, even when a nonuniform sequence happens to be equal-width.
    --  Source positions and channels may differ: comparison is of bin geometry
-   --  and counts, not of sample provenance.
+   --  and counts, not of sample provenance. Both histograms must be
+   --  calculated: a default-initialized Histogram is rejected. Neither
+   --  histogram is modified.
+   --  @param Left First histogram; the reference of the asymmetric methods
+   --  (the Chi_Square denominator and the Kullback_Leibler_Divergence
+   --  weights).
+   --  @param Right Second histogram, with Left's binning mode and bin
+   --  geometry.
+   --  @param Method Comparison metric; see Histogram_Comparison_Method.
+   --  @return The native Float64 metric value.
+   --  @exception OpenCV_Error Raised for a default-initialized
+   --  histogram, different binning modes, dimension counts, bin counts or
+   --  edges, or a native failure.
    function Compare_Histograms
      (Left   : Histogram;
       Right  : Histogram;
@@ -5528,6 +6151,24 @@ package OpenCV.Image_Processing is
    --  nonempty two-dimensional UInt8, UInt16 or Float32 Mat containing every
    --  stored channel; Scale must be finite. A Region is back-projected in
    --  view coordinates. Source and Distribution are not modified.
+   --
+   --  The result is fresh owning storage published only after success.
+   --  Scale must also have a magnitude of at most OpenCV.Float32_Value'Last.
+   --  For UInt8 and UInt16 results the product is formed in Float32 and
+   --  rounded; Float32 results are not saturated. The Source size, stride
+   --  and Float32 sample rules of calculation apply, as does the UInt8
+   --  nonuniform edge limit.
+   --  @param Source Nonempty 2-D UInt8, UInt16 or Float32 image whose
+   --  pixels are looked up.
+   --  @param Distribution Calculated histogram whose stored channels and
+   --  edges select the bins.
+   --  @param Scale Finite factor applied to each bin value; defaults to
+   --  1.0.
+   --  @return Fresh one-channel Mat of Source's size and depth.
+   --  @exception OpenCV_Error Raised for a default-initialized
+   --  Distribution, a nonzero stored source position, an invalid Scale, an
+   --  invalid Source or missing channel, a native int or edge limit, a
+   --  nonfinite Float32 sample, or a native failure.
    function Back_Project
      (Source       : OpenCV.Core.Mat;
       Distribution : Histogram;
@@ -5539,6 +6180,27 @@ package OpenCV.Image_Processing is
    --  has the first source's rows, columns and depth, and one channel.
    --  Sources and Distribution are not modified. Array bounds do not affect
    --  stored positions: position 0 is Sources'First.
+   --
+   --  Each location receives the bin value addressed by its selected
+   --  samples multiplied by Scale, or 0 when a sample lies outside a bin.
+   --  Uniform and nonuniform Distributions use their stored edges. Scale
+   --  must be finite with a magnitude of at most OpenCV.Float32_Value'Last;
+   --  UInt8 and UInt16 results are rounded and saturated. Sources are
+   --  nonempty 2-D UInt8, UInt16 or Float32 Mats whose selected channels
+   --  exist; Regions are their logical views. The result is fresh owning
+   --  storage published only after success; the size, stride and Float32
+   --  sample rules of calculation apply, as does the UInt8 nonuniform edge
+   --  limit.
+   --  @param Sources Images looked up at the same row and column.
+   --  @param Distribution Calculated histogram whose stored source
+   --  positions, channels and edges select the bins.
+   --  @param Scale Finite factor applied to each bin value; defaults to
+   --  1.0.
+   --  @return Fresh one-channel Mat with the first source's size and depth.
+   --  @exception OpenCV_Error Raised for a default-initialized
+   --  Distribution, an invalid Scale, an empty or invalid Sources array, a
+   --  missing source position or channel, a native int or edge limit, a
+   --  nonfinite Float32 sample, or a native failure.
    function Back_Project
      (Sources      : OpenCV.Core.Mat_Array;
       Distribution : Histogram;
@@ -5550,20 +6212,76 @@ package OpenCV.Image_Processing is
    --  be calculated, and every stored source position must be 0. Base, Source
    --  and (when present) Mask are not modified. The sum is checked in a wider
    --  type; a nonfinite, negative or non-Float32 sum rejects the whole update.
-   --  Counts above 2**24 may lose integer-unit precision because storage is
-   --  Float32. This does not call native calcHist with accumulate=true.
+   --  Counts above `2 ** 24` may lose integer-unit precision because storage
+   --  is Float32. This does not call native calcHist with accumulate=true.
+   --
+   --  Source follows the calculation contract of Base's binning mode
+   --  (Calculate_Histogram or Calculate_Nonuniform_Histogram); its
+   --  geometry need not match the images that produced Base.
+   --  @param Base Calculated histogram whose stored source positions are
+   --  all 0; it supplies the axes and the counts to add to.
+   --  @param Source Image sampled with Base's channels and bins.
+   --  @return New Histogram holding the summed counts and Base's metadata.
+   --  @exception OpenCV_Error Raised for a default-initialized Base,
+   --  a nonzero stored source position, any calculation error for Source,
+   --  or a bin sum that is not a finite Float32.
    function Accumulate_Histogram
      (Base : Histogram; Source : OpenCV.Core.Mat) return Histogram;
+
+   --  Masked single-source Accumulate_Histogram: as the unmasked overload,
+   --  but only pixels whose Mask value is nonzero are added. Mask follows
+   --  the masked calculation contract: nonempty 2-D UInt8 C1 with Source's
+   --  rows and columns. Base, Source and Mask are not modified.
+   --  @param Base Calculated histogram whose stored source positions are
+   --  all 0; it supplies the axes and the counts to add to.
+   --  @param Source Image sampled with Base's channels and bins.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with Source's rows and
+   --  columns; nonzero samples select pixels.
+   --  @return New Histogram holding the summed counts and Base's metadata.
+   --  @exception OpenCV_Error Raised for any condition of the
+   --  unmasked overload or an invalid Mask.
    function Accumulate_Histogram
      (Base : Histogram; Source : OpenCV.Core.Mat; Mask : OpenCV.Core.Mat)
       return Histogram;
 
-   --  As above, using Base's stored source positions, channels and complete
-   --  boundary sequences. Sources within this call must share geometry and
-   --  depth. Separate accumulation calls need not share geometry with each
-   --  other or with the images that produced Base.
+   --  Multi-source Accumulate_Histogram: returns a new histogram with
+   --  Base's binning mode, source positions, channels and exact edges, and
+   --  the Float32 sum of Base's bins and a fresh histogram of Sources,
+   --  using Base's stored source positions, channels and complete
+   --  boundary sequences. Every stored position must be below
+   --  Sources'Length; position 0 is Sources'First. Sources within this
+   --  call must share geometry and depth and follow the multi-source
+   --  calculation contract of Base's binning mode. Separate accumulation
+   --  calls need not share geometry with each other or with the images
+   --  that produced Base. Base must be calculated; Base and Sources are
+   --  not modified. A nonfinite, negative or non-Float32 sum rejects the
+   --  whole update, and counts above `2 ** 24` may lose integer-unit
+   --  precision. Native calcHist accumulation is not used.
+   --  @param Base Calculated histogram supplying the axes and the counts to
+   --  add to.
+   --  @param Sources Images sampled with Base's source positions, channels
+   --  and bins.
+   --  @return New Histogram holding the summed counts and Base's metadata.
+   --  @exception OpenCV_Error Raised for a default-initialized Base,
+   --  any calculation error for Sources, or a bin sum that is not a finite
+   --  Float32.
    function Accumulate_Histogram
      (Base : Histogram; Sources : OpenCV.Core.Mat_Array) return Histogram;
+
+   --  Masked multi-source Accumulate_Histogram: as the unmasked
+   --  multi-source overload, but only locations whose Mask value is nonzero
+   --  are added. Mask is a nonempty 2-D UInt8 C1 Mat with the common source
+   --  rows and columns, applied at the same location of every source.
+   --  Base, Sources and Mask are not modified.
+   --  @param Base Calculated histogram supplying the axes and the counts to
+   --  add to.
+   --  @param Sources Images sampled with Base's source positions, channels
+   --  and bins.
+   --  @param Mask Nonempty 2-D UInt8 C1 selection with the common source
+   --  rows and columns; nonzero samples select locations.
+   --  @return New Histogram holding the summed counts and Base's metadata.
+   --  @exception OpenCV_Error Raised for any condition of the
+   --  unmasked multi-source overload or an invalid Mask.
    function Accumulate_Histogram
      (Base    : Histogram;
       Sources : OpenCV.Core.Mat_Array;
