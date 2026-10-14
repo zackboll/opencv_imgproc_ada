@@ -28,12 +28,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: imgproc
-      # alire.toml pins opencv_core to ../core, as in the cross-platform CI.
+      # Indexed-release source snapshot for helper controls and identity audit.
+      # Production builds resolve Core from the community index without pins.
       - name: Checkout Core
         uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
-          ref: main
+          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
           path: core
       - name: Record checkout identities
         run: |

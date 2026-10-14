@@ -12,12 +12,6 @@ python=${DOC_PYTHON:-python3}
 test "$(alr --version)" = 'alr 2.1.1' || {
     echo 'error: documentation requires Alire 2.1.1' >&2; exit 1;
 }
-# alire.toml pins opencv_core to this sibling checkout. Core sources are
-# needed for name resolution only; they are not published.
-test -f ../core/opencv_core.gpr || {
-    echo 'error: documentation requires the opencv_core checkout at ../core' >&2
-    exit 1
-}
 prefix=${GNATDOC_PREFIX:-"$root/.doc-tools/gnatdoc-26.0.0"}
 if [ ! -x "$prefix/bin/gnatdoc" ]; then
     alr -n install --prefix="$prefix" gnatdoc_bin=26.0.0
@@ -31,6 +25,11 @@ echo "$version"
 # Resolve the library environment and its supported OpenCV configuration.
 # This builds only the library, not the test crate or unrelated applications.
 alr -n build
+# Resolve documentation inputs from the same indexed Core as the build, not
+# an adjacent development checkout. Core is used for resolution, not published.
+DOC_CORE_SOURCE=$(alr exec -- printenv OPENCV_CORE_ALIRE_PREFIX)
+export DOC_CORE_SOURCE
+test -f "$DOC_CORE_SOURCE/opencv_core.gpr"
 alr exec -- gnat --version | grep -q '^GNAT 16\.1\.0$' || {
     echo 'error: documentation requires GNAT 16.1.0' >&2; exit 1;
 }

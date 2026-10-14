@@ -19,12 +19,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
-          ref: f4bd2167ecc0a74162a00c6597772a2a67ea84b0
+          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
           path: core
       - name: Verify exact qualification source identities
         env:
           EXPECTED_IMGPROC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          EXPECTED_CORE_SHA: f4bd2167ecc0a74162a00c6597772a2a67ea84b0
+          EXPECTED_CORE_SHA: 386c5360ac51f2b62e522853d94290aec4ee14a0
         run: |
           set -eu
           actual_imgproc_sha=$(git -C imgproc rev-parse HEAD)

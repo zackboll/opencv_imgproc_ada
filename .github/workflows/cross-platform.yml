@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
-          ref: main
+          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
           path: core
 
       - name: Verify two-checkout layout and bridge
@@ -202,7 +202,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
-          ref: main
+          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
           path: core
 
       - name: Verify two-checkout layout and bridge
@@ -400,7 +400,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
-          ref: main
+          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
           path: core
 
       - name: Verify two-checkout layout and bridge
