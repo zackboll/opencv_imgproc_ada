@@ -1,0 +1,16 @@
+name: External AdaCore adapter controls (synthetic, not qualification)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  configuration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserved Debian and isolated external-input negatives
+        run: |
+          python3 -m unittest discover -s tests -p test_cross_configuration.py -v
+          python3 -m unittest discover -s tests -p test_adacore_cross.py -v
+          git diff --check
