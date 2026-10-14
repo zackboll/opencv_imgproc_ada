@@ -61,8 +61,9 @@ branch, regenerated and qualified there.
 | Phase | Branch | PR (base) | State |
 | --- | --- | --- | --- |
 | DOC-001 infrastructure | `feature/imgproc-doc-001-gnatdoc-pages` | #52 (`main`) | Open; hosted CI success on `7e1279d` |
-| DOC-002A coverage foundation, groups D and H | `feature/imgproc-doc-002a-coverage-foundation` | see checkpoint (DOC-001) | Qualified locally |
-| DOC-002B..G groups A, B, C, E, F, G | `feature/imgproc-doc-002b..g-*` | stacked | In progress |
+| DOC-002A coverage foundation, groups D and H | `feature/imgproc-doc-002a-coverage-foundation` | #53 (DOC-001 branch) | Open; head `859e66a` (tested `6a72ef3`) |
+| DOC-002B group A filtering | `feature/imgproc-doc-002b-filtering` | DOC-002A branch | Qualified locally |
+| DOC-002C..G groups B, C, E, F, G | `feature/imgproc-doc-002c..g-*` | stacked | Drafts reviewed; in progress |
 | DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | stacked | Tooling staged locally |
 | DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | stacked | Tooling staged locally |
 | DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
@@ -241,13 +242,46 @@ Branch `feature/imgproc-doc-002a-coverage-foundation` from DOC-001 head
   even with no corners).
 - Warnings 1,357 -> 1,184; coverage 159 -> 328 of 1,512 items.
 
+### IMGPROC-DOC-002B — group A filtering
+
+Branch `feature/imgproc-doc-002b-filtering` from DOC-002A head `859e66a`.
+
+- 51 filtering, kernel, derivative, edge, pyramid and blending declarations
+  documented (agent draft reviewed and spot-checked). Each Destination states
+  its model: direct native output for the native filters, Canny, Sobel,
+  Scharr, Laplacian, Pyramid_Down and the natural Pyramid_Up; private
+  publication for the explicit-size Pyramid_Up and Pyramid_Mean_Shift_Filter.
+- Corrections: Gaussian_Blur, Laplacian and Canny_Edges write Destination
+  directly (not "replaced"); Sobel in place only with Same_Depth (Sobel,
+  Scharr and Laplacian have no alias check); Get_Gabor_Kernel's
+  self-contradicting reversal sentence; Squared_Box_Mode had no comment of
+  its own (its trailing comment documented Squared_Box_Filter).
+- The package-wide Region convention was too strong: native filters pass a
+  Region to OpenCV as a submatrix without BORDER_ISOLATED, so border
+  extrapolation may read parent pixels. The convention now says so, and
+  isolation is stated per operation where it exists.
+- Checker fix (negative-first test): list markers inside an indented code
+  block are verbatim, not stripped.
+- Warnings 1,184 -> 990; coverage 328 -> 522 of 1,512 items.
+
+## Findings for the maintainers (not changed: outside documentation scope)
+
+- CLAHE (shim `opencv_imgproc_clahe`): the isolating clone is taken only for
+  a same-object or non-continuous Source, so a continuous Region (for
+  example full-width rows) is passed as a submatrix and Reflect_101 padding
+  can read parent pixels; an agent probe on OpenCV 4.10 differed from a
+  clone by up to 14. The clip-limit guard assumes 65536 histogram bins, but
+  UInt8 uses 256, so a large finite Clip_Limit can still overflow the
+  native int conversion. Documented as implemented.
+- Further items are listed in the checkpoints of the phases that found them.
+
 ## Remaining roadmap
 
 Each step branches from the previous phase's verified head, rewrites the
 baselines it reduces, and opens a stacked review PR; work then continues.
 
 1. **IMGPROC-DOC-002A** — done (see checkpoint).
-2. **IMGPROC-DOC-002B** — group A filtering.
+2. **IMGPROC-DOC-002B** — done (see checkpoint).
 3. **IMGPROC-DOC-002C** — group B threshold, morphology, distance,
    segmentation.
 4. **IMGPROC-DOC-002D** — group C color (moves the unrendered Color_Conversion
@@ -275,9 +309,9 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 
 ## Next executable task
 
-Apply the reviewed group A draft (`agent-a`) on a new branch
-`feature/imgproc-doc-002b-filtering` from the DOC-002A head, regenerate both
-baselines, qualify and open the stacked PR; continue with groups B, C, E, F
-and G in that order, then DOC-003 (staged tooling in
+Apply the reviewed group B draft (`agent-b`, diff against `f576f4a`) with
+`git apply -3` on `feature/imgproc-doc-002c-morphology` from the DOC-002B
+head, regenerate both baselines, qualify and open the stacked PR; continue
+with groups C, E, F and G in that order, then DOC-003 (staged tooling in
 `/home/zboll/git/opencv/imgproc-doc/dev-003`, local commits), DOC-004 and
 DOC-005.

@@ -21,10 +21,13 @@ package OpenCV.Image_Processing is
    --    two-dimensional unless stated otherwise.
    --  - Coordinates are zero-based. Point X is the column and Y the row;
    --    Size Width counts columns and Height counts rows.
-   --  - A Region (a Mat header viewing part of another Mat) is processed
-   --    as its own logical image unless an operation documents otherwise;
-   --    each operation states whether pixels outside the Region can be
-   --    read or written.
+   --  - A Region is a Mat header viewing part of another Mat. Operations
+   --    that snapshot or isolate their inputs say so and treat a Region as
+   --    its own logical image. Otherwise a Region is passed to OpenCV as a
+   --    submatrix, and OpenCV's border extrapolation may read pixels of the
+   --    parent just outside it (OpenCV looks outside a submatrix unless
+   --    asked not to). Pixels outside a Region are written only where an
+   --    operation says so.
    --  - Each operation states whether it returns fresh owning storage,
    --    replaces a Destination, or writes into existing storage, and which
    --    input and output aliases are supported.
@@ -67,14 +70,48 @@ package OpenCV.Image_Processing is
    --  Segmentation. Contract violations, native arithmetic limits, and
    --  OpenCV failures raise OpenCV.OpenCV_Error.
 
+   --  Normalization Squared_Box_Filter applies to the sum of squared
+   --  samples in each window.
+   --  @enum Mean_Square Divide the window sum by the effective kernel area
+   --  `Width * Height`, giving the local mean of the squares.
+   --  @enum Sum_Of_Squares Return the unnormalized window sum of squares.
    type Squared_Box_Mode is (Mean_Square, Sum_Of_Squares);
-   --  Native squared box filtering of nonempty 2-D UInt8/Float32 C1/C3.
-   --  Fresh independent Float64 output; Source unchanged, Regions isolated.
-   --  Positive odd/even/oversized kernels; Wrap rejected. Invalid inputs
-   --  and unsafe native arithmetic raise OpenCV_Error. UInt8 effective area
-   --  is at most 33025. Normalized nonconstant singleton axes reduce to one.
-   --  Float32 retains native incremental rounding and NaN/Inf propagation,
-   --  which can persist beyond the ideal mathematical local window.
+
+   --  Native squared box filtering (cv::sqrBoxFilter): for every pixel and
+   --  channel, sums the squares of the Source samples in a Kernel_Size
+   --  window and, for Mean_Square, divides by the effective kernel area.
+   --  Returns fresh independent Float64 storage with Source's rows, columns
+   --  and channel count; Source is unchanged.
+   --
+   --  Source must be nonempty 2-D UInt8 or Float32 with 1 or 3 channels.
+   --  The window for column X starts at `X - Width / 2` and spans Width
+   --  columns, and rows likewise, so positive odd, even and oversized
+   --  kernels are all accepted. Normalized nonconstant singleton axes
+   --  reduce to one: with Mean_Square and a Border other than
+   --  Constant_Border, a one-column or one-row Source uses a kernel
+   --  dimension of one on that axis; Constant_Border and Sum_Of_Squares
+   --  keep the requested dimensions. The UInt8 effective area is at most
+   --  33025 (native signed accumulator) and the Float32 area at most
+   --  2_147_483_647; other unsafe native signed arithmetic is rejected.
+   --
+   --  Regions are isolated: only the Region's logical pixels are read and
+   --  border extrapolation never reaches the parent. Float32 retains native
+   --  incremental rounding and NaN/Inf propagation, which can persist
+   --  beyond the ideal mathematical local window; tiny finite residuals
+   --  after large values may be lost. This is not an exact per-window sum.
+   --  @param Source Image whose squared samples are summed.
+   --  @param Kernel_Size Window width and height in pixels; both must be
+   --  positive and may be even or exceed the image.
+   --  @param Mode Mean_Square (default) divides by the effective area;
+   --  Sum_Of_Squares returns the plain sum.
+   --  @param Border Extrapolation outside Source: Constant_Border (zero
+   --  samples, still counted in the Mean_Square area), Replicate, Reflect
+   --  or Reflect_101 (default). Wrap is rejected.
+   --  @return Fresh owning Float64 Mat with one squared-window value per
+   --  Source pixel and channel.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  unsupported Source, a zero kernel dimension, Wrap, an effective area
+   --  above its limit, unsafe native arithmetic, or a native failure.
    function Squared_Box_Filter
      (Source      : OpenCV.Core.Mat;
       Kernel_Size : OpenCV.Size;
@@ -82,24 +119,42 @@ package OpenCV.Image_Processing is
       Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
       return OpenCV.Core.Mat;
 
-   --  Native cv::blendLinear, returning fresh independent owning storage.
-   --  Sources: nonempty 2-D UInt8 or Float32, identical depth, channels and
-   --  geometry. Any Core-valid channels with `Columns * Channels <= INT_MAX`.
-   --  Weights: matching nonempty 2-D Float32 C1; every sample finite in
-   --  0.0 .. 1.0. One weight per pixel applies to all channels. Invalid
-   --  inputs raise OpenCV_Error. Weights need not sum to one.
-   --  Native binary32 formula per channel:
+   --  Native cv::blendLinear: a per-pixel weighted blend of two images,
+   --  returned as fresh independent owning storage with the sources' rows,
+   --  columns, depth and channel count. The native binary32 formula per
+   --  channel is
    --
    --       (Source_1 * Weight_1 + Source_2 * Weight_2)
    --         / (Weight_1 + Weight_2 + 1.0e-5f)
    --
-   --  UInt8 then uses native rounding/saturation. Both-zero weights yield
-   --  zero for finite sources; Float32 NaN/Inf/overflow retain native IEEE
-   --  behavior (including `Inf * 0`). (1,0) retains the epsilon bias.
-   --  Float32 cross-platform bit identity is not promised.
+   --  One weight per pixel from each map applies to all channels. Weights
+   --  need not sum to one: `(1, 1)` approximates the average and `(1, 0)`
+   --  retains the epsilon bias. UInt8 then uses native rounding/saturation.
+   --  Both-zero weights yield zero for finite sources; Float32 NaN, Inf and
+   --  overflow retain native IEEE behavior (including `Inf * 0`). Float32
+   --  cross-platform bit identity is not promised.
+   --
+   --  Sources: nonempty 2-D UInt8 or Float32 with identical depth, channels
+   --  and geometry. Any Core-valid channel count is accepted when
+   --  `Columns * Channels <= INT_MAX` (native representation allows up to
+   --  512 channels in OpenCV 4.1/4.10 and 128 in 5.0). Weights: nonempty
+   --  2-D Float32 C1 with the sources' geometry, every sample finite and
+   --  in the range 0.0 .. 1.0.
+   --
    --  All inputs remain unchanged; read-sharing/overlapping aliases work.
    --  Regions contribute only logical pixels, with original row strides.
    --  Concurrent external mutation is unsupported. Publication is atomic.
+   --  @param Source_1 First image, weighted by Weight_1.
+   --  @param Source_2 Second image, weighted by Weight_2; same depth,
+   --  channel count and geometry as Source_1.
+   --  @param Weight_1 Float32 C1 per-pixel weights for Source_1.
+   --  @param Weight_2 Float32 C1 per-pixel weights for Source_2.
+   --  @return Fresh owning Mat with the blended pixels, typed like the
+   --  sources.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D,
+   --  mismatched or unsupported input, a weight sample that is nonfinite or
+   --  outside 0.0 .. 1.0, an oversized channel-expanded width, or a native
+   --  failure.
    function Blend_Linear
      (Source_1, Source_2, Weight_1, Weight_2 : OpenCV.Core.Mat)
       return OpenCV.Core.Mat;
@@ -443,10 +498,27 @@ package OpenCV.Image_Processing is
    --  Cartesian reconstruction.
    type Polar_Direction is (Cartesian_To_Polar, Polar_To_Cartesian);
 
+   --  Sobel aperture Canny_Edges uses to compute the image gradient.
+   --  @enum Sobel_3x3 Three-by-three Sobel aperture (the default).
+   --  @enum Sobel_5x5 Five-by-five Sobel aperture.
+   --  @enum Sobel_7x7 Seven-by-seven Sobel aperture.
    type Canny_Aperture is (Sobel_3x3, Sobel_5x5, Sobel_7x7);
 
+   --  Norm Canny_Edges uses for the gradient magnitude it thresholds.
+   --  @enum L1_Norm Sum of the absolute X and Y derivatives (the default).
+   --  @enum L2_Norm Euclidean magnitude: square root of the sum of the
+   --  squared X and Y derivatives.
    type Canny_Gradient_Norm is (L1_Norm, L2_Norm);
 
+   --  Aperture of the Sobel-family derivative kernels used by Sobel and
+   --  Get_Derivative_Kernels. A derivative order along an axis must be
+   --  less than the effective kernel length on that axis.
+   --  @enum Kernel_1 OpenCV's special case without smoothing: an axis with
+   --  nonzero order (up to 2) uses an effective 3-tap derivative kernel,
+   --  such as `[-1, 0, 1]`, and an axis with order zero a 1-tap identity.
+   --  @enum Kernel_3 Three-tap kernels on both axes (orders up to 2).
+   --  @enum Kernel_5 Five-tap kernels on both axes (orders up to 4).
+   --  @enum Kernel_7 Seven-tap kernels on both axes (orders up to 6).
    type Sobel_Kernel_Size is (Kernel_1, Kernel_3, Kernel_5, Kernel_7);
 
    --  Sobel derivative aperture of the corner response maps, passed to
@@ -631,34 +703,88 @@ package OpenCV.Image_Processing is
       Termination   : Corner_Termination :=
         (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array;
 
+   --  Aperture size of Laplacian, in pixels. Laplacian accepts only odd
+   --  values: 1 selects OpenCV's dedicated 3 x 3 Laplacian aperture and
+   --  3 through 31 select that aperture size.
    type Laplacian_Kernel_Size is range 1 .. 31;
 
+   --  Side length, in pixels, of Median_Blur's square aperture. The subtype
+   --  excludes values below 3; Median_Blur also requires an odd value.
    subtype Median_Kernel_Size is Positive range 3 .. 2_147_483_647;
 
+   --  Explicit neighborhood diameter, in pixels, for Bilateral_Filter. The
+   --  subtype excludes OpenCV's zero or negative automatic-diameter
+   --  sentinel; any positive value, odd or even, is accepted.
    subtype Bilateral_Diameter is Positive range 1 .. 2_147_483_647;
 
+   --  Number of coefficients of a Get_Gaussian_Kernel vector. The generator
+   --  requires an odd value; with automatic sigma, 1 yields the single
+   --  coefficient 1.0.
    subtype Gaussian_Kernel_Size is Positive range 1 .. 2_147_483_647;
 
+   --  Element depth of the single-channel coefficient Mats returned by the
+   --  kernel generators Get_Gaussian_Kernel, Get_Derivative_Kernels,
+   --  Get_Scharr_Kernels and Get_Gabor_Kernel.
+   --  @enum Float32_Kernel Coefficients are stored as Float32 C1.
+   --  @enum Float64_Kernel Coefficients are stored as Float64 C1.
    type Gaussian_Kernel_Depth is (Float32_Kernel, Float64_Kernel);
 
+   --  Coefficient depth of Get_Derivative_Kernels and Get_Scharr_Kernels,
+   --  with the Gaussian_Kernel_Depth literals.
    subtype Derivative_Kernel_Depth is Gaussian_Kernel_Depth;
 
+   --  Coefficient depth of Get_Gabor_Kernel, with the Gaussian_Kernel_Depth
+   --  literals.
    subtype Gabor_Kernel_Depth is Gaussian_Kernel_Depth;
 
+   --  Coefficient scaling of Get_Derivative_Kernels and Get_Scharr_Kernels.
+   --  It never changes the derivative order or the vector lengths.
+   --  @enum Unnormalized OpenCV's integer coefficients, such as `[-1, 0, 1]`
+   --  with `[1, 2, 1]` for a first-order 3-tap Sobel pair.
+   --  @enum Normalized OpenCV's normalized scaling, such as `[-0.5, 0, 0.5]`
+   --  with `[0.25, 0.5, 0.25]` for that pair; for Scharr only the smoothing
+   --  vector is scaled.
    type Derivative_Kernel_Normalization is (Unnormalized, Normalized);
 
+   --  Separable coefficient pair returned by Get_Derivative_Kernels and
+   --  Get_Scharr_Kernels, ready for Sep_Filter_2D. Each component is an
+   --  independently owned N x 1 single-channel column vector; both have the
+   --  requested depth, and their lengths may differ (Kernel_1).
+   --  @field Kernel_X Coefficients applied along X, that is within each
+   --  row (Sep_Filter_2D's Kernel_X).
+   --  @field Kernel_Y Coefficients applied along Y, that is within each
+   --  column (Sep_Filter_2D's Kernel_Y).
    type Derivative_Kernels is record
       Kernel_X : OpenCV.Core.Mat;
       Kernel_Y : OpenCV.Core.Mat;
    end record;
 
+   --  Order of a spatial derivative along one axis; 0 means no derivative
+   --  on that axis. Sobel and Get_Derivative_Kernels also require at least
+   --  one nonzero order and each order below the effective kernel length.
    subtype Derivative_Order is Natural range 0 .. 7;
 
+   --  Axis of the first derivative computed by Scharr and
+   --  Get_Scharr_Kernels.
+   --  @enum X_Axis Horizontal derivative: X order 1, Y order 0.
+   --  @enum Y_Axis Vertical derivative: X order 0, Y order 1.
    type Derivative_Axis is (X_Axis, Y_Axis);
 
+   --  Destination depth of Sobel, Scharr and Laplacian, and through
+   --  Filter_Depth of Filter_2D and Sep_Filter_2D. Supported per Source
+   --  depth: UInt8 accepts every literal; UInt16 and Int16 accept
+   --  Same_Depth, Float32_Depth and Float64_Depth; Float32 accepts
+   --  Same_Depth or Float32_Depth; Float64 accepts Same_Depth or
+   --  Float64_Depth. Other combinations raise OpenCV.OpenCV_Error.
+   --  @enum Same_Depth Destination keeps Source's depth.
+   --  @enum Int16_Depth Destination is Int16 (UInt8 Sources only).
+   --  @enum Float32_Depth Destination is Float32.
+   --  @enum Float64_Depth Destination is Float64.
    type Derivative_Depth is
      (Same_Depth, Int16_Depth, Float32_Depth, Float64_Depth);
 
+   --  Destination depth of Filter_2D and Sep_Filter_2D, with the literals
+   --  and supported Source combinations of Derivative_Depth.
    subtype Filter_Depth is Derivative_Depth;
 
    type Threshold_Mode is
@@ -1147,14 +1273,25 @@ package OpenCV.Image_Processing is
       Output_Size   : OpenCV.Size;
       Interpolation : Interpolation_Method := Linear);
 
-   --  Gaussian_Blur convolves Source with an isotropic Gaussian kernel.
-   --  Source must be a non-empty two-dimensional Mat with depth UInt8, UInt16,
-   --  Int16, Float32, or Float64. Kernel_Size dimensions must be positive and
-   --  odd, and Sigma must be positive and finite. Constant_Border, Replicate,
-   --  Reflect, and Reflect_101 are supported; Wrap is rejected. Destination is
-   --  replaced with a Mat having Source's rows, columns, depth, and channel
-   --  count. Source remains valid and is not modified. Contract violations and
-   --  failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  Gaussian_Blur convolves Source with an isotropic Gaussian kernel
+   --  (native cv::GaussianBlur): the same Sigma applies along X and Y.
+   --  Source must be a non-empty two-dimensional Mat with depth UInt8,
+   --  UInt16, Int16, Float32, or Float64. Destination receives Source's
+   --  rows, columns, depth, and channel count as a direct native output:
+   --  storage that already has that size and type is reused (shallow copies
+   --  and a Region's parent see the result); otherwise Destination is
+   --  rebound to new storage.
+   --  @param Source Image to smooth.
+   --  @param Destination Receives the smoothed image.
+   --  @param Kernel_Size Kernel width and height in pixels; both positive
+   --  and odd.
+   --  @param Sigma Gaussian standard deviation in pixels, used for both
+   --  axes; positive and finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported-depth Source, a zero or even kernel dimension, a
+   --  nonpositive or nonfinite Sigma, Wrap, or a failure reported by OpenCV.
    procedure Gaussian_Blur
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -1163,34 +1300,80 @@ package OpenCV.Image_Processing is
       Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Get_Gaussian_Kernel returns an N x 1 single-channel Gaussian coefficient
-   --  vector of the requested Depth. Kernel_Size must be odd. This overload
-   --  asks OpenCV to derive sigma from Kernel_Size; there is no public zero
-   --  or negative sigma sentinel. Coefficients preserve OpenCV's values and
-   --  ordering and may be passed directly to Sep_Filter_2D. Contract
-   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  vector of the requested Depth (native cv::getGaussianKernel), where N
+   --  is Kernel_Size, as fresh owning storage. This overload asks OpenCV to
+   --  derive sigma from Kernel_Size; there is no public zero or negative
+   --  sigma sentinel. Coefficients preserve OpenCV's values and ordering:
+   --  they are symmetric and sum to 1 within rounding, and Kernel_Size 1
+   --  yields exactly 1.0. The vector may be passed directly to
+   --  Sep_Filter_2D as Kernel_X and Kernel_Y.
+   --  @param Kernel_Size Number of coefficients N; must be odd.
+   --  @param Depth Coefficient depth; Float64_Kernel by default.
+   --  @return Fresh N x 1 coefficient vector.
+   --  @exception OpenCV_Error Raised for an even Kernel_Size or a
+   --  failure reported by OpenCV.
    function Get_Gaussian_Kernel
      (Kernel_Size : Gaussian_Kernel_Size;
       Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
       return OpenCV.Core.Mat;
 
    --  This overload is the same Get_Gaussian_Kernel generator with an
-   --  explicit Sigma. Sigma must be finite and strictly greater than zero.
-   --  Zero and negative values are rejected rather than switching to
-   --  automatic sigma.
+   --  explicit Sigma: it returns a fresh owning N x 1 single-channel vector
+   --  of symmetric Gaussian coefficients of the requested Depth, in
+   --  OpenCV's order. Zero and negative values are rejected rather than
+   --  switching to automatic sigma. Used as both Sep_Filter_2D kernels, it
+   --  gives the Gaussian_Blur result for the same size and Sigma, up to
+   --  rounding.
+   --  @param Kernel_Size Number of coefficients N; must be odd.
+   --  @param Sigma Gaussian standard deviation in coefficient (pixel)
+   --  units; must be finite and strictly greater than zero.
+   --  @param Depth Coefficient depth; Float64_Kernel by default.
+   --  @return Fresh N x 1 coefficient vector.
+   --  @exception OpenCV_Error Raised for an even Kernel_Size, a zero,
+   --  negative or nonfinite Sigma, or a failure reported by OpenCV.
    function Get_Gaussian_Kernel
      (Kernel_Size : Gaussian_Kernel_Size;
       Sigma       : OpenCV.Float64_Value;
       Depth       : Gaussian_Kernel_Depth := Float64_Kernel)
       return OpenCV.Core.Mat;
 
-   --  Fresh C1 kernel with exactly the requested positive odd dimensions.
-   --  Native automatic sizing is deliberately not exposed. Sigma,
-   --  Wavelength and Aspect_Ratio must be positive finite values; angles
-   --  must be finite radians and are not normalized. Invalid inputs raise
-   --  OpenCV_Error. Extreme finite parameters retain native IEEE behavior
-   --  and may produce nonfinite coefficients through derived expressions.
-   --  No normalization, reversal or transposition is performed: native
-   --  coordinates (x, y) are stored at (Height / 2 - y, Width / 2 - x).
+   --  Generates a Gabor filter kernel (native cv::getGaborKernel) for use
+   --  with Filter_2D: a fresh owning C1 Mat of the requested Depth with
+   --  exactly Kernel_Size.Height rows and Kernel_Size.Width columns. For
+   --  integer offsets x, y from the center, theta = Orientation_Radians,
+   --  lambda = Wavelength, gamma = Aspect_Ratio and psi =
+   --  Phase_Offset_Radians, each coefficient is
+   --
+   --       xr = x * cos (theta) + y * sin (theta)
+   --       yr = -x * sin (theta) + y * cos (theta)
+   --       v  = exp (-(xr**2 + (gamma * yr)**2) / (2 * Sigma**2)) *
+   --              cos (2 * pi * xr / lambda + psi)
+   --
+   --  Native automatic sizing is deliberately not exposed. Coefficients are
+   --  not normalized, and the binding adds no reversal or transposition:
+   --  native coordinates (x, y) are stored at row `Height / 2 - y` and
+   --  column `Width / 2 - x`, OpenCV's 180-degree coordinate reversal,
+   --  which also affects the apparent phase. Extreme finite parameters
+   --  retain native IEEE behavior and may produce nonfinite coefficients
+   --  through derived expressions; Float32 narrowing can lose precision.
+   --  @param Kernel_Size Kernel width and height in pixels; both positive
+   --  and odd. There is no automatic-size sentinel.
+   --  @param Sigma Standard deviation of the Gaussian envelope along xr, in
+   --  pixels; positive and finite.
+   --  @param Orientation_Radians Angle theta of the rotated xr axis, along
+   --  which the sinusoid varies; finite radians, not normalized.
+   --  @param Wavelength Wavelength lambda of the sinusoidal factor, in
+   --  pixels; positive and finite.
+   --  @param Aspect_Ratio Spatial aspect ratio gamma: the envelope's
+   --  standard deviation along yr is `Sigma / Aspect_Ratio`; positive and
+   --  finite.
+   --  @param Phase_Offset_Radians Phase offset psi of the sinusoid; finite
+   --  radians, not normalized. Defaults to pi / 2.
+   --  @param Depth Coefficient depth; Float64_Kernel by default.
+   --  @return Fresh Height x Width coefficient Mat.
+   --  @exception OpenCV_Error Raised for a zero or even dimension, a
+   --  nonpositive or nonfinite Sigma, Wavelength or Aspect_Ratio, a
+   --  nonfinite angle, an allocation size limit, or a native failure.
    function Get_Gabor_Kernel
      (Kernel_Size          : OpenCV.Size;
       Sigma                : OpenCV.Float64_Value;
@@ -1203,35 +1386,45 @@ package OpenCV.Image_Processing is
       return OpenCV.Core.Mat;
 
    --  Get_Derivative_Kernels generates the separable 1-D Sobel-family
-   --  coefficient vectors used by spatial derivatives; it does not filter an
-   --  image itself. Kernel_X is the horizontal/X-direction vector and Kernel_Y
-   --  is the vertical/Y-direction vector. Both are independently owned
+   --  coefficient vectors used by spatial derivatives (native
+   --  cv::getDerivKernels); it does not filter an image itself. Kernel_X is
+   --  the horizontal/X-direction vector and Kernel_Y is the
+   --  vertical/Y-direction vector. Both are independently owned fresh
    --  single-channel column vectors (N x 1) of matching Float32 or Float64
    --  depth. Coefficient order is preserved; the generator does not flip
    --  coefficients. The pair may be passed directly to Sep_Filter_2D:
    --
-   --    Kernels :=
-   --      Get_Derivative_Kernels
-   --        (X_Order     => 1,
-   --         Y_Order     => 0,
-   --         Kernel_Size => Kernel_3);
-   --    Sep_Filter_2D
-   --      (Source,
-   --       Destination,
-   --       Kernel_X          => Kernels.Kernel_X,
-   --       Kernel_Y          => Kernels.Kernel_Y,
-   --       Destination_Depth => Float32_Depth);
+   --       Kernels :=
+   --         Get_Derivative_Kernels
+   --           (X_Order     => 1,
+   --            Y_Order     => 0,
+   --            Kernel_Size => Kernel_3);
+   --       Sep_Filter_2D
+   --         (Source,
+   --          Destination,
+   --          Kernel_X          => Kernels.Kernel_X,
+   --          Kernel_Y          => Kernels.Kernel_Y,
+   --          Destination_Depth => Float32_Depth);
    --
-   --  X_Order and Y_Order cannot both be zero. Each order must be strictly
-   --  less than the effective one-dimensional length in that direction.
+   --  That request yields Kernel_X `[-1, 0, 1]` and Kernel_Y `[1, 2, 1]`.
    --  Kernel_3, Kernel_5, and Kernel_7 use that kernel size in both
    --  directions. Kernel_1 uses OpenCV's special derivative behavior: a
    --  nonzero-order direction has effective length 3, while a zero-order
    --  direction remains a 1-tap identity, so Kernel_X and Kernel_Y lengths
-   --  may differ. Normalized changes coefficient scaling, not derivative
-   --  order. There is no public FILTER_SCHARR or -1 kernel-size sentinel;
-   --  use Get_Scharr_Kernels for Scharr coefficients. Contract violations
-   --  and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  may differ. There is no public FILTER_SCHARR or -1 kernel-size
+   --  sentinel; use Get_Scharr_Kernels for Scharr coefficients.
+   --  @param X_Order Derivative order along X; strictly less than the
+   --  effective Kernel_X length.
+   --  @param Y_Order Derivative order along Y; strictly less than the
+   --  effective Kernel_Y length. X_Order and Y_Order cannot both be zero.
+   --  @param Kernel_Size Sobel aperture selecting the vector lengths;
+   --  Kernel_3 by default.
+   --  @param Normalization Coefficient scaling; Normalized changes scaling,
+   --  not derivative order. Unnormalized by default.
+   --  @param Depth Depth of both vectors; Float32_Kernel by default.
+   --  @return Fresh Kernel_X/Kernel_Y coefficient pair.
+   --  @exception OpenCV_Error Raised when both orders are zero, an
+   --  order is not less than its effective length, or OpenCV fails.
    function Get_Derivative_Kernels
      (X_Order       : Derivative_Order;
       Y_Order       : Derivative_Order;
@@ -1242,57 +1435,99 @@ package OpenCV.Image_Processing is
 
    --  Get_Scharr_Kernels generates the separable 1-D Scharr first-derivative
    --  coefficient pair for Axis. It does not filter an image itself. Both
-   --  returned vectors are independently owned 3 x 1 single-channel Mats of
-   --  matching Float32 or Float64 depth. Coefficient order is preserved and
-   --  may be passed directly to Sep_Filter_2D. X_Axis maps to X_Order 1 /
-   --  Y_Order 0; Y_Axis maps to X_Order 0 / Y_Order 1. Normalized changes
-   --  smoothing-vector scaling, not derivative order. The native Scharr
-   --  kernel-size sentinel remains private. Contract violations and failures
-   --  reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  returned vectors are independently owned fresh 3 x 1 single-channel
+   --  Mats of matching Float32 or Float64 depth. Coefficient order is
+   --  preserved and may be passed directly to Sep_Filter_2D. X_Axis maps to
+   --  X_Order 1 / Y_Order 0, giving Kernel_X `[-1, 0, 1]` and the smoothing
+   --  vector Kernel_Y `[3, 10, 3]`; Y_Axis maps to X_Order 0 / Y_Order 1
+   --  and swaps the roles. Normalized changes smoothing-vector scaling (to
+   --  `[3, 10, 3] / 32`), not the derivative vector or order. The native
+   --  Scharr kernel-size sentinel remains private.
+   --  @param Axis Direction of the first derivative.
+   --  @param Normalization Smoothing-vector scaling; Unnormalized by
+   --  default.
+   --  @param Depth Depth of both vectors; Float32_Kernel by default.
+   --  @return Fresh Kernel_X/Kernel_Y coefficient pair, each of length 3.
+   --  @exception OpenCV_Error Raised for a failure reported by OpenCV.
    function Get_Scharr_Kernels
      (Axis          : Derivative_Axis;
       Normalization : Derivative_Kernel_Normalization := Unnormalized;
       Depth         : Derivative_Kernel_Depth := Float32_Kernel)
       return Derivative_Kernels;
 
-   --  Pyramid_Down performs OpenCV's Gaussian-pyramid downsampling of Source.
-   --  Source must be a non-empty two-dimensional Mat with depth UInt8, UInt16,
-   --  Int16, Float32, or Float64. Channel count is unrestricted. Destination
-   --  receives Source's depth and channel count with OpenCV's natural size:
-   --  Columns = (Source.Columns + 1) / 2 and Rows = (Source.Rows + 1) / 2.
-   --  A Region is processed as its own logical image; parent pixels outside
-   --  the Region do not participate.
-   --  Replicate, Reflect, Reflect_101, and Wrap are supported;
-   --  Constant_Border is rejected. Direct in-place operation is not
-   --  supported. Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  Pyramid_Down performs OpenCV's Gaussian-pyramid downsampling of Source
+   --  (native cv::pyrDown). Source must be a non-empty two-dimensional Mat
+   --  with depth UInt8, UInt16, Int16, Float32, or Float64. Channel count is
+   --  unrestricted. Destination receives Source's depth and channel count
+   --  with OpenCV's natural size: Columns = (Source.Columns + 1) / 2 and
+   --  Rows = (Source.Rows + 1) / 2. A Region is processed as its own logical
+   --  image (OpenCV receives a private copy); parent pixels outside the
+   --  Region do not participate.
+   --
+   --  Destination is a direct native output: storage that already has the
+   --  result's size and type is reused (shallow copies and a Region's parent
+   --  see the result); otherwise Destination is rebound to new storage.
+   --  Direct in-place operation is not supported: a Destination that is
+   --  Source or shares or overlaps its storage, including overlapping
+   --  Regions, is rejected. Extreme geometries are rejected before native
+   --  signed-int pyramid arithmetic can overflow.
+   --  @param Source Image to downsample.
+   --  @param Destination Receives the half-size image.
+   --  @param Border Extrapolation outside Source: Replicate, Reflect,
+   --  Reflect_101 (default), or Wrap. Constant_Border is rejected.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported-depth Source, Constant_Border, aliased or overlapping
+   --  Source and Destination storage, an unsafe geometry, or a failure
+   --  reported by OpenCV.
    procedure Pyramid_Down
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
-   --  Pyramid_Up performs OpenCV's Gaussian-pyramid upsampling of Source.
-   --  Source must be a non-empty two-dimensional Mat with depth UInt8, UInt16,
-   --  Int16, Float32, or Float64. Channel count is unrestricted. Destination
-   --  receives Source's depth and channel count with exactly doubled rows and
-   --  columns. A Region is processed as its own logical image, without parent
-   --  pixels. OpenCV supports only its default border for this operation, so
-   --  no Border parameter is exposed. Direct in-place operation is not
-   --  supported. Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  Pyramid_Up performs OpenCV's Gaussian-pyramid upsampling of Source
+   --  (native cv::pyrUp). Source must be a non-empty two-dimensional Mat
+   --  with depth UInt8, UInt16, Int16, Float32, or Float64. Channel count is
+   --  unrestricted. Destination receives Source's depth and channel count
+   --  with exactly doubled rows and columns. A Region is processed as its
+   --  own logical image, without parent pixels. OpenCV supports only its
+   --  default border (Reflect_101) for this operation, so no Border
+   --  parameter is exposed. Pyramid_Up after Pyramid_Down is generally a
+   --  smoothed reconstruction, not the original image.
+   --
+   --  Destination is a direct native output: storage that already has the
+   --  result's size and type is reused (shallow copies and a Region's parent
+   --  see the result); otherwise Destination is rebound to new storage.
+   --  Direct in-place operation is not supported: a Destination that is
+   --  Source or shares or overlaps its storage, including overlapping
+   --  Regions, is rejected. Extreme geometries are rejected before native
+   --  signed-int pyramid arithmetic can overflow.
+   --  @param Source Image to upsample.
+   --  @param Destination Receives the double-size image.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported-depth Source, aliased or overlapping Source and
+   --  Destination storage, an unsafe geometry, or a failure reported by
+   --  OpenCV.
    procedure Pyramid_Up
      (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat);
 
    --  Pyramid_Up with an explicit Output_Size performs the same Gaussian
-   --  upsampling to the requested size. Each extent must equal twice the
-   --  Source extent or one less than that (for example 5 -> 9 or 5 -> 10),
-   --  so every natural Pyramid_Down geometry, including odd sizes, can be
-   --  reversed exactly. Other sizes are rejected before any native
-   --  allocation. The Source contract matches the natural overload. The
-   --  result is computed into fresh storage and bound to Destination only on
-   --  success; on failure Destination is unchanged. Destination may therefore
-   --  share Source storage. Contract violations and failures reported by
-   --  OpenCV raise OpenCV.OpenCV_Error.
+   --  upsampling (native cv::pyrUp, default border) to the requested size.
+   --  Each extent must equal twice the Source extent or one less than that
+   --  (for example 5 -> 9 or 5 -> 10), so every natural Pyramid_Down
+   --  geometry, including odd sizes, can be reversed exactly. Other sizes,
+   --  including OpenCV's nonportable twice-plus-one extent, are rejected
+   --  before any native allocation. The Source contract matches the natural
+   --  overload. The result is computed into fresh storage and bound to
+   --  Destination only on success; on failure Destination is unchanged.
+   --  Destination may therefore share Source storage.
+   --  @param Source Image to upsample.
+   --  @param Destination Rebound on success to the upsampled image, with
+   --  Source's depth and channel count.
+   --  @param Output_Size Requested Width (columns) and Height (rows); each
+   --  is `2 * N` or `2 * N - 1` for the corresponding Source extent N.
+   --  @exception OpenCV_Error Raised for an invalid Source, an
+   --  Output_Size extent other than `2 * N` or `2 * N - 1`, an unsafe
+   --  geometry, or a failure reported by OpenCV.
    procedure Pyramid_Up
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -1301,44 +1536,78 @@ package OpenCV.Image_Processing is
    --  Maximum_Pyramid_Level_Count returns the number of distinct natural
    --  Gaussian levels of Source, including level 0: both extents are halved
    --  as (N + 1) / 2 until they both reach 1. For example 1 x 1 -> 1,
-   --  8 x 8 -> 4, and 9 x 7 -> 5. Source must be a non-empty
-   --  two-dimensional Mat; otherwise OpenCV.OpenCV_Error is raised.
+   --  8 x 8 -> 4, and 9 x 7 -> 5. Only the geometry is inspected; depth and
+   --  channel count are not checked. The result is the largest Level_Count
+   --  accepted by Build_Gaussian_Pyramid and Build_Laplacian_Pyramid.
+   --  @param Source Non-empty two-dimensional Mat whose rows and columns
+   --  are measured.
+   --  @return Number of distinct natural levels; at least 1.
+   --  @exception OpenCV_Error Raised when Source is empty or not
+   --  two-dimensional.
    function Maximum_Pyramid_Level_Count
      (Source : OpenCV.Core.Mat) return Positive;
 
    --  Build_Gaussian_Pyramid returns Level_Count images indexed
-   --  0 .. Level_Count - 1. Level 0 is an independent copy of Source; each
-   --  later level is Pyramid_Down of the previous level with Border. Every
-   --  level owns independent storage shared with neither Source nor another
-   --  level. Source follows the Pyramid_Down contract (UInt8, UInt16, Int16,
-   --  Float32, or Float64; any channel count). A Region is processed as its
-   --  own logical image; parent pixels never participate. Replicate, Reflect,
-   --  Reflect_101, and Wrap are supported; Constant_Border is rejected.
-   --  Level_Count must not exceed Maximum_Pyramid_Level_Count (Source).
-   --  Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  0 .. Level_Count - 1 (native cv::buildPyramid). Level 0 is an
+   --  independent copy of Source; each later level is Pyramid_Down of the
+   --  previous level with Border. Every level owns independent storage
+   --  shared with neither Source nor another level. Source follows the
+   --  Pyramid_Down contract (UInt8, UInt16, Int16, Float32, or Float64; any
+   --  channel count). A Region is processed as its own logical image (it is
+   --  cloned first); parent pixels never participate. The whole chain is
+   --  checked for native signed-int overflow before any level is built.
+   --  @param Source Image that forms level 0.
+   --  @param Level_Count Total number of levels, including level 0; must
+   --  not exceed Maximum_Pyramid_Level_Count (Source).
+   --  @param Border Extrapolation for every downsampling step: Replicate,
+   --  Reflect, Reflect_101 (default), or Wrap. Constant_Border is rejected.
+   --  @return Fresh array of Level_Count independent Mats, finest first.
+   --  @exception OpenCV_Error Raised for an invalid Source,
+   --  Constant_Border, a Level_Count above the distinct level count, an
+   --  unsafe geometry, or a failure reported by OpenCV.
    function Build_Gaussian_Pyramid
      (Source      : OpenCV.Core.Mat;
       Level_Count : Positive;
       Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)
       return OpenCV.Core.Mat_Array;
 
-   --  Working floating depth of a Laplacian pyramid. Automatic_Precision
-   --  keeps Float64 sources in Float64 and promotes every other supported
-   --  depth to Float32, so negative detail coefficients never saturate.
+   --  Working floating depth of a Laplacian pyramid. Residuals are never
+   --  computed in an integer type, so negative detail coefficients never
+   --  saturate.
+   --  @enum Automatic_Precision Keeps Float64 sources in Float64 and
+   --  promotes every other supported depth to Float32.
+   --  @enum Float32_Precision Always Float32, narrowing a Float64 Source.
+   --  @enum Float64_Precision Always Float64, for every supported depth.
    type Laplacian_Precision is
      (Automatic_Precision, Float32_Precision, Float64_Precision);
 
-   --  Build_Laplacian_Pyramid converts Source to the selected floating depth,
-   --  builds a Gaussian pyramid G (0 .. Level_Count - 1) with Border, and
-   --  returns L (0 .. Level_Count - 1) where, for I < Level_Count - 1,
-   --  L (I) = G (I) - Pyramid_Up (G (I + 1), Output_Size => size of G (I))
-   --  and the last level is the low-frequency base L (N) = G (N). All levels
+   --  Build_Laplacian_Pyramid converts Source to the selected floating depth
+   --  (a private copy of its logical pixels), builds a Gaussian pyramid
+   --  G (0 .. N) with Border, where N = Level_Count - 1, and returns
+   --  L (0 .. N) where, for I < N,
+   --
+   --       L (I) = G (I) - Pyramid_Up (G (I + 1),
+   --                                   Output_Size => size of G (I))
+   --
+   --  and the last level is the low-frequency base L (N) = G (N), not a
+   --  residual. Pyramid_Up always uses OpenCV's default border. All levels
    --  are Float32 or Float64 with Source's channel count and independent
    --  storage, so callers may edit residuals before reconstruction. Source,
    --  Region, Border, and Level_Count contracts match
-   --  Build_Gaussian_Pyramid. Contract violations and failures reported by
-   --  OpenCV raise OpenCV.OpenCV_Error.
+   --  Build_Gaussian_Pyramid.
+   --  @param Source Image to decompose.
+   --  @param Level_Count Total number of levels including the base; must
+   --  not exceed Maximum_Pyramid_Level_Count (Source).
+   --  @param Border Extrapolation of the Gaussian downsampling steps:
+   --  Replicate, Reflect, Reflect_101 (default), or Wrap. Constant_Border
+   --  is rejected.
+   --  @param Precision Working floating depth of every level;
+   --  Automatic_Precision by default.
+   --  @return Fresh array indexed 0 .. Level_Count - 1: residuals finest
+   --  first, then the low-frequency base.
+   --  @exception OpenCV_Error Raised for an invalid Source,
+   --  Constant_Border, a Level_Count above the distinct level count, an
+   --  unsafe geometry, or a failure reported by OpenCV.
    function Build_Laplacian_Pyramid
      (Source      : OpenCV.Core.Mat;
       Level_Count : Positive;
@@ -1347,54 +1616,71 @@ package OpenCV.Image_Processing is
       return OpenCV.Core.Mat_Array;
 
    --  Reconstruct_Laplacian_Pyramid inverts Build_Laplacian_Pyramid.
-   --  Pyramid is read in array iteration order as fine-to-coarse levels and
-   --  may have any index bounds. It must be non-empty; every level must be a
-   --  non-empty two-dimensional Mat of one common depth (Float32 or Float64)
-   --  and one common channel count, and each following level must have
-   --  Rows = (Previous.Rows + 1) / 2 and Columns = (Previous.Columns + 1) / 2.
-   --  The whole array is validated before any work begins. Starting from the
-   --  last level, each step computes
-   --  Current := Pyramid_Up (Current, size of Level) + Level. The result is
-   --  an independent Mat of the pyramid's floating depth; it is not narrowed
-   --  to any original integer depth (use Convert_To explicitly). Input levels
-   --  are never modified. Contract violations and failures reported by
-   --  OpenCV raise OpenCV.OpenCV_Error.
+   --  Starting from a copy of the last level, each step towards the first
+   --  level computes
+   --
+   --       Current := Pyramid_Up (Current, size of Level) + Level
+   --
+   --  An unmodified pyramid reconstructs the floating working copy of its
+   --  Source to normal floating-point tolerance, including odd sizes. The
+   --  result is an independent Mat of the pyramid's floating depth; it is
+   --  not narrowed to any original integer depth (use Convert_To
+   --  explicitly). Input levels are never modified.
+   --  @param Pyramid Levels read in array iteration order as fine-to-coarse
+   --  levels, with any index bounds. It must be non-empty; every level must
+   --  be a non-empty two-dimensional Mat of one common depth (Float32 or
+   --  Float64) and one common channel count, and each following level must
+   --  have Rows = (Previous.Rows + 1) / 2 and Columns =
+   --  (Previous.Columns + 1) / 2. The whole array is validated before any
+   --  work begins.
+   --  @return Fresh reconstructed image with the first level's geometry,
+   --  depth and channel count.
+   --  @exception OpenCV_Error Raised when Pyramid violates its
+   --  contract or OpenCV reports a failure.
    function Reconstruct_Laplacian_Pyramid
      (Pyramid : OpenCV.Core.Mat_Array) return OpenCV.Core.Mat;
 
    --  Highest Gaussian pyramid level processed by Pyramid_Mean_Shift_Filter;
-   --  0 filters Source directly without a pyramid.
+   --  0 filters Source directly without a pyramid. A level N above zero
+   --  builds N further natural half-size levels and starts filtering at
+   --  the top with `Spatial_Radius / 2**N`.
    subtype Mean_Shift_Pyramid_Level is Natural range 0 .. 8;
 
+   --  Maximum number of mean-shift iterations per pixel, 1 through 100;
+   --  the type of Mean_Shift_Termination.Maximum_Iterations.
    subtype Mean_Shift_Iteration_Limit is Positive range 1 .. 100;
 
    --  Per-pixel mean-shift stopping rule. Iteration stops after
    --  Maximum_Iterations or once the combined spatial/color shift is at
-   --  most Epsilon. Both criteria are always active. Epsilon must be finite
-   --  and nonnegative.
+   --  most Epsilon. Both criteria are always active (native MAX_ITER and
+   --  EPS). Epsilon must be finite and nonnegative; Pyramid_Mean_Shift_Filter
+   --  checks it. The defaults, 5 iterations and 1.0, match OpenCV's own.
+   --  @field Maximum_Iterations Iteration limit for each pixel's mean-shift
+   --  (1 through 100; default 5).
+   --  @field Epsilon Shift threshold (default 1.0). The native shift measure
+   --  is the absolute X plus absolute Y displacement in pixels plus the
+   --  squared RGB color change of one iteration.
    type Mean_Shift_Termination is record
       Maximum_Iterations : Mean_Shift_Iteration_Limit := 5;
       Epsilon            : OpenCV.Float64_Value := 1.0;
    end record;
 
    --  Pyramid_Mean_Shift_Filter performs OpenCV's mean-shift filtering
-   --  (posterization) stage of mean-shift segmentation. Each pixel is
-   --  replaced by the color at which a joint spatial/color mean-shift
-   --  converges: pixels within Spatial_Radius in space and Color_Radius in
-   --  RGB distance are averaged repeatedly. The result is a filtered color
-   --  image; it does not produce connected-region labels.
+   --  (posterization) stage of mean-shift segmentation (native
+   --  cv::pyrMeanShiftFiltering). Each pixel is replaced by the color at
+   --  which a joint spatial/color mean-shift converges: pixels within
+   --  Spatial_Radius in space and Color_Radius in RGB distance are averaged
+   --  repeatedly. The result is a filtered color image; it does not produce
+   --  connected-region labels.
    --
-   --  Source must be a non-empty two-dimensional UInt8 C3 Mat. Destination
-   --  receives Source's rows and columns as UInt8 C3. Spatial_Radius must be
-   --  finite and positive (OpenCV raises each level's effective radius to at
-   --  least 1). Color_Radius must be finite and nonnegative; 0 admits only
-   --  identical colors. With Maximum_Pyramid_Level > 0, OpenCV first filters
-   --  a natural Gaussian pyramid from its top level and propagates results
-   --  downward, halving Spatial_Radius per level; results may differ from
-   --  level-0 filtering. Every generated level must stay at least 2 x 2:
-   --  requests whose top level would be narrower are rejected (never
-   --  silently reduced) because OpenCV's propagation performs invalid
-   --  pointer arithmetic on such tiny levels.
+   --  Source must be a non-empty two-dimensional UInt8 C3 Mat. With
+   --  Maximum_Pyramid_Level > 0, OpenCV first filters a natural Gaussian
+   --  pyramid from its top level and propagates results downward, halving
+   --  Spatial_Radius per level; results may differ from level-0 filtering.
+   --  Every generated level must stay at least 2 x 2: requests whose top
+   --  level would be smaller are rejected (never silently reduced) because
+   --  OpenCV's propagation performs invalid pointer arithmetic on such tiny
+   --  levels.
    --
    --  Source is snapshotted into a private packed copy, so a Region is its
    --  own logical image and parent pixels never participate; Source is not
@@ -1403,8 +1689,23 @@ package OpenCV.Image_Processing is
    --  Destination may be Source itself or share its storage. Requests whose
    --  native signed-int radius rounding, row offsets, window accumulators,
    --  or stopping expression could overflow are rejected before native
-   --  execution. Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  execution.
+   --  @param Source UInt8 C3 image to filter.
+   --  @param Destination Rebound on success to a fresh UInt8 C3 image with
+   --  Source's rows and columns.
+   --  @param Spatial_Radius Spatial window radius in pixels at level 0;
+   --  must be finite and positive (OpenCV raises each level's effective
+   --  radius to at least 1).
+   --  @param Color_Radius Color window radius as a Euclidean RGB distance;
+   --  must be finite and nonnegative, and 0 admits only identical colors.
+   --  @param Maximum_Pyramid_Level Highest pyramid level processed, 1 by
+   --  default; 0 filters Source directly without a pyramid.
+   --  @param Termination Per-pixel iteration limit and shift threshold;
+   --  Termination.Epsilon must be finite and nonnegative.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  non-UInt8 C3 Source, an invalid radius or Epsilon, a generated level
+   --  smaller than 2 x 2, a native arithmetic overflow risk, or a failure
+   --  reported by OpenCV.
    procedure Pyramid_Mean_Shift_Filter
      (Source                : OpenCV.Core.Mat;
       Destination           : in out OpenCV.Core.Mat;
@@ -1881,31 +2182,54 @@ package OpenCV.Image_Processing is
       Border_Value  : OpenCV.Scalar := (others => 0.0));
 
    --  Median_Blur replaces each Source pixel with the median of its square
-   --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat
-   --  with 1, 3, or 4 channels. Kernel_Size must be odd. Kernel sizes 3 and 5
-   --  accept UInt8, UInt16, or Float32; larger kernels accept UInt8 only.
-   --  Destination receives Source's rows, columns, depth, and channel count.
-   --  Channels are filtered independently. OpenCV uses replicated-border
-   --  handling internally; no public Border parameter is exposed. Source
-   --  remains unchanged when distinct from Destination; direct in-place
-   --  operation is supported. Contract violations and failures reported by
-   --  OpenCV raise OpenCV.OpenCV_Error.
+   --  Kernel_Size neighborhood (native cv::medianBlur). Source must be a
+   --  non-empty two-dimensional Mat with 1, 3, or 4 channels. Kernel sizes 3
+   --  and 5 accept UInt8, UInt16, or Float32; larger kernels accept UInt8
+   --  only. Channels are filtered independently. OpenCV uses
+   --  replicated-border handling internally; no public Border parameter is
+   --  exposed.
+   --
+   --  Destination receives Source's rows, columns, depth, and channel count
+   --  as a direct native output: storage that already has that size and
+   --  type is reused (shallow copies and a Region's parent see the result);
+   --  otherwise Destination is rebound to new storage. Direct in-place
+   --  operation (Destination is Source) is supported; Source remains
+   --  unchanged when distinct from Destination.
+   --  @param Source Image to filter.
+   --  @param Destination Receives the median-filtered image.
+   --  @param Kernel_Size Side length of the square aperture in pixels; must
+   --  be odd (the subtype excludes values below 3).
+   --  @exception OpenCV_Error Raised for an empty or non-2-D Source,
+   --  a channel count other than 1, 3, or 4, an even Kernel_Size, a depth
+   --  not accepted for Kernel_Size, or a failure reported by OpenCV.
    procedure Median_Blur
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Kernel_Size : Median_Kernel_Size);
 
    --  Box_Blur replaces each Source pixel with the normalized average of its
-   --  Kernel_Size neighborhood. Source must be a non-empty two-dimensional Mat
+   --  Kernel_Size neighborhood (native cv::blur): every coefficient is
+   --  `1 / (Width * Height)`. Source must be a non-empty two-dimensional Mat
    --  with depth UInt8, UInt16, Int16, Float32, or Float64. Channels are
-   --  processed independently and are not restricted. Kernel width and height
-   --  must be positive; they need not be odd or equal. Constant_Border,
-   --  Replicate, Reflect, and Reflect_101 are supported; Wrap is rejected.
-   --  The kernel uses OpenCV's centered default anchor. Destination receives
-   --  Source's rows, columns, depth, and channel count. Source remains
-   --  unchanged when distinct from Destination; direct in-place operation is
-   --  supported. Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  processed independently and are not restricted. The kernel uses
+   --  OpenCV's centered default anchor; no Anchor parameter is exposed.
+   --
+   --  Destination receives Source's rows, columns, depth, and channel count
+   --  as a direct native output: storage that already has that size and
+   --  type is reused (shallow copies and a Region's parent see the result);
+   --  otherwise Destination is rebound to new storage. Direct in-place
+   --  operation (Destination is Source) is supported; Source remains
+   --  unchanged when distinct from Destination.
+   --  @param Source Image to average.
+   --  @param Destination Receives the box-filtered image.
+   --  @param Kernel_Size Neighborhood width and height in pixels; both must
+   --  be positive and need not be odd or equal.
+   --  @param Border Extrapolation outside Source: Constant_Border (zero
+   --  samples), Replicate, Reflect, or Reflect_101 (default). Wrap is
+   --  rejected.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported-depth Source, a zero kernel dimension, Wrap, or a failure
+   --  reported by OpenCV.
    procedure Box_Blur
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -1913,20 +2237,36 @@ package OpenCV.Image_Processing is
       Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Bilateral_Filter replaces Destination with an edge-preserving smoothing
-   --  of Source. Spatial distance and pixel/color distance both weight the
-   --  neighborhood average, so strong intensity or color discontinuities are
-   --  preserved more than with a linear blur. Source must be a non-empty
-   --  two-dimensional Mat of depth UInt8 or Float32 with exactly 1 or 3
-   --  channels. For 3-channel Sources, color-distance weighting uses the
-   --  combined color difference rather than filtering channels independently.
-   --  Sigma_Color and Sigma_Space must be positive and finite. This overload
-   --  asks OpenCV to derive the neighborhood diameter from Sigma_Space; there
-   --  is no public zero or negative diameter sentinel. Constant_Border,
-   --  Replicate, Reflect, and Reflect_101 are supported; Wrap is rejected.
-   --  Destination receives Source's rows, columns, depth, and channel count.
-   --  Source remains unchanged when Destination is distinct. Direct in-place
-   --  operation is not supported. Contract violations and failures reported by
-   --  OpenCV raise OpenCV.OpenCV_Error.
+   --  of Source (native cv::bilateralFilter). Spatial distance and
+   --  pixel/color distance both weight the neighborhood average, so strong
+   --  intensity or color discontinuities are preserved more than with a
+   --  linear blur. Source must be a non-empty two-dimensional Mat of depth
+   --  UInt8 or Float32 with exactly 1 or 3 channels. For 3-channel Sources,
+   --  color-distance weighting uses the combined color difference rather
+   --  than filtering channels independently. This overload asks OpenCV to
+   --  derive the neighborhood diameter from Sigma_Space; there is no public
+   --  zero or negative diameter sentinel.
+   --
+   --  Destination receives Source's rows, columns, depth, and channel count
+   --  as a direct native output: storage that already has that size and
+   --  type is reused (shallow copies and a Region's parent see the result);
+   --  otherwise Destination is rebound to new storage. Direct in-place
+   --  operation is not supported: Destination being Source, or a header
+   --  whose data starts at Source's first element, is rejected. Source
+   --  remains unchanged when Destination is distinct.
+   --  @param Source Image to smooth.
+   --  @param Destination Receives the filtered image; must not alias Source.
+   --  @param Sigma_Color Standard deviation of the intensity/color-distance
+   --  weight; a small value preserves discontinuities more. Positive and
+   --  finite.
+   --  @param Sigma_Space Standard deviation of the spatial-distance weight,
+   --  in pixels; it also determines the neighborhood diameter. Positive and
+   --  finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported Source, a nonpositive or nonfinite sigma, Wrap, a
+   --  Destination aliasing Source, or a failure reported by OpenCV.
    procedure Bilateral_Filter
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -1937,8 +2277,24 @@ package OpenCV.Image_Processing is
    --  This overload is the same Bilateral_Filter operation with an explicit
    --  neighborhood Diameter. Diameter is a positive integer and need not be
    --  odd. OpenCV uses Diameter as the neighborhood size independently of
-   --  Sigma_Space; Sigma_Space still weights samples inside that neighborhood.
-   --  Direct in-place operation is not supported.
+   --  Sigma_Space; Sigma_Space still weights samples inside that
+   --  neighborhood. Source requirements, borders, and the direct native
+   --  Destination output match the automatic overload. Direct in-place
+   --  operation is not supported.
+   --  @param Source UInt8 or Float32 image with 1 or 3 channels to smooth.
+   --  @param Destination Receives the filtered image with Source's
+   --  geometry and type; must not alias Source.
+   --  @param Diameter Neighborhood diameter in pixels; any positive value.
+   --  @param Sigma_Color Standard deviation of the intensity/color-distance
+   --  weight; positive and finite.
+   --  @param Sigma_Space Standard deviation of the spatial-distance weight
+   --  in pixels, applied inside the Diameter neighborhood; positive and
+   --  finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an invalid Source, a
+   --  nonpositive or nonfinite sigma, Wrap, a Destination aliasing Source,
+   --  or a failure reported by OpenCV.
    procedure Bilateral_Filter
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -1948,23 +2304,44 @@ package OpenCV.Image_Processing is
       Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Filter_2D replaces Destination with a linear correlation of Source
-   --  against Kernel. This is correlation, not mathematical convolution: the
-   --  kernel is not mirrored around the anchor. Source must be a non-empty
-   --  two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or Float64.
-   --  Channel count is unrestricted; the same single-channel Kernel is applied
-   --  independently to every Source channel. Kernel must be a non-empty
-   --  two-dimensional single-channel Float32 or Float64 Mat. Kernel dimensions
-   --  need not be odd, square, or normalized. Destination_Depth selects the
-   --  output depth using the same supported source/destination combinations as
-   --  Sobel and Laplacian. Offset is added to each filtered value and must be
-   --  finite. This overload uses OpenCV's centered default anchor; there is no
-   --  public (-1, -1) sentinel. Constant_Border, Replicate, Reflect, and
-   --  Reflect_101 are supported; Wrap is rejected. Destination receives
-   --  Source's rows, columns, and channel count, with the requested depth.
-   --  Source remains unchanged when Destination is distinct. Direct in-place
-   --  operation is supported when the requested destination depth matches
-   --  Source. Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  against Kernel (native cv::filter2D). This is correlation, not
+   --  mathematical convolution: the kernel is not mirrored around the
+   --  anchor. For every channel,
+   --
+   --       Destination (x, y) = Offset + sum over kernel positions (i, j)
+   --         of Kernel (i, j) * Source (x + i - Anchor.X, y + j - Anchor.Y)
+   --
+   --  where i is a kernel column, j a kernel row, and Anchor the kernel
+   --  position aligned with the output pixel. This overload uses OpenCV's
+   --  centered default anchor; there is no public (-1, -1) sentinel. Source
+   --  must be a non-empty two-dimensional Mat of depth UInt8, UInt16, Int16,
+   --  Float32, or Float64. Channel count is unrestricted; the same
+   --  single-channel Kernel is applied independently to every Source
+   --  channel. Kernel dimensions need not be odd, square, or normalized.
+   --
+   --  Destination receives Source's rows, columns, and channel count, with
+   --  the requested depth, as a direct native output: storage that already
+   --  has that size and type is reused (shallow copies and a Region's
+   --  parent see the result); otherwise Destination is rebound to new
+   --  storage. Direct in-place operation is supported when the requested
+   --  destination depth matches Source; a depth-changing alias (Destination
+   --  is Source or starts at its first element) is rejected. Source remains
+   --  unchanged when Destination is distinct.
+   --  @param Source Image to filter.
+   --  @param Destination Receives the filtered image.
+   --  @param Kernel Correlation coefficients: a non-empty two-dimensional
+   --  single-channel Float32 or Float64 Mat of any size. It must not share
+   --  Destination's storage.
+   --  @param Destination_Depth Output depth, Same_Depth by default; the
+   --  supported source/destination combinations are those of Sobel and
+   --  Laplacian (see Derivative_Depth).
+   --  @param Offset Value added to each filtered value; must be finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported Source or Kernel, an unsupported depth combination, a
+   --  nonfinite Offset, Wrap, a rejected alias, or a failure reported by
+   --  OpenCV.
    procedure Filter_2D
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
@@ -1976,9 +2353,25 @@ package OpenCV.Image_Processing is
    --  This overload is the same Filter_2D correlation with an explicit Kernel
    --  Anchor. Anchor must lie inside Kernel: X and Y are nonnegative and
    --  strictly less than Kernel's columns and rows. There is no public mixed
-   --  or centered (-1, -1) sentinel in this overload. Direct in-place
-   --  operation is supported when the requested destination depth matches
-   --  Source.
+   --  or centered (-1, -1) sentinel in this overload. Source, Kernel, depth,
+   --  Offset, border, and direct native Destination rules match the
+   --  centered overload. Direct in-place operation is supported when the
+   --  requested destination depth matches Source.
+   --  @param Source Image to filter.
+   --  @param Destination Receives the filtered image.
+   --  @param Kernel Non-empty two-dimensional single-channel Float32 or
+   --  Float64 correlation coefficients; must not share Destination's
+   --  storage.
+   --  @param Anchor Kernel position aligned with each output pixel:
+   --  column X and row Y within Kernel.
+   --  @param Destination_Depth Output depth, Same_Depth by default; see
+   --  Derivative_Depth for the supported combinations.
+   --  @param Offset Value added to each filtered value; must be finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an Anchor outside Kernel,
+   --  any input rejected by the centered overload, or a failure reported by
+   --  OpenCV.
    procedure Filter_2D
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
@@ -1989,26 +2382,45 @@ package OpenCV.Image_Processing is
       Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Sep_Filter_2D replaces Destination with a separable linear filter of
-   --  Source. Every Source row is filtered with Kernel_X, then every
-   --  intermediate column is filtered with Kernel_Y, and Offset is added to
-   --  the final value. Coefficient order is preserved; neither kernel is
-   --  flipped. Source must be a non-empty two-dimensional Mat of depth UInt8,
-   --  UInt16, Int16, Float32, or Float64. Channel count is unrestricted; the
-   --  same Kernel_X and Kernel_Y pair is applied independently to every Source
-   --  channel. Each kernel must be a non-empty two-dimensional single-channel
-   --  Float32 or Float64 vector (one row or one column). Kernel lengths need
-   --  not be odd, equal, normalized, or symmetric. Kernel_X and Kernel_Y must
-   --  share the same floating-point depth because native OpenCV requires a
-   --  common kernel type. Destination_Depth selects the output depth using
-   --  the same supported source/destination combinations as Filter_2D. Offset
-   --  is added to each filtered value and must be finite. This overload uses
-   --  OpenCV's centered default anchor; there is no public (-1, -1) sentinel.
-   --  Constant_Border, Replicate, Reflect, and Reflect_101 are supported;
-   --  Wrap is rejected. Destination receives Source's rows, columns, and
-   --  channel count, with the requested depth. Source remains unchanged when
-   --  Destination is distinct. Direct in-place operation is supported when
-   --  the requested destination depth matches Source. Contract violations and
-   --  failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  Source (native cv::sepFilter2D). Every Source row is filtered with
+   --  Kernel_X, then every intermediate column is filtered with Kernel_Y,
+   --  and Offset is added to the final value. Coefficient order is
+   --  preserved; neither kernel is flipped. Source must be a non-empty
+   --  two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or
+   --  Float64. Channel count is unrestricted; the same Kernel_X and Kernel_Y
+   --  pair is applied independently to every Source channel. Kernel lengths
+   --  need not be odd, equal, normalized, or symmetric. Kernel_X and
+   --  Kernel_Y must share the same floating-point depth because native
+   --  OpenCV requires a common kernel type; they may share storage with each
+   --  other. This overload uses OpenCV's centered default anchor; there is
+   --  no public (-1, -1) sentinel.
+   --
+   --  Destination receives Source's rows, columns, and channel count, with
+   --  the requested depth, as a direct native output: storage that already
+   --  has that size and type is reused (shallow copies and a Region's
+   --  parent see the result); otherwise Destination is rebound to new
+   --  storage. Direct in-place operation is supported when the requested
+   --  destination depth matches Source; a depth-changing alias (Destination
+   --  is Source or starts at its first element) is rejected. Source remains
+   --  unchanged when Destination is distinct.
+   --  @param Source Image to filter.
+   --  @param Destination Receives the filtered image.
+   --  @param Kernel_X Row (X) coefficients: a non-empty two-dimensional
+   --  single-channel Float32 or Float64 vector, one row or one column. It
+   --  must not share Destination's storage.
+   --  @param Kernel_Y Column (Y) coefficients with the same requirements
+   --  and the same depth as Kernel_X.
+   --  @param Destination_Depth Output depth, Same_Depth by default, using
+   --  the same supported source/destination combinations as Filter_2D (see
+   --  Derivative_Depth).
+   --  @param Offset Value added to each filtered value; must be finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported Source, a kernel that is not a non-empty Float32 or
+   --  Float64 C1 vector, kernels of different depths, an unsupported depth
+   --  combination, a nonfinite Offset, Wrap, a rejected alias, or a failure
+   --  reported by OpenCV.
    procedure Sep_Filter_2D
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
@@ -2022,10 +2434,28 @@ package OpenCV.Image_Processing is
    --  explicit Kernel Anchor. Anchor.X indexes Kernel_X and Anchor.Y indexes
    --  Kernel_Y using each kernel's logical length (columns if it is a row
    --  vector, otherwise rows). Both coordinates must be nonnegative and
-   --  strictly less than the corresponding logical length. There is no public
-   --  mixed or centered (-1, -1) sentinel in this overload. Direct in-place
-   --  operation is supported when the requested destination depth matches
-   --  Source.
+   --  strictly less than the corresponding logical length. There is no
+   --  public mixed or centered (-1, -1) sentinel in this overload. Source,
+   --  kernel, depth, Offset, border, and direct native Destination rules
+   --  match the centered overload. Direct in-place operation is supported
+   --  when the requested destination depth matches Source.
+   --  @param Source Image to filter.
+   --  @param Destination Receives the filtered image.
+   --  @param Kernel_X Row (X) coefficients: a non-empty single-channel
+   --  Float32 or Float64 row or column vector, not sharing Destination's
+   --  storage.
+   --  @param Kernel_Y Column (Y) coefficients with the same requirements
+   --  and the same depth as Kernel_X.
+   --  @param Anchor Index into Kernel_X (X) and Kernel_Y (Y) of the
+   --  coefficient aligned with each output pixel.
+   --  @param Destination_Depth Output depth, Same_Depth by default; see
+   --  Derivative_Depth for the supported combinations.
+   --  @param Offset Value added to each filtered value; must be finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an Anchor coordinate outside
+   --  its kernel, any input rejected by the centered overload, or a failure
+   --  reported by OpenCV.
    procedure Sep_Filter_2D
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
@@ -2210,11 +2640,24 @@ package OpenCV.Image_Processing is
       Iterations  : Morphology_Iterations := 1;
       Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
 
-   --  Canny_Edges finds edges in a non-empty two-dimensional UInt8 C1 Source.
-   --  Lower_Threshold and Upper_Threshold must be finite, nonnegative, and
-   --  ordered lower to upper. Destination is replaced with a UInt8 C1 Mat of
-   --  Source's geometry. Source remains valid and is not modified. Contract
-   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  Canny_Edges finds edges in a non-empty two-dimensional UInt8 C1 Source
+   --  (native cv::Canny). Lower_Threshold and Upper_Threshold must be
+   --  finite, nonnegative, and ordered lower to upper. Destination receives
+   --  a UInt8 C1 edge map of Source's geometry, nonzero at edge pixels and
+   --  zero elsewhere, as a direct native output: storage that already has
+   --  that size and type is reused (shallow copies and a Region's parent see
+   --  the result); otherwise Destination is rebound to new storage.
+   --  @param Source Single-channel UInt8 image to analyse.
+   --  @param Destination Receives the edge map.
+   --  @param Lower_Threshold Lower hysteresis threshold on the gradient
+   --  magnitude; finite, nonnegative, and not above Upper_Threshold.
+   --  @param Upper_Threshold Upper hysteresis threshold on the gradient
+   --  magnitude; finite and nonnegative.
+   --  @param Aperture Sobel aperture of the gradient; Sobel_3x3 by default.
+   --  @param Gradient_Norm Gradient magnitude norm; L1_Norm by default.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  non-UInt8 C1 Source, a negative, nonfinite, or misordered threshold,
+   --  or a failure reported by OpenCV.
    procedure Canny_Edges
      (Source          : OpenCV.Core.Mat;
       Destination     : in out OpenCV.Core.Mat;
@@ -2267,38 +2710,71 @@ package OpenCV.Image_Processing is
       Output_Depth : Subpixel_Patch_Output_Depth := Preserve_Source_Depth)
       return OpenCV.Core.Mat;
 
+   --  First-derivative pair returned by Spatial_Gradient. Each component is
+   --  a fresh independent Int16 C1 Mat with the Source geometry, sharing
+   --  storage with neither Source nor the other component.
+   --  @field X_Derivative Horizontal derivative: 3x3 Sobel with X order 1.
+   --  @field Y_Derivative Vertical derivative: 3x3 Sobel with Y order 1.
    type Spatial_Gradient_Result is record
       X_Derivative : OpenCV.Core.Mat;
       Y_Derivative : OpenCV.Core.Mat;
    end record;
 
-   --  Native fixed 3x3 first-order Sobel pair. Source must be nonempty,
-   --  exactly 2-D UInt8 C1; Border must be Reflect_101 or Replicate.
-   --  Each result is a fresh independent Int16 C1 Mat with Source geometry
-   --  and mathematical range -1020 .. 1020. Source remains unchanged.
-   --  Regions are logical images: parent pixels never participate.
-   --  Invalid input and native failures raise OpenCV_Error.
+   --  Native fixed 3x3 first-order Sobel pair (cv::spatialGradient), with
+   --  no kernel-size selector. Source must be nonempty, exactly 2-D UInt8
+   --  C1. Each result is a fresh independent Int16 C1 Mat with Source
+   --  geometry and mathematical range -1020 .. 1020, so no saturation or
+   --  wrap occurs. Source remains unchanged. Regions are logical images:
+   --  parent pixels never participate. A one-column Source is computed
+   --  through a private two-column copy with the same Sobel semantics,
+   --  avoiding an unsafe native read.
+   --  @param Source UInt8 C1 image to differentiate.
+   --  @param Border Extrapolation outside Source: Reflect_101 (default) or
+   --  Replicate only.
+   --  @return Fresh X_Derivative/Y_Derivative pair.
+   --  @exception OpenCV_Error Raised for an invalid Source, any
+   --  other Border, or a native failure.
    function Spatial_Gradient
      (Source : OpenCV.Core.Mat;
       Border : OpenCV.Border_Kind := OpenCV.Reflect_101)
       return Spatial_Gradient_Result;
 
    --  Sobel computes the X_Order/Y_Order spatial derivative independently for
-   --  every Source channel. Source must be a non-empty two-dimensional UInt8,
-   --  UInt16, Int16, Float32, or Float64 Mat. X_Order and Y_Order may not both
-   --  be zero; each order must be less than Kernel_Size, except Kernel_1 uses
-   --  OpenCV's special effective three-tap derivative kernel. Wrap is not
-   --  supported. Scale and OpenCV's delta term (Offset) must be finite.
-   --  Destination has Source's rows,
-   --  columns, and channel count, with depth selected by Destination_Depth:
-   --  UInt8 supports Same_Depth, Int16_Depth, Float32_Depth, and
-   --  Float64_Depth.
-   --  UInt16 and Int16 support Same_Depth, Float32_Depth, and Float64_Depth.
-   --  Float32 supports Same_Depth or Float32_Depth; Float64 supports
-   --  Same_Depth or Float64_Depth. OpenCV supports direct in-place use when
-   --  Destination_Depth is Same_Depth; Source remains unchanged otherwise.
-   --  Contract
-   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  every Source channel (native cv::Sobel) and stores
+   --  `Scale * derivative + Offset`, where Offset is OpenCV's delta term.
+   --  Source must be a non-empty two-dimensional UInt8, UInt16, Int16,
+   --  Float32, or Float64 Mat. X_Order and Y_Order may not both be zero;
+   --  each order must be less than Kernel_Size, except Kernel_1 uses
+   --  OpenCV's special effective three-tap derivative kernel.
+   --
+   --  Destination has Source's rows, columns, and channel count, with depth
+   --  selected by Destination_Depth: UInt8 supports Same_Depth, Int16_Depth,
+   --  Float32_Depth, and Float64_Depth. UInt16 and Int16 support Same_Depth,
+   --  Float32_Depth, and Float64_Depth. Float32 supports Same_Depth or
+   --  Float32_Depth; Float64 supports Same_Depth or Float64_Depth. A UInt8
+   --  Same_Depth result cannot hold negative derivatives. Destination is a
+   --  direct native output: storage that already has the result's size and
+   --  type is reused (shallow copies and a Region's parent see the result);
+   --  otherwise Destination is rebound to new storage. OpenCV supports
+   --  direct in-place use only when Destination_Depth is Same_Depth; Source
+   --  remains unchanged when Destination is distinct. A Region Source is
+   --  passed to OpenCV directly, and native Sobel may inspect parent pixels
+   --  around the Region; pass a Clone to isolate it.
+   --  @param Source Image to differentiate.
+   --  @param Destination Receives the scaled derivative image.
+   --  @param X_Order Derivative order along X (columns).
+   --  @param Y_Order Derivative order along Y (rows).
+   --  @param Destination_Depth Output depth; Float32_Depth by default.
+   --  @param Kernel_Size Sobel aperture; Kernel_3 by default.
+   --  @param Scale Factor applied to each derivative value; must be finite.
+   --  @param Offset Value added after scaling (OpenCV's delta); must be
+   --  finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is not supported.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported Source, an unsupported depth combination, both orders
+   --  zero or an order not below the effective kernel length, a nonfinite
+   --  Scale or Offset, Wrap, or a failure reported by OpenCV.
    procedure Sobel
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
@@ -2311,11 +2787,30 @@ package OpenCV.Image_Processing is
       Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Scharr computes the first spatial derivative in Axis independently for
-   --  every Source channel. Its source, destination-depth, Scale, Delta, and
-   --  Border requirements are the same as Sobel's. OpenCV supports direct
-   --  in-place use when Destination_Depth is Same_Depth; Source remains
-   --  unchanged otherwise. Contract violations and failures reported by
-   --  OpenCV raise OpenCV.OpenCV_Error.
+   --  every Source channel (native cv::Scharr) with the 3x3 Scharr kernel
+   --  whose separable factors Get_Scharr_Kernels returns: `[-1, 0, 1]`
+   --  along Axis and `[3, 10, 3]` across it. It stores
+   --  `Scale * derivative + Offset`. Its source, destination-depth, Scale,
+   --  Delta (Offset), and Border requirements are the same as Sobel's.
+   --  Destination is a direct native output with Source's rows, columns, and
+   --  channel count: storage that already has the result's size and type is
+   --  reused (shallow copies and a Region's parent see the result);
+   --  otherwise Destination is rebound to new storage. OpenCV supports
+   --  direct in-place use only when Destination_Depth is Same_Depth; Source
+   --  remains unchanged when Destination is distinct.
+   --  @param Source Image to differentiate.
+   --  @param Destination Receives the scaled derivative image.
+   --  @param Axis Direction of the first derivative.
+   --  @param Destination_Depth Output depth; Float32_Depth by default (see
+   --  Derivative_Depth for the supported combinations).
+   --  @param Scale Factor applied to each derivative value; must be finite.
+   --  @param Offset Value added after scaling (OpenCV's delta); must be
+   --  finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported Source, an unsupported depth combination, a nonfinite
+   --  Scale or Offset, Wrap, or a failure reported by OpenCV.
    procedure Scharr
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
@@ -2326,19 +2821,33 @@ package OpenCV.Image_Processing is
       Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Laplacian computes the sum of the second X and Y derivatives for every
-   --  Source channel. Source must be non-empty and two-dimensional with depth
-   --  UInt8, UInt16, Int16, Float32, or Float64. Destination_Depth follows the
-   --  same source/destination combinations as Sobel. Kernel_Size must be odd
-   --  and between 1 and 31. Kernel size 1 uses OpenCV's dedicated 3 by 3
-   --  Laplacian aperture. Scale multiplies computed values and Offset is added
-   --  before storage; both must be finite. Constant_Border, Replicate,
-   --  Reflect, and Reflect_101 are supported; Wrap is rejected. Channels are
-   --  processed independently. Destination is replaced with a Mat having
-   --  Source's rows, columns, channels, and requested depth. Source remains
-   --  unchanged when distinct from Destination. Direct in-place operation is
-   --  supported when Destination_Depth is Same_Depth.
-   --  Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  Source channel (native cv::Laplacian). Source must be non-empty and
+   --  two-dimensional with depth UInt8, UInt16, Int16, Float32, or Float64.
+   --  Destination_Depth follows the same source/destination combinations as
+   --  Sobel. Kernel size 1 uses OpenCV's dedicated 3 by 3 Laplacian
+   --  aperture. Scale multiplies computed values and Offset is added before
+   --  storage. Channels are processed independently.
+   --
+   --  Destination receives Source's rows, columns, channels, and requested
+   --  depth as a direct native output: storage that already has that size
+   --  and type is reused (shallow copies and a Region's parent see the
+   --  result); otherwise Destination is rebound to new storage. Source
+   --  remains unchanged when distinct from Destination. Direct in-place
+   --  operation is supported when Destination_Depth is Same_Depth.
+   --  @param Source Image to differentiate.
+   --  @param Destination Receives the scaled Laplacian image.
+   --  @param Destination_Depth Output depth; Float32_Depth by default (see
+   --  Derivative_Depth for the supported combinations).
+   --  @param Kernel_Size Aperture size; must be odd and between 1 and 31.
+   --  @param Scale Factor applied to each computed value; must be finite.
+   --  @param Offset Value added after scaling (OpenCV's delta); must be
+   --  finite.
+   --  @param Border Extrapolation outside Source: Constant_Border,
+   --  Replicate, Reflect, or Reflect_101 (default). Wrap is rejected.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D, or
+   --  unsupported Source, an unsupported depth combination, an even
+   --  Kernel_Size, a nonfinite Scale or Offset, Wrap, or a failure reported
+   --  by OpenCV.
    procedure Laplacian
      (Source            : OpenCV.Core.Mat;
       Destination       : in out OpenCV.Core.Mat;
