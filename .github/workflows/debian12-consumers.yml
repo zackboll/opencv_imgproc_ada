@@ -1,0 +1,36 @@
+name: Debian 12 independent installed consumers
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installed-consumers:
+    name: Debian 12 GNAT 16.1 installed Core and Imgproc
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: imgproc
+      - uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: f4bd2167ecc0a74162a00c6597772a2a67ea84b0
+          path: core
+      - name: Build Debian 12 qualification image
+        run: docker build -t imgproc-debian12-qualification imgproc/containers/debian12-consumers
+      - name: Qualify install, full AUnit, isolated consumers and relocation
+        env:
+          IMGPROC_CONSUMER_EVIDENCE: ${{ runner.temp }}/imgproc-consumer-private
+          IMGPROC_CONSUMER_ARTIFACTS: ${{ runner.temp }}/imgproc-consumer-artifacts
+        run: sh imgproc/scripts/qualify_debian12_consumers.sh
+      - name: Publish logs, installation metadata and ELF evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian12-installed-consumer-evidence
+          path: ${{ runner.temp }}/imgproc-consumer-artifacts/
+          if-no-files-found: error
