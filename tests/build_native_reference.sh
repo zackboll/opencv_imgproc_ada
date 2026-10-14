@@ -1,6 +1,10 @@
 #!/bin/sh
 # Test-only native oracle, built with the production OpenCV C++ toolchain.
 set -eu
+# As in the production external shim build, do not mix GNAT header/compiler
+# search variables into Apple clang++ or MSYS2 MinGW g++.
+unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH LIBRARY_PATH
+unset GCC_EXEC_PREFIX COMPILER_PATH
 # Dependency pre-build actions have generated the production configuration.
 # Do not nest a root Alire environment inside the test crate's sandbox.
 configuration=../config/opencv_imgproc_install.gpr
@@ -27,6 +31,16 @@ esac
     "$@" "$include" "-I$core/cpp" \
     -c native/reference.cpp -o obj/native/reference.o
 case $(uname -s) in
+    Darwin)
+        # Keep the Apple libc++ boundary in its own dylib, exactly like the
+        # production shim; the Ada linker must not consume clang++ objects.
+        rm -f obj/native/libimgproc_test_reference.a
+        "$cxx" -dynamiclib -isysroot "$sdk" obj/native/reference.o \
+            "$library" "$imgproc" "$opencv_core" \
+            "-L$core/lib" -lopencv_core_shim \
+            -Wl,-install_name,@rpath/libimgproc_test_reference.dylib \
+            -o obj/native/libimgproc_test_reference.dylib
+        ;;
     MINGW*|MSYS*)
         mkdir -p ../lib
         "$cxx" -shared obj/native/reference.o "$library" "$imgproc" "$opencv_core" \

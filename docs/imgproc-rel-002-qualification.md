@@ -191,6 +191,14 @@ same explicit SDK sysroot and existing C11-header-extension policy as the
 production Apple configuration; this is a test-toolchain correction, not a
 binding change. Original hosted diagnostics are retained; corrected-head
 results must be checked again. Windows provisioning status is independent.
+The next macOS attempt compiled the oracle but exposed Ada/Apple static C++
+runtime linking; the helper now keeps the Apple boundary in a separately
+linked dylib, like the production shim. Windows successfully provisioned and
+built the production shim, then the helper failed from GNAT/MinGW header
+search contamination (`stdlib.h` missing). The helper now clears the same
+compiler-search variables as the production external shim. These are real
+test-helper compilation/link failures, not MSYS2 mirror failures. No ABI
+assertion was relaxed; subsequent exact-head hosted checks remain required.
 
 Parent candidate hosted runs **38517425873** (all three platform jobs),
 **38517428098** (documentation) and **38517430338** (installed consumers) all
