@@ -63,8 +63,9 @@ branch, regenerated and qualified there.
 | DOC-001 infrastructure | `feature/imgproc-doc-001-gnatdoc-pages` | #52 (`main`) | Open; hosted CI success on `7e1279d` |
 | DOC-002A coverage foundation, groups D and H | `feature/imgproc-doc-002a-coverage-foundation` | #53 (DOC-001 branch) | Open; head `859e66a` (tested `6a72ef3`) |
 | DOC-002B group A filtering | `feature/imgproc-doc-002b-filtering` | #54 (DOC-002A branch) | Open; head `4d6f7f0` |
-| DOC-002C group B morphology | `feature/imgproc-doc-002c-morphology` | #55 (DOC-002B branch) | Open |
-| DOC-002D..G groups C, E, F, G | `feature/imgproc-doc-002d..g-*` | stacked | Drafts reviewed; in progress |
+| DOC-002C group B morphology | `feature/imgproc-doc-002c-morphology` | #55 (DOC-002B branch) | Open; head `8c3feb6` |
+| DOC-002D group C color | `feature/imgproc-doc-002d-color` | DOC-002C branch | Qualified locally |
+| DOC-002E..G groups E, F, G | `feature/imgproc-doc-002e..g-*` | stacked | Drafts reviewed; in progress |
 | DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | stacked | Tooling staged locally |
 | DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | stacked | Tooling staged locally |
 | DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
@@ -282,6 +283,26 @@ documentation commit `86e7c64`.
   requires a finite Bias.
 - Warnings 990 -> 726; coverage 522 -> 786 of 1,512 items.
 
+### IMGPROC-DOC-002D — group C color
+
+Branch `feature/imgproc-doc-002d-color` from DOC-002C head `8c3feb6`.
+
+- 24 declarations documented. Color_Conversion keeps the recovered notes and
+  documents every one of its 86 literals (source and destination layout,
+  depth restriction) from `Required_Color_Channels`, `Color_Depth_Policy` and
+  the shim's conversion table. Convert_Color and both Apply_Color_Map
+  overloads publish a private result; YUV and Bayer functions return fresh
+  owning storage from independent snapshots.
+- Corrections: the Bayer bilinear fallback below 8 pixels applies to
+  Variable_Number_Of_Gradients only (4.1/4.10 decode every pattern and order
+  as BGGR/BGR there, 5.0 honors them); BGR565/BGR555 and premultiplied
+  selectors accept UInt8 only; Ada and the shim both enforce even YUV422
+  widths.
+- Unverified by tests (documented from names and OpenCV conventions): XYZ,
+  YCrCb, YUV, Lab and Luv channel order; 16 of 20 color maps described only
+  by their native constant.
+- Warnings 726 -> 545; coverage 786 -> 967 of 1,512 items.
+
 ## Findings for the maintainers (not changed: outside documentation scope)
 
 - CLAHE (shim `opencv_imgproc_clahe`): the isolating clone is taken only for
@@ -301,8 +322,7 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 1. **IMGPROC-DOC-002A** — done (see checkpoint).
 2. **IMGPROC-DOC-002B** — done (see checkpoint).
 3. **IMGPROC-DOC-002C** — done (see checkpoint).
-4. **IMGPROC-DOC-002D** — group C color (moves the unrendered Color_Conversion
-   notes into `@enum` documentation).
+4. **IMGPROC-DOC-002D** — done (see checkpoint).
 5. **IMGPROC-DOC-002E** — group E contours, components, drawing.
 6. **IMGPROC-DOC-002F** — group F histograms, accumulation, integral, EMD.
 7. **IMGPROC-DOC-002G** — group G Hough and template matching; zero warnings;
@@ -326,9 +346,9 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 
 ## Next executable task
 
-Apply the reviewed group C draft (`agent-c`, diff against `f576f4a`) with
-`git apply -3` on `feature/imgproc-doc-002d-color` from the DOC-002C head,
-regenerate both baselines, qualify and open the stacked PR; continue with
-groups E, F and G in that order, then DOC-003 (staged tooling in
+Apply the reviewed group E draft (`agent-e`, diff against `f576f4a`) with
+`git apply -3` on `feature/imgproc-doc-002e-contours` from the DOC-002D
+head, regenerate both baselines, qualify and open the stacked PR; continue
+with groups F and G, then DOC-003 (staged tooling in
 `/home/zboll/git/opencv/imgproc-doc/dev-003`, local commits), DOC-004 and
 DOC-005.

@@ -427,26 +427,206 @@ package OpenCV.Image_Processing is
       Labels : Distance_Label_Mode := Nearest_Zero_Component)
       return Labeled_Distance_Transform_Result;
 
-   --  Packed conversions require UInt8. BGR565/BGR555 use UInt8 C2,
-   --  OpenCV's native Mat representation: two bytes per native 16-bit word.
-   --  Byte order is host-native, not a network/file-format byte order.
-   --  RGB/RGBA selectors interpret channel order, not a new packed layout.
-   --  Packing truncates; unpacking does not replicate low color bits.
-   --  BGR565 ignores input alpha and expands alpha to 255. BGR555 uses
-   --  bit 15 as nonzero-alpha flag; C3 and Gray packing leave it zero.
+   --  Selects the per-pixel color conversion performed by Convert_Color. Each
+   --  name gives the Source layout, then the Destination layout, and each
+   --  unpacked layout stores its channels in the order its name spells: BGR is
+   --  B, G, R; BGRA is B, G, R, alpha; XYZ is X, Y, Z; YCrCb is Y, Cr, Cb; YUV
+   --  is Y, U, V; HSV is H, S, V; HLS is H, L, S; Lab is L, a, b; Luv is L, u,
+   --  v. OpenCV's default order is BGR, not RGB. Gray is C1, BGR565 and BGR555
+   --  are packed C2, BGRA and RGBA are C4, and every other layout is C3.
+   --  Destination keeps Source rows, columns and depth.
    --
-   --  FULL HSV/HLS and linear-light Lab/Luv require UInt8/Float32 C3.
-   --  UInt8 FULL hue has full-byte encoding; native forward scale is 256,
-   --  reverse scale 255, so exact round trips are not promised. Float32
-   --  standard/FULL hue remains degrees and both paths are equivalent in
-   --  reviewed OpenCV 4.1/4.10/5.0 implementations.
-   --  Linear Lab/Luv omits sRGB transfer encoding/decoding, unlike ordinary
-   --  Lab/Luv selectors. Float32 RGB is normally 0..1; no pixel sanitizer or
-   --  manual Lab/Luv rescaling is applied. Native UInt8 encoding is retained.
+   --  Source depths: layout, Gray, XYZ, YCrCb and YUV selectors accept UInt8,
+   --  UInt16 or Float32; HSV, HLS, Lab and Luv selectors, including the FULL
+   --  and linear-light ones, accept UInt8 or Float32; packed BGR565/BGR555 and
+   --  premultiplied selectors accept UInt8 only.
+   --
+   --  Gray is OpenCV's weighted luminance (UInt8 pure blue gives 29, pure
+   --  red 76). Appended alpha is the depth maximum: 255 (UInt8), 65535
+   --  (UInt16) or 1.0 (Float32). Removing alpha discards it; BGRA/RGBA swaps
+   --  keep it. YUV here is per-pixel C3 YUV, not a subsampled frame; see
+   --  Decode_YUV420 and Decode_YUV422. Standard (non-FULL) UInt8 HSV/HLS hue
+   --  is degrees / 2 (red 0, green 60, blue 120) and S, V and L use 0..255;
+   --  Float32 hue is degrees. Ordinary Lab/Luv selectors apply sRGB transfer
+   --  decoding (forward) and encoding (reverse). Float32 BGR/RGB is
+   --  normally 0..1: normalize it before Float32 Lab/Luv. Lab/Luv lightness
+   --  is 0..100 for Float32 and encoded as 0..255 for UInt8. No pixel value is
+   --  range-checked or sanitized.
+   --
+   --  Packed conversions require UInt8. BGR565/BGR555 use UInt8 C2, OpenCV's
+   --  native Mat representation: two bytes per native 16-bit word. Byte order
+   --  is host-native, not a network/file-format byte order. BGR565 holds blue
+   --  in bits 0..4, green in 5..10 and red in 11..15; BGR555 holds blue
+   --  in 0..4, green in 5..9, red in 10..14 and an alpha flag in bit 15.
+   --  RGB/RGBA selectors interpret channel order, not a new packed layout.
+   --  Packing truncates; unpacking does not replicate low color bits, so
+   --  unpacked blue and red reach at most 248 and green 252 (BGR565) or 248
+   --  (BGR555). BGR565 ignores input alpha and expands alpha to 255. BGR555
+   --  uses bit 15 as nonzero-alpha flag; C3 and Gray packing leave it zero.
+   --
+   --  FULL HSV/HLS and linear-light Lab/Luv require UInt8/Float32 C3. UInt8
+   --  FULL hue has full-byte encoding (0..255 for the whole circle); native
+   --  forward scale is 256, reverse scale 255, so exact round trips are not
+   --  promised. Float32 standard/FULL hue remains degrees and both paths are
+   --  equivalent in reviewed OpenCV 4.1/4.10/5.0 implementations. Linear
+   --  Lab/Luv omits sRGB transfer encoding/decoding, unlike ordinary Lab/Luv
+   --  selectors. Float32 RGB is normally 0..1; no pixel sanitizer or manual
+   --  Lab/Luv rescaling is applied. Native UInt8 encoding is retained.
    --  Premultiplied selectors require UInt8 C4 in named RGBA order, preserve
    --  alpha, and multiply color by alpha/255. Reverse saturates even for
    --  noncanonical color > alpha; zero alpha yields zero color. Quantization
    --  makes the inverse lossy, especially at low alpha.
+   --  @enum BGR_To_Gray BGR C3 to Gray C1 luminance; UInt8/UInt16/Float32.
+   --  @enum RGB_To_Gray RGB C3 to Gray C1 luminance; UInt8/UInt16/Float32.
+   --  @enum BGRA_To_Gray BGRA C4 to Gray C1 luminance, discarding alpha;
+   --  UInt8/UInt16/Float32.
+   --  @enum RGBA_To_Gray RGBA C4 to Gray C1 luminance, discarding alpha;
+   --  UInt8/UInt16/Float32.
+   --  @enum Gray_To_BGR Gray C1 to BGR C3, Gray copied into B, G and R;
+   --  UInt8/UInt16/Float32.
+   --  @enum Gray_To_RGB Gray C1 to RGB C3, Gray copied into R, G and B;
+   --  UInt8/UInt16/Float32.
+   --  @enum Gray_To_BGRA Gray C1 to BGRA C4, Gray copied into B, G and R,
+   --  maximum alpha; UInt8/UInt16/Float32.
+   --  @enum Gray_To_RGBA Gray C1 to RGBA C4, Gray copied into R, G and B,
+   --  maximum alpha; UInt8/UInt16/Float32.
+   --  @enum BGR_To_RGB BGR C3 to RGB C3, exchanging B and R;
+   --  UInt8/UInt16/Float32.
+   --  @enum RGB_To_BGR RGB C3 to BGR C3, exchanging R and B;
+   --  UInt8/UInt16/Float32.
+   --  @enum BGR_To_BGRA BGR C3 to BGRA C4, appending maximum alpha;
+   --  UInt8/UInt16/Float32.
+   --  @enum RGB_To_RGBA RGB C3 to RGBA C4, appending maximum alpha;
+   --  UInt8/UInt16/Float32.
+   --  @enum BGR_To_RGBA BGR C3 to RGBA C4, exchanging B and R and appending
+   --  maximum alpha; UInt8/UInt16/Float32.
+   --  @enum RGB_To_BGRA RGB C3 to BGRA C4, exchanging R and B and appending
+   --  maximum alpha; UInt8/UInt16/Float32.
+   --  @enum BGRA_To_BGR BGRA C4 to BGR C3, discarding alpha;
+   --  UInt8/UInt16/Float32.
+   --  @enum RGBA_To_RGB RGBA C4 to RGB C3, discarding alpha;
+   --  UInt8/UInt16/Float32.
+   --  @enum RGBA_To_BGR RGBA C4 to BGR C3, exchanging R and B and discarding
+   --  alpha; UInt8/UInt16/Float32.
+   --  @enum BGRA_To_RGB BGRA C4 to RGB C3, exchanging B and R and discarding
+   --  alpha; UInt8/UInt16/Float32.
+   --  @enum BGRA_To_RGBA BGRA C4 to RGBA C4, exchanging B and R and keeping
+   --  alpha; UInt8/UInt16/Float32.
+   --  @enum RGBA_To_BGRA RGBA C4 to BGRA C4, exchanging R and B and keeping
+   --  alpha; UInt8/UInt16/Float32.
+   --  @enum BGR_To_XYZ BGR C3 to XYZ C3; UInt8/UInt16/Float32.
+   --  @enum RGB_To_XYZ RGB C3 to XYZ C3; UInt8/UInt16/Float32.
+   --  @enum XYZ_To_BGR XYZ C3 to BGR C3; UInt8/UInt16/Float32.
+   --  @enum XYZ_To_RGB XYZ C3 to RGB C3; UInt8/UInt16/Float32.
+   --  @enum BGR_To_YCrCb BGR C3 to YCrCb C3; UInt8/UInt16/Float32.
+   --  @enum RGB_To_YCrCb RGB C3 to YCrCb C3; UInt8/UInt16/Float32.
+   --  @enum YCrCb_To_BGR YCrCb C3 to BGR C3; UInt8/UInt16/Float32.
+   --  @enum YCrCb_To_RGB YCrCb C3 to RGB C3; UInt8/UInt16/Float32.
+   --  @enum BGR_To_YUV BGR C3 to per-pixel YUV C3; UInt8/UInt16/Float32.
+   --  @enum RGB_To_YUV RGB C3 to per-pixel YUV C3; UInt8/UInt16/Float32.
+   --  @enum YUV_To_BGR Per-pixel YUV C3 to BGR C3; UInt8/UInt16/Float32.
+   --  @enum YUV_To_RGB Per-pixel YUV C3 to RGB C3; UInt8/UInt16/Float32.
+   --  @enum BGR_To_HSV BGR C3 to HSV C3 with standard hue encoding;
+   --  UInt8/Float32.
+   --  @enum RGB_To_HSV RGB C3 to HSV C3 with standard hue encoding;
+   --  UInt8/Float32.
+   --  @enum HSV_To_BGR HSV C3 with standard hue encoding to BGR C3;
+   --  UInt8/Float32.
+   --  @enum HSV_To_RGB HSV C3 with standard hue encoding to RGB C3;
+   --  UInt8/Float32.
+   --  @enum BGR_To_HLS BGR C3 to HLS C3 with standard hue encoding;
+   --  UInt8/Float32.
+   --  @enum RGB_To_HLS RGB C3 to HLS C3 with standard hue encoding;
+   --  UInt8/Float32.
+   --  @enum HLS_To_BGR HLS C3 with standard hue encoding to BGR C3;
+   --  UInt8/Float32.
+   --  @enum HLS_To_RGB HLS C3 with standard hue encoding to RGB C3;
+   --  UInt8/Float32.
+   --  @enum BGR_To_Lab sRGB-encoded BGR C3 to Lab C3; UInt8/Float32.
+   --  @enum RGB_To_Lab sRGB-encoded RGB C3 to Lab C3; UInt8/Float32.
+   --  @enum Lab_To_BGR Lab C3 to sRGB-encoded BGR C3; UInt8/Float32.
+   --  @enum Lab_To_RGB Lab C3 to sRGB-encoded RGB C3; UInt8/Float32.
+   --  @enum BGR_To_Luv sRGB-encoded BGR C3 to Luv C3; UInt8/Float32.
+   --  @enum RGB_To_Luv sRGB-encoded RGB C3 to Luv C3; UInt8/Float32.
+   --  @enum Luv_To_BGR Luv C3 to sRGB-encoded BGR C3; UInt8/Float32.
+   --  @enum Luv_To_RGB Luv C3 to sRGB-encoded RGB C3; UInt8/Float32.
+   --  @enum BGR_To_BGR565 BGR C3 to packed BGR565 C2; UInt8 only.
+   --  @enum RGB_To_BGR565 RGB C3 to the same packed BGR565 C2 layout; UInt8
+   --  only.
+   --  @enum BGRA_To_BGR565 BGRA C4 to packed BGR565 C2, ignoring alpha; UInt8
+   --  only.
+   --  @enum RGBA_To_BGR565 RGBA C4 to packed BGR565 C2, ignoring alpha; UInt8
+   --  only.
+   --  @enum BGR565_To_BGR Packed BGR565 C2 to BGR C3; UInt8 only.
+   --  @enum BGR565_To_RGB Packed BGR565 C2 to RGB C3; UInt8 only.
+   --  @enum BGR565_To_BGRA Packed BGR565 C2 to BGRA C4 with alpha 255; UInt8
+   --  only.
+   --  @enum BGR565_To_RGBA Packed BGR565 C2 to RGBA C4 with alpha 255; UInt8
+   --  only.
+   --  @enum Gray_To_BGR565 Gray C1 to packed BGR565 C2, quantizing Gray into
+   --  each color field; UInt8 only.
+   --  @enum BGR565_To_Gray Packed BGR565 C2 to Gray C1, the native integer
+   --  luminance of the unpacked colors (Gray 255 round-trips to 250); UInt8
+   --  only.
+   --  @enum BGR_To_BGR555 BGR C3 to packed BGR555 C2 with bit 15 clear; UInt8
+   --  only.
+   --  @enum RGB_To_BGR555 RGB C3 to the same packed BGR555 C2 layout with
+   --  bit 15 clear; UInt8 only.
+   --  @enum BGRA_To_BGR555 BGRA C4 to packed BGR555 C2, setting bit 15 when
+   --  alpha is nonzero; UInt8 only.
+   --  @enum RGBA_To_BGR555 RGBA C4 to packed BGR555 C2, setting bit 15 when
+   --  alpha is nonzero; UInt8 only.
+   --  @enum BGR555_To_BGR Packed BGR555 C2 to BGR C3, dropping bit 15; UInt8
+   --  only.
+   --  @enum BGR555_To_RGB Packed BGR555 C2 to RGB C3, dropping bit 15; UInt8
+   --  only.
+   --  @enum BGR555_To_BGRA Packed BGR555 C2 to BGRA C4, alpha 255 when bit 15
+   --  is set and 0 otherwise; UInt8 only.
+   --  @enum BGR555_To_RGBA Packed BGR555 C2 to RGBA C4, alpha 255 when bit 15
+   --  is set and 0 otherwise; UInt8 only.
+   --  @enum Gray_To_BGR555 Gray C1 to packed BGR555 C2, quantizing Gray into
+   --  each color field, bit 15 clear; UInt8 only.
+   --  @enum BGR555_To_Gray Packed BGR555 C2 to Gray C1, the native integer
+   --  luminance of the unpacked colors, ignoring bit 15 (Gray 255 round-trips
+   --  to 248); UInt8 only.
+   --  @enum BGR_To_HSV_Full BGR C3 to HSV C3 with FULL hue encoding;
+   --  UInt8/Float32.
+   --  @enum RGB_To_HSV_Full RGB C3 to HSV C3 with FULL hue encoding;
+   --  UInt8/Float32.
+   --  @enum HSV_Full_To_BGR HSV C3 with FULL hue encoding to BGR C3;
+   --  UInt8/Float32.
+   --  @enum HSV_Full_To_RGB HSV C3 with FULL hue encoding to RGB C3;
+   --  UInt8/Float32.
+   --  @enum BGR_To_HLS_Full BGR C3 to HLS C3 with FULL hue encoding;
+   --  UInt8/Float32.
+   --  @enum RGB_To_HLS_Full RGB C3 to HLS C3 with FULL hue encoding;
+   --  UInt8/Float32.
+   --  @enum HLS_Full_To_BGR HLS C3 with FULL hue encoding to BGR C3;
+   --  UInt8/Float32.
+   --  @enum HLS_Full_To_RGB HLS C3 with FULL hue encoding to RGB C3;
+   --  UInt8/Float32.
+   --  @enum Linear_BGR_To_Lab Linear-light BGR C3 to Lab C3, without sRGB
+   --  decoding; UInt8/Float32.
+   --  @enum Linear_RGB_To_Lab Linear-light RGB C3 to Lab C3, without sRGB
+   --  decoding; UInt8/Float32.
+   --  @enum Lab_To_Linear_BGR Lab C3 to linear-light BGR C3, without sRGB
+   --  encoding; UInt8/Float32.
+   --  @enum Lab_To_Linear_RGB Lab C3 to linear-light RGB C3, without sRGB
+   --  encoding; UInt8/Float32.
+   --  @enum Linear_BGR_To_Luv Linear-light BGR C3 to Luv C3, without sRGB
+   --  decoding; UInt8/Float32.
+   --  @enum Linear_RGB_To_Luv Linear-light RGB C3 to Luv C3, without sRGB
+   --  decoding; UInt8/Float32.
+   --  @enum Luv_To_Linear_BGR Luv C3 to linear-light BGR C3, without sRGB
+   --  encoding; UInt8/Float32.
+   --  @enum Luv_To_Linear_RGB Luv C3 to linear-light RGB C3, without sRGB
+   --  encoding; UInt8/Float32.
+   --  @enum RGBA_To_Premultiplied_RGBA RGBA C4 to premultiplied RGBA C4; each
+   --  of R, G and B becomes `(C * A + 128) / 255` (native scalar integer form)
+   --  and alpha A is kept; UInt8 only.
+   --  @enum Premultiplied_RGBA_To_RGBA Premultiplied RGBA C4 to RGBA C4; each
+   --  of R, G and B becomes the saturated integer `(C * 255 + A / 2) / A`,
+   --  or 0 when A is 0, and alpha A is kept; UInt8 only.
    type Color_Conversion is
      (BGR_To_Gray,
       RGB_To_Gray,
@@ -1238,115 +1418,351 @@ package OpenCV.Image_Processing is
    --  values and their meaning are identical.
    subtype Affine_Mapping_Direction is Warp_Mapping_Direction;
 
+   --  Plane order of a YUV 4:2:0 frame of logical W columns and H rows, with
+   --  one Y byte per pixel and one U and one V byte per 2x2 pixel block. The
+   --  packed UInt8 C1 form (W columns, H + H/2 rows) is read as one row-major
+   --  byte stream that starts with the W x H Y plane; U and V each occupy
+   --  `W * H / 4` bytes.
+   --  @enum I420 Planar: the Y plane, then the U plane, then the V plane.
+   --  @enum YV12 Planar: the Y plane, then the V plane, then the U plane.
+   --  @enum NV12 Semiplanar: the Y plane, then interleaved U,V byte pairs.
+   --  @enum NV21 Semiplanar: the Y plane, then interleaved V,U byte pairs.
    type YUV420_Layout is (I420, YV12, NV12, NV21);
+
+   --  The planar layouts I420 and YV12, the only ones Encode_YUV420_Planar
+   --  produces; NV12/NV21 encoding is not provided.
    subtype YUV420_Planar_Layout is YUV420_Layout range I420 .. YV12;
+
+   --  The semiplanar layouts NV12 and NV21, whose chroma is one interleaved
+   --  plane; the only layouts Decode_YUV420_Two_Plane accepts.
    subtype YUV420_Semiplanar_Layout is YUV420_Layout range NV12 .. NV21;
+
+   --  Channel layout of a decoded YUV 4:2:0 or 4:2:2 frame: a UInt8 image with
+   --  the frame's H rows and W columns.
+   --  @enum BGR_Output C3 in B, G, R order.
+   --  @enum RGB_Output C3 in R, G, B order.
+   --  @enum BGRA_Output C4 in B, G, R, alpha order; alpha is always 255.
+   --  @enum RGBA_Output C4 in R, G, B, alpha order; alpha is always 255.
    type YUV420_Color_Output is
      (BGR_Output, RGB_Output, BGRA_Output, RGBA_Output);
+
+   --  Channel order of the color Source of Encode_YUV420_Planar. A C4 Source's
+   --  alpha is ignored, not premultiplied.
+   --  @enum BGR_Order Source is BGR (C3) or BGRA (C4).
+   --  @enum RGB_Order Source is RGB (C3) or RGBA (C4).
    type YUV_Color_Order is (BGR_Order, RGB_Order);
 
-   --  Packed sources/results are UInt8 C1, W columns and H+H/2 rows.
-   --  Logical W/H are positive even values, at least 2. I420 is Y,U,V;
-   --  YV12 is Y,V,U; NV12 is Y then U,V pairs; NV21 is Y then V,U pairs.
-   --  All operations take packed independent snapshots, leave inputs
-   --  unchanged and return fresh owning Mats. Violations raise OpenCV_Error.
-   --  A packed Region must itself contain a complete standalone frame:
-   --  parent plane offsets and ROI origins are never inferred.
-   --  Native BT.601 limited-range conversion accepts all byte values.
-   --  Vendor rounding can differ from the portable 20-bit CPU arithmetic.
-   --  Decode_YUV420 returns UInt8 H x W C3 BGR/RGB or C4 BGRA/RGBA, with
-   --  alpha 255.
+   --  Decodes a packed YUV 4:2:0 frame to UInt8 color with native OpenCV.
+   --  Packed sources/results are UInt8 C1, W columns and H+H/2 rows. Logical
+   --  W/H are positive even values, at least 2, so Source has a row count that
+   --  is a multiple of 3 and H is two thirds of it. I420 is Y,U,V; YV12 is
+   --  Y,V,U; NV12 is Y then U,V pairs; NV21 is Y then V,U pairs.
+   --
+   --  All YUV 4:2:0 operations take packed independent snapshots, leave inputs
+   --  unchanged and return fresh owning Mats. Violations raise OpenCV_Error. A
+   --  packed Region must itself contain a complete standalone frame: parent
+   --  plane offsets and ROI origins are never inferred. Packed NV12/NV21
+   --  frames are split into Y and UV planes and decoded by the same native
+   --  cvtColorTwoPlane route as Decode_YUV420_Two_Plane, so both
+   --  representations of a frame decode to identical pixels within one native
+   --  build.
+   --
+   --  Native BT.601 limited-range conversion (nominal Y 16..235 and
+   --  U/V 16..240, centered on 128) accepts all byte values: `Y - 16` is
+   --  clamped at zero and RGB saturates. Vendor rounding can differ from the
+   --  portable 20-bit CPU arithmetic. Decode_YUV420 returns UInt8 H x W C3
+   --  BGR/RGB or C4 BGRA/RGBA, with alpha 255.
+   --  @param Source Packed frame: nonempty 2-D UInt8 C1 with an even column
+   --  count of at least 2 and a row count that is a positive multiple of 3.
+   --  @param Layout Plane order of Source.
+   --  @param Output Channel layout of the result; BGR_Output by default.
+   --  @return Fresh owning UInt8 Mat of H rows and W columns: C3 B,G,R or
+   --  R,G,B, or C4 B,G,R,255 or R,G,B,255, as selected by Output.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D or not
+   --  UInt8 C1; when its column count is odd or below 2 or its row count is
+   --  not a positive multiple of 3; when a native signed-arithmetic or
+   --  address-span limit is exceeded (for example `W * H`
+   --  above 2_147_483_647); or when OpenCV fails.
    function Decode_YUV420
      (Source : OpenCV.Core.Mat;
       Layout : YUV420_Layout;
       Output : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
 
-   --  Y: nonempty 2-D UInt8 C1 H x W. UV: UInt8 C2 H/2 x W/2.
-   --  Caller supplies corresponding planes/Regions; no chroma phase is
-   --  inferred. Independent packed snapshots have equal byte step W,
+   --  Decodes a semiplanar YUV 4:2:0 frame supplied as separate planes, with
+   --  native cvtColorTwoPlane. Y: nonempty 2-D UInt8 C1 H x W. UV: UInt8 C2
+   --  H/2 x W/2. Caller supplies corresponding planes/Regions; no chroma phase
+   --  is inferred. Independent packed snapshots have equal byte step W,
    --  normalizing OpenCV 4.1's shared-stride assumption. Both semiplanar
-   --  decode forms use cvtColorTwoPlane, with exact representation equality.
+   --  decode forms use cvtColorTwoPlane, with exact representation equality:
+   --  within one native build the result equals Decode_YUV420 of the same
+   --  frame packed.
+   --
+   --  Inputs stay unchanged and only the logical pixels of Regions
+   --  participate. Conversion is the native BT.601 limited-range arithmetic
+   --  described for Decode_YUV420: all byte values are accepted and vendor
+   --  rounding can differ from the portable 20-bit CPU arithmetic.
+   --  @param Y_Plane Luma plane: nonempty 2-D UInt8 C1 of H rows and W
+   --  columns, with W and H even and at least 2.
+   --  @param UV_Plane Interleaved chroma plane: nonempty 2-D UInt8 C2 of
+   --  exactly H/2 rows and W/2 columns; each element is the U,V (NV12) or V,U
+   --  (NV21) pair of one 2x2 pixel block.
+   --  @param Layout Element order of UV_Plane: NV12 or NV21.
+   --  @param Output Channel layout of the result; BGR_Output by default.
+   --  @return Fresh owning UInt8 Mat of H rows and W columns: C3 B,G,R or
+   --  R,G,B, or C4 B,G,R,255 or R,G,B,255, as selected by Output.
+   --  @exception OpenCV_Error Raised when a plane is empty, not 2-D, not UInt8
+   --  or has the wrong channel count; when W or H is odd or below 2; when
+   --  UV_Plane is not exactly H/2 x W/2; when a native signed-arithmetic or
+   --  address-span limit is exceeded (for example `W * H`
+   --  above 2_147_483_647); or when OpenCV fails.
    function Decode_YUV420_Two_Plane
      (Y_Plane  : OpenCV.Core.Mat;
       UV_Plane : OpenCV.Core.Mat;
       Layout   : YUV420_Semiplanar_Layout;
       Output   : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
 
-   --  Nonempty 2-D UInt8 C3/C4, even W/H >=2. BGR_Order means BGR/BGRA;
-   --  RGB_Order means RGB/RGBA. Alpha is ignored, not premultiplied.
+   --  Encodes a color image as a packed planar YUV 4:2:0 frame with native
+   --  cv::cvtColor. Nonempty 2-D UInt8 C3/C4, even W/H >=2. BGR_Order means
+   --  BGR/BGRA; RGB_Order means RGB/RGBA. Alpha is ignored, not premultiplied.
    --  Native encoding computes Y per pixel and samples U/V at the top-left
-   --  pixel of each 2x2 block, without averaging. Subsampling is lossy.
+   --  pixel of each 2x2 block, without averaging. Subsampling is lossy. The
+   --  native BT.601 limited-range encoder maps black to Y,U,V 16,128,128 and
+   --  white to 235,128,128.
+   --
+   --  Source is copied into an independent packed snapshot first, so a Region
+   --  is encoded as its own frame and Source is unchanged. NV12/NV21 encoding
+   --  is not provided.
+   --  @param Source Color image: nonempty 2-D UInt8 C3 or C4 of H rows and W
+   --  columns, with W and H even and at least 2.
+   --  @param Layout Plane order of the result: I420 or YV12.
+   --  @param Order Channel order of Source; BGR_Order by default.
+   --  @return Fresh owning packed frame: UInt8 C1 of W columns and H + H/2
+   --  rows.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D, not UInt8,
+   --  or not C3 or C4; when its row or column count is odd or below 2; when a
+   --  native signed-arithmetic or address-span limit is exceeded (for example
+   --  `W * H` above 2_147_483_647); or when OpenCV fails.
    function Encode_YUV420_Planar
      (Source : OpenCV.Core.Mat;
       Layout : YUV420_Planar_Layout;
       Order  : YUV_Color_Order := BGR_Order) return OpenCV.Core.Mat;
 
-   --  Raw Y bytes, UInt8 C1 H x W, with no subtract-16 or rescaling.
+   --  Copies the luma plane of a packed YUV 4:2:0 frame of any layout. Raw Y
+   --  bytes, UInt8 C1 H x W, with no subtract-16 or rescaling. Chroma does not
+   --  participate. Source is validated as for Decode_YUV420 and copied into an
+   --  independent packed snapshot first; a packed Region must itself contain a
+   --  complete standalone frame.
+   --  @param Source Packed frame: nonempty 2-D UInt8 C1 with an even column
+   --  count of at least 2 and a row count that is a positive multiple of 3.
+   --  @return Fresh owning UInt8 C1 Mat of H rows (two thirds of Source's
+   --  rows) and W columns: the first H rows of Source, byte for byte.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D or not
+   --  UInt8 C1; when its column count is odd or below 2 or its row count is
+   --  not a positive multiple of 3; when a native arithmetic or address-span
+   --  limit is exceeded; or when OpenCV fails.
    function Extract_YUV420_Luma
      (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat;
 
+   --  Byte order of a packed YUV 4:2:2 frame stored as UInt8 C2. Each C2
+   --  element holds two consecutive stream bytes, and the elements at
+   --  columns 2k and 2k+1 of a row hold two horizontal pixels, Y0 and Y1,
+   --  sharing one U and one V sample. VYUY and planar 4:2:2 are not supported.
+   --  @enum UYVY Stream U, Y0, V, Y1: elements (U, Y0) and (V, Y1); Y is
+   --  channel 1.
+   --  @enum YUY2 Stream Y0, U, Y1, V: elements (Y0, U) and (Y1, V); Y is
+   --  channel 0.
+   --  @enum YVYU Stream Y0, V, Y1, U: elements (Y0, V) and (Y1, U); Y is
+   --  channel 0.
    type YUV422_Layout is (UYVY, YUY2, YVYU);
+
+   --  Result layout of Decode_YUV422: the YUV420_Color_Output literals with
+   --  the same meaning, C3 BGR/RGB or C4 BGRA/RGBA with alpha 255.
    subtype YUV422_Color_Output is YUV420_Color_Output;
 
-   --  Nonempty 2-D UInt8 C2, H >=1, even W >=2. Each C2 element is
-   --  two stream bytes: UYVY = U,Y0,V,Y1; YUY2 = Y0,U,Y1,V;
-   --  YVYU = Y0,V,Y1,U. Each U/V pair serves two horizontal pixels.
-   --  Results are fresh owning H x W UInt8 Mats; Source stays unchanged.
-   --  Independent logical-row snapshots treat Regions as standalone frames.
-   --  Caller supplies the declared byte phase: odd-column parent ROIs may
-   --  change it; Layout is never inferred from the parent's ROI origin.
-   --  Invalid sources/native arithmetic spans raise OpenCV.OpenCV_Error.
-   --  OpenCV 4.1 lacks the native even-width check; the shim enforces it
-   --  before pair reads. Decode uses native limited-range BT.601 arithmetic,
-   --  accepting all UInt8 values. Vendor/build pixel identity is not promised.
-   --  Decode_YUV422 returns C3 BGR/RGB or C4 BGRA/RGBA, alpha 255; geometry
-   --  is preserved.
+   --  Decodes a packed YUV 4:2:2 frame to UInt8 color with native
+   --  cv::cvtColor. Nonempty 2-D UInt8 C2, H >=1, even W >=2. Each C2 element
+   --  is two stream bytes: UYVY = U,Y0,V,Y1; YUY2 = Y0,U,Y1,V; YVYU =
+   --  Y0,V,Y1,U. Each U/V pair serves two horizontal pixels. Results are fresh
+   --  owning H x W UInt8 Mats; Source stays unchanged. Independent logical-row
+   --  snapshots treat Regions as standalone frames. Caller supplies the
+   --  declared byte phase: odd-column parent ROIs may change it; Layout is
+   --  never inferred from the parent's ROI origin. Invalid sources/native
+   --  arithmetic spans raise OpenCV.OpenCV_Error. OpenCV 4.1 lacks the native
+   --  even-width check; Ada and the shim enforce it before pair reads. Decode
+   --  uses native limited-range BT.601 arithmetic (nominal Y 16..235 and
+   --  U/V 16..240, centered on 128), accepting all UInt8 values with native
+   --  saturation. Vendor/build pixel identity is not promised. Decode_YUV422
+   --  returns C3 BGR/RGB or C4 BGRA/RGBA, alpha 255; geometry is preserved.
+   --  @param Source Packed frame: nonempty 2-D UInt8 C2 with at least one row
+   --  and an even column count of at least 2.
+   --  @param Layout Byte order of Source.
+   --  @param Output Channel layout of the result; BGR_Output by default.
+   --  @return Fresh owning UInt8 Mat with Source's rows and columns: C3 B,G,R
+   --  or R,G,B, or C4 B,G,R,255 or R,G,B,255, as selected by Output.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D or not
+   --  UInt8 C2; when its column count is odd or below 2; when `2 * W` or
+   --  `W * H` exceeds 2_147_483_647 or another native arithmetic or
+   --  address-span limit is exceeded; or when OpenCV fails.
    function Decode_YUV422
      (Source : OpenCV.Core.Mat;
       Layout : YUV422_Layout;
       Output : YUV422_Color_Output := BGR_Output) return OpenCV.Core.Mat;
 
    --  Exact raw Y bytes, C1, no subtract-16, scaling or chroma participation.
-   --  UYVY uses source channel 1; YUY2/YVYU use channel 0.
-   --  YUV422 encoding is intentionally deferred: OpenCV 4.1 lacks it.
+   --  UYVY uses source channel 1; YUY2/YVYU use channel 0. The frame contract
+   --  is the same as for Decode_YUV422: nonempty 2-D UInt8 C2 with an even
+   --  width, copied by logical rows into an independent snapshot, with a
+   --  Region treated as a standalone frame in the caller's byte phase. YUV422
+   --  encoding is intentionally deferred: OpenCV 4.1 lacks it.
+   --  @param Source Packed frame: nonempty 2-D UInt8 C2 with at least one row
+   --  and an even column count of at least 2.
+   --  @param Layout Byte order of Source, which selects the Y channel.
+   --  @return Fresh owning UInt8 C1 Mat with Source's rows and columns holding
+   --  each pixel's Y byte unchanged.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D or not
+   --  UInt8 C2; when its column count is odd or below 2; when a native
+   --  arithmetic or address-span limit is exceeded (for example `2 * W`
+   --  above 2_147_483_647); or when OpenCV fails.
    function Extract_YUV422_Luma
      (Source : OpenCV.Core.Mat; Layout : YUV422_Layout) return OpenCV.Core.Mat;
 
+   --  Physical 2x2 color filter array tile at logical Source (0,0), named row
+   --  by row: the first two letters are the colors at columns 0 and 1 of
+   --  row 0, the last two those of row 1. These are physical names, not
+   --  OpenCV's short code names: RGGB, GRBG, BGGR and GBRG select OpenCV's
+   --  BayerBG, BayerGB, BayerRG and BayerGR codes respectively. Cropping at an
+   --  odd row or column offset changes the phase; the caller supplies the
+   --  pattern at the Region's own (0,0).
+   --  @enum RGGB Row 0 is R, G; row 1 is G, B.
+   --  @enum GRBG Row 0 is G, R; row 1 is B, G.
+   --  @enum BGGR Row 0 is B, G; row 1 is G, R.
+   --  @enum GBRG Row 0 is G, B; row 1 is R, G.
    type Bayer_Pattern is (RGGB, GRBG, BGGR, GBRG);
+
+   --  Native interpolation algorithm used by Demosaic_Bayer.
+   --  Demosaic_Bayer_To_Gray and Demosaic_Bayer_With_Alpha always interpolate
+   --  bilinearly.
+   --  @enum Bilinear Native bilinear interpolation; UInt8 or UInt16 Source.
+   --  @enum Variable_Number_Of_Gradients Native Variable Number of Gradients
+   --  (VNG) interpolation; UInt8 Source only. When either dimension is
+   --  below 8, OpenCV runs bilinear demosaicing instead (see Demosaic_Bayer).
+   --  @enum Edge_Aware Native edge-aware interpolation; UInt8 or UInt16
+   --  Source.
    type Bayer_Demosaicing_Method is
      (Bilinear, Variable_Number_Of_Gradients, Edge_Aware);
+
+   --  Color channel order of a demosaiced result.
+   --  @enum BGR_Order B, G, R for C3 results, or B, G, R, alpha for C4.
+   --  @enum RGB_Order R, G, B for C3 results, or R, G, B, alpha for C4.
    type Bayer_Color_Order is (BGR_Order, RGB_Order);
 
-   --  Pattern describes the physical 2x2 CFA at logical Source (0,0).
-   --  Cropping does not automatically adjust the parent's Bayer phase.
-   --  Every operation requires nonempty 2-D C1 UInt8/UInt16, at least 3x3.
-   --  VNG requires UInt8. No depth conversion is performed.
+   --  Demosaics a single-channel Bayer mosaic to color with native
+   --  cv::demosaicing. Pattern describes the physical 2x2 CFA at logical
+   --  Source (0,0). Cropping does not automatically adjust the parent's Bayer
+   --  phase. Every Bayer operation requires nonempty 2-D C1 UInt8/UInt16, at
+   --  least 3x3. VNG requires UInt8. No depth conversion is performed.
+   --
    --  Source is unchanged; an independent packed snapshot isolates Regions
-   --  from parent pixels. Results are fresh owning Mats of the same size
-   --  and depth. Invalid sources raise OpenCV.OpenCV_Error.
-   --  OpenCV falls back to bilinear demosaicing when either dimension is
-   --  below 8. Older 4.x fallback has native phase/order quirks; see README.
-   --  OpenCV 5 VNG uses reflected padding; cross-version VNG border values
-   --  are not promised identical. The installed algorithm is preserved.
-   --  Demosaic_Bayer returns C3 BGR or RGB according to Order.
+   --  from parent pixels. Results are fresh owning Mats of the same size and
+   --  depth. Invalid sources raise OpenCV.OpenCV_Error.
+   --
+   --  For Variable_Number_Of_Gradients, OpenCV falls back to bilinear
+   --  demosaicing when either dimension is below 8. In OpenCV 4.1/4.10 that
+   --  fallback decodes every Pattern and Order as BGGR/BGR; 5.0 honors them,
+   --  so select Bilinear for correct phase and order on small images across
+   --  releases. OpenCV 5 VNG uses two-pixel reflected (Reflect_101) padding;
+   --  cross-version VNG border values are not promised identical. The
+   --  installed algorithm is preserved. Demosaic_Bayer returns C3 BGR or RGB
+   --  according to Order.
+   --  @param Source Bayer mosaic: nonempty 2-D C1 UInt8 or UInt16 of at
+   --  least 3 rows and 3 columns; UInt8 for Variable_Number_Of_Gradients.
+   --  @param Pattern CFA tile at logical Source (0,0).
+   --  @param Method Interpolation algorithm; Bilinear by default.
+   --  @param Order Channel order of the result; BGR_Order by default.
+   --  @return Fresh owning C3 Mat with Source's rows, columns and depth, in
+   --  B,G,R or R,G,B order as selected by Order.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D, not C1,
+   --  smaller than 3x3, not UInt8 or UInt16, or UInt16 with
+   --  Variable_Number_Of_Gradients; when a native signed-arithmetic or
+   --  address-span limit is exceeded; or when OpenCV fails.
    function Demosaic_Bayer
      (Source  : OpenCV.Core.Mat;
       Pattern : Bayer_Pattern;
       Method  : Bayer_Demosaicing_Method := Bilinear;
       Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
 
-   --  Direct native Bayer luminance, C1 (not color followed by conversion).
+   --  Direct native Bayer luminance, C1 (not color followed by conversion),
+   --  interpolated bilinearly at Pattern's phase. In a uniform area of the
+   --  mosaic the value is the native fixed-point
+   --  `(4899 * R + 9617 * G + 1868 * B + 8192) / 16384`; UInt8 SIMD rounding
+   --  can differ by one.
+   --
+   --  Source requirements, snapshot isolation and Pattern phase are as for
+   --  Demosaic_Bayer: nonempty 2-D C1 UInt8/UInt16 of at least 3x3, copied
+   --  into an independent packed snapshot, with Pattern at logical (0,0). On
+   --  OpenCV 4.x before 4.5.5, a UInt16 Source is rejected when the four green
+   --  neighbors of any interior red or blue site sum above 223300, which would
+   --  overflow native signed arithmetic; later releases have no such
+   --  restriction.
+   --  @param Source Bayer mosaic: nonempty 2-D C1 UInt8 or UInt16 of at
+   --  least 3 rows and 3 columns.
+   --  @param Pattern CFA tile at logical Source (0,0).
+   --  @return Fresh owning C1 Mat with Source's rows, columns and depth.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D, not C1,
+   --  smaller than 3x3, or not UInt8 or UInt16; when the legacy UInt16
+   --  neighbor limit above applies; when a native signed-arithmetic or
+   --  address-span limit is exceeded; or when OpenCV fails.
    function Demosaic_Bayer_To_Gray
      (Source : OpenCV.Core.Mat; Pattern : Bayer_Pattern)
       return OpenCV.Core.Mat;
 
    --  Bilinear C4 BGRA/RGBA; native alpha is 255/65535 for UInt8/UInt16.
+   --  Source requirements, snapshot isolation and Pattern phase are as for
+   --  Demosaic_Bayer: nonempty 2-D C1 UInt8/UInt16 of at least 3x3, copied
+   --  into an independent packed snapshot, with Pattern at logical (0,0).
+   --  @param Source Bayer mosaic: nonempty 2-D C1 UInt8 or UInt16 of at
+   --  least 3 rows and 3 columns.
+   --  @param Pattern CFA tile at logical Source (0,0).
+   --  @param Order Color channel order of the result; BGR_Order by default.
+   --  @return Fresh owning C4 Mat with Source's rows, columns and depth, in
+   --  B,G,R,alpha or R,G,B,alpha order as selected by Order.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D, not C1,
+   --  smaller than 3x3, or not UInt8 or UInt16; when a native
+   --  signed-arithmetic or address-span limit is exceeded; or when OpenCV
+   --  fails.
    function Demosaic_Bayer_With_Alpha
      (Source  : OpenCV.Core.Mat;
       Pattern : Bayer_Pattern;
       Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
 
-   --  Portable OpenCV 4.1/4.10/5 set; no Turbo or DeepGreen.
+   --  Built-in colormap applied by Apply_Color_Map: a native OpenCV table
+   --  of 256 UInt8 BGR entries indexed by a grayscale byte. Portable
+   --  OpenCV 4.1/4.10/5 set; no Turbo or DeepGreen. The twenty table
+   --  definitions are identical in the reviewed releases.
+   --  @enum Autumn_Map Native `COLORMAP_AUTUMN`: B 0, G equal to the index and
+   --  R 255, from red at 0 to yellow at 255.
+   --  @enum Bone_Map Native `COLORMAP_BONE` table.
+   --  @enum Jet_Map Native `COLORMAP_JET`: BGR 128,0,0 at index 0 and
+   --  BGR 0,0,128 at 255.
+   --  @enum Winter_Map Native `COLORMAP_WINTER` table.
+   --  @enum Rainbow_Map Native `COLORMAP_RAINBOW` table.
+   --  @enum Ocean_Map Native `COLORMAP_OCEAN` table.
+   --  @enum Summer_Map Native `COLORMAP_SUMMER` table.
+   --  @enum Spring_Map Native `COLORMAP_SPRING` table.
+   --  @enum Cool_Map Native `COLORMAP_COOL` table.
+   --  @enum HSV_Map Native `COLORMAP_HSV` table.
+   --  @enum Pink_Map Native `COLORMAP_PINK` table.
+   --  @enum Hot_Map Native `COLORMAP_HOT` table.
+   --  @enum Parula_Map Native `COLORMAP_PARULA` table.
+   --  @enum Magma_Map Native `COLORMAP_MAGMA` table.
+   --  @enum Inferno_Map Native `COLORMAP_INFERNO` table.
+   --  @enum Plasma_Map Native `COLORMAP_PLASMA` table.
+   --  @enum Viridis_Map Native `COLORMAP_VIRIDIS`: BGR 84,1,68 at index 0 and
+   --  BGR 37,231,253 at 255.
+   --  @enum Cividis_Map Native `COLORMAP_CIVIDIS` table.
+   --  @enum Twilight_Map Native `COLORMAP_TWILIGHT`: indices 0 and 255 both
+   --  give BGR 226,217,226.
+   --  @enum Twilight_Shifted_Map Native `COLORMAP_TWILIGHT_SHIFTED` table.
    type Built_In_Color_Map is
      (Autumn_Map,
       Bone_Map,
@@ -1369,32 +1785,82 @@ package OpenCV.Image_Processing is
       Twilight_Map,
       Twilight_Shifted_Map);
 
-   --  Nonempty 2-D UInt8 C1 or C3 Source. C1 bytes index the table;
-   --  C3 is BGR converted to grayscale first, NOT independent B/G/R maps.
-   --  Fresh owning UInt8 C3 BGR result with Source geometry. Logical-row
-   --  snapshots isolate Regions and permit Destination = Source. Publication
-   --  occurs only after success; failures raise OpenCV.OpenCV_Error and leave
-   --  Destination unchanged. Separate input storage is never modified.
+   --  Maps Source through a built-in colormap with native cv::applyColorMap.
+   --  Nonempty 2-D UInt8 C1 or C3 Source. C1 bytes index the table; C3 is BGR
+   --  converted to grayscale first, NOT independent B/G/R maps. Fresh owning
+   --  UInt8 C3 BGR result with Source geometry. Logical-row snapshots isolate
+   --  Regions and permit Destination = Source. Publication occurs only after
+   --  success; failures raise OpenCV.OpenCV_Error and leave Destination
+   --  unchanged. Separate input storage is never modified. Destination is
+   --  rebound to the result; its previous storage, shallow copies and a
+   --  Region's parent are not written.
+   --  @param Source Image to map: nonempty 2-D UInt8 C1 (table indices) or C3
+   --  (BGR, converted to grayscale first).
+   --  @param Destination Receives the fresh UInt8 C3 BGR result with Source's
+   --  rows and columns; unchanged on failure. It may be Source.
+   --  @param Map Built-in table to apply.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D, not UInt8,
+   --  or not C1 or C3; when `Rows * Columns * 3` exceeds 2_147_483_647 or a
+   --  snapshot span is not addressable; or when OpenCV fails.
    procedure Apply_Color_Map
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Map         : Built_In_Color_Map);
 
-   --  Lookup_Table must be 2-D UInt8 C3, 256 rows x 1 column (not 1x256).
-   --  Row I contains the BGR triple for grayscale byte I, I = 0 .. 255.
-   --  Custom C1 tables are intentionally excluded: OpenCV 4.1 returns C3
-   --  with them, whereas 4.10/5 return C1. The table is also snapshotted;
-   --  noncontiguous Regions and Destination = Lookup_Table are supported.
+   --  Maps Source through a caller-supplied BGR table with native
+   --  cv::applyColorMap. Source, its grayscale conversion, the fresh UInt8 C3
+   --  BGR result and the publication of Destination only after success are as
+   --  for the Built_In_Color_Map overload. Lookup_Table must be 2-D UInt8
+   --  C3, 256 rows x 1 column (not 1x256). Row I contains the BGR triple for
+   --  grayscale byte I, I = 0 .. 255. Custom C1 tables are intentionally
+   --  excluded: OpenCV 4.1 returns C3 with them, whereas 4.10/5 return C1. The
+   --  table is also snapshotted; noncontiguous Regions and Destination =
+   --  Lookup_Table are supported, as are Destination = Source and Source/table
+   --  shared storage. No scaling or interpolation is added.
+   --  @param Source Image to map: nonempty 2-D UInt8 C1 (table indices) or C3
+   --  (BGR, converted to grayscale first).
+   --  @param Destination Receives the fresh UInt8 C3 BGR result with Source's
+   --  rows and columns; unchanged on failure. It may be Source or
+   --  Lookup_Table.
+   --  @param Lookup_Table Color table: nonempty 2-D UInt8 C3 of 256 rows and 1
+   --  column, row I holding the B, G, R output for grayscale byte I.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D, not UInt8,
+   --  or not C1 or C3; when Lookup_Table is not a nonempty 2-D UInt8 C3 Mat
+   --  of 256 rows and 1 column; when `Rows * Columns * 3`
+   --  exceeds 2_147_483_647 or a snapshot span is not addressable; or when
+   --  OpenCV fails.
    procedure Apply_Color_Map
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
       Lookup_Table : OpenCV.Core.Mat);
 
-   --  Nonempty 2-D Source, with exactly the channels named by Conversion.
-   --  Layout, Gray, XYZ, YCrCb and YUV accept UInt8/UInt16/Float32;
-   --  HSV, HLS, Lab and Luv accept UInt8/Float32. Destination retains
-   --  Source geometry/depth; its channel count is fixed by Conversion.
-   --  Destination is rebound only on success; Regions are logical images.
+   --  Converts every pixel of Source between the color layouts named by
+   --  Conversion with native cv::cvtColor. Nonempty 2-D Source, with exactly
+   --  the channels named by Conversion. Layout, Gray, XYZ, YCrCb and YUV
+   --  accept UInt8/UInt16/Float32; HSV, HLS, Lab and Luv (standard, FULL and
+   --  linear-light) accept UInt8/Float32; BGR565/BGR555 and premultiplied
+   --  selectors accept UInt8 only. Destination retains Source geometry/depth;
+   --  its channel count is fixed by Conversion. Pixel values are not
+   --  range-checked or normalized.
+   --
+   --  Source is read in place and Regions are logical images: only a Region's
+   --  own pixels participate. The result is built in private native storage,
+   --  and Destination is rebound to it only on success; on failure Destination
+   --  is unchanged. The previous Destination storage, its shallow copies and a
+   --  Region's parent are never written. Destination may be Source itself or
+   --  share Source's storage.
+   --  @param Source Image to convert, with exactly the channel count and an
+   --  accepted depth of Conversion's source layout.
+   --  @param Destination Receives the result: a fresh owning Mat with Source's
+   --  rows, columns and depth and the channel count of Conversion's
+   --  destination layout. It may be Source.
+   --  @param Conversion Source and destination layouts; see Color_Conversion.
+   --  @exception OpenCV_Error Raised when Source is empty or not 2-D, has a
+   --  channel count other than Conversion's source layout, or has a depth
+   --  Conversion does not accept; when `Rows * Columns`, or for HSV, HLS, Lab
+   --  and Luv selectors `Columns * 3`, exceeds 2_147_483_647; when a row
+   --  stride exceeds the limit of a reachable optional native backend (IPP,
+   --  Carotene or FastCV); or when OpenCV fails.
    procedure Convert_Color
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
