@@ -6,6 +6,8 @@ small specification, so every rule runs without GNATdoc. When a generated
 `_site` exists, the same rejections are also exercised on a copy of it.
 """
 
+import json
+import re
 import shutil
 import tempfile
 import textwrap
@@ -81,9 +83,12 @@ LANDING = (
     '<p><a href="https://github.com/zackboll/opencv_imgproc_ada">Source</a>\n'
 )
 
+# The synthetic fixture is native GNATdoc output; presentation enhancements
+# are qualified by the generated-site tests below and test_link_gnatdoc_types.
 FIXTURE_OPTIONS = {
     "declarations": ("Mode", "Run", "Count", "Limit"),
     "rendered": {"procedure Run (Value : Integer)": ("Runs the demonstration.",)},
+    "enhanced": False,
 }
 
 
@@ -252,7 +257,7 @@ class SyntheticSiteTest(unittest.TestCase):
     def test_missing_representative_declaration_is_rejected(self):
         with self.assertRaises(DocumentationError) as caught:
             validate(self.site, self.root, declarations=("Mode", "Absent"),
-                     rendered={})
+                     rendered={}, enhanced=False)
         self.assertIn("missing representative declaration: Absent", str(caught.exception))
 
     def test_landing_example_must_match_compiled_example(self):
@@ -332,10 +337,74 @@ class GeneratedSiteTest(unittest.TestCase):
         self.page.write_text(text[:start] + text[end:], encoding="utf-8")
         self.assertRejected("declaration sections differ from the public source")
 
+    def section_bounds(self, name, occurrence=0):
+        text = self.page.read_text(encoding="utf-8")
+        starts = [m.start() for m in re.finditer(f">{name}</h4>", text)]
+        start = starts[occurrence]
+        end = text.find("<h4 ", start)
+        return text, start, len(text) if end < 0 else end
+
+    def mutate_section(self, name, old, new, occurrence=0):
+        text, start, end = self.section_bounds(name, occurrence)
+        body = text[start:end]
+        self.assertIn(old, body, "mutation did not apply")
+        self.page.write_text(text[:start] + body.replace(old, new, 1) + text[end:],
+                             encoding="utf-8")
+
     def test_modified_native_declaration_text_is_rejected(self):
-        self.mutate("function Phase_Correlate\n  (Source_1, Source_2 : OpenCV.Core.Mat)",
-                    "function Phase_Correlate\n  (Source_1 : OpenCV.Core.Mat)")
+        self.mutate_section("Phase_Correlate", "Source_2", "Source_3")
         self.assertRejected("declaration sections differ from the public source")
+        self.assertRejected("presentation integrity: source profile not unique")
+
+    def test_wrong_but_existing_type_destination_is_rejected(self):
+        text = self.page.read_text(encoding="utf-8")
+        histogram = re.search(r"<h4 id=([^ >]+)>Histogram</h4>", text)[1]
+        contour_set = re.search(r"<h4 id=([^ >]+)>Contour_Set</h4>", text)[1]
+        self.mutate_section("Find_Contours", f'href="#{contour_set}"',
+                            f'href="#{histogram}"')
+        self.assertRejected("type identity/destination/markup mismatch: Find_Contours")
+
+    def test_fabricated_core_fragment_is_rejected(self):
+        self.mutate_section("Gaussian_Blur", "?package=OpenCV.Core\"",
+                            "?package=OpenCV.Core#mat\"")
+        self.assertRejected("unapproved link")
+
+    def test_removed_type_link_is_rejected(self):
+        text, start, end = self.section_bounds("Phase_Correlate")
+        body = re.sub(r'<a class="type-reference" href="[^"]+" '
+                      r'data-type="opencv\.image_processing\.phase_correlation_result">'
+                      r'([^<]+)</a>', r"\1", text[start:end], count=1)
+        self.assertNotEqual(body, text[start:end])
+        self.page.write_text(text[:start] + body + text[end:], encoding="utf-8")
+        self.assertRejected("type identity/destination/markup mismatch: Phase_Correlate")
+
+    def test_modified_description_outside_snippets_is_rejected(self):
+        self.mutate_section("Phase_Correlate", "Shift describes Source_2",
+                            "Shift describes Source_1")
+        self.assertRejected("presentation integrity")
+
+    def test_tampered_theme_asset_is_rejected(self):
+        theme = self.site / "api/gnatdoc-theme.css"
+        theme.write_text(theme.read_text(encoding="utf-8") + "body{}\n", encoding="utf-8")
+        self.assertRejected("theme asset differs from repository stylesheet")
+
+    def test_corrupted_link_manifest_is_rejected(self):
+        manifest = self.site / "api/type-crossrefs.json"
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        data["snippets"][0] = data["snippets"][0].replace("is", "iz", 1)
+        manifest.write_text(json.dumps(data), encoding="utf-8")
+        self.assertRejected("presentation integrity")
+
+    def test_removed_highlighting_qualification_is_rejected(self):
+        manifest = self.site / "api/type-crossrefs.json"
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        data["highlighting"] = 0
+        manifest.write_text(json.dumps(data), encoding="utf-8")
+        self.assertRejected("presentation integrity")
+
+    def test_stray_presentation_file_is_rejected(self):
+        (self.site / "api/extra.js").write_text("x", encoding="utf-8")
+        self.assertRejected("unexpected file: api/extra.js")
 
     def test_injected_script_is_rejected(self):
         self.mutate("<h1>", "<script src=x.js></script><h1>")
