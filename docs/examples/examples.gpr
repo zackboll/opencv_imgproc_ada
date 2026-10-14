@@ -1,0 +1,19 @@
+with "../../opencv_imgproc.gpr";
+
+--  Compiles and runs the developer-guide examples; never part of the library.
+project Examples is
+   for Source_Dirs use (".");
+   for Object_Dir use "../../obj/docs-examples";
+   for Exec_Dir use "../../obj/docs-examples";
+   for Create_Missing_Dirs use "True";
+   for Main use
+     ("filtering_and_transforms.adb",
+      "color_and_representation.adb",
+      "features_and_analysis.adb",
+      "segmentation_and_contours.adb",
+      "matching_and_registration.adb");
+   package Compiler is
+      for Default_Switches ("Ada") use
+        ("-gnat2022", "-gnata", "-gnatwa", "-Werror");
+   end Compiler;
+end Examples;

@@ -6,6 +6,9 @@ root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
 command -v alr >/dev/null
 command -v python3 >/dev/null
+# Guides need the pinned Markdown renderer (docs/requirements.txt), installed
+# in a separate documentation environment, for example .doc-tools/markdown.
+python=${DOC_PYTHON:-python3}
 test "$(alr --version)" = 'alr 2.1.1' || {
     echo 'error: documentation requires Alire 2.1.1' >&2; exit 1;
 }
@@ -61,7 +64,9 @@ python3 scripts/link_gnatdoc_types.py _site/api
 python3 scripts/highlight_gnatdoc_ada.py _site/api
 # Operation-level browser in the native index; declaration pages are unchanged.
 python3 scripts/enhance_gnatdoc_navigation.py _site/api
-python3 scripts/validate_docs.py _site
+# Developer guides with compiled examples and verified API anchors.
+"$python" scripts/render_gnatdoc_guides.py _site
+"$python" scripts/validate_docs.py _site
 # Declaration, overload and member documentation coverage, with the same ratchet.
 python3 scripts/check_doc_coverage.py --fail-on-removed \
     docs/gnatdoc-coverage-baseline.txt _site

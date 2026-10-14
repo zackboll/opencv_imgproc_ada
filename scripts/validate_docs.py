@@ -37,6 +37,7 @@ from compare_gnatdoc_warnings import (
     declaration_index,
 )
 from link_gnatdoc_types import CORE_DESTINATIONS, LINK, CrossReferenceError, process
+from render_gnatdoc_guides import GUIDES
 
 ROOT = Path(__file__).resolve().parent.parent
 NATIVE_PAGE = re.compile(r"[0-9a-f]{64}\.html")
@@ -86,7 +87,9 @@ RENDERED = {
 }
 # Generated presentation files allowed beside the native output.
 ENHANCEMENT_FILES = {"api/gnatdoc-theme.css", "api/presentation.json",
-                     "api/type-crossrefs.json", "api/gnatdoc-navigation.js"}
+                     "api/type-crossrefs.json", "api/gnatdoc-navigation.js",
+                     "guides/gnatdoc-guides.css"} | {
+                         f"guides/{name}.html" for name in GUIDES}
 # The only script: the repository-owned browser, once, in the API index; its
 # exact placement and bytes are verified by check_navigation.
 APPROVED_SCRIPT = ("api/index.html", "<script src=gnatdoc-navigation.js>")
@@ -253,7 +256,8 @@ def _describe(entries):
 
 
 def _check_links(site, pages, path, page, errors, enhanced):
-    landing = path == site / "index.html"
+    # The landing page and the developer guides may link to project sites.
+    landing = path == site / "index.html" or (enhanced and path.parent == site / "guides")
     for link in page.links:
         url = urlsplit(link)
         if url.scheme or url.netloc:
@@ -296,6 +300,11 @@ def _presentation_errors(api, root, core, packages, type_links):
     except (CrossReferenceError, WarningComparisonError, KeyError, ValueError,
             OSError) as error:
         return [f"presentation integrity: {error}"]
+    try:
+        from render_gnatdoc_guides import validate as check_guides
+        check_guides(root, api.parent)
+    except (ValueError, OSError, ImportError) as error:
+        errors.append(f"guide integrity: {error}")
     # Exact entity probes supplement the full recomputation above.
     for path in packages.values():
         linked = collections.defaultdict(set)
@@ -373,6 +382,10 @@ def validate(site, root=ROOT, declarations=DECLARATIONS, rendered=RENDERED,
     landing = pages.get(site / "index.html")
     if landing is not None and "api/index.html" not in landing.links:
         errors.append("landing page does not link to api/index.html")
+    if landing is not None and enhanced:
+        for name in GUIDES:
+            if f"guides/{name}.html" not in landing.links:
+                errors.append(f"landing page does not link to guides/{name}.html")
     example = root / "docs/example.adb"
     if landing is not None and example.is_file():
         source = example.read_text(encoding="utf-8").rstrip("\n")

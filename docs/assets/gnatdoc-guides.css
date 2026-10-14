@@ -1,0 +1,24 @@
+/* Layout only; palette and code typography come from the native API theme. */
+header { padding: 1rem clamp(1rem, 4vw, 3rem); background: var(--nav); border-bottom: 1px solid var(--border); }
+.guide-layout { display: grid; grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr); max-width: 90rem; margin: auto; }
+.guide-nav { padding: 1rem; background: var(--nav); }
+.guide-nav ul { list-style: none; padding: 0; }
+.guide-nav a { display: block; padding: .6rem; overflow-wrap: anywhere; }
+.guide-nav a[aria-current="page"] { background: var(--active); border-left: 3px solid var(--link); font-weight: 700; }
+main { min-width: 0; padding: 2rem clamp(1rem, 4vw, 3rem); overflow-wrap: anywhere; }
+main h2, main h3 { scroll-margin-top: 1rem; }
+main :target { background: var(--active); }
+.table-scroll { overflow-x: auto; max-width: 100%; margin: 1rem 0; }
+.table-scroll:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+table { border-collapse: collapse; min-width: 100%; font-size: .9rem; }
+th, td { padding: .6rem; border: 1px solid var(--border); text-align: left; vertical-align: top; min-width: 8rem; }
+th { background: var(--code); }
+.guide-source { border-top: 1px solid var(--border); padding-top: 1rem; }
+.skip-link { position: absolute; top: -5rem; padding: .5rem; background: var(--page); }
+.skip-link:focus { top: .5rem; }
+@media (max-width: 800px) {
+  .guide-layout { grid-template-columns: minmax(0, 1fr); }
+  .guide-nav { border-bottom: 1px solid var(--border); }
+  .guide-nav ul { display: flex; flex-wrap: wrap; gap: .3rem; }
+  main { padding-top: 1.25rem; }
+}

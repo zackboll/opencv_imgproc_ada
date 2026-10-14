@@ -308,7 +308,8 @@ class GeneratedSiteTest(unittest.TestCase):
     def test_generated_site_is_accepted(self):
         summary = validate(self.site, ROOT)
         self.assertEqual(summary["packages"], 1)
-        self.assertEqual(summary["pages"], 3)
+        # Landing page, native index, package page and five guides.
+        self.assertEqual(summary["pages"], 8)
 
     def test_missing_stylesheet_is_rejected(self):
         (self.site / "api/gnatdoc.css").unlink()

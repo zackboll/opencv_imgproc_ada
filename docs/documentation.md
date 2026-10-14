@@ -22,7 +22,9 @@ Required qualification versions:
 | GNATdoc | Alire `gnatdoc_bin=26.0.0`, executable 26.0.0 (20260415) |
 
 Also install a supported native OpenCV development library, pkg-config, a
-C++17 compiler, a POSIX shell and Python 3.9 or newer (standard library only).
+C++17 compiler, a POSIX shell and Python 3.9 or newer, plus the pinned guide
+renderer from `docs/requirements.txt` in a separate environment named by
+`DOC_PYTHON` (see "Testing the documentation tooling").
 `alire.toml` resolves `opencv_core` from the sibling checkout `../core`, so
 use the layout described in the README:
 
@@ -334,6 +336,45 @@ alr exec -- gprbuild -P docs/example.gpr
 obj/docs-example/example
 ```
 
+## Developer guides (IMGPROC-DOC-005)
+
+Five guides in `docs/guides/` are rendered into `_site/guides/` by
+`scripts/render_gnatdoc_guides.py`, adapted from Core's DOC-072 renderer:
+
+| Guide | Covers |
+| --- | --- |
+| `filtering-and-transforms.md` | Destination models, smoothing, derivatives, kernels, pyramids, resizing, warps, remapping |
+| `color-and-image-representation.md` | Mat depths and channels, shallow copies and Regions, color conversion, YUV, Bayer, color maps |
+| `features-and-structural-analysis.md` | Edges, corners, subpixel refinement, Hough detection, histograms, integral images, accumulation, EMD |
+| `segmentation-contours-and-morphology.md` | Thresholds, morphology, distances, flood fill, watershed, GrabCut, contours, components, drawing |
+| `template-matching-and-registration.md` | The six matching methods, masked matching and zero-energy policies, generalized Hough, phase correlation |
+
+The renderer uses the pinned `markdown-it-py` (`docs/requirements.txt`, run
+through `DOC_PYTHON`) and enforces a narrower contract than Markdown: no raw
+HTML or images; fences only in `ada`, `sh` or `text`; links only to guide
+headings, other guides, `https` pages on github.com and zackboll.github.io,
+or `api:Name` and `api:Name/N`. An `api:` link resolves to the verified
+native anchor of that declaration (overload N in source order) taken from
+the operation browser's entries; an unknown name or overload fails. Every
+`ada` fence must be exactly one program from `docs/examples/`, and every
+example must appear in a guide. `docs/examples/examples.gpr` compiles the
+five examples with `-gnat2022 -gnata -gnatwa -Werror` and the workflow runs
+them, so every Ada statement shown in a guide is compiled and its assertions
+are executed. Each guide page also lists native API entry points and links
+to its Markdown source.
+
+Validation reconstructs every guide page and the guide stylesheet and
+compares bytes; the landing page must link to all five guides.
+`test_gnatdoc_guides.py` rejects missing or extra pages, wrong but existing
+API anchors and guide links, missing headings, changed code or text,
+scripts, a tampered stylesheet, unknown declarations or overloads, Ada code
+that is not a compiled example, examples missing from the guides, unapproved
+links and raw HTML. The optional `scripts/test_gnatdoc_guides_browser.cjs`
+checks all five guides at 1280 and 390 pixels, light and dark, with and
+without JavaScript: navigation state, source links, absence of page overflow,
+scrollable code and tables, API links landing on the named declaration,
+cross-guide links, keyboard focus and the skip link.
+
 ## CI and Pages review gate
 
 `.github/workflows/documentation.yml` runs for every pull request
@@ -399,16 +440,21 @@ declarations or behavior to improve generated output.
 ## Testing the documentation tooling
 
 ```sh
-python3 -m unittest discover -s scripts -p 'test_*.py' -v
+python3 -m venv .doc-tools/markdown
+.doc-tools/markdown/bin/pip install -r docs/requirements.txt
+export DOC_PYTHON="$PWD/.doc-tools/markdown/bin/python"
 sh scripts/generate_docs.sh
-python3 -m unittest discover -s scripts -p 'test_validate_docs.py' -v
-python3 -m unittest discover -s scripts -p 'test_check_doc_coverage.py' -v
+"$DOC_PYTHON" -m unittest discover -s scripts -p 'test_*.py' -v
 python3 scripts/check_doc_coverage.py --report docs/gnatdoc-coverage-baseline.txt _site
 python3 scripts/check_comment_only.py origin/main   # documentation-only changes
 alr exec -- gnatformat --check -P opencv_imgproc.gpr src/opencv-image_processing.ads
 alr exec -- gprbuild -P docs/example.gpr && obj/docs-example/example
+alr exec -- gprbuild -P docs/examples/examples.gpr   # then run obj/docs-examples/*
 git diff --check
 ```
 
-The documentation tools use only the Python standard library and are not
-dependencies of the library or the `tests` crate.
+Apart from the pinned guide renderer (`markdown-it-py==3.0.0` and
+`mdurl==0.1.2`, installed in a separate documentation environment), the
+documentation tools use only the Python standard library. None of them, nor
+the optional Playwright harnesses, is a dependency of the library or the
+`tests` crate.
