@@ -156,6 +156,16 @@ overload and its six-method contract are unchanged.
 
 A thick, idiomatic Ada binding for the **OpenCV Imgproc** module.
 
+> **Documentation:** the generated API reference, operation browser and five
+> developer guides are built by `sh scripts/generate_docs.sh` and published
+> from `main` to <https://zackboll.github.io/opencv_imgproc_ada/> once GitHub
+> Pages is enabled. The guide sources are in [`docs/guides/`](docs/guides/),
+> their compiled examples in [`docs/examples/`](docs/examples/), and the
+> tooling and comment conventions in [`docs/documentation.md`](docs/documentation.md).
+> The package specification `src/opencv-image_processing.ads` is the
+> authoritative API contract; where this README's feature notes and the
+> specification differ, the specification wins.
+
 `opencv_imgproc_ada` exposes a focused, growing subset of OpenCV image-processing
 functionality through strong Ada types, Ada exceptions, Core-owned `Mat`
 objects, and Ada-owned contour and connected-component results. C++ implementation details stay behind
@@ -1557,7 +1567,9 @@ Template.Rows    <= Source.Rows
 Template.Columns <= Source.Columns
 ```
 
-A Template equal in size to Source is valid. Destination is always rebound to:
+A Template equal in size to Source is valid. Destination is a direct native
+output: OpenCV reuses its storage when it already has this shape and type, and
+otherwise rebinds it, so it always ends up as:
 
 ```text
 Depth    = Float32
@@ -1596,8 +1608,10 @@ Source and Template are read-only and may share storage, including using the
 same Mat or a Template that is a `Region` of Source. Destination must not share
 storage with Source or Template.
 
-Masked template matching supports squared difference, cross-correlation, and
-normalized cross-correlation through the UInt8 C1 overload described in
+Masked template matching supports squared difference, normalized squared
+difference, cross-correlation, normalized cross-correlation and the correlation
+coefficient (not `Normalized_Correlation_Coefficient`) through the UInt8 C1
+overload described in
 [Portable masked template matching](#portable-masked-template-matching).
 
 ---
@@ -1655,7 +1669,8 @@ Coefficients are:
 ```
 
 `Output_Size.Width` and `Output_Size.Height` must both be nonzero. Destination
-is always rebound to:
+is a direct native output: OpenCV reuses its storage when it already has this
+shape and type, and otherwise rebinds it, so it always ends up as:
 
 ```text
 Rows     = Output_Size.Height
@@ -1792,7 +1807,8 @@ source_y = (M10*x + M11*y + M12) / (M20*x + M21*y + M22)
 ```
 
 `Output_Size.Width` and `Output_Size.Height` must both be nonzero. Destination
-is always rebound to:
+is a direct native output: OpenCV reuses its storage when it already has this
+shape and type, and otherwise rebinds it, so it always ends up as:
 
 ```text
 Rows     = Output_Size.Height
@@ -3190,8 +3206,9 @@ end;
 
 Mask semantics are binary: zero is background and every nonzero `UInt8` value
 is foreground. `Four_Connected` and `Eight_Connected` select 4-way and 8-way
-pixel neighborhoods respectively. `Labels` is always rebound to a distinct
-`Int32` C1 Mat with the same rows and columns as `Source`. Its value zero is
+pixel neighborhoods respectively. `Labels` is a direct native output: OpenCV
+reuses its storage when it already is an `Int32` C1 Mat with the same rows and
+columns as `Source`, and otherwise rebinds it to one. Its value zero is
 `Background_Label`; foreground pixels are labeled from 1 through
 `Component_Count`.
 

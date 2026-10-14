@@ -47,8 +47,20 @@ begin
    pragma Assert (Blurred.Rows = 4 and then Blurred.Columns = 6);
    pragma Assert (UInt8_Access.Get (Blurred, 0, 0) = 128);
 end Example;</pre>
-<p><code>Gaussian_Blur</code> replaces <code>Destination</code> with a Mat of
+<p><code>Gaussian_Blur</code> writes into <code>Destination</code> a Mat of
 the Source's geometry, depth and channel count; Source is not modified.</p>
+<section aria-labelledby="developer-guides">
+<h2 id="developer-guides">Developer Guides</h2>
+<ul>
+<li><a href="guides/filtering-and-transforms.html">Filtering and image transformations</a> — smoothing, derivatives, pyramids, resizing, warps and remapping.</li>
+<li><a href="guides/color-and-image-representation.html">Color conversion and image representation</a> — Mat depths and channels, Regions, color, YUV, Bayer and color maps.</li>
+<li><a href="guides/features-and-structural-analysis.html">Geometry, features and structural analysis</a> — edges, corners, Hough detection, histograms and integral images.</li>
+<li><a href="guides/segmentation-contours-and-morphology.html">Segmentation, contours and morphology</a> — thresholds, morphology, flood fill, contours, components and drawing.</li>
+<li><a href="guides/template-matching-and-registration.html">Template matching and image registration</a> — the six matching methods, masked matching, generalized Hough and phase correlation.</li>
+</ul>
+<p>Every Ada example in the guides is a complete program that the
+documentation workflow compiles and runs.</p>
+</section>
 <nav>
 <a href="https://github.com/zackboll/opencv_imgproc_ada">Source repository</a> ·
 <a href="https://github.com/zackboll/opencv_imgproc_ada/releases">Releases</a> ·

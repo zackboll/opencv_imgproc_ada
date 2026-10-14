@@ -69,12 +69,16 @@ branch, regenerated and qualified there.
 | DOC-002F group F histograms | `feature/imgproc-doc-002f-histograms` | #58 (DOC-002E branch) | Open; head `56e9720` |
 | DOC-002G group G Hough and matching | `feature/imgproc-doc-002g-matching` | #59 (DOC-002F branch) | Open; head `0cd4817`; zero warnings, 1,512/1,512 |
 | DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | #60 (DOC-002G branch) | Open; head `910fb21` |
-| DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | DOC-003 branch | Qualified locally |
-| DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
+| DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | #61 (DOC-003 branch) | Open; head `54a6fbe` |
+| DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | DOC-004 branch | Qualified locally (see final audit) |
 
 GitHub Pages remains disabled (external administrator action).
 
 ## Feature-parity matrix (Core `7bcdc3a` versus Imgproc)
+
+The right-hand column records the DOC-001 starting point; every "DOC-00x"
+entry has since been delivered by that phase (see its checkpoint), and the
+final state is summarized under "Final audit".
 
 | Capability | Core source | Imgproc after DOC-001 |
 | --- | --- | --- |
@@ -412,6 +416,64 @@ Branch `feature/imgproc-doc-004-navigation` from DOC-003 head `910fb21`.
   harness pass at 1280/390 px in light and dark; screenshots inspected. The
   mobile sidebar keeps Core's 30 % band and scrolls internally.
 
+### IMGPROC-DOC-005 — developer guides and final audit
+
+Branch `feature/imgproc-doc-005-guides` from DOC-004 head `54a6fbe`.
+
+- Five guides in `docs/guides/`: filtering and transforms; color and image
+  representation; geometry, features and structural analysis; segmentation,
+  contours and morphology; template matching and registration. Topics follow
+  the actual API (Imgproc has no separate geometry module: warps live in the
+  filtering guide, features and Hough in the analysis guide).
+- Five complete example programs in `docs/examples/`, compiled with
+  `-gnat2022 -gnata -gnatwa -Werror` and executed with all assertions
+  passing; each guide embeds its example verbatim. One draft assertion
+  relied on connected-component label order, which the API does not
+  guarantee, and was rewritten to search by statistics before publication.
+- `render_gnatdoc_guides.py` (Core renderer adapted: `api:Name/N` links to
+  verified native anchors, compiled-example rule, pinned markdown-it-py
+  3.0.0/mdurl 0.1.2 in `.doc-tools/markdown`), guide stylesheet, landing-page
+  Developer Guides section, validator integration (8 HTML pages), 14 guide
+  mutation tests, guide browser harness.
+- README: documentation pointer; corrected Labels, unmasked Match_Template,
+  Warp_Affine/Warp_Perspective Destination statements and the masked method
+  list. Landing-page Gaussian_Blur wording corrected the same way.
+
+## Final audit (Phase 6 gate)
+
+Evidence on the DOC-005 worktree (Imgproc stack on `0bcbaa0`, Core
+`7bcdc3a`, OpenCV 4.10.0, Linux x86_64):
+
+1. Reproducible pinned generation: Alire 2.1.1, GNAT 16.1.0, GPRbuild
+   26.0.1, GNATdoc 26.0.0 gates; fresh regeneration byte-identical.
+2. Coverage measured: 1,512/1,512 items (package, 314 declarations including
+   every overload, 745 parameters, 114 returns, 256 literals, 82 components
+   and discriminants); every comment block attached and rendered.
+3. GNATdoc warnings 0 (from 1,357); both baselines empty and required to
+   stay empty.
+4. Every declaration and overload is navigable: one native section each, a
+   categorized browser entry with overload labels, and bookmarks.
+5. Internal C ABI units, the private part, the body and Core packages are
+   not published (exact file inventory and package checks).
+6. Theme, highlighting, type links, navigation and guides pass independent
+   recomputation and mutation tests.
+7. Real-browser qualification (Playwright 1.62 with Chrome 155): presentation,
+   navigation and guide harnesses at 1280/390 px, light/dark, with and
+   without JavaScript.
+8. Guide examples compile and run; every guide API link resolves to a
+   verified anchor.
+9. Enhancement steps are idempotent; generation deterministic.
+10. Pages publishing remains main-only (pull-request runs: `contents: read`).
+11. Production API, ABI, dependencies and behavior unchanged:
+    `check_comment_only.py 0bcbaa0` passes; across the whole stack the only
+    production file changed is `src/opencv-image_processing.ads` (comments
+    and blank lines; one GNATformat realignment). Full AUnit after the
+    campaign: 1,129 run, 1,129 passed, 0 failures, 0 errors (identical to
+    the Gate 0 baseline).
+12. Limitations: see "Findings for the maintainers"; statements that rest on
+    OpenCV conventions rather than repository tests are listed per phase;
+    GitHub Pages is still disabled, so nothing is deployed yet.
+
 ## Findings for the maintainers (not changed: outside documentation scope)
 
 - CLAHE (shim `opencv_imgproc_clahe`): the isolating clone is taken only for
@@ -421,8 +483,10 @@ Branch `feature/imgproc-doc-004-navigation` from DOC-003 head `910fb21`.
   clone by up to 14. The clip-limit guard assumes 65536 histogram bins, but
   UInt8 uses 256, so a large finite Clip_Limit can still overflow the
   native int conversion. Documented as implemented.
-- README "Connected components" says Labels is always rebound; the shim
-  passes it to OpenCV directly, which reuses matching storage (DOC-002E).
+- README "Connected components" said Labels is always rebound; the shim
+  passes it to OpenCV directly, which reuses matching storage (DOC-002E;
+  README corrected in DOC-005, as were the "always rebound" claims for the
+  unmasked Match_Template and the two warps).
 - A default-initialized Histogram_Nonuniform_Dimension (no edges) passed to
   the single-source Calculate_Nonuniform_Histogram appears to raise
   Constraint_Error from `Natural (0) - 1` rather than OpenCV_Error
@@ -432,9 +496,16 @@ Branch `feature/imgproc-doc-004-navigation` from DOC-003 head `910fb21`.
   320 x 240 Scene fails with default parameters; README calls the defaults
   "convenient starting values" (DOC-002G, confirmed by compiling the layout
   check).
-- README "Template matching" still says the masked overload supports three
-  methods (it supports five), and `docs/task-052-*.md` predates the masked
-  Correlation_Coefficient support (DOC-002G).
+- README "Template matching" said the masked overload supports three methods
+  (it supports five; corrected in DOC-005). `docs/task-052-*.md` is a
+  historical task record that predates masked Correlation_Coefficient
+  support; it was left unchanged as history.
+- Many README feature notes duplicate the specification in prose; only the
+  statements proven wrong during this campaign were corrected, and the README
+  now states that the specification is authoritative where they differ.
+- Native filters that receive a Region as a submatrix may read parent pixels
+  during border extrapolation (OpenCV's default without BORDER_ISOLATED); no
+  repository test pins this for each filter (DOC-002B).
 - Further items are listed in the checkpoints of the phases that found them.
 
 ## Remaining roadmap
@@ -452,14 +523,18 @@ baselines it reduces, and opens a stacked review PR; work then continues.
    coverage, empty baselines enforced.
 8. **IMGPROC-DOC-003** — done (see checkpoint).
 9. **IMGPROC-DOC-004** — done (see checkpoint).
-10. **IMGPROC-DOC-005** — five developer guides with compiled examples,
-    landing-page integration, README pointer and final audit against the
-    Phase 6 gate.
+10. **IMGPROC-DOC-005** — done (see checkpoint and final audit).
 
 ## Next executable task
 
-Create `feature/imgproc-doc-005-guides` from the DOC-004 head: five
-developer guides with compiled examples, a Markdown renderer adapted from
-Core (`render_gnatdoc_guides.py`, pinned `markdown-it-py`), landing-page
-and README integration, the README corrections listed under findings that
-are documentation-only, then the final audit and the full AUnit run.
+The implementation campaign is complete. Remaining actions are external:
+
+1. Independent review of PRs #52 to #61 and the DOC-005 PR in stack order (#52 targets
+   `main`; each later PR targets the previous branch). After a PR merges,
+   retarget its child PR to `main` with `gh pr edit N --base main` and let
+   GitHub recompute the diff; never rewrite published history.
+2. A repository administrator enables GitHub Pages (Settings, Pages,
+   Source: GitHub Actions, `github-pages` environment limited to `main`)
+   before the first merge to `main` that should publish.
+3. Inspect hosted CI once per PR head before approving a merge.
+4. Decide whether to fix the shim findings below in separate feature work.
