@@ -1,0 +1,50 @@
+name: Debian 12 independent installed consumers
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installed-consumers:
+    name: Debian 12 GNAT 16.1 installed Core and Imgproc
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: imgproc
+      - uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: f4bd2167ecc0a74162a00c6597772a2a67ea84b0
+          path: core
+      - name: Verify exact qualification source identities
+        env:
+          EXPECTED_IMGPROC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EXPECTED_CORE_SHA: f4bd2167ecc0a74162a00c6597772a2a67ea84b0
+        run: |
+          set -eu
+          actual_imgproc_sha=$(git -C imgproc rev-parse HEAD)
+          actual_core_sha=$(git -C core rev-parse HEAD)
+          printf 'Imgproc expected: %s\nImgproc actual: %s\n' "$EXPECTED_IMGPROC_SHA" "$actual_imgproc_sha"
+          printf 'Core expected: %s\nCore actual: %s\n' "$EXPECTED_CORE_SHA" "$actual_core_sha"
+          test -n "$EXPECTED_IMGPROC_SHA"
+          test "$actual_imgproc_sha" = "$EXPECTED_IMGPROC_SHA"
+          test "$actual_core_sha" = "$EXPECTED_CORE_SHA"
+      - name: Build Debian 12 qualification image
+        run: docker build -t imgproc-debian12-qualification imgproc/containers/debian12-consumers
+      - name: Qualify install, full AUnit, isolated consumers and relocation
+        env:
+          IMGPROC_CONSUMER_EVIDENCE: ${{ runner.temp }}/imgproc-consumer-private
+          IMGPROC_CONSUMER_ARTIFACTS: ${{ runner.temp }}/imgproc-consumer-artifacts
+        run: sh imgproc/scripts/qualify_debian12_consumers.sh
+      - name: Publish logs, installation metadata and ELF evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian12-installed-consumer-evidence
+          path: ${{ runner.temp }}/imgproc-consumer-artifacts/
+          if-no-files-found: error

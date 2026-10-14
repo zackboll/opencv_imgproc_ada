@@ -1,0 +1,22 @@
+with "opencv_core";
+with "opencv_imgproc";
+project Mixed_Consumer is
+   for Languages use ("Ada", "C++");
+   for Source_Dirs use (".");
+   for Source_Files use
+     ("installed_mixed.adb", "processing_check.ads", "processing_check.adb",
+      "application.cpp");
+   for Main use ("installed_mixed.adb");
+   for Object_Dir use "obj-mixed";
+   for Exec_Dir use "bin";
+   for Create_Missing_Dirs use "True";
+   package Compiler is
+      for Default_Switches ("Ada") use ("-gnat2022", "-gnatwa", "-gnatwe");
+      for Driver ("C++") use "/usr/bin/g++";
+      for Default_Switches ("C++") use
+        ("-std=c++17", "-Wall", "-Wextra", "-Werror", "-I/usr/include/opencv4");
+   end Compiler;
+   package Linker is
+      for Linker_Options use ("-lopencv_imgproc", "-lopencv_core", "-lstdc++");
+   end Linker;
+end Mixed_Consumer;
