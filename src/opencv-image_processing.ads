@@ -315,41 +315,112 @@ package OpenCV.Image_Processing is
       Squared_Depth : Integral_Squared_Depth := Float64_Squared_Integral)
       return Integral_Images_Result;
 
+   --  Metric and propagation mask of Distance_Transform. Distances are in
+   --  pixels, from each pixel to the nearest zero pixel.
+   --  @enum Manhattan_Distance Exact L1 distance `|dx| + |dy|`.
+   --  @enum Chessboard_Distance Exact chessboard distance
+   --  `max (|dx|, |dy|)`.
+   --  @enum Euclidean_3x3 Fast approximation with OpenCV's 3x3 weights
+   --  (axis step about 0.955, diagonal step about 1.3693).
+   --  @enum Euclidean_5x5 Approximation with OpenCV's 5x5 weights (axis step
+   --  1.0), closer to the true distance than Euclidean_3x3.
+   --  @enum Euclidean_Precise Exact Euclidean distance up to Float32
+   --  rounding. Each Source dimension is limited to 46341 pixels.
    type Distance_Transform_Method is
      (Manhattan_Distance,
       Chessboard_Distance,
       Euclidean_3x3,
       Euclidean_5x5,
       Euclidean_Precise);
+
+   --  Metric of Distance_Transform_With_Labels. OpenCV computes every
+   --  labeled transform by 5x5 mask propagation; no precise mode exists.
+   --  @enum Manhattan_Label_Distance Exact L1 distance `|dx| + |dy|`.
+   --  @enum Euclidean_Label_Distance Euclidean distance approximated with
+   --  OpenCV's 5x5 weights.
+   --  @enum Chessboard_Label_Distance Exact chessboard distance
+   --  `max (|dx|, |dy|)`.
    type Labeled_Distance_Metric is
      (Manhattan_Label_Distance,
       Euclidean_Label_Distance,
       Chessboard_Label_Distance);
+
+   --  How Distance_Transform_With_Labels numbers the zero pixels.
+   --  @enum Nearest_Zero_Component Each 8-connected component of zero pixels
+   --  receives one positive label.
+   --  @enum Nearest_Zero_Pixel Each zero pixel receives its own positive
+   --  label, assigned in row-major scan order (a discrete Voronoi map).
    type Distance_Label_Mode is (Nearest_Zero_Component, Nearest_Zero_Pixel);
+
+   --  Result of Distance_Transform_With_Labels: two fresh owning Mats with
+   --  the rows and columns of Source.
+   --  @field Distances Float32 C1 distance from each pixel to its nearest
+   --  zero pixel; zero pixels hold 0.0.
+   --  @field Labels Int32 C1 positive label of a nearest zero component or
+   --  zero pixel, as selected by Distance_Label_Mode. Zero pixels carry
+   --  their own label; equidistant ties have no specified winner.
    type Labeled_Distance_Transform_Result is record
       Distances : OpenCV.Core.Mat;
       Labels    : OpenCV.Core.Mat;
    end record;
 
-   --  Source is a nonempty 2-D UInt8 C1 image containing at least one zero.
-   --  Every nonzero pixel is foreground. Results are fresh, source-preserving
-   --  Mats of the same geometry; Regions are independent logical images.
-   --  L1 and chessboard distances are exact. Euclidean_3x3 and Euclidean_5x5
-   --  use OpenCV's approximate weights; Euclidean_Precise is exact up to
-   --  Float32 rounding. The result is Float32 C1.
+   --  Computes the distance from every pixel of Source to the nearest zero
+   --  pixel. Source is a nonempty 2-D UInt8 C1 image containing at least one
+   --  zero. Zero pixels are targets with distance 0; every nonzero pixel is
+   --  foreground (1 and 255 behave alike). Results are fresh,
+   --  source-preserving Mats of the same geometry; Regions are independent
+   --  logical images whose parent pixels do not participate. L1 and
+   --  chessboard distances are exact. Euclidean_3x3 and Euclidean_5x5 use
+   --  OpenCV's approximate weights; Euclidean_Precise is exact up to Float32
+   --  rounding. The result is Float32 C1.
+   --
+   --  The shim rejects images whose row stride, pixel count, row offsets or
+   --  padded temporary exceed native signed-int arithmetic, so a small
+   --  Region of a very large parent can be rejected. Euclidean_Precise also
+   --  limits each dimension to 46341 (OpenCV 4.1 table arithmetic).
+   --  @param Source Nonempty 2-D UInt8 C1 mask; zero marks the targets.
+   --  @param Method Metric and mask; defaults to Euclidean_Precise.
+   --  @return Fresh owning Float32 C1 distance Mat with Source's rows and
+   --  columns.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D,
+   --  not UInt8 C1 or has no zero pixel, when a native size limit is
+   --  exceeded, or when OpenCV fails.
    function Distance_Transform
      (Source : OpenCV.Core.Mat;
       Method : Distance_Transform_Method := Euclidean_Precise)
       return OpenCV.Core.Mat;
 
-   --  Exact L1 distance, UInt8 C1, saturating at 255.
+   --  Exact L1 distance, UInt8 C1, saturating at 255. Each pixel receives
+   --  `|dx| + |dy|` to its nearest zero pixel. Source requirements, Region
+   --  behavior and native size limits are those of Distance_Transform with
+   --  Manhattan_Distance. There is no UInt8 Euclidean variant.
+   --  @param Source Nonempty 2-D UInt8 C1 mask containing at least one zero
+   --  pixel; zero marks the targets.
+   --  @return Fresh owning UInt8 C1 distance Mat with Source's rows and
+   --  columns; distances above 255 are stored as 255.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D,
+   --  not UInt8 C1 or has no zero pixel, when a native size limit is
+   --  exceeded, or when OpenCV fails.
    function Manhattan_Distance_Transform_UInt8
      (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat;
 
-   --  Distances are Float32 C1, Labels Int32 C1. Component mode groups
-   --  8-connected zero pixels; pixel mode assigns row-major positive labels
-   --  to individual zeros. Ties have no specified winner. Euclidean labeled
-   --  distances use the native 5x5 approximation; precise is unavailable.
+   --  Computes distances to the nearest zero pixel together with the label
+   --  of that zero. Source requirements, Region behavior and native size
+   --  limits are those of Distance_Transform. Distances are Float32 C1,
+   --  Labels Int32 C1. Component mode groups 8-connected zero pixels; pixel
+   --  mode assigns row-major positive labels to individual zeros. Ties have
+   --  no specified winner. Euclidean labeled distances use the native 5x5
+   --  approximation; precise is unavailable.
+   --  @param Source Nonempty 2-D UInt8 C1 mask containing at least one zero
+   --  pixel; zero marks the labeled targets.
+   --  @param Metric Distance metric; defaults to Euclidean_Label_Distance.
+   --  @param Labels Labeling of the zero pixels; defaults to
+   --  Nearest_Zero_Component.
+   --  @return Record whose Distances and Labels are fresh owning Mats with
+   --  Source's rows and columns.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D,
+   --  not UInt8 C1 or has no zero pixel, when a native size limit is
+   --  exceeded, or when OpenCV fails.
    function Distance_Transform_With_Labels
      (Source : OpenCV.Core.Mat;
       Metric : Labeled_Distance_Metric := Euclidean_Label_Distance;
@@ -787,15 +858,40 @@ package OpenCV.Image_Processing is
    --  and supported Source combinations of Derivative_Depth.
    subtype Filter_Depth is Derivative_Depth;
 
+   --  Per-sample rule of Apply_Threshold and Apply_Automatic_Threshold for a
+   --  Source sample S, threshold T and maximum value M. The comparison is
+   --  strict: a sample equal to T counts as not above it.
+   --  @enum Binary M where S > T, otherwise 0.
+   --  @enum Binary_Inverse 0 where S > T, otherwise M.
+   --  @enum Truncate T where S > T, otherwise S unchanged.
+   --  @enum To_Zero S unchanged where S > T, otherwise 0.
+   --  @enum To_Zero_Inverse 0 where S > T, otherwise S unchanged.
    type Threshold_Mode is
      (Binary, Binary_Inverse, Truncate, To_Zero, To_Zero_Inverse);
 
+   --  Algorithm Apply_Automatic_Threshold uses to select the threshold from
+   --  a single-channel Source.
+   --  @enum Otsu Otsu's method; accepts UInt8 and UInt16 Sources. OpenCV 4.1
+   --  rejects UInt16 with OpenCV_Error.
+   --  @enum Triangle Triangle method; accepts UInt8 Sources only.
    type Automatic_Threshold_Method is (Otsu, Triangle);
 
+   --  Local mean that Apply_Adaptive_Threshold computes over the
+   --  Block_Size by Block_Size neighborhood of each pixel.
+   --  @enum Mean Arithmetic mean of the neighborhood.
+   --  @enum Gaussian Gaussian-weighted mean of the neighborhood.
    type Adaptive_Threshold_Method is (Mean, Gaussian);
 
+   --  Output rule of Apply_Adaptive_Threshold for a pixel compared with its
+   --  local threshold (local mean minus Bias), with maximum value M.
+   --  @enum Binary M for pixels above the local threshold, otherwise 0.
+   --  @enum Binary_Inverse 0 for pixels above the local threshold,
+   --  otherwise M.
    type Adaptive_Threshold_Mode is (Binary, Binary_Inverse);
 
+   --  Side length, in pixels, of the square neighborhood used by
+   --  Apply_Adaptive_Threshold. The subtype admits values from 3; the value
+   --  must also be odd, and an even value raises OpenCV.OpenCV_Error.
    subtype Adaptive_Block_Size is Positive range 3 .. 2_147_483_647;
 
    subtype Contour is OpenCV.Point_Array;
@@ -1024,31 +1120,99 @@ package OpenCV.Image_Processing is
 
    type Connected_Component_Set is private;
 
+   --  Shape of a generated structuring element, built by
+   --  Get_Structuring_Element and by the Kernel_Size morphology overloads.
+   --  Any 1 x 1 element is a single included pixel whatever the shape.
+   --  @enum Rectangle Every pixel of the Kernel_Size box is included.
+   --  @enum Cross Only the anchor's row and column are included; the
+   --  centered anchor is (Width / 2, Height / 2).
+   --  @enum Ellipse An elliptical footprint fitted to the box, symmetric
+   --  about its center. Native signed radius arithmetic limits the height
+   --  to 92681.
    type Morphology_Shape is (Rectangle, Cross, Ellipse);
 
-   --  Fresh UInt8 C1 mask with native 0/1 values and exact positive size.
-   --  Even dimensions are supported. Size (1, 1) is always Rectangle.
+   --  Fresh UInt8 C1 mask with native 0/1 values and exact positive size,
+   --  for use as the Kernel of Erode, Dilate and Apply_Morphology. Values
+   --  are 1 for included and 0 for excluded pixels, never 255. Even and
+   --  non-square dimensions are supported. Size (1, 1) is always Rectangle.
    --  Only Cross geometry depends on Anchor; Mat retains no anchor metadata.
    --  Pass the intended anchor again when applying a custom Cross kernel.
-   --  The centered overload uses (Width / 2, Height / 2).
+   --  The centered overload uses (Width / 2, Height / 2). Ellipse height is
+   --  limited to 92681; native allocation limits also apply.
+   --  @param Kernel_Size Mask width (columns) and height (rows); both
+   --  must be positive.
+   --  @param Shape Generated shape; defaults to Rectangle.
+   --  @return Fresh owning UInt8 C1 mask of exactly Kernel_Size.
+   --  @exception OpenCV_Error Raised when a dimension is zero, when
+   --  the Ellipse or allocation limits are exceeded, or when OpenCV fails.
    function Get_Structuring_Element
      (Kernel_Size : OpenCV.Size; Shape : Morphology_Shape := Rectangle)
       return OpenCV.Core.Mat;
+
+   --  As the centered overload, but builds the mask around an explicit
+   --  Anchor, which must lie inside the Kernel_Size box; no negative center
+   --  sentinel exists. Rectangle and Ellipse masks ignore Anchor; a Cross
+   --  includes the row and column through Anchor. The returned Mat does not
+   --  record Anchor, so pass the same Anchor to the morphology operation.
+   --  @param Kernel_Size Mask width (columns) and height (rows); both
+   --  must be positive.
+   --  @param Shape Generated shape; no default in this overload.
+   --  @param Anchor Kernel position, inside the mask, through which a Cross
+   --  passes.
+   --  @return Fresh owning UInt8 C1 mask of exactly Kernel_Size.
+   --  @exception OpenCV_Error Raised when a dimension is zero, when
+   --  Anchor lies outside the mask, when the Ellipse or allocation limits
+   --  are exceeded, or when OpenCV fails.
    function Get_Structuring_Element
      (Kernel_Size : OpenCV.Size;
       Shape       : Morphology_Shape;
       Anchor      : OpenCV.Point) return OpenCV.Core.Mat;
 
+   --  Compound operation of Apply_Morphology, built from erosion and
+   --  dilation with the same structuring element.
+   --  @enum Opening Erosion followed by dilation; removes small bright
+   --  features.
+   --  @enum Closing Dilation followed by erosion; fills small dark holes.
+   --  @enum Gradient Dilation minus erosion, a morphological edge map.
+   --  @enum Top_Hat Source minus its opening; keeps small bright features.
+   --  @enum Black_Hat Closing of Source minus Source; keeps small dark
+   --  features.
    type Morphology_Operation is
      (Opening, Closing, Gradient, Top_Hat, Black_Hat);
 
+   --  Repetition count of morphology. Erode and Dilate apply the elementary
+   --  step Iterations times. Apply_Morphology repeats each constituent step:
+   --  Opening with 2 performs two erosions and then two dilations, not two
+   --  complete openings. Hit_Or_Miss erodes each leg Iterations times.
    subtype Morphology_Iterations is Positive range 1 .. 2_147_483_647;
 
+   --  Constant border value used by morphology when Border is
+   --  Constant_Border: either OpenCV's neutral default
+   --  (Default_Morphology_Border) or an explicit Scalar created by
+   --  Explicit_Morphology_Border. Other borders ignore it.
    type Morphology_Border_Value is private;
+
+   --  OpenCV's special neutral border, not zero: outside pixels act as the
+   --  maximum for erosion and the minimum for dilation, so they never
+   --  affect the result. Valid for every Source depth and channel count.
    Default_Morphology_Border : constant Morphology_Border_Value;
-   --  The all-DBL_MAX scalar is reserved by OpenCV for its neutral default.
-   --  Used explicit Constant_Border components for integer sources must be
-   --  finite and within signed-int range before OpenCV saturates the result.
+
+   --  Selects an ordinary constant border value for Constant_Border
+   --  morphology; it is ignored for other borders. For C1 .. C4 Sources,
+   --  components 0 .. Channels - 1 map to the channels; Sources with more
+   --  than four channels require all four components equal. The value is
+   --  checked when an operation runs: the components used must be finite,
+   --  Float32 Sources need them within the finite Float32 range, and
+   --  integer Sources need them within the signed-int range
+   --  -2_147_483_648 .. 2_147_483_647 before OpenCV rounds and saturates
+   --  them to the pixel range (300 becomes 255 for UInt8, not a wrapped
+   --  value). The all-DBL_MAX scalar is reserved by OpenCV for its neutral
+   --  default and is rejected here.
+   --  @param Value Border value in channel order; not every component
+   --  equal to Float64_Value'Last (native DBL_MAX).
+   --  @return Explicit border value wrapping Value.
+   --  @exception OpenCV_Error Raised when every component of Value
+   --  equals Float64_Value'Last.
    function Explicit_Morphology_Border
      (Value : OpenCV.Scalar) return Morphology_Border_Value;
 
@@ -2467,17 +2631,42 @@ package OpenCV.Image_Processing is
       Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
    --  Erode replaces Destination with the neighborhood minimum selected by a
-   --  temporary structuring element of Kernel_Size and Shape. Source must be a
-   --  non-empty two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or
-   --  Float64; channels are processed independently. Kernel dimensions must be
-   --  positive, but need not be odd, and Iterations is at least one.
-   --  Constant_Border, Replicate, Reflect, and Reflect_101 are supported; Wrap
-   --  is rejected. Constant_Border uses OpenCV's morphology default border
-   --  value. Destination receives Source's geometry and element type. Source
-   --  remains unchanged unless it is also Destination, which is supported for
-   --  in-place erosion. A Region is processed as its own logical image; pixels
-   --  in its parent outside the view do not participate. Contract violations
-   --  and OpenCV failures raise OpenCV.OpenCV_Error.
+   --  temporary structuring element of Kernel_Size and Shape, generated as
+   --  by Get_Structuring_Element and anchored at (Width / 2, Height / 2).
+   --  Source must be a non-empty two-dimensional Mat of depth UInt8, UInt16,
+   --  Int16, Float32, or Float64; channels are processed independently.
+   --  Kernel dimensions must be positive, but need not be odd, and
+   --  Iterations is at least one. Constant_Border, Replicate, Reflect, and
+   --  Reflect_101 are supported; Wrap is rejected. Constant_Border uses
+   --  Border_Value, by default OpenCV's neutral morphology border value.
+   --
+   --  Destination receives Source's geometry and element type as a direct
+   --  native output: OpenCV writes into its storage when it already has that
+   --  size and type, so shallow copies and a Region's parent see the
+   --  result, and otherwise rebinds it to new storage. Source remains
+   --  unchanged unless it is also Destination, which is supported for
+   --  in-place erosion; for a parent-backed Region only the view's pixels
+   --  change. A Region is processed as its own logical image; pixels in its
+   --  parent outside the view do not participate.
+   --
+   --  Native signed-int limits apply: the kernel area, Source columns times
+   --  channels and kernel width times channels must fit a 32-bit int, and a
+   --  fully nonzero kernel with Iterations above one must also fit OpenCV's
+   --  expanded-rectangle and anchor arithmetic. Ellipse height is limited
+   --  to 92681. A 1 x 1 kernel copies Source for any Iterations.
+   --  @param Source Image to erode.
+   --  @param Destination Receives the eroded image.
+   --  @param Kernel_Size Width (columns) and height (rows) of the generated
+   --  structuring element; both must be positive.
+   --  @param Shape Generated element shape; defaults to Rectangle.
+   --  @param Iterations Number of successive erosions; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source, a zero
+   --  kernel dimension, Wrap, an invalid explicit Border_Value, a native
+   --  arithmetic limit, or an OpenCV failure.
    procedure Erode
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2488,13 +2677,27 @@ package OpenCV.Image_Processing is
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
 
    --  Dilate replaces Destination with the neighborhood maximum selected by a
-   --  temporary structuring element of Kernel_Size and Shape. It has the same
-   --  source depth, channel, kernel-size, iteration, border, destination, and
-   --  in-place semantics as Erode. Constant_Border uses OpenCV's morphology
-   --  default border value. A Region is processed as its own logical image;
-   --  pixels in its parent outside the view do not participate.
-   --  Contract violations and OpenCV failures raise
-   --  OpenCV.OpenCV_Error.
+   --  temporary structuring element of Kernel_Size and Shape, anchored at
+   --  (Width / 2, Height / 2). It has the same source depth, channel,
+   --  kernel-size, iteration, border, destination, in-place and native-limit
+   --  semantics as Erode: Destination receives Source's geometry and element
+   --  type as a direct native output, and Source may also be Destination.
+   --  Constant_Border uses Border_Value, by default OpenCV's neutral
+   --  morphology border value. A Region is processed as its own logical
+   --  image; pixels in its parent outside the view do not participate.
+   --  @param Source Image to dilate.
+   --  @param Destination Receives the dilated image.
+   --  @param Kernel_Size Width (columns) and height (rows) of the generated
+   --  structuring element; both must be positive.
+   --  @param Shape Generated element shape; defaults to Rectangle.
+   --  @param Iterations Number of successive dilations; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source, a zero
+   --  kernel dimension, Wrap, an invalid explicit Border_Value, a native
+   --  arithmetic limit, or an OpenCV failure.
    procedure Dilate
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2505,18 +2708,35 @@ package OpenCV.Image_Processing is
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
 
    --  Apply_Morphology performs Opening, Closing, Gradient, Top_Hat, or
-   --  Black_Hat with a temporary structuring element of Kernel_Size and Shape.
-   --  Source must be a non-empty two-dimensional Mat of depth UInt8, UInt16,
-   --  Int16, Float32, or Float64; channels are processed independently. Kernel
-   --  dimensions must be positive, but need not be odd, and Iterations is at
-   --  least one. Constant_Border, Replicate, Reflect, and Reflect_101 are
-   --  supported; Wrap is rejected. Constant_Border uses OpenCV's morphology
-   --  default border value. Destination receives Source's geometry and element
-   --  type. Source remains unchanged unless it is also Destination, which is
-   --  supported in-place. A Region is processed as its own logical image;
-   --  pixels in its parent outside the view do not participate.
-   --  Contract violations and OpenCV failures raise
-   --  OpenCV.OpenCV_Error.
+   --  Black_Hat with a temporary structuring element of Kernel_Size and
+   --  Shape, anchored at (Width / 2, Height / 2). Each constituent erosion
+   --  and dilation is repeated Iterations times. Source must be a non-empty
+   --  two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or
+   --  Float64; channels are processed independently. Kernel dimensions must
+   --  be positive, but need not be odd, and Iterations is at least one.
+   --  Constant_Border, Replicate, Reflect, and Reflect_101 are supported;
+   --  Wrap is rejected. Constant_Border uses Border_Value, by default
+   --  OpenCV's neutral morphology border value. Destination receives
+   --  Source's geometry and element type as a direct native output, as for
+   --  Erode. Source remains unchanged unless it is also Destination, which
+   --  is supported in-place. A Region is processed as its own logical image;
+   --  pixels in its parent outside the view do not participate. The native
+   --  signed-int limits of Erode apply.
+   --  @param Source Image to transform.
+   --  @param Destination Receives the result of Operation.
+   --  @param Operation Compound operation to perform.
+   --  @param Kernel_Size Width (columns) and height (rows) of the generated
+   --  structuring element; both must be positive.
+   --  @param Shape Generated element shape; defaults to Rectangle.
+   --  @param Iterations Repetitions of each constituent erosion and
+   --  dilation; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source, a zero
+   --  kernel dimension, Wrap, an invalid explicit Border_Value, a native
+   --  arithmetic limit, or an OpenCV failure.
    procedure Apply_Morphology
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2527,11 +2747,30 @@ package OpenCV.Image_Processing is
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
 
-   --  Custom kernels are nonempty 2-D UInt8 C1 binary masks: zero excludes,
-   --  every nonzero value includes. All-zero masks are rejected. Kernel and
-   --  Destination must not overlap. Source/Destination in-place is supported.
-   --  Regions use only their logical views, including parent-backed in-place.
-   --  An explicit Cross anchor also changes the generated mask geometry.
+   --  As the centered Kernel_Size Erode, but with an explicit Anchor inside
+   --  the Kernel_Size box, where (0, 0) is the top-left element pixel; no
+   --  negative center sentinel exists. An explicit Cross anchor also changes
+   --  the generated mask geometry: its row and column pass through Anchor.
+   --  Rectangle and Ellipse masks do not depend on Anchor, but their
+   --  footprint shifts with it. Source, Destination, border, in-place,
+   --  Region and native-limit behavior are those of the centered overload.
+   --  @param Source Image to erode.
+   --  @param Destination Receives the eroded image (direct native output
+   --  with Source's geometry and element type).
+   --  @param Kernel_Size Width (columns) and height (rows) of the generated
+   --  structuring element; both must be positive.
+   --  @param Shape Generated element shape; no default in this overload.
+   --  @param Anchor Element position aligned with each output pixel; it
+   --  must lie inside the element.
+   --  @param Iterations Number of successive erosions; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source, a zero
+   --  kernel dimension, an Anchor outside the element, Wrap, an invalid
+   --  explicit Border_Value, a native arithmetic limit, or an OpenCV
+   --  failure.
    procedure Erode
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2541,6 +2780,30 @@ package OpenCV.Image_Processing is
       Iterations   : Morphology_Iterations := 1;
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   --  As the centered Kernel_Size Dilate, but with an explicit Anchor inside
+   --  the Kernel_Size box, where (0, 0) is the top-left element pixel; no
+   --  negative center sentinel exists. A generated Cross passes through
+   --  Anchor; Rectangle and Ellipse masks do not depend on Anchor, but their
+   --  footprint shifts with it. Source, Destination, border, in-place,
+   --  Region and native-limit behavior are those of the centered overload.
+   --  @param Source Image to dilate.
+   --  @param Destination Receives the dilated image (direct native output
+   --  with Source's geometry and element type).
+   --  @param Kernel_Size Width (columns) and height (rows) of the generated
+   --  structuring element; both must be positive.
+   --  @param Shape Generated element shape; no default in this overload.
+   --  @param Anchor Element position aligned with each output pixel; it
+   --  must lie inside the element.
+   --  @param Iterations Number of successive dilations; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source, a zero
+   --  kernel dimension, an Anchor outside the element, Wrap, an invalid
+   --  explicit Border_Value, a native arithmetic limit, or an OpenCV
+   --  failure.
    procedure Dilate
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2550,6 +2813,34 @@ package OpenCV.Image_Processing is
       Iterations   : Morphology_Iterations := 1;
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   --  As the centered Kernel_Size Apply_Morphology, but with an explicit
+   --  Anchor inside the Kernel_Size box, where (0, 0) is the top-left
+   --  element pixel; no negative center sentinel exists. A generated Cross
+   --  passes through Anchor; Rectangle and Ellipse masks do not depend on
+   --  Anchor, but their footprint shifts with it. The same Anchor is used by
+   --  every constituent erosion and dilation. Source, Destination, border,
+   --  in-place, Region and native-limit behavior are those of the centered
+   --  overload.
+   --  @param Source Image to transform.
+   --  @param Destination Receives the result of Operation (direct native
+   --  output with Source's geometry and element type).
+   --  @param Operation Compound operation to perform.
+   --  @param Kernel_Size Width (columns) and height (rows) of the generated
+   --  structuring element; both must be positive.
+   --  @param Shape Generated element shape; no default in this overload.
+   --  @param Anchor Element position aligned with each output pixel; it
+   --  must lie inside the element.
+   --  @param Iterations Repetitions of each constituent erosion and
+   --  dilation; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source, a zero
+   --  kernel dimension, an Anchor outside the element, Wrap, an invalid
+   --  explicit Border_Value, a native arithmetic limit, or an OpenCV
+   --  failure.
    procedure Apply_Morphology
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2561,6 +2852,31 @@ package OpenCV.Image_Processing is
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
 
+   --  As the centered Kernel_Size Erode, but with a caller-supplied
+   --  structuring element anchored at (Kernel.Columns / 2, Kernel.Rows / 2).
+   --  Custom kernels are nonempty 2-D UInt8 C1 binary masks: zero excludes,
+   --  every nonzero value includes, without weighting. All-zero masks are
+   --  rejected. Even-sized, non-square and non-contiguous Region kernels are
+   --  accepted; only the kernel's logical view participates and Kernel is
+   --  not modified. Kernel and Destination must not overlap.
+   --  Source/Destination in-place is supported. Regions use only their
+   --  logical views, including parent-backed in-place. Border, Destination
+   --  and native-limit behavior are those of the Kernel_Size overload; the
+   --  expanded-rectangle limit applies when every Kernel element is nonzero.
+   --  @param Source Image to erode.
+   --  @param Destination Receives the eroded image (direct native output
+   --  with Source's geometry and element type).
+   --  @param Kernel Structuring element: nonempty 2-D UInt8 C1 mask whose
+   --  nonzero elements are included.
+   --  @param Iterations Number of successive erosions; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source or Kernel,
+   --  an all-zero Kernel, Kernel storage overlapping Destination, Wrap, an
+   --  invalid explicit Border_Value, a native arithmetic limit, or an OpenCV
+   --  failure.
    procedure Erode
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2568,6 +2884,30 @@ package OpenCV.Image_Processing is
       Iterations   : Morphology_Iterations := 1;
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   --  As the centered Kernel_Size Dilate, but with a caller-supplied
+   --  structuring element anchored at (Kernel.Columns / 2, Kernel.Rows / 2).
+   --  Kernel is a nonempty 2-D UInt8 C1 mask: zero excludes, every nonzero
+   --  value includes, without weighting; all-zero masks are rejected. Even,
+   --  non-square and non-contiguous Region kernels are accepted; only the
+   --  kernel's logical view participates and Kernel is not modified. Kernel
+   --  and Destination must not overlap; Source/Destination in-place is
+   --  supported, including a parent-backed Region. Border, Destination and
+   --  native-limit behavior are those of the Kernel_Size overload.
+   --  @param Source Image to dilate.
+   --  @param Destination Receives the dilated image (direct native output
+   --  with Source's geometry and element type).
+   --  @param Kernel Structuring element: nonempty 2-D UInt8 C1 mask whose
+   --  nonzero elements are included.
+   --  @param Iterations Number of successive dilations; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source or Kernel,
+   --  an all-zero Kernel, Kernel storage overlapping Destination, Wrap, an
+   --  invalid explicit Border_Value, a native arithmetic limit, or an OpenCV
+   --  failure.
    procedure Dilate
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2575,6 +2915,33 @@ package OpenCV.Image_Processing is
       Iterations   : Morphology_Iterations := 1;
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   --  As the centered Kernel_Size Apply_Morphology, but with a
+   --  caller-supplied structuring element anchored at
+   --  (Kernel.Columns / 2, Kernel.Rows / 2). Kernel is a nonempty 2-D UInt8
+   --  C1 mask: zero excludes, every nonzero value includes, without
+   --  weighting; all-zero masks are rejected. Even, non-square and
+   --  non-contiguous Region kernels are accepted; only the kernel's logical
+   --  view participates and Kernel is not modified. Kernel and Destination
+   --  must not overlap; Source/Destination in-place is supported, including
+   --  a parent-backed Region. Border, Destination and native-limit behavior
+   --  are those of the Kernel_Size overload.
+   --  @param Source Image to transform.
+   --  @param Destination Receives the result of Operation (direct native
+   --  output with Source's geometry and element type).
+   --  @param Operation Compound operation to perform.
+   --  @param Kernel Structuring element: nonempty 2-D UInt8 C1 mask whose
+   --  nonzero elements are included.
+   --  @param Iterations Repetitions of each constituent erosion and
+   --  dilation; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source or Kernel,
+   --  an all-zero Kernel, Kernel storage overlapping Destination, Wrap, an
+   --  invalid explicit Border_Value, a native arithmetic limit, or an OpenCV
+   --  failure.
    procedure Apply_Morphology
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2583,6 +2950,28 @@ package OpenCV.Image_Processing is
       Iterations   : Morphology_Iterations := 1;
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   --  As the custom-Kernel Erode, but with an explicit Anchor inside Kernel,
+   --  where (0, 0) is the top-left kernel element; no negative center
+   --  sentinel exists. The kernel's footprint shifts with Anchor. Kernel
+   --  requirements, overlap rejection, Border, Destination, in-place,
+   --  Region and native-limit behavior are those of the centered overload.
+   --  @param Source Image to erode.
+   --  @param Destination Receives the eroded image (direct native output
+   --  with Source's geometry and element type).
+   --  @param Kernel Structuring element: nonempty 2-D UInt8 C1 mask whose
+   --  nonzero elements are included.
+   --  @param Anchor Kernel position aligned with each output pixel; it must
+   --  lie inside Kernel.
+   --  @param Iterations Number of successive erosions; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source or Kernel,
+   --  an all-zero Kernel, an Anchor outside Kernel, Kernel storage
+   --  overlapping Destination, Wrap, an invalid explicit Border_Value, a
+   --  native arithmetic limit, or an OpenCV failure.
    procedure Erode
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2591,6 +2980,28 @@ package OpenCV.Image_Processing is
       Iterations   : Morphology_Iterations := 1;
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   --  As the custom-Kernel Dilate, but with an explicit Anchor inside
+   --  Kernel, where (0, 0) is the top-left kernel element; no negative
+   --  center sentinel exists. The kernel's footprint shifts with Anchor.
+   --  Kernel requirements, overlap rejection, Border, Destination, in-place,
+   --  Region and native-limit behavior are those of the centered overload.
+   --  @param Source Image to dilate.
+   --  @param Destination Receives the dilated image (direct native output
+   --  with Source's geometry and element type).
+   --  @param Kernel Structuring element: nonempty 2-D UInt8 C1 mask whose
+   --  nonzero elements are included.
+   --  @param Anchor Kernel position aligned with each output pixel; it must
+   --  lie inside Kernel.
+   --  @param Iterations Number of successive dilations; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source or Kernel,
+   --  an all-zero Kernel, an Anchor outside Kernel, Kernel storage
+   --  overlapping Destination, Wrap, an invalid explicit Border_Value, a
+   --  native arithmetic limit, or an OpenCV failure.
    procedure Dilate
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2599,6 +3010,31 @@ package OpenCV.Image_Processing is
       Iterations   : Morphology_Iterations := 1;
       Border       : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value : Morphology_Border_Value := Default_Morphology_Border);
+
+   --  As the custom-Kernel Apply_Morphology, but with an explicit Anchor
+   --  inside Kernel, where (0, 0) is the top-left kernel element; no
+   --  negative center sentinel exists. Every constituent erosion and
+   --  dilation uses Anchor. Kernel requirements, overlap rejection, Border,
+   --  Destination, in-place, Region and native-limit behavior are those of
+   --  the centered overload.
+   --  @param Source Image to transform.
+   --  @param Destination Receives the result of Operation (direct native
+   --  output with Source's geometry and element type).
+   --  @param Operation Compound operation to perform.
+   --  @param Kernel Structuring element: nonempty 2-D UInt8 C1 mask whose
+   --  nonzero elements are included.
+   --  @param Anchor Kernel position aligned with each output pixel; it must
+   --  lie inside Kernel.
+   --  @param Iterations Repetitions of each constituent erosion and
+   --  dilation; defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @param Border_Value Constant border value, used only with
+   --  Constant_Border; defaults to Default_Morphology_Border.
+   --  @exception OpenCV_Error Raised for an invalid Source or Kernel,
+   --  an all-zero Kernel, an Anchor outside Kernel, Kernel storage
+   --  overlapping Destination, Wrap, an invalid explicit Border_Value, a
+   --  native arithmetic limit, or an OpenCV failure.
    procedure Apply_Morphology
      (Source       : OpenCV.Core.Mat;
       Destination  : in out OpenCV.Core.Mat;
@@ -2620,10 +3056,35 @@ package OpenCV.Image_Processing is
    --  once; it does not repeat the complete transform. Supported borders
    --  are Constant_Border, Replicate, Reflect and Reflect_101, not Wrap.
    --  Both legs use the same native default morphology border policy, not
-   --  separately complemented external values. Regions are isolated logical
+   --  separately complemented external values: with Constant_Border,
+   --  outside pixels satisfy both +1 and -1 entries, so matches touching
+   --  the edge can appear that Replicate would not produce. There is no
+   --  Border_Value parameter.
+   --
+   --  Destination is a direct native output with Source's rows and columns
+   --  and type UInt8 C1: OpenCV writes into its storage when it already has
+   --  that size and type, so shallow copies and a Region's parent see the
+   --  result, and otherwise rebinds it to new storage. Invalid public input
+   --  is rejected before native execution. Regions are isolated logical
    --  images. Direct in-place operation, including a Region, is supported;
    --  Kernel/Destination storage overlap rejects. Distinct Source remains
-   --  unchanged.
+   --  unchanged. Only the logical view of a Kernel Region is inspected. The
+   --  morphology signed-int limits apply; the expanded-rectangle limit
+   --  concerns only kernels that are entirely +1 or entirely -1.
+   --  @param Source Binary image of exactly 0 (background) and 255
+   --  (foreground) pixels.
+   --  @param Destination Receives the 0/255 match mask.
+   --  @param Kernel Pattern of +1 (foreground), -1 (background) and 0
+   --  (don't-care) entries, with at least one nonzero entry.
+   --  @param Iterations Erosions applied to each leg before the single AND;
+   --  defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @exception OpenCV_Error Raised when Source is not a nonempty
+   --  2-D UInt8 C1 image of 0/255 values, when Kernel is not a nonempty 2-D
+   --  Int8 C1 pattern of -1/0/+1 with a nonzero entry, for Wrap,
+   --  Kernel/Destination overlap or a native arithmetic limit, or when
+   --  OpenCV fails.
    procedure Hit_Or_Miss
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -2631,7 +3092,28 @@ package OpenCV.Image_Processing is
       Iterations  : Morphology_Iterations := 1;
       Border      : OpenCV.Border_Kind := OpenCV.Constant_Border);
 
-   --  Explicit Anchor is inside Kernel: no negative center sentinel.
+   --  As the centered Hit_Or_Miss, but the pattern is anchored at Anchor,
+   --  where (0, 0) is the top-left kernel element. Explicit Anchor is inside
+   --  Kernel: no negative center sentinel. Source and Kernel requirements,
+   --  Iterations, borders, Destination, in-place, Region and limit behavior
+   --  are those of the centered overload.
+   --  @param Source Binary image of exactly 0 (background) and 255
+   --  (foreground) pixels.
+   --  @param Destination Receives the 0/255 match mask (direct native output
+   --  with Source's rows and columns).
+   --  @param Kernel Pattern of +1 (foreground), -1 (background) and 0
+   --  (don't-care) entries, with at least one nonzero entry.
+   --  @param Anchor Kernel position aligned with each tested pixel; it must
+   --  lie inside Kernel.
+   --  @param Iterations Erosions applied to each leg before the single AND;
+   --  defaults to 1.
+   --  @param Border Extrapolation of pixels outside Source; defaults to
+   --  Constant_Border.
+   --  @exception OpenCV_Error Raised when Source is not a nonempty
+   --  2-D UInt8 C1 image of 0/255 values, when Kernel is not a nonempty 2-D
+   --  Int8 C1 pattern of -1/0/+1 with a nonzero entry, when Anchor lies
+   --  outside Kernel, for Wrap, Kernel/Destination overlap or a native
+   --  arithmetic limit, or when OpenCV fails.
    procedure Hit_Or_Miss
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -2857,14 +3339,27 @@ package OpenCV.Image_Processing is
       Offset            : OpenCV.Float64_Value := 0.0;
       Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
-   --  Applies a fixed threshold independently to every channel of Source.
+   --  Applies a fixed threshold independently to every channel of Source,
+   --  using the per-sample rule selected by Mode (see Threshold_Mode).
    --  Source must be non-empty, two-dimensional, and UInt8, UInt16, Int16,
-   --  Float32, or Float64; any channel count is accepted. Threshold_Value and
-   --  Maximum_Value must be finite. Destination is replaced with Source's
-   --  rows,
-   --  columns, depth, and channel count. Source remains unchanged.
-   --  Maximum_Value affects only Binary and Binary_Inverse; it is ignored by
-   --  Truncate, To_Zero, and To_Zero_Inverse.
+   --  Float32, or Float64; any channel count is accepted. Threshold_Value
+   --  and Maximum_Value must be finite. Destination receives Source's rows,
+   --  columns, depth, and channel count as a direct native output: OpenCV
+   --  writes into its storage when it already has that size and type, so
+   --  shallow copies and a Region's parent see the result, and otherwise
+   --  rebinds it to new storage. Source remains unchanged. Maximum_Value
+   --  affects only Binary and Binary_Inverse; it is ignored by Truncate,
+   --  To_Zero, and To_Zero_Inverse.
+   --  @param Source Image whose samples are compared with Threshold_Value.
+   --  @param Destination Receives the thresholded image.
+   --  @param Threshold_Value Threshold compared with every sample, in
+   --  Source's sample units.
+   --  @param Mode Per-sample rule; defaults to Binary.
+   --  @param Maximum_Value Value written by Binary and Binary_Inverse;
+   --  defaults to 255.0.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D or
+   --  of another depth, when Threshold_Value or Maximum_Value is not
+   --  finite, or when OpenCV fails.
    procedure Apply_Threshold
      (Source          : OpenCV.Core.Mat;
       Destination     : in out OpenCV.Core.Mat;
@@ -2875,11 +3370,28 @@ package OpenCV.Image_Processing is
    --  Applies Otsu or Triangle automatic thresholding to a non-empty,
    --  two-dimensional, single-channel Source. Maximum_Value must be finite.
    --  Otsu accepts UInt8 and UInt16 Sources; Triangle accepts UInt8 only.
-   --  Destination is replaced with a single-channel Mat having Source's rows,
-   --  columns, and depth. Computed_Threshold receives OpenCV's selected value
-   --  on success. Source remains unchanged. Maximum_Value affects only Binary
-   --  and Binary_Inverse; it is ignored by the other threshold modes. Contract
-   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  OpenCV 4.1 rejects UInt16 Otsu with OpenCV_Error. The result equals
+   --  Apply_Threshold with Computed_Threshold, Mode and Maximum_Value.
+   --  Destination is replaced with a single-channel Mat having Source's
+   --  rows, columns, and depth, as a direct native output: OpenCV writes
+   --  into its storage when it already has that size and type, so shallow
+   --  copies and a Region's parent see the result, and otherwise rebinds it
+   --  to new storage. Computed_Threshold receives OpenCV's selected value on
+   --  success. Source remains unchanged. Maximum_Value affects only Binary
+   --  and Binary_Inverse; it is ignored by the other threshold modes.
+   --  @param Source Single-channel image from which the threshold is
+   --  selected and to which it is applied.
+   --  @param Destination Receives the thresholded image.
+   --  @param Computed_Threshold Receives the threshold OpenCV selected, in
+   --  Source's sample units; assigned only on success.
+   --  @param Method Threshold selection algorithm; defaults to Otsu.
+   --  @param Mode Per-sample rule applied with the selected threshold;
+   --  defaults to Binary.
+   --  @param Maximum_Value Value written by Binary and Binary_Inverse;
+   --  defaults to 255.0.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D,
+   --  not single-channel or of a depth Method does not accept, when
+   --  Maximum_Value is not finite, or when OpenCV fails.
    procedure Apply_Automatic_Threshold
      (Source             : OpenCV.Core.Mat;
       Destination        : in out OpenCV.Core.Mat;
@@ -2889,16 +3401,31 @@ package OpenCV.Image_Processing is
       Maximum_Value      : OpenCV.Float64_Value := 255.0);
 
    --  Applies an adaptive binary threshold to a non-empty, two-dimensional,
-   --  UInt8, single-channel Source. Block_Size must be odd. OpenCV calculates
-   --  the local threshold as the arithmetic neighborhood mean or a
-   --  Gaussian-weighted neighborhood mean, according to Method, minus Bias.
-   --  Bias may be positive, zero, or negative and is passed directly to
-   --  OpenCV. Maximum_Value is a UInt8 value, including zero. Destination is
-   --  replaced with a UInt8 single-channel Mat having Source's rows and
-   --  columns. Source remains unchanged when distinct from Destination; direct
-   --  in-place operation is supported. OpenCV controls neighborhood border
-   --  handling internally. Contract violations and OpenCV failures raise
-   --  OpenCV.OpenCV_Error.
+   --  UInt8, single-channel Source. Block_Size must be odd. OpenCV
+   --  calculates the local threshold as the arithmetic neighborhood mean or
+   --  a Gaussian-weighted neighborhood mean, according to Method, minus
+   --  Bias. Bias must be finite; it may be positive, zero, or negative and
+   --  is passed directly to OpenCV. Maximum_Value is a UInt8 value,
+   --  including zero. Destination is replaced with a UInt8 single-channel
+   --  Mat having Source's rows and columns, as a direct native output:
+   --  OpenCV writes into its storage when it already has that size and
+   --  type, so shallow copies and a Region's parent see the result, and
+   --  otherwise rebinds it to new storage. Source remains unchanged when
+   --  distinct from Destination; direct in-place operation is supported.
+   --  OpenCV controls neighborhood border handling internally.
+   --  @param Source UInt8 C1 image to binarize.
+   --  @param Destination Receives the UInt8 C1 binary image; may be the
+   --  same Mat as Source.
+   --  @param Block_Size Odd side length, in pixels, of the neighborhood.
+   --  @param Method Local mean weighting; defaults to Mean.
+   --  @param Mode Output rule; defaults to Binary.
+   --  @param Bias Finite value subtracted from the local mean to form the
+   --  local threshold; defaults to 0.0.
+   --  @param Maximum_Value Value written for selected pixels; defaults
+   --  to 255.
+   --  @exception OpenCV_Error Raised when Source is empty, not 2-D,
+   --  not UInt8 or not single-channel, when Block_Size is even, when Bias
+   --  is not finite, or when OpenCV fails.
    procedure Apply_Adaptive_Threshold
      (Source        : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
@@ -3302,14 +3829,25 @@ package OpenCV.Image_Processing is
       Maximum_Radius          : OpenCV.Size_Coordinate)
       return Hough_Circle_With_Votes_Array;
 
+   --  Reference value that a flood-fill candidate pixel is compared with.
    --  Floating_Range compares each candidate with its already-filled
    --  neighbour; Fixed_Range compares every candidate with the seed pixel.
+   --  @enum Floating_Range Compare with the adjacent pixel already in the
+   --  component, so the fill can follow a gradual ramp.
+   --  @enum Fixed_Range Compare with the seed pixel, so every filled pixel
+   --  lies within the differences of the seed value.
    type Flood_Fill_Range_Mode is (Floating_Range, Fixed_Range);
 
+   --  Nonzero byte that Flood_Fill_With_Mask writes into its Mask for every
+   --  filled pixel; a fill enters only zero mask pixels.
    subtype Flood_Fill_Mask_Value is OpenCV.UInt8_Value range 1 .. 255;
 
+   --  Outcome of a successful flood fill, also reported in mask-only mode.
    --  Pixel_Count is the number of filled pixels. Bounds is the smallest
    --  rectangle containing them, in the coordinates of the supplied Image.
+   --  @field Pixel_Count Number of pixels in the filled component.
+   --  @field Bounds Smallest rectangle containing the filled pixels, in the
+   --  supplied Image's coordinates (a Region's own coordinates).
    type Flood_Fill_Result is record
       Pixel_Count : Natural;
       Bounds      : OpenCV.Rect;
@@ -3317,18 +3855,42 @@ package OpenCV.Image_Processing is
 
    --  Fills the connected component containing Seed with New_Value in place.
    --  Image must be a nonempty two-dimensional UInt8, Int32, or Float32 Mat
-   --  with one or three channels; Seed (X is the column, Y the row) is inside
-   --  it. A neighbour joins the component when every channel lies within
-   --  [reference - Lower_Difference, reference + Upper_Difference], where
-   --  the reference follows Range_Mode. The components used by Image's
-   --  channels must be finite, and the differences nonnegative. A Region is
-   --  filled as its own logical image and mutates its parent's storage;
-   --  shallow aliases observe the mutation.
+   --  with one or three channels; Seed (X is the column, Y the row) is
+   --  inside it. A neighbour joins the component when every channel lies
+   --  within `reference - Lower_Difference .. reference + Upper_Difference`,
+   --  where the reference follows Range_Mode. The components used by
+   --  Image's channels must be finite, and the differences nonnegative;
+   --  unused components are ignored. A Region is filled as its own logical
+   --  image and mutates its parent's storage; shallow aliases observe the
+   --  mutation. Validation failures leave Image unchanged.
+   --
    --  Int32 requires each channel's stored maximum minus minimum <= INT_MAX
    --  to prevent native signed subtraction overflow (including mask-only).
    --  Active Int32 New_Value lies in Int32_Value'First .. Int32_Value'Last;
    --  differences lie in 0 .. Int32_Value'Last. Native rounding of New_Value
    --  and flooring of differences preserve fractional Scalar semantics.
+   --  Float32 Images need the components used within the finite Float32
+   --  range; UInt8 components must not exceed INT_MAX in magnitude. Native
+   --  segment coordinates limit Image to 65535 rows and 65535 columns, and
+   --  its pixel count and row-offset arithmetic must fit a signed int.
+   --  @param Image Image filled in place.
+   --  @param Seed Starting pixel, inside Image.
+   --  @param New_Value Replacement value in channel order; components beyond
+   --  Image's channel count are ignored.
+   --  @param Result Receives the filled pixel count and bounds; assigned
+   --  only on success.
+   --  @param Lower_Difference Nonnegative per-channel amount a neighbour may
+   --  lie below the reference; defaults to zero.
+   --  @param Upper_Difference Nonnegative per-channel amount a neighbour may
+   --  lie above the reference; defaults to zero.
+   --  @param Connectivity Neighbourhood used for growth; defaults to
+   --  Four_Connected.
+   --  @param Range_Mode Choice of reference value; defaults to
+   --  Floating_Range.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  unsupported Image, a Seed outside Image, a nonfinite or out-of-range
+   --  component in use, a negative difference, an Int32 span or native size
+   --  limit, or an OpenCV failure.
    procedure Flood_Fill
      (Image            : in out OpenCV.Core.Mat;
       Seed             : OpenCV.Point;
@@ -3345,7 +3907,36 @@ package OpenCV.Image_Processing is
    --  Y + 1). Filling never crosses a nonzero mask pixel. Every filled pixel
    --  is set to Mask_Fill_Value in Mask, and OpenCV sets Mask's one-pixel
    --  outer border to 1. When Mask_Only is True, Image is left unchanged and
-   --  New_Value is ignored; Mask and Result are still updated.
+   --  New_Value is ignored (not even validated); Mask and Result are still
+   --  updated. Mask must be nonempty and is modified in place.
+   --
+   --  Image, Seed, difference, connectivity, Region, Int32 and native-limit
+   --  rules are those of Flood_Fill; the Int32 span rule also applies in
+   --  mask-only mode. Validation failures leave Image and Mask unchanged,
+   --  including the mask border.
+   --  @param Image Image filled in place; unchanged when Mask_Only is True.
+   --  @param Mask UInt8 C1 guide and record of the fill, two rows and two
+   --  columns larger than Image, updated in place.
+   --  @param Seed Starting pixel, inside Image.
+   --  @param New_Value Replacement value in channel order; ignored when
+   --  Mask_Only is True.
+   --  @param Result Receives the filled pixel count and bounds; assigned
+   --  only on success.
+   --  @param Lower_Difference Nonnegative per-channel amount a neighbour may
+   --  lie below the reference; defaults to zero.
+   --  @param Upper_Difference Nonnegative per-channel amount a neighbour may
+   --  lie above the reference; defaults to zero.
+   --  @param Connectivity Neighbourhood used for growth; defaults to
+   --  Four_Connected.
+   --  @param Range_Mode Choice of reference value; defaults to
+   --  Floating_Range.
+   --  @param Mask_Fill_Value Byte written into Mask for each filled pixel;
+   --  defaults to 1.
+   --  @param Mask_Only When True, only Mask and Result are updated; defaults
+   --  to False.
+   --  @exception OpenCV_Error Raised for any Flood_Fill rejection, an
+   --  empty or non-UInt8-C1 Mask, a Mask not two rows and columns larger
+   --  than Image, Mask storage shared with Image, or an OpenCV failure.
    procedure Flood_Fill_With_Mask
      (Image            : in out OpenCV.Core.Mat;
       Mask             : in out OpenCV.Core.Mat;
@@ -3366,9 +3957,35 @@ package OpenCV.Image_Processing is
    --  on output unknown pixels carry a propagated region label, and -1 marks
    --  watershed boundaries, including Markers' one-pixel outer border.
    --  Markers must not share storage with Source.
+   --
+   --  Markers is mutated directly, never cloned: shallow copies observe the
+   --  labels, and a Markers Region writes through to its parent while
+   --  parent elements outside the Region stay unchanged (the Region's own
+   --  outer border becomes -1). Strides and pixel count must fit OpenCV's
+   --  signed-int offset and node-pool arithmetic. Validation failures
+   --  leave Markers unchanged.
+   --  @param Source Nonempty 2-D UInt8 C3 image whose colours guide the
+   --  flooding.
+   --  @param Markers Int32 C1 seed labels on input and region labels with
+   --  -1 boundaries on output, updated in place.
+   --  @exception OpenCV_Error Raised when Source is not a nonempty
+   --  2-D UInt8 C3 image, when Markers is not a nonempty 2-D Int32 C1 Mat
+   --  of Source's rows and columns or holds a negative value, when Markers
+   --  shares storage with Source, for a native size limit, or when OpenCV
+   --  fails.
    procedure Watershed
      (Source : OpenCV.Core.Mat; Markers : in out OpenCV.Core.Mat);
 
+   --  Per-pixel GrabCut label, stored in the state mask with OpenCV's
+   --  numeric encoding (see GrabCut_Label_Value). Segmentation never
+   --  changes a definite label and moves probable pixels only between the
+   --  two probable labels.
+   --  @enum Definite_Background Value 0: fixed background.
+   --  @enum Definite_Foreground Value 1: fixed foreground.
+   --  @enum Probable_Background Value 2: likely background, re-estimated by
+   --  segmentation.
+   --  @enum Probable_Foreground Value 3: likely foreground, re-estimated by
+   --  segmentation.
    type GrabCut_Label is
      (Definite_Background,
       Definite_Foreground,
@@ -3377,26 +3994,48 @@ package OpenCV.Image_Processing is
 
    --  Numeric mask encoding: Definite_Background 0, Definite_Foreground 1,
    --  Probable_Background 2, Probable_Foreground 3.
+   --  @param Label Label to encode.
+   --  @return The byte 0 .. 3 that represents Label in a GrabCut mask.
    function GrabCut_Label_Value
      (Label : GrabCut_Label) return OpenCV.UInt8_Value;
 
    --  Inverse of GrabCut_Label_Value. Values above 3 raise OpenCV_Error.
+   --  @param Value GrabCut mask byte, 0 .. 3.
+   --  @return The label that Value encodes.
+   --  @exception OpenCV_Error Raised when Value is greater than 3.
    function To_GrabCut_Label (Value : OpenCV.UInt8_Value) return GrabCut_Label;
 
+   --  Number of GrabCut rounds to run; each round relearns the colour
+   --  models and re-segments the probable pixels.
    subtype GrabCut_Iterations is Positive range 1 .. 2_147_483_647;
 
    --  Minimum background and foreground pixel counts required to initialize
    --  GrabCut portably: OpenCV 4.1 clusters each training set into five
    --  Gaussian-mixture components with k-means, which needs five samples.
+   --  OpenCV 4.10 and 5.0 would reduce the component count instead.
+   --  Restore_GrabCut_State does not apply this minimum.
    GrabCut_Minimum_Training_Pixels : constant := 5;
-   GrabCut_Model_Column_Count      : constant Positive := 65;
+
+   --  Columns of each Float64 C1 1 x 65 native GrabCut mixture model: five
+   --  component weights (columns 0 .. 4), 15 means (5 .. 19), and five
+   --  3 x 3 covariance matrices (20 .. 64). The layout is specific to
+   --  OpenCV GrabCut and the same in OpenCV 4.1, 4.10 and 5.0.
+   GrabCut_Model_Column_Count : constant Positive := 65;
 
    --  GrabCut segmentation state: a private label mask plus hidden
    --  background and foreground colour models. The type is limited, so a
    --  state cannot be shallow-copied. A default-initialized state is
    --  uninitialized and is rejected by every operation except Is_Initialized.
+   --  Each state exclusively owns its Mats, which are released by normal
+   --  Mat finalization; two states never share mutable storage.
    type GrabCut_State is limited private;
 
+   --  Reports whether State holds a label mask and models, that is, whether
+   --  it was produced by Initialize_GrabCut, Restore_GrabCut_State or
+   --  Clone_GrabCut_State. It never raises.
+   --  @param State State to query; it may be default-initialized.
+   --  @return True for an initialized state, False for a default-initialized
+   --  one.
    function Is_Initialized (State : GrabCut_State) return Boolean;
 
    --  Initializes from Source, a nonempty two-dimensional UInt8 C3 image,
@@ -3405,6 +4044,20 @@ package OpenCV.Image_Processing is
    --  pixels both inside and outside. Pixels outside the region start as
    --  Definite_Background and inside as Probable_Foreground; Iterations
    --  rounds of segmentation then run. Source is not modified.
+   --  Foreground_Region coordinates are relative to the supplied Source
+   --  view. Exact labels near object boundaries can differ between OpenCV
+   --  4.1 and later releases, whose mixture initialization differs. The
+   --  pixel count must fit OpenCV's signed-int graph-size arithmetic.
+   --  @param Source Nonempty 2-D UInt8 C3 image to segment.
+   --  @param Foreground_Region Rectangle that contains the object; pixels
+   --  outside it are definite background.
+   --  @param Iterations Segmentation rounds to run; defaults to 1.
+   --  @return New initialized state with a UInt8 C1 label mask of Source's
+   --  rows and columns and the learned models.
+   --  @exception OpenCV_Error Raised when Source is not a nonempty
+   --  2-D UInt8 C3 image, when Foreground_Region is empty, extends outside
+   --  Source or leaves fewer than five pixels inside or outside, for a
+   --  native size limit, or when OpenCV fails.
    function Initialize_GrabCut
      (Source            : OpenCV.Core.Mat;
       Foreground_Region : OpenCV.Rect;
@@ -3415,7 +4068,19 @@ package OpenCV.Image_Processing is
    --  holding only values 0 .. 3 (see GrabCut_Label_Value), with at least
    --  GrabCut_Minimum_Training_Pixels background (definite or probable) and
    --  foreground (definite or probable) pixels. The state owns a deep copy;
-   --  Initial_Mask and Source are not modified.
+   --  Initial_Mask and Source are not modified. Iterations rounds of
+   --  segmentation then run; definite labels keep their values. Source
+   --  requirements and size limits are those of the rectangle overload.
+   --  @param Source Nonempty 2-D UInt8 C3 image to segment.
+   --  @param Initial_Mask Nonempty UInt8 C1 label mask of Source's geometry,
+   --  values 0 .. 3.
+   --  @param Iterations Segmentation rounds to run; defaults to 1.
+   --  @return New initialized state owning a segmented copy of Initial_Mask
+   --  and the learned models.
+   --  @exception OpenCV_Error Raised for an invalid Source, an
+   --  Initial_Mask that is empty, not 2-D UInt8 C1, of another geometry or
+   --  holds a value above 3, fewer than five background or foreground
+   --  pixels, a native size limit, or an OpenCV failure.
    function Initialize_GrabCut
      (Source       : OpenCV.Core.Mat;
       Initial_Mask : OpenCV.Core.Mat;
@@ -3425,6 +4090,24 @@ package OpenCV.Image_Processing is
    --  region becomes Definite_Background, while all four labels inside are
    --  preserved before segmentation. Requires five pixels of each training
    --  class in the constrained mask. Source and Initial_Mask are unchanged.
+   --  The binding applies the rectangle to a private copy of Initial_Mask
+   --  and runs native mask initialization, because OpenCV's combined
+   --  rectangle-or-mask flag selects mask mode alone. Foreground_Region must
+   --  have positive size and lie inside Source; background labels inside it
+   --  count towards the five background pixels. Otherwise as the mask
+   --  overload.
+   --  @param Source Nonempty 2-D UInt8 C3 image to segment.
+   --  @param Initial_Mask Nonempty UInt8 C1 label mask of Source's geometry,
+   --  values 0 .. 3; its labels inside Foreground_Region are kept.
+   --  @param Foreground_Region Rectangle outside which every label becomes
+   --  Definite_Background.
+   --  @param Iterations Segmentation rounds to run; defaults to 1.
+   --  @return New initialized state owning the constrained, segmented mask
+   --  and the learned models.
+   --  @exception OpenCV_Error Raised for an invalid Source or
+   --  Initial_Mask, an empty Foreground_Region or one outside Source, fewer
+   --  than five pixels of either class in the constrained mask, a native
+   --  size limit, or an OpenCV failure.
    function Initialize_GrabCut
      (Source            : OpenCV.Core.Mat;
       Initial_Mask      : OpenCV.Core.Mat;
@@ -3435,39 +4118,98 @@ package OpenCV.Image_Processing is
    --  be UInt8 C1, 2-D, nonempty, with labels 0 .. 3. Each model must be
    --  Float64 C1, 1 x 65, with a valid native GrabCut GMM payload. All inputs
    --  are deep-cloned; sparse classes are allowed in restored masks.
+   --  A valid payload is finite, has nonnegative weights and at least one
+   --  active (positive-weight) component, and every active covariance has
+   --  a determinant and inverse usable by the native mixture model;
+   --  inactive components may hold stale finite values. Later refinement
+   --  requires a Source with Mask's rows and columns.
+   --  @param Mask Label mask, for example from GrabCut_Mask.
+   --  @param Background_Model Background mixture model, for example from
+   --  GrabCut_Background_Model.
+   --  @param Foreground_Model Foreground mixture model, for example from
+   --  GrabCut_Foreground_Model.
+   --  @return New initialized state owning deep copies of the three Mats.
+   --  @exception OpenCV_Error Raised when Mask is not a nonempty 2-D
+   --  UInt8 C1 Mat of labels 0 .. 3, or when a model has the wrong shape or
+   --  type or an invalid payload.
    function Restore_GrabCut_State
      (Mask             : OpenCV.Core.Mat;
       Background_Model : OpenCV.Core.Mat;
       Foreground_Model : OpenCV.Core.Mat) return GrabCut_State;
 
-   --  Explicit independent copy of an initialized state.
+   --  Explicit independent copy of an initialized state: the mask and both
+   --  models are deep-copied, so refining either state never affects the
+   --  other.
+   --  @param State Initialized state to copy.
+   --  @return New initialized state equal to State.
+   --  @exception OpenCV_Error Raised when State is not initialized.
    function Clone_GrabCut_State (State : GrabCut_State) return GrabCut_State;
 
-   --  Independent deep clones; modifying these Mats cannot change State.
+   --  Returns State's background mixture model as a Float64 C1 1 x 65 Mat
+   --  (see GrabCut_Model_Column_Count). Independent deep clones; modifying
+   --  these Mats cannot change State.
+   --  @param State Initialized state to read.
+   --  @return Fresh owning copy of the background model.
+   --  @exception OpenCV_Error Raised when State is not initialized.
    function GrabCut_Background_Model
      (State : GrabCut_State) return OpenCV.Core.Mat;
+
+   --  Returns State's foreground mixture model as a Float64 C1 1 x 65 Mat
+   --  (see GrabCut_Model_Column_Count). The result is an independent deep
+   --  clone; modifying it cannot change State.
+   --  @param State Initialized state to read.
+   --  @return Fresh owning copy of the foreground model.
+   --  @exception OpenCV_Error Raised when State is not initialized.
    function GrabCut_Foreground_Model
      (State : GrabCut_State) return OpenCV.Core.Mat;
 
    --  Runs Iterations further rounds that relearn the colour models and
    --  re-segment the probable pixels. Source must be a UInt8 C3 image with
    --  the state's geometry. Definite labels never change. Source is not
-   --  modified.
+   --  modified. The work is done on private copies committed only after
+   --  success, so a failed refinement leaves State unchanged. Imported
+   --  models are validated again before native evaluation.
+   --  @param Source Nonempty 2-D UInt8 C3 image with the rows and columns of
+   --  State's mask.
+   --  @param State Initialized state, updated in place.
+   --  @param Iterations Refinement rounds to run; defaults to 1.
+   --  @exception OpenCV_Error Raised when State is not initialized,
+   --  when Source is invalid or of another geometry, for an invalid model,
+   --  a native size limit, or an OpenCV failure.
    procedure Refine_GrabCut
      (Source     : OpenCV.Core.Mat;
       State      : in out GrabCut_State;
       Iterations : GrabCut_Iterations := 1);
 
    --  Re-segments the probable pixels once with the current colour models
-   --  held fixed. Otherwise as Refine_GrabCut.
+   --  held fixed. Otherwise as Refine_GrabCut: the models are not changed,
+   --  Source must match the state's geometry, definite labels never change,
+   --  and a failure leaves State unchanged.
+   --  @param Source Nonempty 2-D UInt8 C3 image with the rows and columns of
+   --  State's mask.
+   --  @param State Initialized state whose mask is updated in place.
+   --  @exception OpenCV_Error Raised when State is not initialized,
+   --  when Source is invalid or of another geometry, for an invalid model,
+   --  a native size limit, or an OpenCV failure.
    procedure Refine_GrabCut_Frozen_Model
      (Source : OpenCV.Core.Mat; State : in out GrabCut_State);
 
    --  Returns an independent deep copy of the UInt8 C1 label mask. Changing
    --  the returned Mat never affects State.
+   --  @param State Initialized state to read.
+   --  @return Fresh owning UInt8 C1 mask of labels 0 .. 3 with the state's
+   --  rows and columns.
+   --  @exception OpenCV_Error Raised when State is not initialized.
    function GrabCut_Mask (State : GrabCut_State) return OpenCV.Core.Mat;
 
    --  Returns the label at a zero-based Row and Column of the state's mask.
+   --  @param State Initialized state to read.
+   --  @param Row Zero-based mask row, less than the mask's row count.
+   --  @param Column Zero-based mask column, less than the mask's column
+   --  count.
+   --  @return The label stored at Row and Column.
+   --  @exception OpenCV_Error Raised when State is not initialized or
+   --  Row or Column lies outside the mask.
    function GrabCut_Label_At
      (State : GrabCut_State; Row : Natural; Column : Natural)
       return GrabCut_Label;
