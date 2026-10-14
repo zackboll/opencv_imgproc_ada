@@ -115,8 +115,9 @@ python3 scripts/compare_gnatdoc_warnings.py --write-baseline \
 
 Never replace it with a raw log, and never rewrite it to accept new warnings.
 Do not silence a warning with `@exclude`, an empty comment or a changed
-generator invocation. The initial baseline records 1,357 warnings; the
-campaign target is zero.
+generator invocation. The initial baseline recorded 1,357 warnings;
+IMGPROC-DOC-002G reached zero, and the baseline is now required to stay empty
+(see below).
 
 ## Site validation
 
@@ -176,6 +177,19 @@ exactly like warnings (`--fail-on-removed`, `--write-baseline`);
 attachment errors and member mismatches can never be baselined.
 `generate_docs.sh` runs the check after validation; `--report` prints
 coverage by item kind.
+
+### Current status: zero warnings, complete coverage
+
+Since IMGPROC-DOC-002G, GNATdoc reports zero warnings and all 1,512 items
+are documented: the package description, 314 declarations (184 subprograms,
+99 types, 25 subtypes, 6 constants), 745 parameters, 114 return values, 256
+enumeration literals and 82 components and discriminants. Both baselines are
+empty and `generate_docs.sh` fails if either records an identity again, so a
+new public declaration must be documented completely in the same change.
+Neither the zero count nor full coverage proves that every statement is
+correct; the per-phase records in the campaign progress file list
+corrections made against the body and shim, statements that rest on OpenCV
+conventions rather than repository tests, and suspected defects found.
 
 `scripts/check_comment_only.py REVISION` proves that a documentation change
 altered only comments: every Ada source under `src/` must have the same

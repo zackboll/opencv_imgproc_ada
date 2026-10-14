@@ -58,3 +58,10 @@ python3 scripts/validate_docs.py _site
 # Declaration, overload and member documentation coverage, with the same ratchet.
 python3 scripts/check_doc_coverage.py --fail-on-removed \
     docs/gnatdoc-coverage-baseline.txt _site
+# Zero warnings and complete coverage were reached; neither baseline may
+# record a gap again, so every new public declaration must be documented.
+if grep -q '[^[:space:]]' docs/gnatdoc-warning-baseline.txt \
+    docs/gnatdoc-coverage-baseline.txt; then
+    echo 'error: documentation baselines must stay empty' >&2
+    exit 1
+fi

@@ -1482,22 +1482,73 @@ package OpenCV.Image_Processing is
       Baseline : Natural;
    end record;
 
-   --  Minimum accumulator votes required for a Hough line or segment.
+   --  Accumulator vote threshold, 1 through 2_147_483_647, of the Hough
+   --  line, segment and point-set operations and of
+   --  Find_Ballard_Template_Matches. It is not itself an accepted count:
+   --  standard lines and Ballard matches need strictly more votes than the
+   --  threshold. Each operation states how its results relate to it.
    subtype Hough_Vote_Threshold is Positive range 1 .. 2_147_483_647;
 
+   --  One Find_Ballard_Template_Matches detection: where the Template
+   --  center lies in the Scene and how much accumulator support that
+   --  translation has.
+   --  @field Center Scene-local position, in pixels, of the integer
+   --  Template center (Template.Columns / 2, Template.Rows / 2). Native
+   --  values lie on the integer pixel lattice and are finite and
+   --  nonnegative; binary32 cannot represent every integer above `2**24`.
+   --  @field Votes Native Int32 accumulator votes, decoded exactly and never
+   --  through Float32; strictly greater than the Vote_Threshold used.
    type Ballard_Template_Match is record
       Center : OpenCV.Float32_Point;
       Votes  : Natural;
    end record;
+
+   --  Result of Find_Ballard_Template_Matches. Nonempty results are
+   --  zero-based; an empty result has range 1 .. 0. Element order is not a
+   --  ranking.
    type Ballard_Template_Match_Array is
      array (Natural range <>) of Ballard_Template_Match;
-   --  Translation-only native Ballard on nonempty 2-D UInt8 C1 images.
-   --  Inputs are unchanged; Regions are isolated logical images. Template
-   --  center is (Columns / 2, Rows / 2). Centers are Scene-local pixels.
-   --  Votes must strictly exceed Vote_Threshold; 0 < Canny_Low < Canny_High.
-   --  Fixed levels=360, dp=1, minDist=1, scale=1, angle=0. Invalid inputs
-   --  or unsafe native arithmetic raise OpenCV_Error. Synchronous and costly
-   --  for large edge sets. Nonempty bounds start at zero; empty is 1 .. 0.
+
+   --  Finds translated copies of Template in Scene with OpenCV's generalized
+   --  Hough Ballard detector, one match per accepted accumulator peak.
+   --  Translation-only native Ballard on nonempty 2-D UInt8 C1 images:
+   --  fixed levels=360, dp=1, minDist=1, scale=1, angle=0. Rotation and
+   --  scale search is Find_Guil_Template_Matches.
+   --
+   --  Inputs are unchanged; Regions are isolated logical images. Both
+   --  inputs are copied into private packed snapshots before preprocessing,
+   --  so parent pixels never take part and results use Region-local
+   --  coordinates. Native preprocessing is Canny (3x3 aperture, L1
+   --  magnitude) plus Float32 Sobel derivatives, with no silent threshold
+   --  scaling. Template edges form an orientation-indexed R-table relative
+   --  to the Template center (Columns / 2, Rows / 2); a Template without
+   --  edges yields an empty result. Centers are Scene-local pixels. Votes
+   --  must strictly exceed Vote_Threshold, and a peak must also satisfy the
+   --  native local-maximum conditions; several matches may be returned.
+   --
+   --  Invalid inputs or unsafe native arithmetic raise OpenCV_Error. The
+   --  arithmetic restrictions are derived from the native code, not
+   --  arbitrary caps; for example a Scene of more than 268435454 pixels
+   --  (16384 x 16384) is rejected because its possible peak count would
+   --  overflow native output conversion. Synchronous and costly for large
+   --  edge sets: many Template edges in one orientation bin multiply the
+   --  work at each Scene edge, and private images, derivatives, a
+   --  Scene-sized histogram and result buffers are allocated.
+   --  @param Template Shape to find: a nonempty 2-D UInt8 C1 grayscale
+   --  image whose Canny edges build the R-table.
+   --  @param Scene Image to search: a nonempty 2-D UInt8 C1 grayscale
+   --  image. Result centers are in its pixel coordinates.
+   --  @param Vote_Threshold Accumulator votes that a match must strictly
+   --  exceed; default 20.
+   --  @param Canny_Low Lower Canny threshold, used as given; it must be less
+   --  than Canny_High. Default 50.
+   --  @param Canny_High Upper Canny threshold, used as given; default 100.
+   --  @return Fresh Ada array of detections. Nonempty bounds start at zero;
+   --  empty is 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Template or Scene, Canny_Low >= Canny_High, unsafe
+   --  native arithmetic, an unrepresentable decoded vote, or an OpenCV
+   --  failure.
    function Find_Ballard_Template_Matches
      (Template       : OpenCV.Core.Mat;
       Scene          : OpenCV.Core.Mat;
@@ -1505,6 +1556,21 @@ package OpenCV.Image_Processing is
       Canny_Low      : Positive := 50;
       Canny_High     : Positive := 100) return Ballard_Template_Match_Array;
 
+   --  One Find_Guil_Template_Matches detection: the Scene position, scale
+   --  and rotation of a Template instance, with the native support of each.
+   --  @field Center Scene-local position, in pixels, of the integer
+   --  Template center (Template.Columns / 2, Template.Rows / 2); finite and
+   --  nonnegative.
+   --  @field Scale Native positive scale estimate of the instance relative
+   --  to Template (1.0 is unscaled); finite and not renormalized.
+   --  @field Angle_Degrees Native rotation estimate in degrees, never
+   --  radians; finite and not normalized by this binding.
+   --  @field Position_Votes Native Int32 position votes, decoded exactly;
+   --  at least the Position_Threshold used.
+   --  @field Scale_Votes Native Int32 scale votes, decoded exactly; at
+   --  least the Scale_Threshold used.
+   --  @field Angle_Votes Native Int32 angle votes, decoded exactly; at
+   --  least the Angle_Threshold used.
    type Guil_Template_Match is record
       Center         : OpenCV.Float32_Point;
       Scale          : OpenCV.Float32_Value;
@@ -1513,21 +1579,40 @@ package OpenCV.Image_Processing is
       Scale_Votes    : Natural;
       Angle_Votes    : Natural;
    end record;
+
+   --  Result of Find_Guil_Template_Matches. Nonempty results are
+   --  zero-based; an empty result has range 1 .. 0. Element order is not a
+   --  ranking.
    type Guil_Template_Match_Array is
      array (Natural range <>) of Guil_Template_Match;
-   --  Native Guil on nonempty 2-D UInt8 C1 images. Inputs are unchanged.
-   --  Regions are isolated logical images. Template center is
-   --  (Columns / 2, Rows / 2). Centers are Scene-local pixels. Angle_Degrees
-   --  is degrees, never radians, and is not normalized by this binding.
-   --  Scale is the native positive estimate. Votes are decoded from Int32.
-   --  A hypothesis is kept only when each vote count meets or exceeds its
-   --  threshold. Fixed levels=360, xi=90 degrees, angle epsilon=1 degree,
-   --  dp=1, minimum distance=1, and 1000 features per orientation bin.
-   --  0 <= Minimum_Angle < Maximum_Angle <= 360, 0 < Angle_Step < 360,
-   --  0 < Minimum_Scale < Maximum_Scale, and Scale_Step > 0. All floats must
-   --  be finite, and 0 < Canny_Low < Canny_High. Invalid inputs or unsafe
-   --  native arithmetic raise OpenCV_Error. Feature construction is quadratic
-   --  in edge count. Nonempty bounds start at zero; empty is 1 .. 0.
+
+   --  Canny thresholds, angle and scale search windows, and vote thresholds
+   --  of Find_Guil_Template_Matches. The defaults (Canny 50/100, angles
+   --  0 .. 360 by 5 degrees, scales 0.5 .. 2.0 by 0.05, vote thresholds
+   --  100/100/20) are convenient starting values, not measured
+   --  recommendations; a narrow window is much faster and less ambiguous.
+   --  All floats must be finite. Native histogram bin counts are
+   --  `ceil ((Maximum - Minimum) * (1 / Step))`, the reciprocal product
+   --  rather than direct division, and must fit native int arithmetic.
+   --  @field Canny_Low Lower Canny threshold, used as given;
+   --  0 < Canny_Low < Canny_High.
+   --  @field Canny_High Upper Canny threshold, used as given.
+   --  @field Minimum_Angle Lowest searched rotation in degrees;
+   --  0.0 <= Minimum_Angle < Maximum_Angle.
+   --  @field Maximum_Angle Highest searched rotation in degrees; at most
+   --  360.0 degrees.
+   --  @field Angle_Step Angle histogram step in degrees; greater than 0.0
+   --  and less than 360.0.
+   --  @field Minimum_Scale Lowest searched scale factor;
+   --  0.0 < Minimum_Scale < Maximum_Scale.
+   --  @field Maximum_Scale Highest searched scale factor.
+   --  @field Scale_Step Scale histogram step; must be positive.
+   --  @field Angle_Threshold Angle votes that a hypothesis must meet or
+   --  exceed.
+   --  @field Scale_Threshold Scale votes that a hypothesis must meet or
+   --  exceed.
+   --  @field Position_Threshold Position votes that a hypothesis must meet
+   --  or exceed.
    type Guil_Search_Parameters is record
       Canny_Low          : Positive := 50;
       Canny_High         : Positive := 100;
@@ -1542,6 +1627,48 @@ package OpenCV.Image_Processing is
       Position_Threshold : Positive := 20;
    end record;
 
+   --  Finds rotated and scaled copies of Template in Scene with OpenCV's
+   --  generalized Hough Guil detector. Each match reports a Scene-local
+   --  center, a native positive scale, an angle in degrees and three native
+   --  vote counts; Find_Ballard_Template_Matches is the translation-only
+   --  alternative.
+   --
+   --  Native Guil on nonempty 2-D UInt8 C1 images. Inputs are unchanged.
+   --  Regions are isolated logical images: both inputs are copied into
+   --  private packed snapshots, so parent pixels never take part. Template
+   --  center is (Columns / 2, Rows / 2). Centers are Scene-local pixels.
+   --  Angle_Degrees is degrees, never radians, and is not normalized by this
+   --  binding. Scale is the native positive estimate. Votes are decoded
+   --  from Int32, never through Float32. A hypothesis is kept only when each
+   --  vote count meets or exceeds its threshold. Fixed levels=360, xi=90
+   --  degrees, angle epsilon=1 degree, dp=1, minimum distance=1 (no native
+   --  peak-grid filtering), and 1000 features per orientation bin; none of
+   --  these is a public option.
+   --
+   --  Parameters must satisfy 0 <= Minimum_Angle < Maximum_Angle <= 360,
+   --  0 < Angle_Step < 360, 0 < Minimum_Scale < Maximum_Scale, and
+   --  Scale_Step > 0. All floats must be finite, and
+   --  0 < Canny_Low < Canny_High. Invalid inputs or unsafe native arithmetic
+   --  raise OpenCV_Error: searches whose native contour area, histogram
+   --  index, per-cell vote or output-copy width cannot be represented are
+   --  rejected. In particular the angle-bin count times the scale-bin count
+   --  times the Scene area must not exceed 134217727 (INT_MAX / 16), so the
+   --  default 72 x 30 bins admit Scenes of at most 62137 pixels; narrower
+   --  windows admit larger Scenes. Feature construction is quadratic in edge
+   --  count and repeats across accepted angle/scale hypotheses, so a dense
+   --  high-resolution edge image is costly.
+   --  @param Template Shape to find: a nonempty 2-D UInt8 C1 grayscale
+   --  image whose Canny edges build the features.
+   --  @param Scene Image to search: a nonempty 2-D UInt8 C1 grayscale
+   --  image. Result centers are in its pixel coordinates.
+   --  @param Parameters Canny thresholds, angle and scale windows and vote
+   --  thresholds; see Guil_Search_Parameters for meanings and defaults.
+   --  @return Fresh Ada array of detections. Nonempty bounds start at zero;
+   --  empty is 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Template or Scene, a nonfinite or out-of-range
+   --  parameter, Canny_Low >= Canny_High, unsafe native arithmetic, an
+   --  invalid native result, or an OpenCV failure.
    function Find_Guil_Template_Matches
      (Template   : OpenCV.Core.Mat;
       Scene      : OpenCV.Core.Mat;
@@ -1558,77 +1685,117 @@ package OpenCV.Image_Processing is
          Scale_Threshold    => 100,
          Position_Threshold => 20)) return Guil_Template_Match_Array;
 
-   --  Integer Canny and accumulator thresholds for gradient Hough circles.
+   --  Integer Canny and accumulator thresholds for gradient Hough circles,
+   --  1 through 2_147_483_647: the upper Canny threshold and the
+   --  accumulator vote threshold. They are integers because OpenCV rounds
+   --  both to integers.
    subtype Hough_Circle_Threshold is Positive range 1 .. 2_147_483_647;
 
    --  A standard-Hough line in polar form: the points (X, Y) satisfying
-   --  X * cos (Angle_Radians) + Y * sin (Angle_Radians) = Rho. Rho is in
-   --  pixels relative to the Source origin and may be negative.
-   --  Angle_Radians is always in radians.
+   --  `X * cos (Angle_Radians) + Y * sin (Angle_Radians) = Rho`, with X the
+   --  column and Y the row. Each line is an accumulator bin quantized by the
+   --  requested resolutions. A horizontal line at row r appears near
+   --  (r, Pi / 2); a vertical line at column c appears near (c, 0), or
+   --  equivalently (-c, Pi).
+   --  @field Rho Signed distance from the Source origin to the line along
+   --  its normal, in pixels; may be negative.
+   --  @field Angle_Radians Direction of the line normal; always in radians.
    type Hough_Line is record
       Rho           : OpenCV.Float32_Value;
       Angle_Radians : OpenCV.Float32_Value;
    end record;
 
-   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   --  Result of Find_Hough_Lines. Nonempty results are zero-based; an empty
+   --  result has range 1 .. 0.
    type Hough_Line_Array is array (Natural range <>) of Hough_Line;
 
    --  A probabilistic-Hough segment. Endpoint order is unspecified:
-   --  (A, B) and (B, A) describe the same segment.
+   --  (A, B) and (B, A) describe the same segment. Endpoints are integer
+   --  pixel positions and may differ by a pixel or two across OpenCV
+   --  builds.
+   --  @field Start_Point One endpoint, in Source pixel coordinates.
+   --  @field End_Point The other endpoint, in Source pixel coordinates.
    type Hough_Line_Segment is record
       Start_Point : OpenCV.Point;
       End_Point   : OpenCV.Point;
    end record;
 
-   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   --  Result of Find_Hough_Line_Segments. Nonempty results are zero-based;
+   --  an empty result has range 1 .. 0.
    type Hough_Line_Segment_Array is
      array (Natural range <>) of Hough_Line_Segment;
 
    --  A gradient-Hough circle. Center and Radius are native binary32
-   --  pixel values quantized by the accumulator scale.
+   --  pixel values quantized by the accumulator scale: centers come from
+   --  accumulator cells and radii from histogram estimates, so compare them
+   --  with a tolerance of a pixel or two rather than exactly.
+   --  @field Center Circle center in Source pixel coordinates.
+   --  @field Radius Estimated circle radius in pixels.
    type Hough_Circle is record
       Center : OpenCV.Float32_Point;
       Radius : OpenCV.Float32_Value;
    end record;
 
-   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   --  Result of Find_Hough_Circles. Nonempty results are zero-based; an
+   --  empty result has range 1 .. 0.
    type Hough_Circle_Array is array (Natural range <>) of Hough_Circle;
 
    --  A standard-Hough line with its accumulator vote count. Votes is
    --  evidence for ranking, not a cross-version constant: raster-line votes
    --  come from OpenCV's binary32 Vec3f output and point-set votes from its
    --  Vec3d output, all integer accumulator counts promoted to Float64.
-   --  Raster counts above 2**24 may already have been rounded by binary32.
+   --  Raster counts above `2**24` may already have been rounded by binary32.
+   --  The line is the set of points satisfying
+   --  `X * cos (Angle_Radians) + Y * sin (Angle_Radians) = Rho`; OpenCV's
+   --  point-set order (votes, rho, theta) is normalized to this layout.
+   --  @field Rho Signed distance from the coordinate origin (the Source
+   --  origin for raster lines) to the line along its normal.
+   --  @field Angle_Radians Direction of the line normal; always in radians.
+   --  @field Votes Accumulator support count of the line's bin, an integer
+   --  stored as Float64.
    type Hough_Line_With_Votes is record
       Rho           : OpenCV.Float32_Value;
       Angle_Radians : OpenCV.Float32_Value;
       Votes         : OpenCV.Float64_Value;
    end record;
 
-   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   --  Result of Find_Hough_Lines_With_Votes and
+   --  Find_Hough_Lines_From_Points. Nonempty results are zero-based; an
+   --  empty result has range 1 .. 0.
    type Hough_Line_With_Votes_Array is
      array (Natural range <>) of Hough_Line_With_Votes;
 
-   --  One degree in radians, the default point-set angle resolution.
+   --  One degree in radians (Pi / 180), the default point-set angle
+   --  resolution of Find_Hough_Lines_From_Points.
    Hough_Degree : constant := Ada.Numerics.Pi / 180.0;
 
-   --  Input points for Find_Hough_Lines_From_Points; any index bounds.
+   --  Input points for Find_Hough_Lines_From_Points; any index bounds,
+   --  including a null range. X and Y are binary32 coordinates in the same
+   --  frame as the returned Rho; that operation rejects nonfinite values.
    type Hough_Point_Array is array (Integer range <>) of OpenCV.Float32_Point;
 
    --  A radius-finding gradient-Hough circle with the support count of its
    --  estimated radius, from OpenCV's binary32 Vec4f output (counts above
-   --  2**24 may already have been rounded by binary32).
+   --  `2**24` may already have been rounded by binary32).
+   --  @field Center Circle center in Source pixel coordinates, quantized to
+   --  accumulator cells.
+   --  @field Radius Estimated circle radius in pixels, a histogram
+   --  estimate.
+   --  @field Votes Support count of the chosen radius, an integer stored as
+   --  Float64; ranking evidence, not a cross-version constant.
    type Hough_Circle_With_Votes is record
       Center : OpenCV.Float32_Point;
       Radius : OpenCV.Float32_Value;
       Votes  : OpenCV.Float64_Value;
    end record;
 
-   --  Nonempty results are zero-based; an empty result has range 1 .. 0.
+   --  Result of Find_Hough_Circles_With_Votes. Nonempty results are
+   --  zero-based; an empty result has range 1 .. 0.
    type Hough_Circle_With_Votes_Array is
      array (Natural range <>) of Hough_Circle_With_Votes;
 
-   --  Centers found by center-only gradient-Hough detection.
+   --  Centers found by center-only gradient-Hough detection
+   --  (Find_Hough_Circle_Centers), in Source pixel coordinates.
    --  Nonempty results are zero-based; an empty result has range 1 .. 0.
    type Hough_Circle_Center_Array is
      array (Natural range <>) of OpenCV.Float32_Point;
@@ -1760,6 +1927,32 @@ package OpenCV.Image_Processing is
    function Explicit_Morphology_Border
      (Value : OpenCV.Scalar) return Morphology_Border_Value;
 
+   --  Comparison computed by Match_Template at every placement of Template
+   --  over Source, as the corresponding OpenCV `TM_*` selector. Scores are
+   --  Float32 values with native rounding. Use OpenCV.Core.Min_Max_Loc on
+   --  the score map: the best match is the minimum for the two
+   --  squared-difference methods and the maximum for the other four. The
+   --  masked Match_Template overload does not support
+   --  Normalized_Correlation_Coefficient and documents its masked formulas
+   --  and zero-energy rules.
+   --  @enum Squared_Difference TM_SQDIFF: sum of squared Template and window
+   --  differences, ideally zero for a perfect match. Lower is better: the
+   --  best match is the minimum.
+   --  @enum Normalized_Squared_Difference TM_SQDIFF_NORMED: squared
+   --  difference divided by `sqrt (template energy * window energy)`. Lower
+   --  is better: the best match is the minimum.
+   --  @enum Cross_Correlation TM_CCORR: unnormalized sum of Template and
+   --  window products, growing with brightness. Higher is better: the best
+   --  match is the maximum.
+   --  @enum Normalized_Cross_Correlation TM_CCORR_NORMED: cosine similarity
+   --  of Template and window. Higher is better: the best match is the
+   --  maximum.
+   --  @enum Correlation_Coefficient TM_CCOEFF: mean-centered correlation
+   --  (the covariance numerator); it is not scale-normalized and not
+   --  limited to [-1, 1]. Higher is better: the best match is the maximum.
+   --  @enum Normalized_Correlation_Coefficient TM_CCOEFF_NORMED:
+   --  mean-centered and scale-normalized correlation coefficient. Higher is
+   --  better: the best match is the maximum. Unmasked overload only.
    type Template_Matching_Method is
      (Squared_Difference,
       Normalized_Squared_Difference,
@@ -2710,59 +2903,115 @@ package OpenCV.Image_Processing is
         (Maximum_Iterations => 5, Epsilon => 1.0));
 
    --  Match_Template slides Template over Source and writes a score map to
-   --  Destination. Source and Template must each be a non-empty
-   --  two-dimensional Mat of depth UInt8 or Float32 with 1 to 4 channels, and
-   --  they must share the same depth and channel count. Template must fit
-   --  entirely inside Source: Template.Rows <= Source.Rows and
-   --  Template.Columns <= Source.Columns. A Template equal in size to Source
-   --  is valid. Destination is always replaced with a Float32 C1 Mat of
-   --  Rows = Source.Rows - Template.Rows + 1 and
-   --  Columns = Source.Columns - Template.Columns + 1. Multi-channel inputs
-   --  are combined into one score per location; they are not converted to
-   --  grayscale. For Squared_Difference and Normalized_Squared_Difference the
-   --  best match is the minimum score; for the other four methods the best
-   --  match is the maximum. Use OpenCV.Core.Min_Max_Loc on Destination to
-   --  recover those extrema. Source and Template are read-only and may share
-   --  storage. Destination must not share storage with Source or Template.
-   --  Contract violations and failures
-   --  reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  Destination: the score at (X, Y) compares Template with the Source
+   --  window whose top-left pixel is (X, Y). Source and Template must each
+   --  be a non-empty two-dimensional Mat of depth UInt8 or Float32 with 1 to
+   --  4 channels, and they must share the same depth and channel count.
+   --  Template must fit entirely inside Source: Template.Rows <= Source.Rows
+   --  and Template.Columns <= Source.Columns. A Template equal in size to
+   --  Source is valid. Multi-channel inputs are combined into one score per
+   --  location; they are not converted to grayscale. For Squared_Difference
+   --  and Normalized_Squared_Difference the best match is the minimum score;
+   --  for the other four methods the best match is the maximum. Use
+   --  OpenCV.Core.Min_Max_Loc on Destination to recover those extrema; the
+   --  extremum location is the best match's top-left pixel in Source.
+   --
+   --  Destination receives a Float32 C1 Mat of
+   --  `Rows = Source.Rows - Template.Rows + 1` and
+   --  `Columns = Source.Columns - Template.Columns + 1` as direct native
+   --  output: OpenCV reuses Destination's storage when it already has that
+   --  size and type (shallow copies of Destination and a Region's parent then
+   --  see the result) and otherwise rebinds Destination to new storage, so
+   --  callers need not preallocate it. Source and Template are read-only and
+   --  may share storage, including the same Mat or a Template that is a
+   --  Region of Source. Destination must not share storage with Source or
+   --  Template: the same Mat, or a Destination whose data starts at Source's
+   --  or Template's data, is rejected; other overlaps are not detected.
+   --  Inputs are validated before OpenCV runs. Contract violations and
+   --  failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  @param Source Image searched: nonempty 2-D UInt8 or Float32 with 1 to
+   --  4 channels.
+   --  @param Template Patch compared at every placement: same depth and
+   --  channel count as Source, and no larger than Source in either
+   --  dimension.
+   --  @param Destination Receives the Float32 C1 score map by direct native
+   --  output; must not share storage with Source or Template.
+   --  @param Method Comparison to compute, with no default; see
+   --  Template_Matching_Method for score meanings and best-match extrema.
+   --  @exception OpenCV_Error Raised for an empty or non-2-D Source
+   --  or Template, an unsupported depth or channel count, mismatched Source
+   --  and Template types, a Template larger than Source, a Destination
+   --  sharing Source or Template storage, or an OpenCV failure.
    procedure Match_Template
      (Source      : OpenCV.Core.Mat;
       Template    : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
       Method      : Template_Matching_Method);
 
-   --  Masked matching accepts nonempty 2-D UInt8 C1 inputs. Mask must
-   --  match Template dimensions and Template must fit Source. Every nonzero
-   --  mask byte includes a pixel with weight one. Private logical snapshots
-   --  isolate Regions and shared storage. Destination receives fresh owning
-   --  Float32 C1 storage only on success, sized Source minus Template plus
-   --  one. Squared_Difference scores are unnormalized sums of squared
+   --  Masked Match_Template scores only the Template pixels that Mask
+   --  includes, otherwise sliding Template over Source like the unmasked
+   --  overload. Masked matching accepts nonempty 2-D UInt8 C1 inputs
+   --  (Source, Template and Mask). Mask must match Template dimensions and
+   --  Template must fit Source. A zero mask byte excludes a pixel; every
+   --  nonzero mask byte (1, 127 and 255 alike) includes a pixel with weight
+   --  one. Supported methods are exactly Squared_Difference (the default),
+   --  Normalized_Squared_Difference, Cross_Correlation,
+   --  Normalized_Cross_Correlation and Correlation_Coefficient;
+   --  Normalized_Correlation_Coefficient (TM_CCOEFF_NORMED) is not
+   --  supported and raises OpenCV_Error. Intensities stay in original UInt8
+   --  units (0 .. 255); the binding passes owning unscaled Float32 copies
+   --  and an exact 0/1 Float32 mask, avoiding OpenCV 4.1's UInt8 scaling by
+   --  1/255.
+   --
+   --  Private logical snapshots isolate Regions and shared storage: only
+   --  logical pixels are read, parent pixels never participate, and inputs
+   --  are unchanged. Destination receives fresh owning Float32 C1 storage
+   --  only on success, sized Source minus Template plus one
+   --  (`Source.Rows - Template.Rows + 1` rows by
+   --  `Source.Columns - Template.Columns + 1` columns); on failure it is
+   --  unchanged, and its old storage is never reused. Distinct Mat headers
+   --  that share pixel storage with an input are supported, but the same Mat
+   --  object as Destination and as an input is rejected. Snapshot cost is
+   --  linear in input pixels. Requests whose native correlation arithmetic
+   --  or byte extents cannot be represented are rejected before native
+   --  execution; this includes a Template area above `INT_MAX / 4` for
+   --  Cross_Correlation and for the OpenCV 4.1 compositions below.
+   --
+   --  Squared_Difference scores are unnormalized sums of squared
    --  differences (lower is better); an all-zero mask yields zero scores.
+   --
    --  Cross_Correlation is the unnormalized sum of included intensity
    --  products in original UInt8 units: choose the maximum-scoring location.
    --  It supports black Templates and all-zero masks, with zero correlation.
    --  Native unmasked correlation uses an owning zeroed Float32 Template on
    --  every supported OpenCV version. Scores retain native rounding.
+   --
    --  Normalized_Cross_Correlation scores are native cosine similarities
    --  (higher is better) and require at least one pixel where both Mask and
    --  Template are nonzero. Ideal defined scores lie in [0, 1]; native
    --  rounding is retained, including values slightly outside that interval.
-   --  A Scene window whose included samples are all zero receives exact
-   --  Float32 +0.0 through a binding-owned compatibility rule. Positive-energy
-   --  windows preserve native scores without clipping or nonfinite repair.
+   --  A Scene (Source) window whose included samples are all zero receives
+   --  exact Float32 +0.0 through a binding-owned compatibility rule.
+   --  Positive-energy windows preserve native scores without clipping or
+   --  nonfinite repair.
+   --
    --  Normalized_Squared_Difference is the included squared error divided by
-   --  sqrt(template energy * scene energy). Lower is better, and a perfect
+   --  `sqrt (template energy * scene energy)`. Lower is better, and a perfect
    --  match is zero. Scores are not clamped to [0, 1]. The method requires
-   --  positive masked Template energy; an all-zero mask is rejected. A Scene
-   --  window whose included samples are all zero receives exact Float32'Last
+   --  positive masked Template energy, at least one pixel where both Mask
+   --  and Template are nonzero; an all-zero mask is rejected. A Scene window
+   --  whose included samples are all zero receives exact Float32'Last
    --  (IEEE 16#7F7F_FFFF#), a finite worst-match sentinel. That is not the
    --  NCC +0.0 rule: zero would rank the undefined window as a perfect match.
    --  OpenCV 4.10 and 5 call native masked TM_SQDIFF_NORMED. OpenCV 4.1
    --  composes native masked SQDIFF, native Scene-energy correlation, and
-   --  native normalization. Positive-energy scores are not repaired.
-   --  The check adds packed Scene support and one output-row bitset; work is
-   --  proportional to output rows * active mask pixels * output columns / 64.
+   --  native normalization. Positive-energy scores are not repaired; a
+   --  nonfinite one raises OpenCV_Error instead of being published.
+   --
+   --  The zero-window check of both normalized methods adds packed Scene
+   --  support and one output-row bitset; work is proportional to
+   --  `output rows * active mask pixels * output columns / 64`.
+   --
    --  Correlation_Coefficient is the unnormalized masked covariance numerator
    --  `R = Sum(M*T*I) - Sum(M*T)*Sum(M*I)/Sum(M)`: both means are taken over
    --  included pixels only. It is mean-centered but not scale-normalized, so
@@ -2783,10 +3032,26 @@ package OpenCV.Image_Processing is
    --
    --     Match_Template
    --       (Scene, Patch, Mask, Scores, Correlation_Coefficient);
-   --     Min_Max_Loc (Scores, Minimum, Maximum, Min_At, Max_At);
-   --     --  Max_At is the best match; an offset Scene still finds it.
+   --     Best := OpenCV.Core.Min_Max_Loc (Scores).Maximum_Location;
+   --     --  Best is the best match; an offset Scene still finds it.
    --
    --  TM_CCOEFF_NORMED and contract violations raise OpenCV_Error.
+   --  @param Source Image searched (the Scene): nonempty 2-D UInt8 C1.
+   --  @param Template Patch compared at every placement: nonempty 2-D UInt8
+   --  C1, no larger than Source in either dimension.
+   --  @param Mask Pixel selector with Template's dimensions: nonempty 2-D
+   --  UInt8 C1, zero excludes and nonzero includes with weight one.
+   --  @param Destination Rebound to the fresh Float32 C1 score map only on
+   --  success; unchanged on failure.
+   --  @param Method One of the five supported methods; default
+   --  Squared_Difference.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 input, a Mask whose dimensions differ from Template's, a
+   --  Template larger than Source, Normalized_Correlation_Coefficient, no
+   --  pixel with nonzero Mask and Template (normalized methods), an all-zero
+   --  Mask (Correlation_Coefficient), Destination being the same Mat as an
+   --  input, unrepresentable native arithmetic, a nonfinite normalized
+   --  squared-difference score, or an OpenCV failure.
    procedure Match_Template
      (Source      : OpenCV.Core.Mat;
       Template    : OpenCV.Core.Mat;
@@ -5008,13 +5273,48 @@ package OpenCV.Image_Processing is
 
    --  Find_Hough_Lines runs the classical standard Hough transform on a
    --  nonempty two-dimensional UInt8 C1 binary Source: zero pixels are
-   --  background and every nonzero pixel is a candidate. Distance_Resolution
-   --  (pixels) and Angle_Resolution_Radians must be positive and finite.
-   --  The angle bounds must be finite with
-   --  0 <= Minimum_Angle_Radians < Maximum_Angle_Radians <= Pi. Each result
-   --  is an accumulator bin, so Rho and Angle_Radians are quantized by the
-   --  requested resolutions. Multiscale srn/stn, OpenCV 5 edge-value
-   --  weighting, and accumulator votes are not exposed.
+   --  background and every nonzero pixel (not only 255) is a candidate.
+   --  Distance_Resolution (pixels) and Angle_Resolution_Radians must be
+   --  positive and finite. The angle bounds must be finite with
+   --  0 <= Minimum_Angle_Radians < Maximum_Angle_Radians <= Pi. OpenCV keeps
+   --  accumulator bins that are strict local maxima with more than
+   --  Vote_Threshold votes. Each result is an accumulator bin, so Rho and
+   --  Angle_Radians are quantized by the requested resolutions; expect
+   --  agreement with exact geometry within about one bin. OpenCV 5.0
+   --  reconstructs Rho with integer arithmetic where OpenCV 4.x uses a
+   --  half-bin offset, so Rho can differ by up to half a distance bin
+   --  between generations. Multiscale srn/stn, OpenCV 5 edge-value
+   --  weighting, and accumulator votes are not exposed;
+   --  Find_Hough_Lines_With_Votes reports votes.
+   --
+   --  OpenCV narrows the resolutions and angle bounds to binary32 and sizes
+   --  its accumulator with signed int arithmetic. Requests that would
+   --  overflow it are rejected: a Source whose pixel count or
+   --  `2 * (Rows + Columns) + 1` exceeds native int range, a resolution
+   --  whose bin counts or accumulator size exceed native int range, a
+   --  Distance_Resolution too coarse for the accumulator's vote
+   --  columns, or a nonzero-pixel count times angle-bin count beyond native
+   --  int range (the IPP line estimate, checked on every build). There is
+   --  no arbitrary resolution floor.
+   --  @param Source Binary image to analyse: nonempty 2-D UInt8 C1, with
+   --  every nonzero pixel a candidate.
+   --  @param Distance_Resolution Rho bin width in pixels; positive and
+   --  finite.
+   --  @param Angle_Resolution_Radians Angle bin width in radians; positive
+   --  and finite.
+   --  @param Vote_Threshold Accumulator votes that a reported line must
+   --  strictly exceed.
+   --  @param Minimum_Angle_Radians Lowest searched angle, in radians;
+   --  finite, at least 0.0 and below Maximum_Angle_Radians. Default 0.0.
+   --  @param Maximum_Angle_Radians Highest searched angle, in radians;
+   --  finite and at most Pi. Default Pi.
+   --  @return Fresh Ada array of lines in unspecified order. Nonempty
+   --  results start at zero; when no line is found the result is the null
+   --  range 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Source, a nonpositive or nonfinite resolution, invalid
+   --  angle bounds, native accumulator arithmetic that cannot be
+   --  represented, or an OpenCV failure.
    function Find_Hough_Lines
      (Source                   : OpenCV.Core.Mat;
       Distance_Resolution      : OpenCV.Float64_Value;
@@ -5025,10 +5325,40 @@ package OpenCV.Image_Processing is
       return Hough_Line_Array;
 
    --  Find_Hough_Line_Segments runs the probabilistic Hough transform on the
-   --  same binary Source contract as Find_Hough_Lines. Minimum_Line_Length
-   --  and Maximum_Line_Gap are integer pixel counts. A segment is kept when
-   --  its X or Y extent reaches Minimum_Line_Length; up to Maximum_Line_Gap
-   --  missing pixels may be bridged along a line.
+   --  same binary Source contract as Find_Hough_Lines (zero is background,
+   --  every nonzero pixel a candidate), without angle bounds.
+   --  Minimum_Line_Length and Maximum_Line_Gap are integer pixel counts,
+   --  because OpenCV rounds them to integers. A segment is kept when its X
+   --  or Y extent reaches Minimum_Line_Length; up to Maximum_Line_Gap
+   --  missing pixels may be bridged along a line. The native walk uses a
+   --  fixed internal random seed, but endpoints may still differ by a pixel
+   --  or two across OpenCV builds, so compare them with a small tolerance.
+   --
+   --  Requests whose native int accumulator or fixed-point walk arithmetic
+   --  would overflow are rejected: the Source limits of Find_Hough_Lines, a
+   --  resolution whose accumulator sizing exceeds native int range, a
+   --  Distance_Resolution too coarse for the accumulator, and any Source
+   --  with more than 32765 rows or columns (OpenCV 4.1 and 4.10 walk
+   --  segments in 16.16 fixed point; the limit applies on every version).
+   --  @param Source Binary image to analyse: nonempty 2-D UInt8 C1, with
+   --  every nonzero pixel a candidate.
+   --  @param Distance_Resolution Rho bin width in pixels; positive and
+   --  finite.
+   --  @param Angle_Resolution_Radians Angle bin width in radians; positive
+   --  and finite.
+   --  @param Vote_Threshold Accumulator vote threshold for the candidate
+   --  lines of the probabilistic walk.
+   --  @param Minimum_Line_Length Shortest kept segment, as its X or Y
+   --  extent in pixels; default 0.
+   --  @param Maximum_Line_Gap Largest bridged run of missing pixels along a
+   --  line; default 0.
+   --  @return Fresh Ada array of segments in unspecified order, each with
+   --  unspecified endpoint order. Nonempty results start at zero; when no
+   --  segment is found the result is the null range 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Source, a nonpositive or nonfinite resolution, native
+   --  accumulator or walk arithmetic that cannot be represented, or an
+   --  OpenCV failure.
    function Find_Hough_Line_Segments
      (Source                   : OpenCV.Core.Mat;
       Distance_Resolution      : OpenCV.Float64_Value;
@@ -5040,14 +5370,42 @@ package OpenCV.Image_Processing is
 
    --  Find_Hough_Circles runs OpenCV's classic gradient Hough circle
    --  detector (HOUGH_GRADIENT) on a nonempty two-dimensional UInt8 C1
-   --  grayscale Source; it computes its own Sobel/Canny edges.
-   --  Accumulator_Scale is the inverse accumulator resolution and must be
-   --  finite and at least 1.0. Minimum_Center_Distance must be positive and
-   --  finite. Canny_Threshold is the upper Canny threshold (the lower one is
-   --  half of it). Accumulator_Threshold is the center-vote threshold.
+   --  grayscale Source; it computes its own Sobel/Canny edges, so blurring
+   --  the input first usually improves results. Accumulator_Scale is the
+   --  inverse accumulator resolution and must be finite and at least 1.0
+   --  (OpenCV would silently clamp smaller values; this API rejects them).
+   --  Minimum_Center_Distance must be positive and finite. Canny_Threshold
+   --  is the upper Canny threshold (the lower one is half of it, but at
+   --  least one). Accumulator_Threshold is the center-vote threshold; OpenCV
+   --  also applies it to radius support when estimating radii.
    --
    --  This overload searches radii from Minimum_Radius up to an automatic
-   --  maximum chosen by OpenCV (the larger Source dimension).
+   --  maximum chosen by OpenCV (the larger Source dimension). Radius
+   --  estimation squares that maximum in native int, so a Source with more
+   --  than 46340 rows or columns is rejected. Also rejected: a radius range
+   --  that yields no radius-histogram bin at this Accumulator_Scale (for
+   --  example Minimum_Radius not below the larger Source dimension), an
+   --  accumulator whose padded size exceeds native int indexing, and
+   --  `(larger Source dimension + Minimum_Radius + 2) * 1024` beyond native
+   --  int range (the fixed-point voting walk).
+   --  @param Source Grayscale image to analyse: nonempty 2-D UInt8 C1.
+   --  @param Accumulator_Scale Inverse accumulator resolution (OpenCV dp),
+   --  finite and at least 1.0; the value 1.0 keeps Source resolution.
+   --  @param Minimum_Center_Distance Minimum distance between detected
+   --  centers (OpenCV minDist); positive and finite.
+   --  @param Canny_Threshold Upper threshold of the internal Canny edge
+   --  detector; the lower one is half of it, but at least one.
+   --  @param Accumulator_Threshold Accumulator vote threshold for circle
+   --  centers, also applied to radius support.
+   --  @param Minimum_Radius Smallest searched radius in pixels; default 0.
+   --  With the automatic maximum it must leave a nonempty radius range.
+   --  @return Fresh Ada array of circles in unspecified order. Nonempty
+   --  results start at zero; when no circle is found the result is the
+   --  null range 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Source, an invalid Accumulator_Scale or
+   --  Minimum_Center_Distance, an empty radius range, native arithmetic that
+   --  cannot be represented, or an OpenCV failure.
    function Find_Hough_Circles
      (Source                  : OpenCV.Core.Mat;
       Accumulator_Scale       : OpenCV.Float64_Value;
@@ -5057,8 +5415,36 @@ package OpenCV.Image_Processing is
       Minimum_Radius          : OpenCV.Size_Coordinate := 0)
       return Hough_Circle_Array;
 
-   --  This overload searches the explicit radius interval. Maximum_Radius
-   --  must exceed Minimum_Radius; it is never silently widened.
+   --  This overload of Find_Hough_Circles has the same HOUGH_GRADIENT
+   --  detector, Source, threshold and result contract as the
+   --  automatic-maximum overload, but searches the explicit radius interval
+   --  Minimum_Radius .. Maximum_Radius. Maximum_Radius must exceed
+   --  Minimum_Radius; it is never silently widened (OpenCV would rewrite an
+   --  invalid maximum to Minimum_Radius + 2). Maximum_Radius must be at most
+   --  46340, because radius estimation squares it in native int, and the
+   --  interval must yield at least one radius-histogram bin at this
+   --  Accumulator_Scale. The accumulator and fixed-point limits of the other
+   --  overload also apply.
+   --  @param Source Grayscale image to analyse: nonempty 2-D UInt8 C1.
+   --  @param Accumulator_Scale Inverse accumulator resolution (OpenCV dp),
+   --  finite and at least 1.0.
+   --  @param Minimum_Center_Distance Minimum distance between detected
+   --  centers (OpenCV minDist); positive and finite.
+   --  @param Canny_Threshold Upper threshold of the internal Canny edge
+   --  detector; the lower one is half of it, but at least one.
+   --  @param Accumulator_Threshold Accumulator vote threshold for circle
+   --  centers, also applied to radius support.
+   --  @param Minimum_Radius Smallest searched radius in pixels; default 0.
+   --  @param Maximum_Radius Largest searched radius in pixels; greater than
+   --  Minimum_Radius and at most 46340.
+   --  @return Fresh Ada array of circles in unspecified order. Nonempty
+   --  results start at zero; when no circle is found the result is the
+   --  null range 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Source, an invalid Accumulator_Scale or
+   --  Minimum_Center_Distance, Maximum_Radius <= Minimum_Radius, an empty
+   --  radius range, native arithmetic that cannot be represented, or an
+   --  OpenCV failure.
    function Find_Hough_Circles
      (Source                  : OpenCV.Core.Mat;
       Accumulator_Scale       : OpenCV.Float64_Value;
@@ -5073,7 +5459,28 @@ package OpenCV.Image_Processing is
    --  Find_Hough_Lines and adds each line's accumulator votes. OpenCV's
    --  optional IPP standard-Hough path is available only to the vote-free
    --  output, so on IPP-enabled builds the two operations need not return
-   --  identical lines or ordering.
+   --  identical lines or ordering. Votes come from OpenCV's binary32 Vec3f
+   --  output: integer counts, normally above Vote_Threshold, which may
+   --  already have been rounded when above `2**24`.
+   --  @param Source Binary image to analyse: nonempty 2-D UInt8 C1, with
+   --  every nonzero pixel a candidate.
+   --  @param Distance_Resolution Rho bin width in pixels; positive and
+   --  finite.
+   --  @param Angle_Resolution_Radians Angle bin width in radians; positive
+   --  and finite.
+   --  @param Vote_Threshold Accumulator votes that a reported line must
+   --  strictly exceed.
+   --  @param Minimum_Angle_Radians Lowest searched angle, in radians;
+   --  finite, at least 0.0 and below Maximum_Angle_Radians. Default 0.0.
+   --  @param Maximum_Angle_Radians Highest searched angle, in radians;
+   --  finite and at most Pi. Default Pi.
+   --  @return Fresh Ada array of lines with votes, in unspecified order.
+   --  Nonempty results start at zero; when no line is found the result is
+   --  the null range 1 .. 0.
+   --  @exception OpenCV_Error Raised for the same conditions as
+   --  Find_Hough_Lines: an invalid Source, resolution or angle bound,
+   --  native accumulator arithmetic that cannot be represented, or an
+   --  OpenCV failure.
    function Find_Hough_Lines_With_Votes
      (Source                   : OpenCV.Core.Mat;
       Distance_Resolution      : OpenCV.Float64_Value;
@@ -5089,10 +5496,43 @@ package OpenCV.Image_Processing is
    --  Minimum_Rho < Maximum_Rho is required, and every point must vote
    --  inside the rho range for every searched angle, otherwise the request
    --  is rejected (this makes OpenCV 4.1, which does not bounds-check votes,
-   --  behave safely). Angle bounds satisfy
+   --  behave safely). Since `abs (Rho) <= sqrt (X**2 + Y**2)`, a range
+   --  reaching a little beyond plus and minus the largest point distance
+   --  from the origin always works. Angle bounds satisfy
    --  0 <= Minimum_Angle_Radians < Maximum_Angle_Radians <= Pi, and each
-   --  resolution must yield at least one bin. At most Maximum_Lines results
-   --  are returned; an empty point set returns the empty result.
+   --  resolution must yield at least one bin: both
+   --  `(Maximum_Rho - Minimum_Rho + 1) / Distance_Resolution` and the angle
+   --  span divided by Angle_Resolution_Radians must be at least 1. At most
+   --  Maximum_Lines results are returned; an empty point set returns the
+   --  empty result without calling OpenCV. Votes come from OpenCV's Vec3d
+   --  output, so they are exact integer counts. Rho bounds must lie within
+   --  binary32 range, and requests whose native bin counts, accumulator
+   --  indexing or binary32 vote arithmetic cannot be represented are
+   --  rejected.
+   --  @param Points Points that vote, as binary32 coordinates; any bounds,
+   --  possibly empty, every coordinate finite.
+   --  @param Maximum_Lines Upper bound on the number of returned lines, a
+   --  cap rather than a requested count.
+   --  @param Vote_Threshold Accumulator vote threshold; OpenCV keeps lines
+   --  whose votes exceed it.
+   --  @param Minimum_Rho Start of the first rho bin and lower rho bound, in
+   --  point coordinate units; finite and below Maximum_Rho.
+   --  @param Maximum_Rho Upper rho bound, in point coordinate units; finite.
+   --  @param Distance_Resolution Rho bin width; positive and finite.
+   --  @param Minimum_Angle_Radians Lowest searched angle, in radians;
+   --  finite, at least 0.0 and below Maximum_Angle_Radians. Default 0.0.
+   --  @param Maximum_Angle_Radians Highest searched angle, in radians;
+   --  finite and at most Pi. Default Pi.
+   --  @param Angle_Resolution_Radians Angle bin width in radians; positive
+   --  and finite. Default Hough_Degree.
+   --  @return Fresh Ada array of lines with votes, in unspecified order.
+   --  Nonempty results start at zero; when no line is found the result is
+   --  the null range 1 .. 0.
+   --  @exception OpenCV_Error Raised for a nonfinite point
+   --  coordinate, invalid or nonfinite rho or angle bounds, a resolution
+   --  that is not positive and finite or yields no bin, a point voting
+   --  outside the rho range, native arithmetic that cannot be represented,
+   --  or an OpenCV failure.
    function Find_Hough_Lines_From_Points
      (Points                   : Hough_Point_Array;
       Maximum_Lines            : Positive;
@@ -5108,7 +5548,31 @@ package OpenCV.Image_Processing is
    --  Find_Hough_Circle_Centers runs the classic gradient detector with the
    --  same Source and parameter contract as Find_Hough_Circles, but skips
    --  radius estimation and reports only candidate centers. Minimum_Radius
-   --  still limits how close to each edge pixel center votes are cast.
+   --  still limits how close to each edge pixel center votes are cast, and
+   --  OpenCV's automatic maximum (the larger Source dimension) still bounds
+   --  the voting walk. It uses OpenCV's private centers-only mode, never
+   --  exposed, and discards OpenCV's placeholder radius. Because no radius
+   --  is estimated, the radius-estimation limits of Find_Hough_Circles (the
+   --  46340 maximum radius and a nonempty radius histogram) do not apply;
+   --  the accumulator and fixed-point limits do.
+   --  @param Source Grayscale image to analyse: nonempty 2-D UInt8 C1.
+   --  @param Accumulator_Scale Inverse accumulator resolution (OpenCV dp),
+   --  finite and at least 1.0.
+   --  @param Minimum_Center_Distance Minimum distance between detected
+   --  centers (OpenCV minDist); positive and finite.
+   --  @param Canny_Threshold Upper threshold of the internal Canny edge
+   --  detector; the lower one is half of it, but at least one.
+   --  @param Accumulator_Threshold Accumulator vote threshold for circle
+   --  centers.
+   --  @param Minimum_Radius Smallest radius, in pixels, at which center
+   --  votes are cast from each edge pixel; default 0.
+   --  @return Fresh Ada array of centers in Source pixel coordinates, in
+   --  unspecified order. Nonempty results start at zero; when no center is
+   --  found the result is the null range 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Source, an invalid Accumulator_Scale or
+   --  Minimum_Center_Distance, native accumulator arithmetic that cannot be
+   --  represented, or an OpenCV failure.
    function Find_Hough_Circle_Centers
      (Source                  : OpenCV.Core.Mat;
       Accumulator_Scale       : OpenCV.Float64_Value;
@@ -5120,7 +5584,32 @@ package OpenCV.Image_Processing is
 
    --  Find_Hough_Circles_With_Votes mirror the two Find_Hough_Circles
    --  overloads (automatic and explicit maximum radius) and add the support
-   --  count of each estimated radius. They always estimate radii.
+   --  count of each estimated radius. They always estimate radii and never
+   --  use the centers-only mode, whose native fourth component is an
+   --  accumulator index rather than a vote count. This overload has the
+   --  contract of the automatic-maximum Find_Hough_Circles: radii from
+   --  Minimum_Radius up to the larger Source dimension, which must be at
+   --  most 46340, with the same rejections. Votes come from OpenCV's
+   --  binary32 Vec4f output: integer counts that may already have been
+   --  rounded when above `2**24`.
+   --  @param Source Grayscale image to analyse: nonempty 2-D UInt8 C1.
+   --  @param Accumulator_Scale Inverse accumulator resolution (OpenCV dp),
+   --  finite and at least 1.0.
+   --  @param Minimum_Center_Distance Minimum distance between detected
+   --  centers (OpenCV minDist); positive and finite.
+   --  @param Canny_Threshold Upper threshold of the internal Canny edge
+   --  detector; the lower one is half of it, but at least one.
+   --  @param Accumulator_Threshold Accumulator vote threshold for circle
+   --  centers, also applied to radius support.
+   --  @param Minimum_Radius Smallest searched radius in pixels; default 0.
+   --  With the automatic maximum it must leave a nonempty radius range.
+   --  @return Fresh Ada array of circles with votes, in unspecified order.
+   --  Nonempty results start at zero; when no circle is found the result
+   --  is the null range 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Source, an invalid Accumulator_Scale or
+   --  Minimum_Center_Distance, an empty radius range, native arithmetic that
+   --  cannot be represented, or an OpenCV failure.
    function Find_Hough_Circles_With_Votes
      (Source                  : OpenCV.Core.Mat;
       Accumulator_Scale       : OpenCV.Float64_Value;
@@ -5130,6 +5619,33 @@ package OpenCV.Image_Processing is
       Minimum_Radius          : OpenCV.Size_Coordinate := 0)
       return Hough_Circle_With_Votes_Array;
 
+   --  This overload of Find_Hough_Circles_With_Votes mirrors the
+   --  explicit-interval Find_Hough_Circles: radii from Minimum_Radius to
+   --  Maximum_Radius, which must exceed Minimum_Radius (never silently
+   --  widened) and be at most 46340, with the same rejections. Like the
+   --  other overload it always estimates radii and reports, for each
+   --  circle, the support count of the chosen radius from OpenCV's binary32
+   --  Vec4f output (counts above `2**24` may already have been rounded).
+   --  @param Source Grayscale image to analyse: nonempty 2-D UInt8 C1.
+   --  @param Accumulator_Scale Inverse accumulator resolution (OpenCV dp),
+   --  finite and at least 1.0.
+   --  @param Minimum_Center_Distance Minimum distance between detected
+   --  centers (OpenCV minDist); positive and finite.
+   --  @param Canny_Threshold Upper threshold of the internal Canny edge
+   --  detector; the lower one is half of it, but at least one.
+   --  @param Accumulator_Threshold Accumulator vote threshold for circle
+   --  centers, also applied to radius support.
+   --  @param Minimum_Radius Smallest searched radius in pixels; default 0.
+   --  @param Maximum_Radius Largest searched radius in pixels; greater than
+   --  Minimum_Radius and at most 46340.
+   --  @return Fresh Ada array of circles with votes, in unspecified order.
+   --  Nonempty results start at zero; when no circle is found the result
+   --  is the null range 1 .. 0.
+   --  @exception OpenCV_Error Raised for an empty, non-2-D or
+   --  non-UInt8 C1 Source, an invalid Accumulator_Scale or
+   --  Minimum_Center_Distance, Maximum_Radius <= Minimum_Radius, an empty
+   --  radius range, native arithmetic that cannot be represented, or an
+   --  OpenCV failure.
    function Find_Hough_Circles_With_Votes
      (Source                  : OpenCV.Core.Mat;
       Accumulator_Scale       : OpenCV.Float64_Value;
