@@ -223,6 +223,62 @@ PLAYWRIGHT_MODULE=/path/to/node_modules/playwright \
 DOC_URL=http://127.0.0.1:8072/ node scripts/test_gnatdoc_presentation_browser.cjs
 ```
 
+## Operation-level API browser (IMGPROC-DOC-004)
+
+Core's browser searches 195 packages; Imgproc publishes one package with
+314 declarations, so its browser works per declaration.
+`enhance_gnatdoc_navigation.py` changes only `api/index.html`, adding:
+
+- one hidden search control group (label, search field, Clear button and a
+  polite live status), revealed by the script;
+- a static "Public API" list in the sidebar with every visible-part
+  declaration, grouped into eight collapsible `<details>` categories. Each
+  entry is a native link to the declaration's verified anchor in the
+  documentation frame and shows its kind and, for overloads, "overload N
+  of M"; the full profile is the link title;
+- one deferred repository-owned script, `gnatdoc-navigation.js`.
+
+Entries come from the public specification (names, kinds, profiles, overload
+order), the reviewed category manifest `docs/api-categories.json` and anchors
+discovered from source-matched native sections. The manifest must assign
+every public declaration name to exactly one of its eight categories and name
+nothing else; a new declaration fails generation until it is categorized. No
+filename or anchor is computed.
+
+The script provides case-insensitive search over name, kind, category title
+and profile (every word must match, so `match template` finds
+`Match_Template`), category expansion for matches, a count or "No matching
+declarations." in the live status, and Clear, which restores the list and
+returns focus to the field. Selecting an entry marks it with
+`aria-current="page"`, loads its anchor in the frame by replacing the frame's
+history entry, and records a bookmark such as
+`api/index.html?op=Match_Template&overload=2` in the outer history, so Back,
+Forward and reload restore the selection. Lookups ignore identifier case and
+canonicalize the URL; unknown or path-like requests select nothing and are
+removed from the URL. Destinations always come from the static entries,
+never from query or search text. Without JavaScript the controls stay hidden
+and the categorized links, compilation unit link and tabs still work.
+Declaration pages are unchanged.
+
+Validation rebuilds the expected index from the pinned native serialization,
+the theme metadata and the recomputed entries and compares it byte for byte;
+the script bytes must equal the repository asset, and it is the only script
+allowed, once, in the index. `test_gnatdoc_navigation.py` rejects category
+manifest errors, wrong-but-existing destinations, missing entries, inline
+handlers, extra scripts, a tampered asset and changed frame targets, and
+checks that every declaration has exactly one entry and that enhancement is
+idempotent.
+
+`scripts/test_gnatdoc_navigation_browser.cjs` (optional Playwright and
+Chrome, as above) qualifies the browser at 1280 and 390 pixels in light and
+dark: the 314 entries and eight categories, searches for `gAuSsIaN`, `warp`,
+`contours`, `hough`, `match_template`, `match template`, `phase_correlate`
+and `color conversion`, overload labels, no-results and Clear, frame
+navigation to native anchors, bookmarks, Back, Forward, reload, a copied
+case-insensitive bookmark in a fresh context, an unknown request, keyboard
+search and selection with visible focus, no page overflow, and
+JavaScript-disabled navigation through a category.
+
 ## Declaration coverage (IMGPROC-DOC-002A)
 
 `scripts/check_doc_coverage.py` measures documentation by declaration

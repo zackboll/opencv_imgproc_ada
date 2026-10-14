@@ -59,6 +59,8 @@ cp docs/index.html _site/index.html
 python3 scripts/install_gnatdoc_theme.py _site/api
 python3 scripts/link_gnatdoc_types.py _site/api
 python3 scripts/highlight_gnatdoc_ada.py _site/api
+# Operation-level browser in the native index; declaration pages are unchanged.
+python3 scripts/enhance_gnatdoc_navigation.py _site/api
 python3 scripts/validate_docs.py _site
 # Declaration, overload and member documentation coverage, with the same ratchet.
 python3 scripts/check_doc_coverage.py --fail-on-removed \

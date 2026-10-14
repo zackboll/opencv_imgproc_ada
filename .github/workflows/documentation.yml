@@ -64,10 +64,11 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_link_gnatdoc_types.py' -v
       - name: Generate and validate public API
         run: sh scripts/generate_docs.sh
-      - name: Qualify generated site against validator and coverage mutations
+      - name: Qualify generated site against validator, coverage and navigation mutations
         run: |
           python3 -m unittest discover -s scripts -p 'test_validate_docs.py' -v
           python3 -m unittest discover -s scripts -p 'test_check_doc_coverage.py' -v
+          python3 -m unittest discover -s scripts -p 'test_gnatdoc_navigation.py' -v
       - name: Qualify deterministic fresh generation and idempotent enhancement
         run: |
           cp -a _site /tmp/documentation-first
@@ -76,6 +77,7 @@ jobs:
           python3 scripts/install_gnatdoc_theme.py _site/api
           python3 scripts/link_gnatdoc_types.py _site/api
           python3 scripts/highlight_gnatdoc_ada.py _site/api
+          python3 scripts/enhance_gnatdoc_navigation.py _site/api
           diff -r /tmp/documentation-first _site
       - name: Compile and run the landing-page example
         run: |
