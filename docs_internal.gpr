@@ -1,0 +1,8 @@
+with "opencv_core.gpr";
+
+--  Internal Imgproc interop units are parsed only for name resolution.
+project Docs_Internal is
+   for Languages use ("Ada");
+   for Source_Dirs use ("src/internal");
+   for Object_Dir use "obj/docs-internal";
+end Docs_Internal;
