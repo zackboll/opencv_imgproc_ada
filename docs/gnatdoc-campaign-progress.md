@@ -67,8 +67,8 @@ branch, regenerated and qualified there.
 | DOC-002D group C color | `feature/imgproc-doc-002d-color` | #56 (DOC-002C branch) | Open; head `bba9821` |
 | DOC-002E group E contours and drawing | `feature/imgproc-doc-002e-contours` | #57 (DOC-002D branch) | Open; head `a465211` |
 | DOC-002F group F histograms | `feature/imgproc-doc-002f-histograms` | #58 (DOC-002E branch) | Open; head `56e9720` |
-| DOC-002G group G Hough and matching | `feature/imgproc-doc-002g-matching` | DOC-002F branch | Qualified locally: zero warnings, 1,512/1,512 |
-| DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | stacked | Tooling staged locally |
+| DOC-002G group G Hough and matching | `feature/imgproc-doc-002g-matching` | #59 (DOC-002F branch) | Open; head `0cd4817`; zero warnings, 1,512/1,512 |
+| DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | DOC-002G branch | Qualified locally |
 | DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | stacked | Tooling staged locally |
 | DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
 
@@ -361,6 +361,35 @@ Branch `feature/imgproc-doc-002g-matching` from DOC-002F head `56e9720`.
   "documentation baselines must stay empty").
 - Warnings 131 -> 0; coverage 1,381 -> 1,512 of 1,512 items.
 
+### IMGPROC-DOC-003 — theme, type links and Ada highlighting
+
+Branch `feature/imgproc-doc-003-presentation` from DOC-002G head `0cd4817`.
+Tooling developed in the scratch worktree `dev-003` (local commit
+`30978f9`, never pushed) and applied with `git apply -3`.
+
+- Adapted Core tools: `install_gnatdoc_theme.py` (viewport and theme
+  metadata, `presentation.json` protection of all non-snippet HTML and the
+  native stylesheet) and `highlight_gnatdoc_ada.py` (Core lexer, atomic
+  links); Imgproc theme CSS (Core palette without generic-instance styles;
+  dashed underline for Core links).
+- New Imgproc `link_gnatdoc_types.py`: 331 intra-page type links to
+  discovered native anchors and 551 package-level Core links verified
+  against Core's `opencv.ads`/`opencv-core.ads` visible parts, opening the
+  Core bookmarks `?package=OpenCV` / `?package=OpenCV.Core` at top level;
+  69 Standard type marks unlinked; GNATdoc's `…` elision of long
+  enumerations handled explicitly.
+- Validator: enhancement files allowed, index compared to the themed native
+  serialization, external API links limited to the two Core bookmarks,
+  independent theme/link/highlight recomputation, representative overload
+  link probes.
+- Tests: 20 synthetic link/theme/highlight tests and 10 new generated-site
+  mutations (127 Python tests in total). Fresh regeneration and repeated
+  enhancement are byte-identical.
+- Browser (Playwright 1.62 module from `~/.npm/_npx`, Chrome 155): 1280/390
+  px, light/dark, landing and API pages, no page overflow, Core links,
+  anchor navigation, focus outline, JavaScript-disabled native navigation;
+  eight screenshots inspected.
+
 ## Findings for the maintainers (not changed: outside documentation scope)
 
 - CLAHE (shim `opencv_imgproc_clahe`): the isolating clone is taken only for
@@ -399,14 +428,7 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 6. **IMGPROC-DOC-002F** — done (see checkpoint).
 7. **IMGPROC-DOC-002G** — done (see checkpoint): zero warnings, complete
    coverage, empty baselines enforced.
-8. **IMGPROC-DOC-003** — theme, viewport, Ada highlighting and verified type
-   links: intra-page Imgproc types, and Core types (`OpenCV.Core.Mat`,
-   `Mat_Array`, `Min_Max_Loc`; root `Size`, `Point`, `Scalar`, `Rect`,
-   `Border_Kind`, `Float32_Value`, `Float64_Value`, `OpenCV_Error`, ...) linked
-   at package level to the verified Core navigation URLs
-   `https://zackboll.github.io/opencv_core_ada/api/index.html?package=OpenCV`
-   and `...?package=OpenCV.Core` (HTTP 200 at campaign start). No
-   declaration-level Core fragments.
+8. **IMGPROC-DOC-003** — done (see checkpoint).
 9. **IMGPROC-DOC-004** — operation-level browser: source-backed category
    manifest, case-insensitive search over the 184 subprograms and types,
    overload identification, native anchors only, bookmarkable selection,
@@ -418,8 +440,7 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 
 ## Next executable task
 
-Create `feature/imgproc-doc-003-presentation` from the DOC-002G head and
-apply the staged DOC-003 tooling (`dev-003` commit `30978f9` against its
-base `f576f4a`) with `git apply -3`, regenerate, qualify (including the
-Playwright presentation harness) and open the stacked PR; then DOC-004 (the
-staged navigation work in `dev-003`) and DOC-005.
+Create `feature/imgproc-doc-004-navigation` from the DOC-003 head and apply
+the staged navigation work (the `dev-003` working-tree changes on top of
+`30978f9`) with `git apply -3`, regenerate, qualify (including the
+Playwright navigation harness) and open the stacked PR; then DOC-005.

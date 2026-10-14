@@ -124,20 +124,22 @@ IMGPROC-DOC-002G reached zero, and the baseline is now required to stay empty
 `validate_docs.py` derives its expectations from `src/*.ads`, never from the
 generated output, and modifies nothing:
 
-- The site contains exactly `index.html`, `api/index.html`, `api/gnatdoc.css`
-  and one native page per public package. GNATdoc 26.0.0 names package pages
-  with 64-hex hashes; pages are identified by their actual `<h1>`, never by a
-  computed filename. Any other file, an internal or Core package page, or a
-  missing public package fails.
+- The site contains exactly `index.html`, `api/index.html`, `api/gnatdoc.css`,
+  the presentation files listed below, and one native page per public
+  package. GNATdoc 26.0.0 names package pages with 64-hex hashes; pages are
+  identified by their actual `<h1>`, never by a computed filename. Any other
+  file, an internal or Core package page, or a missing public package fails.
 - `api/index.html` must equal the pinned GNATdoc 26.0.0 serialization rebuilt
-  from the discovered pages, including every `target=document-content`.
+  from the discovered pages, including every `target=document-content`, plus
+  only the approved presentation changes.
 - Every visible-part declaration has exactly one native `h4` section of the
   same kind. Subprogram sections must reproduce the complete normalized
   profile, so removing, adding or altering one overload fails, and private-part
   declarations must not appear. Selected overloads must render their own
   comments in their own section.
 - Links must be relative and resolve inside the site, including fragments.
-  API pages have no external links; the landing page may link only to the
+  The only external links in API pages are the two recomputed package-level
+  Core type links described below; the landing page may link only to the
   Imgproc and Core repositories and the Core documentation site.
 - Scripts, `base`/`object`/`embed`/`form` elements, `meta http-equiv`, event
   handler attributes, duplicate IDs, internal unit names and machine-local
@@ -151,6 +153,75 @@ index targets, duplicate IDs, scripts and handlers, root-absolute, traversal
 and external links, internal package pages, stray files, removed or altered
 overloads, published private declarations, misplaced overload comments,
 leaked paths and changed examples must all be rejected.
+
+## Presentation: theme, type links and Ada highlighting (IMGPROC-DOC-003)
+
+Adapted from Core's DOC-069/DOC-070 tooling. `generate_docs.sh` runs three
+deterministic, idempotent steps after the warning check; each verifies the
+previous ones before writing anything:
+
+1. `install_gnatdoc_theme.py` inserts one viewport `meta` and one stylesheet
+   link after GNATdoc's native stylesheet in every API page and copies
+   `docs/assets/gnatdoc-theme.css` (responsive layout, light and dark color
+   schemes, visible keyboard focus, readable code blocks that scroll inside
+   themselves on narrow screens). `api/presentation.json` records every
+   page's native HTML outside declaration snippets and the hash of the
+   native `gnatdoc.css`; any other change to that HTML or either stylesheet
+   fails.
+2. `link_gnatdoc_types.py` links type marks inside native declaration
+   snippets only: parameter, component, return, array component, subtype and
+   derived-type positions, never defaults, constraints or attributes.
+   - An Imgproc type links to its own native section anchor, discovered from
+     the source-matched section, when exactly one visible-part declaration
+     of that name precedes the reference and no parameter or discriminant
+     of the same declaration shadows it.
+   - `OpenCV.X` and `OpenCV.Core.X` link only when Core's `src/opencv.ads`
+     or `src/opencv-core.ads` (from the sibling `../core` checkout) declares
+     that type in the visible part of exactly that package. The destination
+     is the published Core browser's package bookmark,
+     `https://zackboll.github.io/opencv_core_ada/api/index.html?package=OpenCV`
+     or `...?package=OpenCV.Core`, the only stable destination its
+     navigation supports; no declaration fragment is invented. These links
+     carry `target="_top"` so the Core site replaces the whole window
+     rather than nesting frames, and are drawn with a dashed underline.
+   - Standard types (`Natural`, `Positive`, `Boolean`, `String`) and anything
+     unresolved stay unlinked.
+   `api/type-crossrefs.json` keeps the original snippets and a hash of the
+   page outside them; validation recomputes every link and requires
+   byte-identical snippets. The current output has 331 Imgproc and 551
+   Core links in 314 snippets; 69 Standard type marks stay unlinked.
+   GNATdoc 26.0.0 elides the middle of long enumeration snippets (`…,`);
+   the source matcher accepts exactly that elision, and the complete literal
+   lists remain under each type's Enumeration Literal heading.
+3. `highlight_gnatdoc_ada.py` colors Ada keywords, numbers, strings,
+   characters, attributes, comments and operators inside snippets with
+   flat `ada-*` spans, keeps type links atomic and proves that removing the
+   spans restores the exact snippet text.
+
+`validate_docs.py` then repeats the theme, link and highlighting checks
+independently and probes representative overloads (`Phase_Correlate`,
+`Gaussian_Blur`, `Find_Contours`) for the exact type identities their own
+snippets must link. `test_link_gnatdoc_types.py` covers a synthetic fixture,
+and `test_validate_docs.py` mutates the real site: wrong-but-existing type
+destinations, fabricated Core declaration fragments, removed links, changed
+declaration text, changed descriptions, a tampered theme asset, corrupted or
+downgraded manifests and stray presentation files are all rejected.
+Repeating the three steps on a finished site is byte-identical.
+
+The optional real-browser harness `scripts/test_gnatdoc_presentation_browser.cjs`
+uses an externally installed Playwright module and Google Chrome (never a
+site or library dependency). At 1280 and 390 pixels in light and dark it
+checks the landing page and API page backgrounds, the absence of horizontal
+page overflow, highlighting, that every Core link is an approved package
+bookmark opening at top level, that an internal type link lands on the
+native anchor, keyboard focus outlines, a Core link replacing the window,
+and native navigation with JavaScript disabled:
+
+```sh
+python3 -m http.server 8072 --bind 127.0.0.1 --directory _site
+PLAYWRIGHT_MODULE=/path/to/node_modules/playwright \
+DOC_URL=http://127.0.0.1:8072/ node scripts/test_gnatdoc_presentation_browser.cjs
+```
 
 ## Declaration coverage (IMGPROC-DOC-002A)
 
