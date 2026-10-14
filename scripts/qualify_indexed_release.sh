@@ -13,6 +13,10 @@ alr -n settings --set dependencies.shared false
 alr -n update
 alr -n with --solve > "$logs/resolution.log"
 cat "$logs/resolution.log"
+if grep -F 'Dependencies (missing):' "$logs/resolution.log"; then
+    echo 'error: incomplete indexed dependency solution' >&2
+    exit 1
+fi
 grep -F 'opencv_core=0.4.1 (origin: git)' "$logs/resolution.log"
 if grep -E '\[\[pins\]\]|path[[:space:]]*=' alire.toml; then
     echo 'error: release library must not contain development pins' >&2
@@ -25,6 +29,9 @@ alr exec -- sh -c 'gnat --version; gprbuild --version; gcc -print-file-name=adal
 alr -n -C tests settings --set dependencies.shared false
 alr -n -C tests run > "$logs/aunit.log" 2>&1
 tail -5 "$logs/aunit.log"
+grep -E '^Successful Tests:[[:space:]]+1129$' "$logs/aunit.log"
+grep -E '^Failed Assertions:[[:space:]]+0$' "$logs/aunit.log"
+grep -E '^Unexpected Errors:[[:space:]]+0$' "$logs/aunit.log"
 for name in emd_signature_index bayer_layout morphology_expansion yuv420_layout \
     yuv422_layout resize_exact_layout colormap_layout flood_fill_int32 \
     blend_linear_layout guil_layout squared_box_layout; do
@@ -32,6 +39,17 @@ for name in emd_signature_index bayer_layout morphology_expansion yuv420_layout 
         "tests/${name}_test.cpp" -o "$logs/$name"
     "$logs/$name" > "$logs/$name.log" 2>&1
 done
+package=${OPENCV_TEST_PACKAGE:-opencv4}
+include=$(pkg-config --variable=includedir "$package")
+if [ -z "$include" ]; then
+    include=$(pkg-config --variable=includedir_new "$package")
+fi
+c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+    -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+    -isystem "$include" tests/subpixel_patch_guard_test.cpp \
+    $(pkg-config --libs-only-L "$package") -lopencv_core \
+    -o "$logs/subpixel_patch_guard"
+"$logs/subpixel_patch_guard" > "$logs/subpixel_patch_guard.log" 2>&1
 export OPENCV_CORE_TEST_PREFIX="$core"
 for name in subpixel_patch_native spatial_gradient_native squared_box_consistency \
     ballard_consistency guil_consistency masked_template_consistency \

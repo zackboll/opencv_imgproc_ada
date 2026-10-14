@@ -64,7 +64,10 @@ jobs:
           pkg-config --modversion opencv
 
       - name: Build Imgproc with Core bridge
-        run: alr -n build
+        run: |
+          alr -n build
+          core=$(alr exec -- printenv OPENCV_CORE_ALIRE_PREFIX)
+          echo "OPENCV_CORE_TEST_PREFIX=$core" >> "$GITHUB_ENV"
 
       - name: Run EMD signature index boundary test
         run: |
@@ -270,7 +273,10 @@ jobs:
           xcrun clang++ --version
 
       - name: Build Imgproc with Core bridge
-        run: alr -n build
+        run: |
+          alr -n build
+          core=$(alr exec -- printenv OPENCV_CORE_ALIRE_PREFIX)
+          echo "OPENCV_CORE_TEST_PREFIX=$core" >> "$GITHUB_ENV"
 
       - name: Run EMD signature index boundary test
         run: |
@@ -712,7 +718,8 @@ jobs:
 
       - name: Run Imgproc tests
         run: |
-          PATH="$PWD/lib:$PWD/../core/lib:/mingw64/bin:$PATH" \
+          core=$(alr exec -- printenv OPENCV_CORE_ALIRE_PREFIX)
+          PATH="$PWD/lib:$core/lib:/mingw64/bin:$PATH" \
             alr -n -C tests run
 
       - name: Run YUV420 arithmetic boundary tests

@@ -6,6 +6,9 @@ Release preparation is tracked in
 [IMGPROC-REL-001 qualification](docs/imgproc-rel-001-qualification.md).
 The native release candidate uses indexed `opencv_core` 0.4.1; GNAT 12
 production and AdaCore/Yocto target support are not included in this claim.
+Publication remains blocked by two actual OpenCV 4.1 full-suite failures
+(Bayer edge-aware color order and UInt16 Otsu). Other successful qualifications
+do not override that retained compatibility gate.
 
 ### Added since indexed 0.1.0
 
