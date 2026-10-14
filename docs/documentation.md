@@ -151,6 +151,38 @@ and external links, internal package pages, stray files, removed or altered
 overloads, published private declarations, misplaced overload comments,
 leaked paths and changed examples must all be rejected.
 
+## Declaration coverage (IMGPROC-DOC-002A)
+
+`scripts/check_doc_coverage.py` measures documentation by declaration
+identity, independently of GNATdoc's warnings. Its inventory comes from the
+visible part of `src/*.ads`: the package description; every declaration,
+identified by kind, name and, for subprograms, the complete normalized
+profile, so each overload is a separate item; every parameter and every
+function's return value; every enumeration literal; every record component
+and discriminant. It reads the native section of that exact declaration and
+requires:
+
+- the members GNATdoc lists to be exactly the source members, in order;
+- non-trivial text for each item: at least two words, not merely its name,
+  so an empty `@param` or a copied identifier does not count;
+- every visible-part comment block to be attached: immediately preceding
+  the package or a declaration, or the first block inside the package
+  followed by a blank line (the package-description layout GNATformat
+  accepts), and every line of it to render inside that description or
+  declaration section. Detached, trailing and markup-mangled comments fail.
+
+Undocumented items are ratcheted in `docs/gnatdoc-coverage-baseline.txt`
+exactly like warnings (`--fail-on-removed`, `--write-baseline`);
+attachment errors and member mismatches can never be baselined.
+`generate_docs.sh` runs the check after validation; `--report` prints
+coverage by item kind.
+
+`scripts/check_comment_only.py REVISION` proves that a documentation change
+altered only comments: every Ada source under `src/` must have the same
+tokens as at `REVISION` once comments and layout are removed, with string
+and character literals kept. It qualifies documentation pull requests; it is
+not a CI gate, because feature work legitimately changes declarations.
+
 ## Landing-page example
 
 The example on `docs/index.html` is `docs/example.adb`, compiled with
@@ -187,24 +219,33 @@ and a blank line between a comment and its declaration detaches the comment.
 A comment placed after a declaration documents the *next* declaration, so
 existing trailing comments must be moved when their declaration is
 documented. Use `@param`, `@return` and `@exception` with names matching the
-actual declaration. In GNATdoc 26.0.0, enumeration literals are documented in
-the type's leading block with `@enum` (`@value` is not recognized) and record
-components, including discriminants, with `@field`. For example:
+actual declaration; tag text may continue on the following comment lines.
+In GNATdoc 26.0.0, enumeration literals are documented in the type's leading
+block with `@enum` (`@value` is not recognized) and record components,
+including discriminants and variant components, with `@field`. Write
+`@exception OpenCV_Error`: GNATdoc splits a dotted name such as
+`OpenCV.OpenCV_Error` at the dot. The package description is the first
+comment block inside the package, followed by a blank line; GNATformat
+inserts a blank line between a comment and `package`, which would detach a
+leading package comment. For example:
 
 ```ada
 --  Blurs Source with an isotropic Gaussian kernel.
 --  @param Source Nonempty 2-D Mat, borrowed and not modified.
---  @param Destination Replaced with a Mat of Source's geometry and type.
---  @exception OpenCV.OpenCV_Error Invalid input or an OpenCV failure.
+--  @param Destination Receives a Mat of Source's geometry and type.
+--  @exception OpenCV_Error Invalid input or an OpenCV failure.
 procedure Gaussian_Blur
   (Source      : OpenCV.Core.Mat;
    Destination : in out OpenCV.Core.Mat; ...
 ```
 
-GNATdoc 26.0.0 treats a pair of `*` characters in a comment as emphasis, so
-a formula such as `A*B + C*D` loses both asterisks and renders `B + C` as
-emphasis. Four current sections are affected; avoid new `*` products until
-the campaign qualifies a formula form.
+Comments are rendered as Markdown-like text. A pair of `*` characters
+becomes emphasis, so a formula such as `A*B + C*D` written in prose loses
+both asterisks; backslash escapes are not supported. Put formulas in a
+backtick code span (`` `(1 - W) * B + W * S` ``), or in an indented block: a
+bare `--` line, lines with at least five spaces after `--`, then a bare `--`
+line. Lines starting with `- ` or `* ` form bullet lists and a bare `--` line
+separates paragraphs.
 
 Describe purpose, depth and channel restrictions, geometry, parameter ranges,
 result representation, ownership and aliasing, Regions, masks, exceptions and
@@ -219,6 +260,10 @@ declarations or behavior to improve generated output.
 python3 -m unittest discover -s scripts -p 'test_*.py' -v
 sh scripts/generate_docs.sh
 python3 -m unittest discover -s scripts -p 'test_validate_docs.py' -v
+python3 -m unittest discover -s scripts -p 'test_check_doc_coverage.py' -v
+python3 scripts/check_doc_coverage.py --report docs/gnatdoc-coverage-baseline.txt _site
+python3 scripts/check_comment_only.py origin/main   # documentation-only changes
+alr exec -- gnatformat --check -P opencv_imgproc.gpr src/opencv-image_processing.ads
 alr exec -- gprbuild -P docs/example.gpr && obj/docs-example/example
 git diff --check
 ```

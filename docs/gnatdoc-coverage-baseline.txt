@@ -11,24 +11,6 @@ OpenCV.Image_Processing: function Blend_Linear (Source_1, Source_2, Weight_1, We
 OpenCV.Image_Processing: function Blend_Linear (Source_1, Source_2, Weight_1, Weight_2 : OpenCV.Core.Mat) return OpenCV.Core.Mat: parameter Weight_1
 OpenCV.Image_Processing: function Blend_Linear (Source_1, Source_2, Weight_1, Weight_2 : OpenCV.Core.Mat) return OpenCV.Core.Mat: parameter Weight_2
 OpenCV.Image_Processing: function Blend_Linear (Source_1, Source_2, Weight_1, Weight_2 : OpenCV.Core.Mat) return OpenCV.Core.Mat: return
-OpenCV.Image_Processing: type Phase_Correlation_Result: description
-OpenCV.Image_Processing: type Phase_Correlation_Result: component X_Shift
-OpenCV.Image_Processing: type Phase_Correlation_Result: component Y_Shift
-OpenCV.Image_Processing: type Phase_Correlation_Result: component Response
-OpenCV.Image_Processing: function Phase_Correlate (Source_1, Source_2 : OpenCV.Core.Mat) return Phase_Correlation_Result: parameter Source_1
-OpenCV.Image_Processing: function Phase_Correlate (Source_1, Source_2 : OpenCV.Core.Mat) return Phase_Correlation_Result: parameter Source_2
-OpenCV.Image_Processing: function Phase_Correlate (Source_1, Source_2 : OpenCV.Core.Mat) return Phase_Correlation_Result: return
-OpenCV.Image_Processing: function Phase_Correlate (Source_1, Source_2, Window : OpenCV.Core.Mat) return Phase_Correlation_Result: description
-OpenCV.Image_Processing: function Phase_Correlate (Source_1, Source_2, Window : OpenCV.Core.Mat) return Phase_Correlation_Result: parameter Source_1
-OpenCV.Image_Processing: function Phase_Correlate (Source_1, Source_2, Window : OpenCV.Core.Mat) return Phase_Correlation_Result: parameter Source_2
-OpenCV.Image_Processing: function Phase_Correlate (Source_1, Source_2, Window : OpenCV.Core.Mat) return Phase_Correlation_Result: parameter Window
-OpenCV.Image_Processing: function Phase_Correlate (Source_1, Source_2, Window : OpenCV.Core.Mat) return Phase_Correlation_Result: return
-OpenCV.Image_Processing: type Hanning_Window_Depth: description
-OpenCV.Image_Processing: type Hanning_Window_Depth: literal Float32_Hanning_Window
-OpenCV.Image_Processing: type Hanning_Window_Depth: literal Float64_Hanning_Window
-OpenCV.Image_Processing: function Create_Hanning_Window (Window_Size : OpenCV.Size; Depth : Hanning_Window_Depth : = Float64_Hanning_Window) return OpenCV.Core.Mat: parameter Window_Size
-OpenCV.Image_Processing: function Create_Hanning_Window (Window_Size : OpenCV.Size; Depth : Hanning_Window_Depth : = Float64_Hanning_Window) return OpenCV.Core.Mat: parameter Depth
-OpenCV.Image_Processing: function Create_Hanning_Window (Window_Size : OpenCV.Size; Depth : Hanning_Window_Depth : = Float64_Hanning_Window) return OpenCV.Core.Mat: return
 OpenCV.Image_Processing: function Accumulate_Image (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat: parameter Source
 OpenCV.Image_Processing: function Accumulate_Image (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat: parameter Base
 OpenCV.Image_Processing: function Accumulate_Image (Source, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat: return
@@ -205,19 +187,6 @@ OpenCV.Image_Processing: type Color_Conversion: literal Luv_To_Linear_BGR
 OpenCV.Image_Processing: type Color_Conversion: literal Luv_To_Linear_RGB
 OpenCV.Image_Processing: type Color_Conversion: literal RGBA_To_Premultiplied_RGBA
 OpenCV.Image_Processing: type Color_Conversion: literal Premultiplied_RGBA_To_RGBA
-OpenCV.Image_Processing: type Interpolation_Method: description
-OpenCV.Image_Processing: type Interpolation_Method: literal Nearest_Neighbor
-OpenCV.Image_Processing: type Interpolation_Method: literal Linear
-OpenCV.Image_Processing: type Interpolation_Method: literal Cubic
-OpenCV.Image_Processing: type Interpolation_Method: literal Area
-OpenCV.Image_Processing: type Interpolation_Method: literal Lanczos_4
-OpenCV.Image_Processing: type Interpolation_Method: literal Linear_Exact
-OpenCV.Image_Processing: type Polar_Mapping: description
-OpenCV.Image_Processing: type Polar_Mapping: literal Linear_Polar
-OpenCV.Image_Processing: type Polar_Mapping: literal Logarithmic_Polar
-OpenCV.Image_Processing: type Polar_Direction: description
-OpenCV.Image_Processing: type Polar_Direction: literal Cartesian_To_Polar
-OpenCV.Image_Processing: type Polar_Direction: literal Polar_To_Cartesian
 OpenCV.Image_Processing: type Canny_Aperture: description
 OpenCV.Image_Processing: type Canny_Aperture: literal Sobel_3x3
 OpenCV.Image_Processing: type Canny_Aperture: literal Sobel_5x5
@@ -230,46 +199,6 @@ OpenCV.Image_Processing: type Sobel_Kernel_Size: literal Kernel_1
 OpenCV.Image_Processing: type Sobel_Kernel_Size: literal Kernel_3
 OpenCV.Image_Processing: type Sobel_Kernel_Size: literal Kernel_5
 OpenCV.Image_Processing: type Sobel_Kernel_Size: literal Kernel_7
-OpenCV.Image_Processing: type Corner_Aperture: literal Aperture_3
-OpenCV.Image_Processing: type Corner_Aperture: literal Aperture_5
-OpenCV.Image_Processing: type Corner_Aperture: literal Aperture_7
-OpenCV.Image_Processing: subtype Corner_Block_Size: description
-OpenCV.Image_Processing: type Corner_Point_Array: description
-OpenCV.Image_Processing: subtype Corner_Iteration_Limit: description
-OpenCV.Image_Processing: type Corner_Termination: description
-OpenCV.Image_Processing: type Corner_Termination: component Maximum_Iterations
-OpenCV.Image_Processing: type Corner_Termination: component Epsilon
-OpenCV.Image_Processing: type Corner_Dead_Zone: description
-OpenCV.Image_Processing: type Corner_Dead_Zone: component Enabled
-OpenCV.Image_Processing: type Corner_Dead_Zone: component Half_Size
-OpenCV.Image_Processing: function Corner_Minimum_Eigenvalue (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Source
-OpenCV.Image_Processing: function Corner_Minimum_Eigenvalue (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Block_Size
-OpenCV.Image_Processing: function Corner_Minimum_Eigenvalue (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Aperture
-OpenCV.Image_Processing: function Corner_Minimum_Eigenvalue (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Border
-OpenCV.Image_Processing: function Corner_Minimum_Eigenvalue (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: return
-OpenCV.Image_Processing: function Harris_Corner_Response (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; K : OpenCV.Float64_Value : = 0.04; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: description
-OpenCV.Image_Processing: function Harris_Corner_Response (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; K : OpenCV.Float64_Value : = 0.04; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Source
-OpenCV.Image_Processing: function Harris_Corner_Response (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; K : OpenCV.Float64_Value : = 0.04; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Block_Size
-OpenCV.Image_Processing: function Harris_Corner_Response (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; K : OpenCV.Float64_Value : = 0.04; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Aperture
-OpenCV.Image_Processing: function Harris_Corner_Response (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; K : OpenCV.Float64_Value : = 0.04; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter K
-OpenCV.Image_Processing: function Harris_Corner_Response (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; K : OpenCV.Float64_Value : = 0.04; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Border
-OpenCV.Image_Processing: function Harris_Corner_Response (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; K : OpenCV.Float64_Value : = 0.04; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: return
-OpenCV.Image_Processing: function Corner_Eigenvalues_And_Vectors (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Source
-OpenCV.Image_Processing: function Corner_Eigenvalues_And_Vectors (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Block_Size
-OpenCV.Image_Processing: function Corner_Eigenvalues_And_Vectors (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Aperture
-OpenCV.Image_Processing: function Corner_Eigenvalues_And_Vectors (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Border
-OpenCV.Image_Processing: function Corner_Eigenvalues_And_Vectors (Source : OpenCV.Core.Mat; Block_Size : Corner_Block_Size : = 3; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: return
-OpenCV.Image_Processing: function Pre_Corner_Response (Source : OpenCV.Core.Mat; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: description
-OpenCV.Image_Processing: function Pre_Corner_Response (Source : OpenCV.Core.Mat; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Source
-OpenCV.Image_Processing: function Pre_Corner_Response (Source : OpenCV.Core.Mat; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Aperture
-OpenCV.Image_Processing: function Pre_Corner_Response (Source : OpenCV.Core.Mat; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: parameter Border
-OpenCV.Image_Processing: function Pre_Corner_Response (Source : OpenCV.Core.Mat; Aperture : Corner_Aperture : = Aperture_3; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101) return OpenCV.Core.Mat: return
-OpenCV.Image_Processing: function Refine_Corners_Subpixel (Source : OpenCV.Core.Mat; Corners : Corner_Point_Array; Search_Window : OpenCV.Size; Dead_Zone : Corner_Dead_Zone : = (Enabled => False); Termination : Corner_Termination : = (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array: parameter Source
-OpenCV.Image_Processing: function Refine_Corners_Subpixel (Source : OpenCV.Core.Mat; Corners : Corner_Point_Array; Search_Window : OpenCV.Size; Dead_Zone : Corner_Dead_Zone : = (Enabled => False); Termination : Corner_Termination : = (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array: parameter Corners
-OpenCV.Image_Processing: function Refine_Corners_Subpixel (Source : OpenCV.Core.Mat; Corners : Corner_Point_Array; Search_Window : OpenCV.Size; Dead_Zone : Corner_Dead_Zone : = (Enabled => False); Termination : Corner_Termination : = (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array: parameter Search_Window
-OpenCV.Image_Processing: function Refine_Corners_Subpixel (Source : OpenCV.Core.Mat; Corners : Corner_Point_Array; Search_Window : OpenCV.Size; Dead_Zone : Corner_Dead_Zone : = (Enabled => False); Termination : Corner_Termination : = (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array: parameter Dead_Zone
-OpenCV.Image_Processing: function Refine_Corners_Subpixel (Source : OpenCV.Core.Mat; Corners : Corner_Point_Array; Search_Window : OpenCV.Size; Dead_Zone : Corner_Dead_Zone : = (Enabled => False); Termination : Corner_Termination : = (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array: parameter Termination
-OpenCV.Image_Processing: function Refine_Corners_Subpixel (Source : OpenCV.Core.Mat; Corners : Corner_Point_Array; Search_Window : OpenCV.Size; Dead_Zone : Corner_Dead_Zone : = (Enabled => False); Termination : Corner_Termination : = (Maximum_Iterations => 30, Epsilon => 0.01)) return Corner_Point_Array: return
 OpenCV.Image_Processing: type Laplacian_Kernel_Size: description
 OpenCV.Image_Processing: subtype Median_Kernel_Size: description
 OpenCV.Image_Processing: subtype Bilateral_Diameter: description
@@ -445,10 +374,6 @@ OpenCV.Image_Processing: type Template_Matching_Method: literal Cross_Correlatio
 OpenCV.Image_Processing: type Template_Matching_Method: literal Normalized_Cross_Correlation
 OpenCV.Image_Processing: type Template_Matching_Method: literal Correlation_Coefficient
 OpenCV.Image_Processing: type Template_Matching_Method: literal Normalized_Correlation_Coefficient
-OpenCV.Image_Processing: type Warp_Mapping_Direction: description
-OpenCV.Image_Processing: type Warp_Mapping_Direction: literal Source_To_Destination
-OpenCV.Image_Processing: type Warp_Mapping_Direction: literal Destination_To_Source
-OpenCV.Image_Processing: subtype Affine_Mapping_Direction: description
 OpenCV.Image_Processing: type YUV420_Layout: description
 OpenCV.Image_Processing: type YUV420_Layout: literal I420
 OpenCV.Image_Processing: type YUV420_Layout: literal YV12
@@ -544,10 +469,6 @@ OpenCV.Image_Processing: procedure Apply_Color_Map (Source : OpenCV.Core.Mat; De
 OpenCV.Image_Processing: procedure Convert_Color (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Conversion : Color_Conversion): parameter Source
 OpenCV.Image_Processing: procedure Convert_Color (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Conversion : Color_Conversion): parameter Destination
 OpenCV.Image_Processing: procedure Convert_Color (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Conversion : Color_Conversion): parameter Conversion
-OpenCV.Image_Processing: procedure Resize (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear): parameter Source
-OpenCV.Image_Processing: procedure Resize (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear): parameter Destination
-OpenCV.Image_Processing: procedure Resize (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear): parameter Output_Size
-OpenCV.Image_Processing: procedure Resize (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear): parameter Interpolation
 OpenCV.Image_Processing: procedure Gaussian_Blur (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel_Size : OpenCV.Size; Sigma : OpenCV.Float64_Value; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101): parameter Source
 OpenCV.Image_Processing: procedure Gaussian_Blur (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel_Size : OpenCV.Size; Sigma : OpenCV.Float64_Value; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101): parameter Destination
 OpenCV.Image_Processing: procedure Gaussian_Blur (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel_Size : OpenCV.Size; Sigma : OpenCV.Float64_Value; Border : OpenCV.Border_Kind : = OpenCV.Reflect_101): parameter Kernel_Size
@@ -620,79 +541,6 @@ OpenCV.Image_Processing: procedure Match_Template (Source : OpenCV.Core.Mat; Tem
 OpenCV.Image_Processing: procedure Match_Template (Source : OpenCV.Core.Mat; Template : OpenCV.Core.Mat; Mask : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Method : Template_Matching_Method : = Squared_Difference): parameter Mask
 OpenCV.Image_Processing: procedure Match_Template (Source : OpenCV.Core.Mat; Template : OpenCV.Core.Mat; Mask : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Method : Template_Matching_Method : = Squared_Difference): parameter Destination
 OpenCV.Image_Processing: procedure Match_Template (Source : OpenCV.Core.Mat; Template : OpenCV.Core.Mat; Mask : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Method : Template_Matching_Method : = Squared_Difference): parameter Method
-OpenCV.Image_Processing: procedure Warp_Affine (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Affine_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Source
-OpenCV.Image_Processing: procedure Warp_Affine (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Affine_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Transform
-OpenCV.Image_Processing: procedure Warp_Affine (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Affine_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Destination
-OpenCV.Image_Processing: procedure Warp_Affine (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Affine_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Output_Size
-OpenCV.Image_Processing: procedure Warp_Affine (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Affine_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Interpolation
-OpenCV.Image_Processing: procedure Warp_Affine (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Affine_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Mapping
-OpenCV.Image_Processing: procedure Warp_Affine (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Affine_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border
-OpenCV.Image_Processing: procedure Warp_Affine (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Affine_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border_Value
-OpenCV.Image_Processing: procedure Warp_Perspective (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Warp_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Source
-OpenCV.Image_Processing: procedure Warp_Perspective (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Warp_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Transform
-OpenCV.Image_Processing: procedure Warp_Perspective (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Warp_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Destination
-OpenCV.Image_Processing: procedure Warp_Perspective (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Warp_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Output_Size
-OpenCV.Image_Processing: procedure Warp_Perspective (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Warp_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Interpolation
-OpenCV.Image_Processing: procedure Warp_Perspective (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Warp_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Mapping
-OpenCV.Image_Processing: procedure Warp_Perspective (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Warp_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border
-OpenCV.Image_Processing: procedure Warp_Perspective (Source : OpenCV.Core.Mat; Transform : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size; Interpolation : Interpolation_Method : = Linear; Mapping : Warp_Mapping_Direction : = Source_To_Destination; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border_Value
-OpenCV.Image_Processing: procedure Warp_Polar (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Center : OpenCV.Float32_Point; Maximum_Radius : OpenCV.Float64_Value; Output_Size : OpenCV.Size; Mapping : Polar_Mapping : = Linear_Polar; Direction : Polar_Direction : = Cartesian_To_Polar; Interpolation : Interpolation_Method : = Linear): parameter Source
-OpenCV.Image_Processing: procedure Warp_Polar (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Center : OpenCV.Float32_Point; Maximum_Radius : OpenCV.Float64_Value; Output_Size : OpenCV.Size; Mapping : Polar_Mapping : = Linear_Polar; Direction : Polar_Direction : = Cartesian_To_Polar; Interpolation : Interpolation_Method : = Linear): parameter Destination
-OpenCV.Image_Processing: procedure Warp_Polar (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Center : OpenCV.Float32_Point; Maximum_Radius : OpenCV.Float64_Value; Output_Size : OpenCV.Size; Mapping : Polar_Mapping : = Linear_Polar; Direction : Polar_Direction : = Cartesian_To_Polar; Interpolation : Interpolation_Method : = Linear): parameter Center
-OpenCV.Image_Processing: procedure Warp_Polar (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Center : OpenCV.Float32_Point; Maximum_Radius : OpenCV.Float64_Value; Output_Size : OpenCV.Size; Mapping : Polar_Mapping : = Linear_Polar; Direction : Polar_Direction : = Cartesian_To_Polar; Interpolation : Interpolation_Method : = Linear): parameter Maximum_Radius
-OpenCV.Image_Processing: procedure Warp_Polar (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Center : OpenCV.Float32_Point; Maximum_Radius : OpenCV.Float64_Value; Output_Size : OpenCV.Size; Mapping : Polar_Mapping : = Linear_Polar; Direction : Polar_Direction : = Cartesian_To_Polar; Interpolation : Interpolation_Method : = Linear): parameter Output_Size
-OpenCV.Image_Processing: procedure Warp_Polar (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Center : OpenCV.Float32_Point; Maximum_Radius : OpenCV.Float64_Value; Output_Size : OpenCV.Size; Mapping : Polar_Mapping : = Linear_Polar; Direction : Polar_Direction : = Cartesian_To_Polar; Interpolation : Interpolation_Method : = Linear): parameter Mapping
-OpenCV.Image_Processing: procedure Warp_Polar (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Center : OpenCV.Float32_Point; Maximum_Radius : OpenCV.Float64_Value; Output_Size : OpenCV.Size; Mapping : Polar_Mapping : = Linear_Polar; Direction : Polar_Direction : = Cartesian_To_Polar; Interpolation : Interpolation_Method : = Linear): parameter Direction
-OpenCV.Image_Processing: procedure Warp_Polar (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Center : OpenCV.Float32_Point; Maximum_Radius : OpenCV.Float64_Value; Output_Size : OpenCV.Size; Mapping : Polar_Mapping : = Linear_Polar; Direction : Polar_Direction : = Cartesian_To_Polar; Interpolation : Interpolation_Method : = Linear): parameter Interpolation
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_X : OpenCV.Core.Mat; Map_Y : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Source
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_X : OpenCV.Core.Mat; Map_Y : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Map_X
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_X : OpenCV.Core.Mat; Map_Y : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Map_Y
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_X : OpenCV.Core.Mat; Map_Y : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Destination
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_X : OpenCV.Core.Mat; Map_Y : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Interpolation
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_X : OpenCV.Core.Mat; Map_Y : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_X : OpenCV.Core.Mat; Map_Y : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border_Value
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_XY : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Source
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_XY : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Map_XY
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_XY : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Destination
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_XY : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Interpolation
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_XY : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Map_XY : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border_Value
-OpenCV.Image_Processing: function Is_Empty (Maps : Fixed_Remap_Maps) return Boolean: description
-OpenCV.Image_Processing: function Is_Empty (Maps : Fixed_Remap_Maps) return Boolean: parameter Maps
-OpenCV.Image_Processing: function Is_Empty (Maps : Fixed_Remap_Maps) return Boolean: return
-OpenCV.Image_Processing: function Is_Nearest_Only (Maps : Fixed_Remap_Maps) return Boolean: description
-OpenCV.Image_Processing: function Is_Nearest_Only (Maps : Fixed_Remap_Maps) return Boolean: parameter Maps
-OpenCV.Image_Processing: function Is_Nearest_Only (Maps : Fixed_Remap_Maps) return Boolean: return
-OpenCV.Image_Processing: type Float_Remap_Maps: description
-OpenCV.Image_Processing: type Float_Remap_Maps: component Map_X
-OpenCV.Image_Processing: type Float_Remap_Maps: component Map_Y
-OpenCV.Image_Processing: function Convert_Remap_To_Fixed (Map_X, Map_Y : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean : = False) return Fixed_Remap_Maps: parameter Map_X
-OpenCV.Image_Processing: function Convert_Remap_To_Fixed (Map_X, Map_Y : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean : = False) return Fixed_Remap_Maps: parameter Map_Y
-OpenCV.Image_Processing: function Convert_Remap_To_Fixed (Map_X, Map_Y : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean : = False) return Fixed_Remap_Maps: parameter Nearest_Neighbor_Only
-OpenCV.Image_Processing: function Convert_Remap_To_Fixed (Map_X, Map_Y : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean : = False) return Fixed_Remap_Maps: return
-OpenCV.Image_Processing: function Convert_Remap_To_Fixed (Map_XY : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean : = False) return Fixed_Remap_Maps: description
-OpenCV.Image_Processing: function Convert_Remap_To_Fixed (Map_XY : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean : = False) return Fixed_Remap_Maps: parameter Map_XY
-OpenCV.Image_Processing: function Convert_Remap_To_Fixed (Map_XY : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean : = False) return Fixed_Remap_Maps: parameter Nearest_Neighbor_Only
-OpenCV.Image_Processing: function Convert_Remap_To_Fixed (Map_XY : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean : = False) return Fixed_Remap_Maps: return
-OpenCV.Image_Processing: function Interleave_Remap_Maps (Map_X, Map_Y : OpenCV.Core.Mat) return OpenCV.Core.Mat: description
-OpenCV.Image_Processing: function Interleave_Remap_Maps (Map_X, Map_Y : OpenCV.Core.Mat) return OpenCV.Core.Mat: parameter Map_X
-OpenCV.Image_Processing: function Interleave_Remap_Maps (Map_X, Map_Y : OpenCV.Core.Mat) return OpenCV.Core.Mat: parameter Map_Y
-OpenCV.Image_Processing: function Interleave_Remap_Maps (Map_X, Map_Y : OpenCV.Core.Mat) return OpenCV.Core.Mat: return
-OpenCV.Image_Processing: function Separate_Remap_Map (Map_XY : OpenCV.Core.Mat) return Float_Remap_Maps: description
-OpenCV.Image_Processing: function Separate_Remap_Map (Map_XY : OpenCV.Core.Mat) return Float_Remap_Maps: parameter Map_XY
-OpenCV.Image_Processing: function Separate_Remap_Map (Map_XY : OpenCV.Core.Mat) return Float_Remap_Maps: return
-OpenCV.Image_Processing: function Convert_Remap_To_Interleaved_Float (Maps : Fixed_Remap_Maps) return OpenCV.Core.Mat: description
-OpenCV.Image_Processing: function Convert_Remap_To_Interleaved_Float (Maps : Fixed_Remap_Maps) return OpenCV.Core.Mat: parameter Maps
-OpenCV.Image_Processing: function Convert_Remap_To_Interleaved_Float (Maps : Fixed_Remap_Maps) return OpenCV.Core.Mat: return
-OpenCV.Image_Processing: function Convert_Remap_To_Separate_Float (Maps : Fixed_Remap_Maps) return Float_Remap_Maps: description
-OpenCV.Image_Processing: function Convert_Remap_To_Separate_Float (Maps : Fixed_Remap_Maps) return Float_Remap_Maps: parameter Maps
-OpenCV.Image_Processing: function Convert_Remap_To_Separate_Float (Maps : Fixed_Remap_Maps) return Float_Remap_Maps: return
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Maps : Fixed_Remap_Maps; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Source
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Maps : Fixed_Remap_Maps; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Maps
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Maps : Fixed_Remap_Maps; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Destination
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Maps : Fixed_Remap_Maps; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Interpolation
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Maps : Fixed_Remap_Maps; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border
-OpenCV.Image_Processing: procedure Remap (Source : OpenCV.Core.Mat; Maps : Fixed_Remap_Maps; Destination : in out OpenCV.Core.Mat; Interpolation : Interpolation_Method : = Linear; Border : OpenCV.Border_Kind : = OpenCV.Constant_Border; Border_Value : OpenCV.Scalar : = (others => 0.0)): parameter Border_Value
 OpenCV.Image_Processing: procedure Median_Blur (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size): parameter Source
 OpenCV.Image_Processing: procedure Median_Blur (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size): parameter Destination
 OpenCV.Image_Processing: procedure Median_Blur (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel_Size : Median_Kernel_Size): parameter Kernel_Size
@@ -852,14 +700,6 @@ OpenCV.Image_Processing: procedure Canny_Edges (Source : OpenCV.Core.Mat; Destin
 OpenCV.Image_Processing: procedure Canny_Edges (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Lower_Threshold : OpenCV.Float64_Value; Upper_Threshold : OpenCV.Float64_Value; Aperture : Canny_Aperture : = Sobel_3x3; Gradient_Norm : Canny_Gradient_Norm : = L1_Norm): parameter Upper_Threshold
 OpenCV.Image_Processing: procedure Canny_Edges (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Lower_Threshold : OpenCV.Float64_Value; Upper_Threshold : OpenCV.Float64_Value; Aperture : Canny_Aperture : = Sobel_3x3; Gradient_Norm : Canny_Gradient_Norm : = L1_Norm): parameter Aperture
 OpenCV.Image_Processing: procedure Canny_Edges (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Lower_Threshold : OpenCV.Float64_Value; Upper_Threshold : OpenCV.Float64_Value; Aperture : Canny_Aperture : = Sobel_3x3; Gradient_Norm : Canny_Gradient_Norm : = L1_Norm): parameter Gradient_Norm
-OpenCV.Image_Processing: type Subpixel_Patch_Output_Depth: description
-OpenCV.Image_Processing: type Subpixel_Patch_Output_Depth: literal Preserve_Source_Depth
-OpenCV.Image_Processing: type Subpixel_Patch_Output_Depth: literal Promote_To_Float32
-OpenCV.Image_Processing: function Extract_Subpixel_Patch (Source : OpenCV.Core.Mat; Patch_Size : OpenCV.Size; Center : OpenCV.Float32_Point; Output_Depth : Subpixel_Patch_Output_Depth : = Preserve_Source_Depth) return OpenCV.Core.Mat: parameter Source
-OpenCV.Image_Processing: function Extract_Subpixel_Patch (Source : OpenCV.Core.Mat; Patch_Size : OpenCV.Size; Center : OpenCV.Float32_Point; Output_Depth : Subpixel_Patch_Output_Depth : = Preserve_Source_Depth) return OpenCV.Core.Mat: parameter Patch_Size
-OpenCV.Image_Processing: function Extract_Subpixel_Patch (Source : OpenCV.Core.Mat; Patch_Size : OpenCV.Size; Center : OpenCV.Float32_Point; Output_Depth : Subpixel_Patch_Output_Depth : = Preserve_Source_Depth) return OpenCV.Core.Mat: parameter Center
-OpenCV.Image_Processing: function Extract_Subpixel_Patch (Source : OpenCV.Core.Mat; Patch_Size : OpenCV.Size; Center : OpenCV.Float32_Point; Output_Depth : Subpixel_Patch_Output_Depth : = Preserve_Source_Depth) return OpenCV.Core.Mat: parameter Output_Depth
-OpenCV.Image_Processing: function Extract_Subpixel_Patch (Source : OpenCV.Core.Mat; Patch_Size : OpenCV.Size; Center : OpenCV.Float32_Point; Output_Depth : Subpixel_Patch_Output_Depth : = Preserve_Source_Depth) return OpenCV.Core.Mat: return
 OpenCV.Image_Processing: type Spatial_Gradient_Result: description
 OpenCV.Image_Processing: type Spatial_Gradient_Result: component X_Derivative
 OpenCV.Image_Processing: type Spatial_Gradient_Result: component Y_Derivative

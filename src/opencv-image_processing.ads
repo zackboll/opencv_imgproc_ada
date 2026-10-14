@@ -104,30 +104,90 @@ package OpenCV.Image_Processing is
      (Source_1, Source_2, Weight_1, Weight_2 : OpenCV.Core.Mat)
       return OpenCV.Core.Mat;
 
+   --  Translation estimated by Phase_Correlate: the native subpixel
+   --  displacement of Source_2 relative to Source_1, in pixels, and the
+   --  strength of the correlation peak. Right/down is positive.
+   --  @field X_Shift Column (X) displacement of Source_2 relative to
+   --  Source_1; positive when Source_2 content lies to the right.
+   --  @field Y_Shift Row (Y) displacement of Source_2 relative to
+   --  Source_1; positive when Source_2 content lies lower.
+   --  @field Response Native normalized 5x5 peak energy: the energy of the
+   --  weighted peak centroid divided by the padded DFT plane size. It
+   --  indicates peak concentration; it is not a probability or a
+   --  guaranteed [0, 1] value, and rounding can exceed the ideal bounds.
    type Phase_Correlation_Result is record
       X_Shift, Y_Shift, Response : OpenCV.Float64_Value;
    end record;
-   --  Matching nonempty 2-D Float32/Float64 C1 sources; Window, when
-   --  supplied, has the same geometry and type. Invalid inputs raise
-   --  OpenCV_Error. No conversion or normalization is performed.
+
+   --  Estimates the translation between two images of identical type and
+   --  geometry with native cv::phaseCorrelate, without a window.
    --  Shift describes Source_2 relative to Source_1: right/down is positive.
    --  Apply the negative shift to Source_2 to align it with Source_1.
-   --  Response is native normalized 5x5 peak energy, not a probability or
-   --  a guaranteed [0, 1] value. Nonfinite samples retain native behavior.
-   --  All inputs are independently snapshotted, including Window. Regions
-   --  contribute only logical pixels; aliases are supported and unchanged
-   --  on success or failure. Native signed DFT limits raise OpenCV_Error.
+   --
+   --  Sources must be nonempty 2-D Float32 or Float64 C1 Mats with
+   --  identical depth, rows and columns. No conversion, normalization or
+   --  finiteness scan is performed; nonfinite samples retain native
+   --  behavior and can give numerically unhelpful results. Both sources are
+   --  independently snapshotted into packed private copies before native
+   --  execution: Regions contribute only logical pixels, the same or
+   --  overlapping storage may be passed twice, and inputs are unchanged on
+   --  success or failure. Concurrent external mutation is unsupported.
+   --  The native transform pads to optimal DFT sizes; unsupported sizes
+   --  and signed-arithmetic or allocation limits of the padded plane raise
+   --  OpenCV_Error. Response is not promised to match across releases:
+   --  OpenCV 4.1 squares special DC/Nyquist spectrum entries where 4.10
+   --  and 5.0 use their absolute value.
+   --  @param Source_1 Reference image.
+   --  @param Source_2 Image whose displacement relative to Source_1 is
+   --  measured.
+   --  @return Shift of Source_2 and peak Response.
+   --  @exception OpenCV_Error Empty, non-2-D, non-floating or
+   --  multichannel source, mismatched sources, native DFT size limits, or
+   --  an OpenCV failure.
    function Phase_Correlate
      (Source_1, Source_2 : OpenCV.Core.Mat) return Phase_Correlation_Result;
+
+   --  Windowed Phase_Correlate: Window multiplies both sources before the
+   --  native DFT (cv::phaseCorrelate window argument). Window must be a
+   --  nonempty 2-D C1 Mat with the sources' depth, rows and columns, for
+   --  example from Create_Hanning_Window; an empty Window is rejected.
+   --  Window is snapshotted like the sources, so it may share storage with
+   --  either source and is never modified. Source requirements, the
+   --  right/down-positive shift of Source_2 relative to Source_1, Response,
+   --  Region, alias and limit rules are those of the two-source overload.
+   --  @param Source_1 Reference image.
+   --  @param Source_2 Image whose displacement relative to Source_1 is
+   --  measured.
+   --  @param Window Weighting window applied to both sources.
+   --  @return Shift of Source_2 and peak Response.
+   --  @exception OpenCV_Error Invalid or mismatched sources, empty
+   --  or mismatched Window, native DFT size limits, or an OpenCV failure.
    function Phase_Correlate
      (Source_1, Source_2, Window : OpenCV.Core.Mat)
       return Phase_Correlation_Result;
 
+   --  Element depth of a window created by Create_Hanning_Window.
+   --  @enum Float32_Hanning_Window Float32 C1 window coefficients.
+   --  @enum Float64_Hanning_Window Float64 C1 window coefficients, the
+   --  Create_Hanning_Window default.
    type Hanning_Window_Depth is
      (Float32_Hanning_Window, Float64_Hanning_Window);
-   --  Both dimensions must exceed one (otherwise OpenCV_Error).
-   --  Fresh owning C1 Mat of the requested depth and geometry. Preserves
-   --  native sqrt(separable Hann product), including native rounding.
+
+   --  Creates a two-dimensional Hann window with native
+   --  cv::createHanningWindow, for example as a Phase_Correlate Window.
+   --  Each coefficient is the square root of the separable product of a
+   --  horizontal and a vertical Hann coefficient, with native rounding.
+   --  The window is symmetric, its first and last rows and columns are
+   --  zero up to rounding, and an odd-sized window is approximately 1.0 at
+   --  its center. OpenCV 5.0 vector cosine paths can round differently
+   --  from 4.1 and 4.10; bit-for-bit coefficients are not promised.
+   --  @param Window_Size Window columns (Width) and rows (Height). Both
+   --  must exceed one, and `Width * Height` must not exceed `2**31 - 1`.
+   --  @param Depth Coefficient depth; defaults to Float64_Hanning_Window.
+   --  @return Fresh owning C1 Mat of the requested depth with
+   --  Window_Size.Height rows and Window_Size.Width columns.
+   --  @exception OpenCV_Error A dimension is at most one, the
+   --  allocation or index preflight overflows, or OpenCV fails.
    function Create_Hanning_Window
      (Window_Size : OpenCV.Size;
       Depth       : Hanning_Window_Depth := Float64_Hanning_Window)
@@ -349,10 +409,38 @@ package OpenCV.Image_Processing is
       RGBA_To_Premultiplied_RGBA,
       Premultiplied_RGBA_To_RGBA);
 
+   --  Resampling interpolation, passed to OpenCV as the native INTER_* flag
+   --  named below. Each operation accepts a subset and rejects the rest
+   --  with OpenCV_Error: Resize accepts all six (Linear_Exact only for
+   --  UInt8, UInt16 and Int16 sources); Warp_Affine and Warp_Perspective
+   --  accept Nearest_Neighbor and Linear; Warp_Polar and every Remap
+   --  overload accept Nearest_Neighbor, Linear, Cubic and Lanczos_4.
+   --  @enum Nearest_Neighbor Nearest-neighbor sampling (INTER_NEAREST).
+   --  @enum Linear Bilinear interpolation (INTER_LINEAR); the default of
+   --  every operation taking this type.
+   --  @enum Cubic Bicubic interpolation (INTER_CUBIC).
+   --  @enum Area Pixel-area resampling (INTER_AREA); Resize only.
+   --  @enum Lanczos_4 Lanczos interpolation (INTER_LANCZOS4).
+   --  @enum Linear_Exact Native fixed-point bilinear interpolation with
+   --  deterministic integer rounding (INTER_LINEAR_EXACT); Resize only,
+   --  for UInt8, UInt16 and Int16 sources.
    type Interpolation_Method is
      (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4, Linear_Exact);
 
+   --  Radial scale of a Warp_Polar polar image, whose X coordinate is the
+   --  radius rho.
+   --  @enum Linear_Polar Rho is proportional to the distance from Center
+   --  (native WARP_POLAR_LINEAR).
+   --  @enum Logarithmic_Polar Rho follows `log(distance + 1)` (native
+   --  WARP_POLAR_LOG); requires Maximum_Radius > 1.
    type Polar_Mapping is (Linear_Polar, Logarithmic_Polar);
+
+   --  Direction of a Warp_Polar transform.
+   --  @enum Cartesian_To_Polar Forward transform: Source is a Cartesian
+   --  image and Destination the polar image (X = rho, Y = angle).
+   --  @enum Polar_To_Cartesian Inverse transform (native
+   --  WARP_INVERSE_MAP): Source is a polar image and Destination its
+   --  Cartesian reconstruction.
    type Polar_Direction is (Cartesian_To_Polar, Polar_To_Cartesian);
 
    type Canny_Aperture is (Sobel_3x3, Sobel_5x5, Sobel_7x7);
@@ -361,16 +449,49 @@ package OpenCV.Image_Processing is
 
    type Sobel_Kernel_Size is (Kernel_1, Kernel_3, Kernel_5, Kernel_7);
 
-   --  Corner derivatives use 3, 5 or 7; pre-corner detection needs second
+   --  Sobel derivative aperture of the corner response maps, passed to
+   --  OpenCV as aperture size 3, 5 or 7. Pre-corner detection needs second
    --  derivatives, so the Sobel Kernel_1 selector is not applicable.
+   --  @enum Aperture_3 3x3 Sobel aperture, the default of every corner map.
+   --  @enum Aperture_5 5x5 Sobel aperture.
+   --  @enum Aperture_7 7x7 Sobel aperture.
    type Corner_Aperture is (Aperture_3, Aperture_5, Aperture_7);
+
+   --  Side length, in pixels, of the square neighborhood over which the
+   --  corner maps accumulate the derivative covariance (native box filter
+   --  size). The subtype admits 1, but every operation taking it requires
+   --  at least 2 and raises OpenCV_Error for 1.
    subtype Corner_Block_Size is Positive range 1 .. 2_147_483_647;
+
+   --  Float32 corner positions for Refine_Corners_Subpixel, in pixels
+   --  (X = column, Y = row). Any Integer index range is allowed; refined
+   --  results keep the bounds of the input array.
    type Corner_Point_Array is array (Integer range <>) of OpenCV.Float32_Point;
+
+   --  Maximum number of Refine_Corners_Subpixel iterations, 1 through 100.
    subtype Corner_Iteration_Limit is Positive range 1 .. 100;
+
+   --  Termination criteria of Refine_Corners_Subpixel. Both criteria are
+   --  always passed to native cornerSubPix (MAX_ITER and EPS), so
+   --  refinement stops at Maximum_Iterations or earlier once the native
+   --  Epsilon accuracy criterion is met.
+   --  @field Maximum_Iterations Iteration limit; default 30.
+   --  @field Epsilon Native EPS accuracy threshold; default 0.01.
+   --  Refine_Corners_Subpixel requires it finite and nonnegative.
    type Corner_Termination is record
       Maximum_Iterations : Corner_Iteration_Limit := 30;
       Epsilon            : OpenCV.Float64_Value := 0.01;
    end record;
+
+   --  Optional central dead zone of the Refine_Corners_Subpixel search
+   --  window, given as a half-size and passed to native cornerSubPix as its
+   --  zeroZone. When disabled (the default) the native no-zone value
+   --  (-1, -1) is passed.
+   --  @field Enabled Discriminant selecting whether a dead zone is used;
+   --  default False.
+   --  @field Half_Size Exists only when Enabled is True: dead-zone half
+   --  width and half height in pixels. Each must be smaller than the
+   --  matching Search_Window half-size; (0, 0) is accepted.
    type Corner_Dead_Zone (Enabled : Boolean := False) is record
       case Enabled is
          when False =>
@@ -381,16 +502,47 @@ package OpenCV.Image_Processing is
       end case;
    end record;
 
-   --  All response maps accept nonempty 2-D UInt8/Float32 C1 images, leave
-   --  Source unchanged, and treat Regions as independent images. Results are
-   --  fresh Float32 C1 Mats (C6 for eigenvalues/vectors). Block sizes must
-   --  be at least 2; Wrap borders are unsupported. Errors raise OpenCV_Error.
+   --  Minimum-eigenvalue corner response map (native cv::cornerMinEigenVal):
+   --  per pixel, the smaller eigenvalue of the covariance matrix of Sobel
+   --  derivatives accumulated over a Block_Size by Block_Size neighborhood.
+   --  Source must be a nonempty 2-D UInt8 or Float32 C1 Mat. It is copied
+   --  into a packed private snapshot before native execution, so Source is
+   --  unchanged and a Region is an independent image whose borders never
+   --  read parent pixels. Native signed-int layout limits on the Source
+   --  size and Block_Size raise OpenCV_Error.
+   --  @param Source Image to analyse.
+   --  @param Block_Size Covariance neighborhood side length; at least 2.
+   --  Default 3.
+   --  @param Aperture Sobel derivative aperture; default Aperture_3.
+   --  @param Border Constant_Border, Replicate, Reflect or Reflect_101
+   --  (the default); Wrap is rejected.
+   --  @return Fresh owning Float32 C1 Mat with Source's rows and columns.
+   --  @exception OpenCV_Error Unsupported Source type or layout,
+   --  Block_Size 1, Wrap border, native size limits, or an OpenCV failure.
    function Corner_Minimum_Eigenvalue
      (Source     : OpenCV.Core.Mat;
       Block_Size : Corner_Block_Size := 3;
       Aperture   : Corner_Aperture := Aperture_3;
       Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
       return OpenCV.Core.Mat;
+
+   --  Harris corner response map (native cv::cornerHarris), computed from
+   --  the Block_Size covariance of Sobel derivatives with Harris free
+   --  parameter K. Source requirements, snapshot and Region isolation,
+   --  border support and native limits are those of
+   --  Corner_Minimum_Eigenvalue.
+   --  @param Source Nonempty 2-D UInt8 or Float32 C1 image to analyse.
+   --  @param Block_Size Covariance neighborhood side length; at least 2.
+   --  Default 3.
+   --  @param Aperture Sobel derivative aperture; default Aperture_3.
+   --  @param K Harris detector free parameter; must be finite. Default
+   --  0.04.
+   --  @param Border Constant_Border, Replicate, Reflect or Reflect_101
+   --  (the default); Wrap is rejected.
+   --  @return Fresh owning Float32 C1 Mat with Source's rows and columns.
+   --  @exception OpenCV_Error Unsupported Source type or layout,
+   --  Block_Size 1, nonfinite K, Wrap border, native size limits, or an
+   --  OpenCV failure.
    function Harris_Corner_Response
      (Source     : OpenCV.Core.Mat;
       Block_Size : Corner_Block_Size := 3;
@@ -398,31 +550,79 @@ package OpenCV.Image_Processing is
       K          : OpenCV.Float64_Value := 0.04;
       Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
       return OpenCV.Core.Mat;
+
+   --  Per-pixel eigenvalues and eigenvectors of the Block_Size covariance
+   --  matrix of Sobel derivatives (native cv::cornerEigenValsAndVecs).
    --  Six channels per pixel: (lambda1, lambda2, x1, y1, x2, y2).
+   --  Source requirements, snapshot and Region isolation, border support
+   --  and native limits are those of Corner_Minimum_Eigenvalue.
+   --  @param Source Nonempty 2-D UInt8 or Float32 C1 image to analyse.
+   --  @param Block_Size Covariance neighborhood side length; at least 2.
+   --  Default 3.
+   --  @param Aperture Sobel derivative aperture; default Aperture_3.
+   --  @param Border Constant_Border, Replicate, Reflect or Reflect_101
+   --  (the default); Wrap is rejected.
+   --  @return Fresh owning Float32 C6 Mat with Source's rows and columns,
+   --  channels in the OpenCV order above.
+   --  @exception OpenCV_Error Unsupported Source type or layout,
+   --  Block_Size 1, Wrap border, native size limits, or an OpenCV failure.
    function Corner_Eigenvalues_And_Vectors
      (Source     : OpenCV.Core.Mat;
       Block_Size : Corner_Block_Size := 3;
       Aperture   : Corner_Aperture := Aperture_3;
       Border     : OpenCV.Border_Kind := OpenCV.Reflect_101)
       return OpenCV.Core.Mat;
+
+   --  Pre-corner feature response map (native cv::preCornerDetect), built
+   --  from Sobel derivatives up to second order; it has no block size and
+   --  is zero on flat image areas. Source requirements, snapshot and
+   --  Region isolation, border support and native limits are those of
+   --  Corner_Minimum_Eigenvalue.
+   --  @param Source Nonempty 2-D UInt8 or Float32 C1 image to analyse.
+   --  @param Aperture Sobel derivative aperture; default Aperture_3.
+   --  @param Border Constant_Border, Replicate, Reflect or Reflect_101
+   --  (the default); Wrap is rejected.
+   --  @return Fresh owning Float32 C1 Mat with Source's rows and columns.
+   --  @exception OpenCV_Error Unsupported Source type or layout,
+   --  Wrap border, native size limits, or an OpenCV failure.
    function Pre_Corner_Response
      (Source   : OpenCV.Core.Mat;
       Aperture : Corner_Aperture := Aperture_3;
       Border   : OpenCV.Border_Kind := OpenCV.Reflect_101)
       return OpenCV.Core.Mat;
 
-   --  Search_Window is a strictly positive half-size. The image must be at
-   --  least `2 * Width + 5` by `2 * Height + 5`. Every initial point must be
-   --  finite
-   --  and inside [0, Columns) x [0, Rows). Dead-zone half-sizes must be
-   --  smaller than the corresponding search half-sizes. Both termination
-   --  criteria are active; Epsilon must be finite and nonnegative. An empty
-   --  Float32 source samples must all be finite (including for empty Corners);
-   --  UInt8 sources need no scan. Nonfinite samples raise OpenCV_Error.
-   --  An empty array returns an empty array after image/window/criteria and
-   --  Float32 source validation.
-   --  Arbitrary Integer bounds are preserved. Inputs remain unchanged even
-   --  on failure; Region neighborhoods cannot see parent pixels.
+   --  Refines approximate corner positions to subpixel accuracy with native
+   --  cv::cornerSubPix and returns the refined points in a new array with
+   --  the bounds of Corners; Corners is never modified.
+   --
+   --  Source must be a nonempty 2-D UInt8 or Float32 C1 Mat. Every sample
+   --  of a Float32 Source must be finite: the whole logical image is
+   --  scanned, even when Corners is empty; UInt8 sources need no scan.
+   --  Source is copied into a packed private snapshot, so it is unchanged
+   --  even on failure and Region neighborhoods never see parent pixels.
+   --  Every initial point must be finite with `0 <= X < Columns` and
+   --  `0 <= Y < Rows`. An empty Corners returns an empty array with the
+   --  same bounds after the source, window, dead-zone and termination
+   --  checks. Native signed-int limits on Source size and window scratch
+   --  raise OpenCV_Error. If the native covariance degenerates, OpenCV 4.1
+   --  can return a NaN point where 4.10 and 5.0 keep the previous finite
+   --  estimate.
+   --  @param Source Image containing the corners.
+   --  @param Corners Initial estimates; any Integer bounds and at most
+   --  `2**31 - 1` points.
+   --  @param Search_Window Search half-size: Width columns and Height rows,
+   --  both positive. The native search window spans `2 * Width + 1` by
+   --  `2 * Height + 1` pixels, and Source must have at least
+   --  `2 * Width + 5` columns and `2 * Height + 5` rows.
+   --  @param Dead_Zone Optional central dead zone, disabled by default;
+   --  enabled half-sizes must be smaller than those of Search_Window.
+   --  @param Termination Iteration limit and Epsilon (finite and
+   --  nonnegative); default 30 iterations and 0.01.
+   --  @return Refined Float32 points, index for index, with the bounds of
+   --  Corners.
+   --  @exception OpenCV_Error Invalid Source, nonfinite Float32
+   --  sample, invalid Search_Window, Dead_Zone, Epsilon or initial point,
+   --  native layout limits, or an OpenCV failure.
    function Refine_Corners_Subpixel
      (Source        : OpenCV.Core.Mat;
       Corners       : Corner_Point_Array;
@@ -734,9 +934,18 @@ package OpenCV.Image_Processing is
       Correlation_Coefficient,
       Normalized_Correlation_Coefficient);
 
+   --  How Warp_Affine and Warp_Perspective interpret their Transform.
+   --  @enum Source_To_Destination Transform maps Source coordinates to
+   --  Destination coordinates: the usual forward warp, which OpenCV
+   --  inverts internally. A +1 X translation moves content right.
+   --  @enum Destination_To_Source Transform is already inverted and maps
+   --  each Destination pixel to the Source position it samples (native
+   --  WARP_INVERSE_MAP). A +1 X translation moves content left.
    type Warp_Mapping_Direction is
      (Source_To_Destination, Destination_To_Source);
 
+   --  Warp_Mapping_Direction under the name used by Warp_Affine; the
+   --  values and their meaning are identical.
    subtype Affine_Mapping_Direction is Warp_Mapping_Direction;
 
    type YUV420_Layout is (I420, YV12, NV12, NV21);
@@ -901,18 +1110,37 @@ package OpenCV.Image_Processing is
       Destination : in out OpenCV.Core.Mat;
       Conversion  : Color_Conversion);
 
-   --  Resize replaces Destination with a Mat of Output_Size whose depth and
-   --  channel count equal Source's. Source must be a non-empty two-dimensional
-   --  Mat with depth UInt8, UInt16, Int16, Float32, or Float64. Output_Size
-   --  must have nonzero width and height. Source remains valid and is not
-   --  modified. Contract violations and failures reported by OpenCV raise
-   --  OpenCV.OpenCV_Error.
+   --  Resamples Source to Output_Size with native cv::resize. The result
+   --  has Output_Size.Height rows, Output_Size.Width columns and Source's
+   --  depth and channel count; no color conversion occurs. Source must be
+   --  a nonempty 2-D Mat of depth UInt8, UInt16, Int16, Float32 or Float64,
+   --  and Output_Size must have nonzero width and height. Same-size
+   --  resizing copies the source.
+   --
+   --  Destination is the direct native output: OpenCV reuses its storage
+   --  when it already has the result size and type (shallow copies of
+   --  Destination and a Region's parent then see the result) and otherwise
+   --  rebinds it to new storage. Ada validation and the Linear_Exact layout
+   --  preflight raise before Destination is touched.
+   --
    --  Linear_Exact is Resize-only fixed-point bilinear interpolation for
-   --  UInt8, UInt16, and Int16, with deterministic integer rounding. It is
-   --  not lossless or mathematically exact, and can differ from Linear.
-   --  Float32/Float64 exact requests are rejected rather than silently
-   --  falling back to Linear. Same-size resizing copies the source. Native
-   --  2x downscaling may use bit-equivalent Area (except for C2).
+   --  UInt8, UInt16, and Int16, with deterministic integer rounding and any
+   --  channel count. It is not lossless or mathematically exact, and can
+   --  differ from Linear. Float32/Float64 exact requests are rejected
+   --  rather than silently falling back to Linear. Native exact 2x
+   --  downscaling in both axes may use bit-equivalent Area (except for C2).
+   --  An exact Region source uses only its logical pixels. Native signed
+   --  coefficient, line-buffer and allocation limits of exact resizing
+   --  raise OpenCV_Error.
+   --  @param Source Image to resample.
+   --  @param Destination Receives the resized image.
+   --  @param Output_Size Result columns (Width) and rows (Height).
+   --  @param Interpolation Resampling method; every Interpolation_Method
+   --  value is accepted, Linear_Exact only for integer sources. Default
+   --  Linear.
+   --  @exception OpenCV_Error Empty, non-2-D or unsupported-depth
+   --  Source, zero Output_Size dimension, Float32/Float64 Linear_Exact
+   --  request, exact layout overflow, or an OpenCV failure.
    procedure Resize
      (Source        : OpenCV.Core.Mat;
       Destination   : in out OpenCV.Core.Mat;
@@ -1271,29 +1499,47 @@ package OpenCV.Image_Processing is
       Destination : in out OpenCV.Core.Mat;
       Method      : Template_Matching_Method := Squared_Difference);
 
-   --  Warp_Affine applies a 2x3 affine Transform to Source and writes the
-   --  warped image to Destination. Source must be a non-empty two-dimensional
-   --  Mat of depth UInt8, UInt16, Int16, Float32, or Float64 with 1 to 4
-   --  channels. Transform must be a non-empty two-dimensional 2x3
-   --  single-channel Mat of depth Float32 or Float64:
+   --  Warp_Affine applies a 2x3 affine Transform to Source with native
+   --  cv::warpAffine and writes the warped image to Destination. Source must
+   --  be a nonempty 2-D Mat of depth UInt8, UInt16, Int16, Float32, or
+   --  Float64 with 1 to 4 channels. Transform must be a nonempty 2-D 2x3
+   --  single-channel Mat of depth Float32 or Float64 whose six coefficients
+   --  are all finite:
    --
    --     [ M00 M01 M02 ]
    --     [ M10 M11 M12 ]
    --
-   --  Output_Size.Width and Output_Size.Height must both be nonzero.
-   --  Destination is always replaced with a Mat of Rows = Output_Size.Height,
-   --  Columns = Output_Size.Width, and Source's depth and channel count.
-   --  Callers do not need to preallocate Destination. No color conversion
-   --  occurs. Interpolation is Nearest_Neighbor or Linear; Cubic, Area, and
-   --  Lanczos_4 are rejected. Border is Constant_Border or Replicate; Reflect,
-   --  Reflect_101, and Wrap are rejected. For Constant_Border, C1 uses
+   --  The result has Rows = Output_Size.Height, Columns = Output_Size.Width,
+   --  and Source's depth and channel count; its geometry is not inferred
+   --  from Source and no color conversion occurs. Destination is the direct
+   --  native output: OpenCV reuses its storage when it already has that
+   --  size and type (shallow copies of Destination and a Region's parent
+   --  then see the result) and otherwise rebinds it to new storage, so
+   --  callers do not need to preallocate it. Rejected arguments leave
+   --  Destination unchanged. Source and Transform are read-only and may
+   --  share storage. Destination must not share storage with Source or
+   --  Transform; the same Mat or the same data start is rejected. Direct
+   --  in-place operation is not supported.
+   --  @param Source Image to warp.
+   --  @param Transform 2x3 affine coefficient matrix, interpreted according
+   --  to Mapping.
+   --  @param Destination Receives the warped image.
+   --  @param Output_Size Result columns (Width) and rows (Height); both
+   --  must be nonzero.
+   --  @param Interpolation Nearest_Neighbor or Linear (the default); Cubic,
+   --  Area, Lanczos_4 and Linear_Exact are rejected.
+   --  @param Mapping Source_To_Destination (the default) is the usual
+   --  forward mapping; Destination_To_Source treats Transform as already
+   --  inverted.
+   --  @param Border Constant_Border (the default) or Replicate; Reflect,
+   --  Reflect_101 and Wrap are rejected.
+   --  @param Border_Value Fill value for Constant_Border: C1 uses
    --  Component_0, C2 uses Components 0..1, C3 uses 0..2, and C4 uses 0..3.
-   --  For Replicate, Border_Value is ignored. Source_To_Destination is the
-   --  usual forward mapping; Destination_To_Source treats Transform as already
-   --  inverted. Source and Transform are read-only and may share storage.
-   --  Destination must not share storage with Source or Transform. Direct
-   --  in-place operation is not supported. Contract violations and failures
-   --  reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  Ignored for Replicate. Default all zero.
+   --  @exception OpenCV_Error Invalid Source or Transform, nonfinite
+   --  coefficient, zero Output_Size dimension, unsupported Interpolation or
+   --  Border, Destination sharing storage with an input, or an OpenCV
+   --  failure.
    procedure Warp_Affine
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;
@@ -1304,32 +1550,53 @@ package OpenCV.Image_Processing is
       Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value  : OpenCV.Scalar := (others => 0.0));
 
-   --  Warp_Perspective applies a 3x3 projective Transform to Source and writes
-   --  the warped image to Destination. Source must be a non-empty
-   --  two-dimensional Mat of depth UInt8, UInt16, Int16, Float32, or Float64
-   --  with 1 to 4 channels. Transform must be a non-empty two-dimensional 3x3
-   --  single-channel Mat of depth Float32 or Float64:
+   --  Warp_Perspective applies a 3x3 projective Transform to Source with
+   --  native cv::warpPerspective and writes the warped image to Destination.
+   --  Source must be a nonempty 2-D Mat of depth UInt8, UInt16, Int16,
+   --  Float32, or Float64 with 1 to 4 channels. Transform must be a
+   --  nonempty 2-D 3x3 single-channel Mat of depth Float32 or Float64:
    --
    --     [ M00 M01 M02 ]
    --     [ M10 M11 M12 ]
    --     [ M20 M21 M22 ]
    --
-   --  Output_Size.Width and Output_Size.Height must both be nonzero.
-   --  Destination is always replaced with a Mat of Rows = Output_Size.Height,
-   --  Columns = Output_Size.Width, and Source's depth and channel count.
-   --  Callers do not need to preallocate Destination. No color conversion
-   --  occurs. Interpolation is Nearest_Neighbor or Linear; Cubic, Area, and
-   --  Lanczos_4 are rejected. Border is Constant_Border or Replicate; Reflect,
-   --  Reflect_101, and Wrap are rejected. For Constant_Border, C1 uses
+   --  With Destination_To_Source, Destination pixel (x, y) samples Source at
+   --
+   --     X = (M00 * x + M01 * y + M02) / (M20 * x + M21 * y + M22)
+   --     Y = (M10 * x + M11 * y + M12) / (M20 * x + M21 * y + M22)
+   --
+   --  Singular or poorly conditioned matrices are not rejected merely for
+   --  being singular; all nine coefficients must be finite. The result has
+   --  Rows = Output_Size.Height, Columns = Output_Size.Width, and Source's
+   --  depth and channel count; no color conversion occurs. Destination is
+   --  the direct native output: OpenCV reuses its storage when it already
+   --  has that size and type (shallow copies of Destination and a Region's
+   --  parent then see the result) and otherwise rebinds it to new storage,
+   --  so callers do not need to preallocate it. Rejected arguments leave
+   --  Destination unchanged. Source and Transform are read-only and may
+   --  share storage. Destination must not share storage with Source or
+   --  Transform; the same Mat or the same data start is rejected. Direct
+   --  in-place operation is not supported.
+   --  @param Source Image to warp.
+   --  @param Transform 3x3 projective coefficient matrix, interpreted
+   --  according to Mapping.
+   --  @param Destination Receives the warped image.
+   --  @param Output_Size Result columns (Width) and rows (Height); both
+   --  must be nonzero.
+   --  @param Interpolation Nearest_Neighbor or Linear (the default); Cubic,
+   --  Area, Lanczos_4 and Linear_Exact are rejected.
+   --  @param Mapping Source_To_Destination (the default) is the usual
+   --  forward mapping; Destination_To_Source treats Transform as already
+   --  inverted.
+   --  @param Border Constant_Border (the default) or Replicate; Reflect,
+   --  Reflect_101 and Wrap are rejected.
+   --  @param Border_Value Fill value for Constant_Border: C1 uses
    --  Component_0, C2 uses Components 0..1, C3 uses 0..2, and C4 uses 0..3.
-   --  For Replicate, Border_Value is ignored. Source_To_Destination is the
-   --  usual forward mapping; Destination_To_Source treats Transform as already
-   --  inverted. Source and Transform are read-only and may share storage.
-   --  Destination must not share storage with Source or Transform. Direct
-   --  in-place operation is not supported. Singular or poorly conditioned
-   --  matrices are not rejected merely for being singular; all nine
-   --  coefficients must be finite. Contract violations and failures reported
-   --  by OpenCV raise OpenCV.OpenCV_Error.
+   --  Ignored for Replicate. Default all zero.
+   --  @exception OpenCV_Error Invalid Source or Transform, nonfinite
+   --  coefficient, zero Output_Size dimension, unsupported Interpolation or
+   --  Border, Destination sharing storage with an input, or an OpenCV
+   --  failure.
    procedure Warp_Perspective
      (Source        : OpenCV.Core.Mat;
       Transform     : OpenCV.Core.Mat;
@@ -1340,20 +1607,48 @@ package OpenCV.Image_Processing is
       Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value  : OpenCV.Scalar := (others => 0.0));
 
-   --  Polar output X is radial rho and Y is angular phi (one revolution).
-   --  Linear rho follows distance; logarithmic rho follows log(distance+1).
-   --  In forward mode Center is relative to the Source view; in inverse mode
-   --  it is relative to the requested Cartesian destination. Source must be
-   --  nonempty 2-D UInt8/UInt16/Int16/Float32/Float64, C1..C4. Output_Size
-   --  must be explicit and positive. Both dimensions and Source dimensions
-   --  must be < 32767; inverse Source.Rows must be <= 32764 because OpenCV
-   --  adds two wrap rows. Radius must be finite and > 0 (linear) or > 1
-   --  (logarithmic). Center must be finite. Nearest, Linear, Cubic and
-   --  Lanczos_4 are supported; Area is rejected. Outliers are zero-filled.
+   --  Converts between Cartesian and polar images with native
+   --  cv::warpPolar. Polar output X is radial rho and Y is angular phi (one
+   --  revolution). Linear rho follows distance; logarithmic rho follows
+   --  `log(distance + 1)`. Maximum_Radius (or its logarithm) spans the polar
+   --  image width: Output_Size.Width in forward mode, Source.Columns in
+   --  inverse mode. In forward mode Center is relative to the Source view
+   --  (Region-local); in inverse mode Source is the polar image and Center
+   --  is relative to the requested Cartesian destination. Off-image centers
+   --  are allowed within the generated-map arithmetic limits.
+   --
+   --  Source must be nonempty 2-D UInt8/UInt16/Int16/Float32/Float64,
+   --  C1..C4, with Rows and Columns < 32767; inverse Source.Rows must be
+   --  <= 32764 because OpenCV adds a wrap row at each end. In inverse mode
+   --  those wrap rows come from the Region itself, never its parent.
+   --  Outliers are zero-filled. Generated Float32 map coordinates are
+   --  preflighted against native remap rounding limits, so extreme
+   --  centers or radii, tiny inverse logarithmic scales and unsafe source
+   --  strides are rejected.
+   --
    --  Destination must not overlap Source, including Regions and aliases.
-   --  Successful calls replace Destination with a fresh result of Source's
-   --  type. Failed calls leave it unchanged. Round trips are interpolated
-   --  and are not guaranteed to reproduce the input exactly.
+   --  Successful calls replace Destination with a fresh result of
+   --  Output_Size and Source's type, computed privately and published only
+   --  on success; failed calls leave it unchanged. Round trips are
+   --  interpolated and are not guaranteed to reproduce the input exactly.
+   --  @param Source Cartesian image (forward) or polar image (inverse).
+   --  @param Destination Receives the transformed image.
+   --  @param Center Transform center in pixels (X = column, Y = row); must
+   --  be finite.
+   --  @param Maximum_Radius Source radius mapped across the polar width;
+   --  must be finite and > 0 (linear) or > 1 (logarithmic).
+   --  @param Output_Size Explicit result columns (Width) and rows
+   --  (Height), each nonzero and < 32767. In forward mode Width counts rho
+   --  samples and Height angle samples.
+   --  @param Mapping Linear_Polar (the default) or Logarithmic_Polar.
+   --  @param Direction Cartesian_To_Polar (the default) or
+   --  Polar_To_Cartesian.
+   --  @param Interpolation Nearest_Neighbor, Linear (the default), Cubic or
+   --  Lanczos_4; Area and Linear_Exact are rejected.
+   --  @exception OpenCV_Error Invalid Source type or size, invalid
+   --  Output_Size, nonfinite Center, invalid Maximum_Radius, unsupported
+   --  Interpolation, unsafe generated coordinates or strides, Destination
+   --  overlapping Source, or an OpenCV failure.
    procedure Warp_Polar
      (Source         : OpenCV.Core.Mat;
       Destination    : in out OpenCV.Core.Mat;
@@ -1364,28 +1659,45 @@ package OpenCV.Image_Processing is
       Direction      : Polar_Direction := Cartesian_To_Polar;
       Interpolation  : Interpolation_Method := Linear);
 
-   --  Remap applies an absolute source-coordinate map. Destination(Row,
-   --  Column) samples Source at X = Map_X(Row, Column) and
-   --  Y = Map_Y(Row, Column). Source must be a non-empty two-dimensional
-   --  Mat of depth UInt8, UInt16, Int16, Float32, or Float64 with 1 to 4
-   --  channels and with Rows and Columns less than 32767. Map_X and Map_Y
-   --  must be non-empty two-dimensional single-channel Float32 Mats of
-   --  identical size, each with Rows and Columns less than 32767. Map
-   --  coordinates must be finite and safely convertible through native
-   --  integer coordinate tables; they may lie outside Source. Destination
-   --  is always replaced with a Mat of Rows = Map_X.Rows,
+   --  Remap applies an absolute source-coordinate map with native cv::remap.
+   --  Destination(Row, Column) samples Source at X = Map_X(Row, Column)
+   --  (source column) and Y = Map_Y(Row, Column) (source row). Relative maps
+   --  are not bound. Source must be a nonempty 2-D Mat of depth UInt8,
+   --  UInt16, Int16, Float32, or Float64 with 1 to 4 channels and with Rows
+   --  and Columns less than 32767. Map_X and Map_Y must be nonempty 2-D
+   --  single-channel Float32 Mats of identical size, each with Rows and
+   --  Columns less than 32767; map geometry need not match Source. Every
+   --  map coordinate V must be finite and safely convertible through native
+   --  integer coordinate tables: `abs (V) < 2.0**31` for Nearest_Neighbor
+   --  and `abs (32.0 * V) < 2.0**31` for the other methods, evaluated in
+   --  Float32. Coordinates may lie outside Source; Border then supplies the
+   --  samples.
+   --
+   --  The result is computed privately; only after native Remap succeeds
+   --  is Destination replaced with fresh storage of Rows = Map_X.Rows,
    --  Columns = Map_X.Columns, and Source's depth and channel count.
-   --  Callers do not need to preallocate Destination. No color conversion
-   --  occurs. Interpolation is Nearest_Neighbor, Linear, Cubic, or
-   --  Lanczos_4; Area is rejected. All public Border_Kind values are
-   --  supported. For Constant_Border, C1 uses Component_0, C2 uses
-   --  Components 0..1, C3 uses 0..2, and C4 uses 0..3. For other borders,
-   --  Border_Value is ignored. Source, Map_X, and Map_Y are read-only and
-   --  may share storage. Destination must not share storage with Source,
-   --  Map_X, or Map_Y. Direct in-place operation is not supported.
-   --  Failed calls leave Destination unchanged. Relative maps are not bound.
-   --  Contract
-   --  violations and failures reported by OpenCV raise OpenCV.OpenCV_Error.
+   --  Callers do not need to preallocate Destination, and failed calls
+   --  leave it unchanged. No color conversion occurs. Source, Map_X, and
+   --  Map_Y are read-only and may share storage. Destination must not share
+   --  storage with Source, Map_X, or Map_Y; the same Mat or the same data
+   --  start is rejected. Direct in-place operation is not supported.
+   --  Native stride limits also raise OpenCV_Error: a UInt8 C1/C3/C4 Linear
+   --  Source row stride above `2**31 - 1` or exactly 32768 bytes, and, for
+   --  Constant_Border calls that OpenCV 4.x may route to IPP, Source, map or
+   --  result byte strides above `2**31 - 1`.
+   --  @param Source Image to sample.
+   --  @param Map_X Source column (X) coordinate for each Destination pixel.
+   --  @param Map_Y Source row (Y) coordinate for each Destination pixel.
+   --  @param Destination Receives the remapped image.
+   --  @param Interpolation Nearest_Neighbor, Linear (the default), Cubic, or
+   --  Lanczos_4; Area and Linear_Exact are rejected.
+   --  @param Border Any Border_Kind value; default Constant_Border.
+   --  @param Border_Value Fill value for Constant_Border: C1 uses
+   --  Component_0, C2 uses Components 0..1, C3 uses 0..2, and C4 uses 0..3.
+   --  Ignored for other borders. Default all zero.
+   --  @exception OpenCV_Error Invalid Source or maps, unsafe map
+   --  coordinate or stride, unsupported Interpolation, Destination sharing
+   --  storage with an input, or an OpenCV failure.
    procedure Remap
      (Source        : OpenCV.Core.Mat;
       Map_X         : OpenCV.Core.Mat;
@@ -1395,10 +1707,26 @@ package OpenCV.Image_Processing is
       Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value  : OpenCV.Scalar := (others => 0.0));
 
-   --  An absolute Float32 C2 map stores X in component 0 and Y in component 1.
-   --  It must be nonempty, two-dimensional, and have both dimensions < 32767.
-   --  The Source, interpolation, borders, alias and failure contracts above
-   --  also apply to this overload.
+   --  Remap with one absolute Float32 C2 map, which stores X (source
+   --  column) in component 0 and Y (source row) in component 1. It must be
+   --  nonempty, two-dimensional, and have both dimensions < 32767; its
+   --  coordinates obey the finiteness and rounding limits of the
+   --  separate-map overload. On success Destination is replaced with fresh
+   --  storage of Map_XY's rows and columns and Source's depth and channel
+   --  count. The Source, interpolation, borders, alias, UInt8 Linear stride
+   --  and failure contracts of the separate-map overload also apply; its
+   --  IPP stride checks do not.
+   --  @param Source Image to sample.
+   --  @param Map_XY Source (X, Y) coordinates for each Destination pixel.
+   --  @param Destination Receives the remapped image.
+   --  @param Interpolation Nearest_Neighbor, Linear (the default), Cubic, or
+   --  Lanczos_4; Area and Linear_Exact are rejected.
+   --  @param Border Any Border_Kind value; default Constant_Border.
+   --  @param Border_Value Fill value for Constant_Border, used per channel
+   --  as in the separate-map overload; ignored for other borders.
+   --  @exception OpenCV_Error Invalid Source or Map_XY, unsafe map
+   --  coordinate or stride, unsupported Interpolation, Destination sharing
+   --  storage with an input, or an OpenCV failure.
    procedure Remap
      (Source        : OpenCV.Core.Mat;
       Map_XY        : OpenCV.Core.Mat;
@@ -1407,38 +1735,143 @@ package OpenCV.Image_Processing is
       Border        : OpenCV.Border_Kind := OpenCV.Constant_Border;
       Border_Value  : OpenCV.Scalar := (others => 0.0));
 
+   --  Native fixed-point absolute remap maps, created by
+   --  Convert_Remap_To_Fixed for repeated use with the fixed-map Remap.
    --  Coordinates are Int16 C2; Coefficients are UInt16 C1 for interpolation
-   --  or empty for nearest-only maps. The invariant-bearing pair is private.
+   --  or empty for nearest-only maps. The invariant-bearing pair is private,
+   --  so neither part can be mutated independently. A default-initialized
+   --  value holds no maps (Is_Empty) and is rejected by Remap and by the
+   --  conversions back to Float32.
    type Fixed_Remap_Maps is private;
+
+   --  Reports whether Maps holds no coordinate map, as a default-initialized
+   --  Fixed_Remap_Maps value does.
+   --  @param Maps Fixed maps to inspect.
+   --  @return True when the Int16 coordinate map is empty.
    function Is_Empty (Maps : Fixed_Remap_Maps) return Boolean;
+
+   --  Reports whether Maps is a nonempty nearest-only map: coordinates
+   --  without interpolation coefficients, usable only with Nearest_Neighbor.
+   --  @param Maps Fixed maps to inspect.
+   --  @return True when coordinates are present and coefficients absent;
+   --  False for empty and for coefficient-bearing maps.
    function Is_Nearest_Only (Maps : Fixed_Remap_Maps) return Boolean;
 
+   --  A pair of separate absolute Float32 C1 remap maps, as accepted by the
+   --  separate-map Remap and returned by Separate_Remap_Map and
+   --  Convert_Remap_To_Separate_Float (both components then fresh owning
+   --  storage of identical geometry).
+   --  @field Map_X Source column (X) coordinate for each Destination pixel.
+   --  @field Map_Y Source row (Y) coordinate for each Destination pixel.
    type Float_Remap_Maps is record
       Map_X : OpenCV.Core.Mat;
       Map_Y : OpenCV.Core.Mat;
    end record;
 
-   --  All input maps are nonempty 2-D Float32 C1+C1 or Float32 C2, with
-   --  matching geometry where separate and dimensions < 32767. Conversion
-   --  to fixed maps quantizes fractions to 1/32 pixel; nearest-only conversion
-   --  discards fractions. Int16 coordinate saturation can lose information.
+   --  Converts separate absolute Float32 maps to native fixed-point maps
+   --  (cv::convertMaps to Int16 C2) for the fixed-map Remap. Map_X and
+   --  Map_Y must be nonempty 2-D Float32 C1 Mats of identical geometry
+   --  with dimensions < 32767, and their coordinates must satisfy the
+   --  rounding limits of the separate-map Remap (the Nearest_Neighbor limit
+   --  when Nearest_Neighbor_Only). Conversion to fixed maps quantizes
+   --  fractions to 1/32 pixel; nearest-only conversion rounds to integer
+   --  coordinates and discards fractions. Int16 coordinate saturation can
+   --  lose information. Inputs are unchanged.
+   --  @param Map_X Source column (X) coordinates.
+   --  @param Map_Y Source row (Y) coordinates.
+   --  @param Nearest_Neighbor_Only True omits interpolation coefficients,
+   --  producing a nearest-only map; default False.
+   --  @return Fresh owning fixed maps with the input geometry.
+   --  @exception OpenCV_Error Invalid map type or geometry, unsafe
+   --  coordinate, or an OpenCV failure.
    function Convert_Remap_To_Fixed
      (Map_X, Map_Y : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean := False)
       return Fixed_Remap_Maps;
+
+   --  Converts one absolute Float32 C2 map (component 0 = X, component 1 =
+   --  Y) to native fixed-point maps. Map_XY must be nonempty and 2-D with
+   --  dimensions < 32767. Coordinate limits, 1/32-pixel quantization,
+   --  nearest-only rounding and Int16 saturation are as for the
+   --  separate-map overload. Map_XY is unchanged.
+   --  @param Map_XY Source (X, Y) coordinates.
+   --  @param Nearest_Neighbor_Only True omits interpolation coefficients,
+   --  producing a nearest-only map; default False.
+   --  @return Fresh owning fixed maps with Map_XY's geometry.
+   --  @exception OpenCV_Error Invalid map type or geometry, unsafe
+   --  coordinate, or an OpenCV failure.
    function Convert_Remap_To_Fixed
      (Map_XY : OpenCV.Core.Mat; Nearest_Neighbor_Only : Boolean := False)
       return Fixed_Remap_Maps;
+
+   --  Combines separate Float32 C1 maps into one Float32 C2 map with Map_X
+   --  in component 0 and Map_Y in component 1, for the Map_XY Remap. Both
+   --  inputs must be nonempty 2-D Float32 C1 Mats of identical geometry
+   --  with dimensions < 32767; values are copied without a coordinate
+   --  check. Inputs are unchanged.
+   --  @param Map_X Source column (X) coordinates.
+   --  @param Map_Y Source row (Y) coordinates.
+   --  @return Fresh owning Float32 C2 Mat with the input geometry.
+   --  @exception OpenCV_Error Invalid map type or geometry, or an
+   --  OpenCV failure.
    function Interleave_Remap_Maps
      (Map_X, Map_Y : OpenCV.Core.Mat) return OpenCV.Core.Mat;
+
+   --  Splits a Float32 C2 map into separate Float32 C1 maps: component 0
+   --  becomes Map_X and component 1 Map_Y. Map_XY must be nonempty and 2-D
+   --  with dimensions < 32767; values are copied without a coordinate
+   --  check. Map_XY is unchanged.
+   --  @param Map_XY Interleaved source (X, Y) coordinates.
+   --  @return Fresh owning Float32 C1 maps with Map_XY's geometry.
+   --  @exception OpenCV_Error Invalid map type or geometry, or an
+   --  OpenCV failure.
    function Separate_Remap_Map
      (Map_XY : OpenCV.Core.Mat) return Float_Remap_Maps;
+
+   --  Reconstructs one absolute Float32 C2 map (component 0 = X,
+   --  component 1 = Y) from fixed maps with native cv::convertMaps.
+   --  Coefficient-bearing maps yield coordinates quantized to 1/32 pixel;
+   --  nearest-only maps yield their already-rounded integer coordinates.
+   --  Maps must not be empty.
+   --  @param Maps Fixed maps from Convert_Remap_To_Fixed.
+   --  @return Fresh owning Float32 C2 Mat with the maps' geometry.
+   --  @exception OpenCV_Error Empty or invalid Maps, or an OpenCV
+   --  failure.
    function Convert_Remap_To_Interleaved_Float
      (Maps : Fixed_Remap_Maps) return OpenCV.Core.Mat;
+
+   --  Reconstructs separate absolute Float32 C1 maps from fixed maps with
+   --  native cv::convertMaps. Coefficient-bearing maps yield coordinates
+   --  quantized to 1/32 pixel; nearest-only maps yield their
+   --  already-rounded integer coordinates. Maps must not be empty.
+   --  @param Maps Fixed maps from Convert_Remap_To_Fixed.
+   --  @return Fresh owning Float32 C1 Map_X and Map_Y with the maps'
+   --  geometry.
+   --  @exception OpenCV_Error Empty or invalid Maps, or an OpenCV
+   --  failure.
    function Convert_Remap_To_Separate_Float
      (Maps : Fixed_Remap_Maps) return Float_Remap_Maps;
 
-   --  Coefficient-bearing maps support Nearest, Linear, Cubic and Lanczos_4;
-   --  nearest-only maps support Nearest_Neighbor exclusively.
+   --  Remap with fixed maps from Convert_Remap_To_Fixed, which can be
+   --  reused for many frames. Coefficient-bearing maps support
+   --  Nearest_Neighbor, Linear, Cubic and Lanczos_4; nearest-only maps support
+   --  Nearest_Neighbor exclusively, and empty maps are rejected. On success
+   --  Destination is replaced with fresh storage of the maps' rows and
+   --  columns and Source's depth and channel count. The Source, border,
+   --  alias, UInt8 Linear stride and failure contracts of the separate-map
+   --  overload also apply; its Float32 coordinate and IPP stride checks do
+   --  not.
+   --  @param Source Image to sample.
+   --  @param Maps Fixed source-coordinate maps.
+   --  @param Destination Receives the remapped image.
+   --  @param Interpolation Nearest_Neighbor, Linear (the default), Cubic, or
+   --  Lanczos_4 for coefficient-bearing maps; only Nearest_Neighbor for
+   --  nearest-only maps. Area and Linear_Exact are rejected.
+   --  @param Border Any Border_Kind value; default Constant_Border.
+   --  @param Border_Value Fill value for Constant_Border, used per channel
+   --  as in the separate-map overload; ignored for other borders.
+   --  @exception OpenCV_Error Invalid Source, empty or invalid Maps,
+   --  interpolation not supported by Maps, unsafe stride, Destination
+   --  sharing storage with an input, or an OpenCV failure.
    procedure Remap
      (Source        : OpenCV.Core.Mat;
       Maps          : Fixed_Remap_Maps;
@@ -1790,14 +2223,43 @@ package OpenCV.Image_Processing is
       Aperture        : Canny_Aperture := Sobel_3x3;
       Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
 
+   --  Result depth of Extract_Subpixel_Patch.
+   --  @enum Preserve_Source_Depth The patch has Source's depth, UInt8 or
+   --  Float32 (the default).
+   --  @enum Promote_To_Float32 The patch is Float32: UInt8 sources are
+   --  promoted and Float32 sources remain Float32.
    type Subpixel_Patch_Output_Depth is
      (Preserve_Source_Depth, Promote_To_Float32);
 
-   --  Native bilinear extraction with nearest-edge extension. Source must be
-   --  nonempty 2-D UInt8/Float32 C1/C3. Patch dimensions must be positive;
-   --  they may exceed Source. Center must be finite and inside Source, and
-   --  is Region-local. Result owns fresh independent storage. Invalid input
-   --  and native failures raise OpenCV_Error. Source values may be nonfinite.
+   --  Native bilinear extraction (cv::getRectSubPix) of a patch centered at
+   --  a subpixel Center, with nearest-edge extension. Channels are
+   --  interpolated independently; patch pixel (R, C) samples Source at
+   --
+   --     X = Center.X - (Patch_Size.Width - 1) / 2 + C
+   --     Y = Center.Y - (Patch_Size.Height - 1) / 2 + R
+   --
+   --  Source must be nonempty 2-D UInt8/Float32 C1/C3. Patch dimensions
+   --  must be positive; they may exceed Source. Center must be finite and
+   --  inside Source (`0 <= X < Columns`, `0 <= Y < Rows`), and is
+   --  Region-local. Source values may be nonfinite and propagate natively
+   --  into the samples that use them. UInt8 results use native fixed-point
+   --  rounding. Source is unchanged and a Region's parent pixels never
+   --  participate: requests touching the border sample a private
+   --  replicated guard copy with the same logical geometry. Arithmetic and
+   --  backend representability limits can reject extreme dimensions or
+   --  strides.
+   --  @param Source Image to sample.
+   --  @param Patch_Size Patch columns (Width) and rows (Height); both
+   --  nonzero.
+   --  @param Center Patch center in Source pixel coordinates (X = column,
+   --  Y = row).
+   --  @param Output_Depth Result depth; default Preserve_Source_Depth.
+   --  @return Fresh independent owning Mat with Patch_Size.Height rows,
+   --  Patch_Size.Width columns, Source's channel count and the depth
+   --  selected by Output_Depth.
+   --  @exception OpenCV_Error Unsupported Source, zero Patch_Size
+   --  dimension, nonfinite or outside Center, native arithmetic or stride
+   --  limits, or an OpenCV failure.
    function Extract_Subpixel_Patch
      (Source       : OpenCV.Core.Mat;
       Patch_Size   : OpenCV.Size;
