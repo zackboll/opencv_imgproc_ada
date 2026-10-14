@@ -39,7 +39,8 @@ project OpenCV_Imgproc_Shim is
          --  Core's installed project lives in <prefix>/share/gpr; its
          --  module bridge is an install artifact in <prefix>/include.
          --  Keep both paths relative to Core, including after relocation.
-         "-I" & OpenCV_Core'Project_Dir & "../../include");
+         "-I" & OpenCV_Core'Project_Dir & "../../include") &
+         OpenCV_Imgproc_Install.Cross_Compiler_Switches;
 
       case OpenCV_Imgproc_Install.Cxx_Toolchain is
          when "GNU" =>
@@ -82,7 +83,8 @@ project OpenCV_Imgproc_Shim is
             for Linker_Options use
               (OpenCV_Imgproc_Install.Library_Search_Switch,
                OpenCV_Imgproc_Install.OpenCV_Imgproc_Link_Option,
-               OpenCV_Imgproc_Install.Cxx_Runtime_Switch);
+               OpenCV_Imgproc_Install.Cxx_Runtime_Switch) &
+               OpenCV_Imgproc_Install.Cross_Linker_Switches;
          when "Relocatable" =>
             for Driver use OpenCV_Imgproc_Install.Cxx_Driver;
          when "External_Relocatable" =>
