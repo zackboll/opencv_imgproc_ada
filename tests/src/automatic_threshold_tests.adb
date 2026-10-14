@@ -2,6 +2,7 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
 with Interfaces;
+with Native_Reference;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.UInt8_Access;
@@ -107,23 +108,57 @@ package body Automatic_Threshold_Tests is
 
       Source           : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt16, 1));
-      Destination      : OpenCV.Core.Mat;
+      Destination      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt16, 1));
       Automatic_Result : OpenCV.Core.Mat;
       Expected         : OpenCV.Core.Mat;
       High_Values      : OpenCV.Core.Mat;
-      Threshold        : OpenCV.Float64_Value;
+      Threshold        : OpenCV.Float64_Value := -123.0;
    begin
       OpenCV.Core.Set_To (Source, (Component_0 => 1_000.0, others => 0.0));
       High_Values := Source.Region ((X => 1, Y => 0, Width => 1, Height => 2));
       OpenCV.Core.Set_To
         (High_Values, (Component_0 => 50_000.0, others => 0.0));
 
-      OpenCV.Image_Processing.Apply_Automatic_Threshold
-        (Source,
-         Destination,
-         Threshold,
-         OpenCV.Image_Processing.Otsu,
-         OpenCV.Image_Processing.To_Zero);
+      Destination.Set_To ((others => 321.0));
+      declare
+         Before            : constant OpenCV.Core.Mat := Source.Clone;
+         Saved_Destination : constant OpenCV.Core.Mat := Destination.Clone;
+         procedure Attempt is
+         begin
+            OpenCV.Image_Processing.Apply_Automatic_Threshold
+              (Source,
+               Destination,
+               Threshold,
+               OpenCV.Image_Processing.Otsu,
+               OpenCV.Image_Processing.To_Zero);
+         end Attempt;
+      begin
+         --  Runtime/header identity comes from linked OpenCV, not an env flag.
+         --  Upstream introduced UInt16 Otsu in 4.4.0 (not 4.2 or 4.3).
+         if Native_Reference.Version < 40_400 then
+            Assert_Raises_OpenCV_Error
+              (Attempt'Access, "legacy UInt16 Otsu must fail");
+            AUnit.Assertions.Assert
+              (Threshold = -123.0, "failed Otsu preserves threshold");
+            AUnit.Assertions.Assert
+              (Destination.Rows = 3
+               and then Destination.Columns = 4
+               and then Destination.Depth = OpenCV.Core.UInt16
+               and then Destination.Abs_Diff (Saved_Destination).Norm
+                          (OpenCV.Core.Infinity)
+                        = 0.0,
+               "legacy Otsu preserves destination geometry and pixels");
+            AUnit.Assertions.Assert
+              (Source.Abs_Diff (Before).Norm (OpenCV.Core.Infinity) = 0.0,
+               "failed Otsu preserves every source sample");
+            return;
+         end if;
+         Attempt;
+         AUnit.Assertions.Assert
+           (Source.Abs_Diff (Before).Norm (OpenCV.Core.Infinity) = 0.0,
+            "successful Otsu preserves every source sample");
+      end;
       Automatic_Result := Destination.Clone;
       OpenCV.Image_Processing.Apply_Threshold
         (Source, Expected, Threshold, OpenCV.Image_Processing.To_Zero);
@@ -135,7 +170,8 @@ package body Automatic_Threshold_Tests is
          and then Automatic_Result.Channels = 1,
          "Otsu UInt16 must preserve source geometry and type");
       AUnit.Assertions.Assert
-        (Threshold = Threshold, "Otsu UInt16 must return a finite threshold");
+        (Threshold >= 1_000.0 and then Threshold <= 50_000.0,
+         "Otsu UInt16 must return a finite threshold in source range");
       AUnit.Assertions.Assert
         (Source.Min_Max_Loc.Minimum = 1_000.0
          and then Source.Min_Max_Loc.Maximum = 50_000.0,

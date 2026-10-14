@@ -1282,8 +1282,8 @@ package OpenCV.Image_Processing is
 
    --  Algorithm Apply_Automatic_Threshold uses to select the threshold from
    --  a single-channel Source.
-   --  @enum Otsu Otsu's method; accepts UInt8 and UInt16 Sources. OpenCV 4.1
-   --  rejects UInt16 with OpenCV_Error.
+   --  @enum Otsu Otsu's method; accepts UInt8 and UInt16 Sources. OpenCV
+   --  before 4.4 rejects UInt16 with OpenCV_Error.
    --  @enum Triangle Triangle method; accepts UInt8 Sources only.
    type Automatic_Threshold_Method is (Otsu, Triangle);
 
@@ -2231,6 +2231,10 @@ package OpenCV.Image_Processing is
    --  cross-version VNG border values are not promised identical. The
    --  installed algorithm is preserved. Demosaic_Bayer returns C3 BGR or RGB
    --  according to Order.
+   --  Legacy edge-aware interpolation (including OpenCV 4.1) can round
+   --  diagonal color averages differently for the BGR and RGB selectors.
+   --  Channel order is preserved, but reversing channels need not produce
+   --  bit-identical samples; native selector results are retained.
    --  @param Source Bayer mosaic: nonempty 2-D C1 UInt8 or UInt16 of at
    --  least 3 rows and 3 columns; UInt8 for Variable_Number_Of_Gradients.
    --  @param Pattern CFA tile at logical Source (0,0).
@@ -4465,8 +4469,8 @@ package OpenCV.Image_Processing is
    --  Applies Otsu or Triangle automatic thresholding to a non-empty,
    --  two-dimensional, single-channel Source. Maximum_Value must be finite.
    --  Otsu accepts UInt8 and UInt16 Sources; Triangle accepts UInt8 only.
-   --  OpenCV 4.1 rejects UInt16 Otsu with OpenCV_Error. The result equals
-   --  Apply_Threshold with Computed_Threshold, Mode and Maximum_Value.
+   --  OpenCV before 4.4 rejects UInt16 Otsu with OpenCV_Error. The result
+   --  equals Apply_Threshold with Computed_Threshold, Mode and Maximum_Value.
    --  Destination is replaced with a single-channel Mat having Source's
    --  rows, columns, and depth, as a direct native output: OpenCV writes
    --  into its storage when it already has that size and type, so shallow

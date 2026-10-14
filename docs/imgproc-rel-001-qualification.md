@@ -1,5 +1,20 @@
 # IMGPROC-REL-001 — Imgproc 0.2.0 release qualification
 
+## Corrective follow-up: IMGPROC-REL-002
+
+The historical blocker and pending dispositions below describe REL-001,
+not the corrective result. [REL-002 qualification](imgproc-rel-002-qualification.md)
+records the independently reproduced root causes, corrections and actual
+four-version evidence. Both 4.1 failures were test-contract errors: the
+documented UInt16 Otsu rejection was incorrectly expected to succeed, and
+legacy Bayer EA native rounding was incorrectly assumed bit-symmetric under
+channel reversal. Exact native and physical sample oracles now preserve
+strict ordering coverage. All 1130 tests pass on 4.1/4.6/4.10/5.0; no production
+algorithm or shim safety assertion was altered. Parent hosted runs
+`38517425873`, `38517428098`, `38517430338` subsequently completed successfully.
+Final correction SHA, generated origin and PR/hosted parity are recorded in
+the correction handoff; pending corrected-head checks are not release passes.
+
 ## Scope and source identities
 
 Proposed release: **opencv_imgproc 0.2.0**, not tagged or published.

@@ -20,4 +20,9 @@ project Tests is
       for Switches ("Ada") use ("-Es");
    end Binder;
 
+   package Linker is
+      for Default_Switches ("Ada") use
+        ("-L" & Project'Project_Dir & "obj/native", "-limgproc_test_reference");
+   end Linker;
+
 end Tests;

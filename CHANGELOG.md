@@ -6,9 +6,13 @@ Release preparation is tracked in
 [IMGPROC-REL-001 qualification](docs/imgproc-rel-001-qualification.md).
 The native release candidate uses indexed `opencv_core` 0.4.1; GNAT 12
 production and AdaCore/Yocto target support are not included in this claim.
-Publication remains blocked by two actual OpenCV 4.1 full-suite failures
-(Bayer edge-aware color order and UInt16 Otsu). Other successful qualifications
-do not override that retained compatibility gate.
+IMGPROC-REL-002 resolves the two OpenCV 4.1 test-contract failures: UInt16
+Otsu now enforces the documented native rejection, and textured edge-aware
+Bayer checks use exact independent native selectors and physical CFA samples
+instead of assuming equal rounding after channel reversal. No production
+pixel algorithm, channel mapping or ownership behavior changed. The complete
+four-version suite now has 1130 tests; release readiness still requires
+exact-candidate hosted qualification and review.
 
 ### Added since indexed 0.1.0
 
