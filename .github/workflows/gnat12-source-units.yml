@@ -28,6 +28,8 @@ jobs:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir evidence
+          git config --global --add safe.directory "$PWD"
+          git config --global --add safe.directory "$PWD/qualification-core"
           git rev-parse HEAD | tee evidence/imgproc-sha.txt
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           git -C qualification-core rev-parse HEAD | tee evidence/core-sha.txt

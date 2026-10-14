@@ -280,6 +280,10 @@ Windows fails deploying the MSYS2 OpenCV system package before compilation.
 Parent cross controls `38505301866`, installed consumers `38505301943`, and
 documentation `38505301956` pass. This existing Windows failure is not hidden or
 fixed speculatively by this compiler-policy task.
+Initial feature compiler workflow runs `38506706853` and `38506703305` failed
+before compiler controls because Git rejected container checkout ownership.
+The follow-up trusts only the two exact checkout paths (not a wildcard) before
+checking SHAs; it does not weaken source identity or compiler tests.
 
 ## Next executable gate
 
