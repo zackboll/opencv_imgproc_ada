@@ -5,6 +5,68 @@ private with Ada.Containers.Vectors;
 
 package OpenCV.Image_Processing is
 
+   --  Thick Ada binding to the OpenCV Imgproc module. Every operation
+   --  works on OpenCV.Core.Mat values and the shared value types of the
+   --  root OpenCV package (Point, Size, Rect, Scalar, Border_Kind and the
+   --  element value types); this package defines only Imgproc-specific
+   --  types.
+   --
+   --  Conventions shared by all operations:
+   --
+   --  - Images are borrowed for the duration of a call and never retained.
+   --    A Mat of mode in is read and not modified; operations that modify
+   --    an image take it as in out and say so.
+   --  - Element types are written as a Core depth and channel count, so
+   --    "UInt8 C3" is depth UInt8 with three channels. Images are
+   --    two-dimensional unless stated otherwise.
+   --  - Coordinates are zero-based. Point X is the column and Y the row;
+   --    Size Width counts columns and Height counts rows.
+   --  - A Region (a Mat header viewing part of another Mat) is processed
+   --    as its own logical image unless an operation documents otherwise;
+   --    each operation states whether pixels outside the Region can be
+   --    read or written.
+   --  - Each operation states whether it returns fresh owning storage,
+   --    replaces a Destination, or writes into existing storage, and which
+   --    input and output aliases are supported.
+   --  - Contract violations and failures reported by OpenCV raise
+   --    OpenCV.OpenCV_Error. A value outside an Ada subtype range raises
+   --    Constraint_Error before the operation runs.
+   --  - Behavior notes that depend on the OpenCV release refer to the
+   --    reviewed OpenCV 4.1, 4.10 and 5.0 sources. Floating-point results
+   --    retain native rounding; bit identity across OpenCV releases,
+   --    platforms and optional acceleration backends is not promised
+   --    unless stated.
+   --
+   --  Drawing primitives mutate Image in place. A shallow Mat alias or a
+   --  Region shares that storage, so a drawing made through either header
+   --  is visible through the other. Region coordinates are relative to the
+   --  Region. Pixels outside a Region are not modified. Image must be
+   --  nonempty and two-dimensional, with depth UInt8, UInt16, Int16,
+   --  Float32, or Float64 and 1 through 4 channels. Scalar components are
+   --  written in channel order; unused components are ignored and there is
+   --  no alpha blending. The components used by Image.Channels must be
+   --  finite. Coordinates may lie outside Image; OpenCV clips them.
+   --  Outline operations use a positive Drawing_Thickness.
+   --  Anti_Aliased_Line is accepted only for UInt8 images. Contract
+   --  violations and OpenCV failures raise OpenCV.OpenCV_Error.
+   --
+   --  Hough detection. Every operation takes a private continuous snapshot
+   --  of Source before calling OpenCV, so Source pixels are never modified
+   --  and a Region is analysed as its own logical image with its own
+   --  borders. Results are Ada-owned copies. Result order is not part of
+   --  the contract. Contract violations, native arithmetic limits, and
+   --  OpenCV failures raise OpenCV.OpenCV_Error.
+   --
+   --  Hough evidence. Votes are accumulator support counts. OpenCV keeps
+   --  only strict local maxima whose count exceeds the requested
+   --  threshold, so an accepted line or circle normally reports Votes >
+   --  threshold. Magnitudes and ordering may differ between OpenCV
+   --  generations and optional backends; use Votes for ranking and
+   --  evidence, not as a portable constant.
+   --
+   --  Segmentation. Contract violations, native arithmetic limits, and
+   --  OpenCV failures raise OpenCV.OpenCV_Error.
+
    type Squared_Box_Mode is (Mean_Square, Sum_Of_Squares);
    --  Native squared box filtering of nonempty 2-D UInt8/Float32 C1/C3.
    --  Fresh independent Float64 output; Source unchanged, Regions isolated.
@@ -22,16 +84,18 @@ package OpenCV.Image_Processing is
 
    --  Native cv::blendLinear, returning fresh independent owning storage.
    --  Sources: nonempty 2-D UInt8 or Float32, identical depth, channels and
-   --  geometry. Any Core-valid channels with Columns*Channels <= INT_MAX.
+   --  geometry. Any Core-valid channels with `Columns * Channels <= INT_MAX`.
    --  Weights: matching nonempty 2-D Float32 C1; every sample finite in
    --  0.0 .. 1.0. One weight per pixel applies to all channels. Invalid
    --  inputs raise OpenCV_Error. Weights need not sum to one.
    --  Native binary32 formula per channel:
-   --    (Source_1*Weight_1 + Source_2*Weight_2)
-   --      / (Weight_1 + Weight_2 + 1.0e-5f)
+   --
+   --       (Source_1 * Weight_1 + Source_2 * Weight_2)
+   --         / (Weight_1 + Weight_2 + 1.0e-5f)
+   --
    --  UInt8 then uses native rounding/saturation. Both-zero weights yield
    --  zero for finite sources; Float32 NaN/Inf/overflow retain native IEEE
-   --  behavior (including Inf*0). (1,0) retains the epsilon bias.
+   --  behavior (including `Inf * 0`). (1,0) retains the epsilon bias.
    --  Float32 cross-platform bit identity is not promised.
    --  All inputs remain unchanged; read-sharing/overlapping aliases work.
    --  Regions contribute only logical pixels, with original row strides.
@@ -94,7 +158,7 @@ package OpenCV.Image_Processing is
      (Source_1, Source_2, Base : OpenCV.Core.Mat) return OpenCV.Core.Mat;
    function Accumulate_Image_Product
      (Source_1, Source_2, Base, Mask : OpenCV.Core.Mat) return OpenCV.Core.Mat;
-   --  Result = (1-Weight)*Base + Weight*Source at enabled pixels.
+   --  Result = `(1 - Weight) * Base + Weight * Source` at enabled pixels.
    --  Weight must be finite and in 0.0 .. 1.0 (otherwise OpenCV_Error).
    function Update_Running_Average
      (Source, Base : OpenCV.Core.Mat; Weight : OpenCV.Float64_Value)
@@ -177,6 +241,26 @@ package OpenCV.Image_Processing is
       Labels : Distance_Label_Mode := Nearest_Zero_Component)
       return Labeled_Distance_Transform_Result;
 
+   --  Packed conversions require UInt8. BGR565/BGR555 use UInt8 C2,
+   --  OpenCV's native Mat representation: two bytes per native 16-bit word.
+   --  Byte order is host-native, not a network/file-format byte order.
+   --  RGB/RGBA selectors interpret channel order, not a new packed layout.
+   --  Packing truncates; unpacking does not replicate low color bits.
+   --  BGR565 ignores input alpha and expands alpha to 255. BGR555 uses
+   --  bit 15 as nonzero-alpha flag; C3 and Gray packing leave it zero.
+   --
+   --  FULL HSV/HLS and linear-light Lab/Luv require UInt8/Float32 C3.
+   --  UInt8 FULL hue has full-byte encoding; native forward scale is 256,
+   --  reverse scale 255, so exact round trips are not promised. Float32
+   --  standard/FULL hue remains degrees and both paths are equivalent in
+   --  reviewed OpenCV 4.1/4.10/5.0 implementations.
+   --  Linear Lab/Luv omits sRGB transfer encoding/decoding, unlike ordinary
+   --  Lab/Luv selectors. Float32 RGB is normally 0..1; no pixel sanitizer or
+   --  manual Lab/Luv rescaling is applied. Native UInt8 encoding is retained.
+   --  Premultiplied selectors require UInt8 C4 in named RGBA order, preserve
+   --  alpha, and multiply color by alpha/255. Reverse saturates even for
+   --  noncanonical color > alpha; zero alpha yields zero color. Quantization
+   --  makes the inverse lossy, especially at low alpha.
    type Color_Conversion is
      (BGR_To_Gray,
       RGB_To_Gray,
@@ -265,27 +349,6 @@ package OpenCV.Image_Processing is
       RGBA_To_Premultiplied_RGBA,
       Premultiplied_RGBA_To_RGBA);
 
-   --  Packed conversions require UInt8. BGR565/BGR555 use UInt8 C2,
-   --  OpenCV's native Mat representation: two bytes per native 16-bit word.
-   --  Byte order is host-native, not a network/file-format byte order.
-   --  RGB/RGBA selectors interpret channel order, not a new packed layout.
-   --  Packing truncates; unpacking does not replicate low color bits.
-   --  BGR565 ignores input alpha and expands alpha to 255. BGR555 uses
-   --  bit 15 as nonzero-alpha flag; C3 and Gray packing leave it zero.
-
-   --  FULL HSV/HLS and linear-light Lab/Luv require UInt8/Float32 C3.
-   --  UInt8 FULL hue has full-byte encoding; native forward scale is 256,
-   --  reverse scale 255, so exact round trips are not promised. Float32
-   --  standard/FULL hue remains degrees and both paths are equivalent in
-   --  reviewed OpenCV 4.1/4.10/5.0 implementations.
-   --  Linear Lab/Luv omits sRGB transfer encoding/decoding, unlike ordinary
-   --  Lab/Luv selectors. Float32 RGB is normally 0..1; no pixel sanitizer or
-   --  manual Lab/Luv rescaling is applied. Native UInt8 encoding is retained.
-   --  Premultiplied selectors require UInt8 C4 in named RGBA order, preserve
-   --  alpha, and multiply color by alpha/255. Reverse saturates even for
-   --  noncanonical color > alpha; zero alpha yields zero color. Quantization
-   --  makes the inverse lossy, especially at low alpha.
-
    type Interpolation_Method is
      (Nearest_Neighbor, Linear, Cubic, Area, Lanczos_4, Linear_Exact);
 
@@ -349,7 +412,8 @@ package OpenCV.Image_Processing is
       return OpenCV.Core.Mat;
 
    --  Search_Window is a strictly positive half-size. The image must be at
-   --  least (2*Width+5) by (2*Height+5). Every initial point must be finite
+   --  least `2 * Width + 5` by `2 * Height + 5`. Every initial point must be
+   --  finite
    --  and inside [0, Columns) x [0, Rows). Dead-zone half-sizes must be
    --  smaller than the corresponding search half-sizes. Both termination
    --  criteria are active; Epsilon must be finite and nonnegative. An empty
@@ -691,35 +755,36 @@ package OpenCV.Image_Processing is
    --  parent plane offsets and ROI origins are never inferred.
    --  Native BT.601 limited-range conversion accepts all byte values.
    --  Vendor rounding can differ from the portable 20-bit CPU arithmetic.
+   --  Decode_YUV420 returns UInt8 H x W C3 BGR/RGB or C4 BGRA/RGBA, with
+   --  alpha 255.
    function Decode_YUV420
      (Source : OpenCV.Core.Mat;
       Layout : YUV420_Layout;
       Output : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
-   --  UInt8 H x W C3 BGR/RGB or C4 BGRA/RGBA, with alpha 255.
 
-   function Decode_YUV420_Two_Plane
-     (Y_Plane  : OpenCV.Core.Mat;
-      UV_Plane : OpenCV.Core.Mat;
-      Layout   : YUV420_Semiplanar_Layout;
-      Output   : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
    --  Y: nonempty 2-D UInt8 C1 H x W. UV: UInt8 C2 H/2 x W/2.
    --  Caller supplies corresponding planes/Regions; no chroma phase is
    --  inferred. Independent packed snapshots have equal byte step W,
    --  normalizing OpenCV 4.1's shared-stride assumption. Both semiplanar
    --  decode forms use cvtColorTwoPlane, with exact representation equality.
+   function Decode_YUV420_Two_Plane
+     (Y_Plane  : OpenCV.Core.Mat;
+      UV_Plane : OpenCV.Core.Mat;
+      Layout   : YUV420_Semiplanar_Layout;
+      Output   : YUV420_Color_Output := BGR_Output) return OpenCV.Core.Mat;
 
-   function Encode_YUV420_Planar
-     (Source : OpenCV.Core.Mat;
-      Layout : YUV420_Planar_Layout;
-      Order  : YUV_Color_Order := BGR_Order) return OpenCV.Core.Mat;
    --  Nonempty 2-D UInt8 C3/C4, even W/H >=2. BGR_Order means BGR/BGRA;
    --  RGB_Order means RGB/RGBA. Alpha is ignored, not premultiplied.
    --  Native encoding computes Y per pixel and samples U/V at the top-left
    --  pixel of each 2x2 block, without averaging. Subsampling is lossy.
+   function Encode_YUV420_Planar
+     (Source : OpenCV.Core.Mat;
+      Layout : YUV420_Planar_Layout;
+      Order  : YUV_Color_Order := BGR_Order) return OpenCV.Core.Mat;
 
+   --  Raw Y bytes, UInt8 C1 H x W, with no subtract-16 or rescaling.
    function Extract_YUV420_Luma
      (Source : OpenCV.Core.Mat) return OpenCV.Core.Mat;
-   --  Raw Y bytes, UInt8 C1 H x W, with no subtract-16 or rescaling.
 
    type YUV422_Layout is (UYVY, YUY2, YVYU);
    subtype YUV422_Color_Output is YUV420_Color_Output;
@@ -735,17 +800,18 @@ package OpenCV.Image_Processing is
    --  OpenCV 4.1 lacks the native even-width check; the shim enforces it
    --  before pair reads. Decode uses native limited-range BT.601 arithmetic,
    --  accepting all UInt8 values. Vendor/build pixel identity is not promised.
+   --  Decode_YUV422 returns C3 BGR/RGB or C4 BGRA/RGBA, alpha 255; geometry
+   --  is preserved.
    function Decode_YUV422
      (Source : OpenCV.Core.Mat;
       Layout : YUV422_Layout;
       Output : YUV422_Color_Output := BGR_Output) return OpenCV.Core.Mat;
-   --  C3 BGR/RGB or C4 BGRA/RGBA, alpha 255; geometry is preserved.
 
-   function Extract_YUV422_Luma
-     (Source : OpenCV.Core.Mat; Layout : YUV422_Layout) return OpenCV.Core.Mat;
    --  Exact raw Y bytes, C1, no subtract-16, scaling or chroma participation.
    --  UYVY uses source channel 1; YUY2/YVYU use channel 0.
    --  YUV422 encoding is intentionally deferred: OpenCV 4.1 lacks it.
+   function Extract_YUV422_Luma
+     (Source : OpenCV.Core.Mat; Layout : YUV422_Layout) return OpenCV.Core.Mat;
 
    type Bayer_Pattern is (RGGB, GRBG, BGGR, GBRG);
    type Bayer_Demosaicing_Method is
@@ -763,24 +829,25 @@ package OpenCV.Image_Processing is
    --  below 8. Older 4.x fallback has native phase/order quirks; see README.
    --  OpenCV 5 VNG uses reflected padding; cross-version VNG border values
    --  are not promised identical. The installed algorithm is preserved.
+   --  Demosaic_Bayer returns C3 BGR or RGB according to Order.
    function Demosaic_Bayer
      (Source  : OpenCV.Core.Mat;
       Pattern : Bayer_Pattern;
       Method  : Bayer_Demosaicing_Method := Bilinear;
       Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
-   --  C3 BGR or RGB according to Order.
 
+   --  Direct native Bayer luminance, C1 (not color followed by conversion).
    function Demosaic_Bayer_To_Gray
      (Source : OpenCV.Core.Mat; Pattern : Bayer_Pattern)
       return OpenCV.Core.Mat;
-   --  Direct native Bayer luminance, C1 (not color followed by conversion).
 
+   --  Bilinear C4 BGRA/RGBA; native alpha is 255/65535 for UInt8/UInt16.
    function Demosaic_Bayer_With_Alpha
      (Source  : OpenCV.Core.Mat;
       Pattern : Bayer_Pattern;
       Order   : Bayer_Color_Order := BGR_Order) return OpenCV.Core.Mat;
-   --  Bilinear C4 BGRA/RGBA; native alpha is 255/65535 for UInt8/UInt16.
 
+   --  Portable OpenCV 4.1/4.10/5 set; no Turbo or DeepGreen.
    type Built_In_Color_Map is
      (Autumn_Map,
       Bone_Map,
@@ -802,7 +869,6 @@ package OpenCV.Image_Processing is
       Cividis_Map,
       Twilight_Map,
       Twilight_Shifted_Map);
-   --  Portable OpenCV 4.1/4.10/5 set; no Turbo or DeepGreen.
 
    --  Nonempty 2-D UInt8 C1 or C3 Source. C1 bytes index the table;
    --  C3 is BGR converted to grayscale first, NOT independent B/G/R maps.
@@ -1175,7 +1241,7 @@ package OpenCV.Image_Processing is
    --  The check adds packed Scene support and one output-row bitset; work is
    --  proportional to output rows * active mask pixels * output columns / 64.
    --  Correlation_Coefficient is the unnormalized masked covariance numerator
-   --  R = Sum(M*T*I) - Sum(M*T)*Sum(M*I)/Sum(M): both means are taken over
+   --  `R = Sum(M*T*I) - Sum(M*T)*Sum(M*I)/Sum(M)`: both means are taken over
    --  included pixels only. It is mean-centered but not scale-normalized, so
    --  it is not a Pearson coefficient and is not limited to [-1, 1]. Higher
    --  is better. Scores may be positive, zero or negative (an inverted
@@ -1958,19 +2024,6 @@ package OpenCV.Image_Processing is
      (Self : Connected_Component_Set; Label : Component_Label)
       return Component_Statistics;
 
-   --  Drawing primitives mutate Image in place. A shallow Mat alias or a
-   --  Region shares that storage, so a drawing made through either header is
-   --  visible through the other. Region coordinates are relative to the
-   --  Region. Pixels outside a Region are not modified. Image must be
-   --  nonempty and two-dimensional, with depth UInt8, UInt16, Int16,
-   --  Float32, or Float64 and 1 through 4 channels. Scalar components are
-   --  written in channel order; unused components are ignored and there is
-   --  no alpha blending. The components used by Image.Channels must be
-   --  finite. Coordinates may lie outside Image; OpenCV clips them. Outline
-   --  operations use a positive Drawing_Thickness. Anti_Aliased_Line is
-   --  accepted only for UInt8 images. Contract violations and OpenCV
-   --  failures raise OpenCV.OpenCV_Error.
-
    procedure Draw_Line
      (Image      : in out OpenCV.Core.Mat;
       Start      : OpenCV.Point;
@@ -2144,13 +2197,6 @@ package OpenCV.Image_Processing is
       Line_Style        : Drawing_Line_Style := Eight_Connected_Line;
       Offset            : OpenCV.Point := (X => 0, Y => 0));
 
-   --  Hough detection. Every operation takes a private continuous snapshot
-   --  of Source before calling OpenCV, so Source pixels are never modified
-   --  and a Region is analysed as its own logical image with its own
-   --  borders. Results are Ada-owned copies. Result order is not part of
-   --  the contract. Contract violations, native arithmetic limits, and
-   --  OpenCV failures raise OpenCV.OpenCV_Error.
-
    --  Find_Hough_Lines runs the classical standard Hough transform on a
    --  nonempty two-dimensional UInt8 C1 binary Source: zero pixels are
    --  background and every nonzero pixel is a candidate. Distance_Resolution
@@ -2213,13 +2259,6 @@ package OpenCV.Image_Processing is
       Minimum_Radius          : OpenCV.Size_Coordinate := 0;
       Maximum_Radius          : OpenCV.Size_Coordinate)
       return Hough_Circle_Array;
-
-   --  Hough evidence. Votes are accumulator support counts. OpenCV keeps
-   --  only strict local maxima whose count exceeds the requested threshold,
-   --  so an accepted line or circle normally reports Votes > threshold.
-   --  Magnitudes and ordering may differ between OpenCV generations and
-   --  optional backends; use Votes for ranking and evidence, not as a
-   --  portable constant.
 
    --  Find_Hough_Lines_With_Votes has exactly the contract of
    --  Find_Hough_Lines and adds each line's accumulator votes. OpenCV's
@@ -2291,9 +2330,6 @@ package OpenCV.Image_Processing is
       Minimum_Radius          : OpenCV.Size_Coordinate := 0;
       Maximum_Radius          : OpenCV.Size_Coordinate)
       return Hough_Circle_With_Votes_Array;
-
-   --  Segmentation. Contract violations, native arithmetic limits, and
-   --  OpenCV failures raise OpenCV.OpenCV_Error.
 
    --  Floating_Range compares each candidate with its already-filled
    --  neighbour; Fixed_Range compares every candidate with the seed pixel.
@@ -2465,8 +2501,6 @@ package OpenCV.Image_Processing is
      (State : GrabCut_State; Row : Natural; Column : Natural)
       return GrabCut_Label;
 
-   --  Earth mover distance -------------------------------------------------
-
    type Earth_Mover_Metric is (Manhattan_EMD, Euclidean_EMD, Chessboard_EMD);
    type Earth_Mover_Result is record
       Distance : OpenCV.Float32_Value;
@@ -2528,8 +2562,6 @@ package OpenCV.Image_Processing is
       Metric                   : Earth_Mover_Metric := Euclidean_EMD;
       Early_Exit_Threshold     : OpenCV.Float32_Value :=
         OpenCV.Float32_Value'Last) return Earth_Mover_Bounded_Result;
-
-   --  Histogram analysis ---------------------------------------------------
 
    --  Maximum histogram dimensionality guaranteed on every supported OpenCV
    --  generation. OpenCV 4.x allows dense Mats of up to CV_MAX_DIM (32)
@@ -2835,6 +2867,12 @@ private
       Initialized      : Boolean := False;
    end record;
 
+   --  Element equality for the private histogram bin-boundary vectors:
+   --  the ordinary floating-point "=" of the two boundary values. Not part
+   --  of the public API.
+   --  @param Left First boundary value.
+   --  @param Right Second boundary value.
+   --  @return True when Left and Right compare equal.
    function Boundary_Equal (Left, Right : OpenCV.Float32_Value) return Boolean;
 
    package Histogram_Boundary_Vectors is new
