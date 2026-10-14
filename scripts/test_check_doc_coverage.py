@@ -231,6 +231,16 @@ class SyntheticCoverageTest(unittest.TestCase):
         _, missing, errors = self.check()
         self.assertEqual((missing, errors), ([], []))
 
+    def test_code_block_line_starting_with_operator_is_verbatim(self):
+        self.edit(self.spec, "   --  Runs the demonstration once.\n",
+                  "   --  Runs the demonstration once:\n   --\n"
+                  "   --       A\n   --       * B\n   --\n")
+        self.edit(self.page, "<p>Runs the demonstration once.",
+                  "<p>Runs the demonstration once:<pre><code>A\n* B\n</code></pre>")
+        self.assertEqual(self.check()[1:], ([], []))
+        self.edit(self.page, "* B\n", "B\n")
+        self.assertTrue(any("does not render" in e for e in self.check()[2]))
+
     def test_private_part_comments_are_not_required_to_render(self):
         self.edit(self.spec, "   function Hidden return Boolean;\n",
                   "   --  Private helper.\n   function Hidden return Boolean;\n")

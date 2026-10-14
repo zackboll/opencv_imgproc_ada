@@ -186,11 +186,17 @@ def _rendered_units(lines):
 
     The description precedes the first tag; each `@param`, `@return`,
     `@exception`, `@enum` or `@field` item renders as its name followed by
-    its text. List markers and code-span backticks do not render as text.
+    its text. List markers and code-span backticks do not render as text,
+    except inside an indented code block (five or more spaces after `--`),
+    which renders verbatim.
     """
     units, current = [], []
     for line in lines:
-        body = line.strip()[2:].strip()
+        raw = line.strip()[2:]
+        body = raw.strip()
+        if raw.startswith("     "):
+            current.append(body)
+            continue
         if body.startswith("@"):
             units.append(current)
             current = []
