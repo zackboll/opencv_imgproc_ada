@@ -83,7 +83,39 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def validate():
+def dependency_closure(paths, sysroot, readelf, generated=None):
+    """Resolve every DT_NEEDED to a contained, architecture-checked target ELF."""
+    index = {}
+    for path in sysroot.rglob("*.so*"):
+        index.setdefault(path.name, []).append(path)
+    visited = {}
+    pending = list(paths)
+    while pending:
+        entry = pending.pop()
+        path = resolved(entry, None if generated and Path(entry) == generated else sysroot)
+        if str(path) in visited:
+            continue
+        elf(path, readelf)
+        dynamic = run([readelf, "-d", str(path)])
+        for search_path in re.findall(r'\((?:RPATH|RUNPATH)\).*\[([^\]]+)\]', dynamic):
+            for directory in search_path.split(":"):
+                require(directory.startswith("/") and "x86_64" not in directory,
+                        f"unqualified embedded target search path: {path}: {directory}")
+                # Runtime absolute paths refer to the target root, not the build host.
+                resolved(sysroot / directory.lstrip("/"), sysroot)
+        needed = re.findall(r'\(NEEDED\).*\[([^\]]+)\]', dynamic)
+        visited[str(path)] = dict(sha256=digest(path), needed=needed)
+        for name in needed:
+            require('/' not in name, f"unsafe target dependency: {name}")
+            candidates = index.get(name, [])
+            require(candidates, f"unresolved target dependency: {name} from {path}")
+            targets = {resolved(item, sysroot) for item in candidates}
+            require(len(targets) == 1, f"ambiguous target dependency: {name}")
+            pending.extend(targets)
+    return visited
+
+
+def validate(sysroot_only=False):
     target = value("OPENCV_CROSS_TARGET")
     run(["sh", str(ROOT / "scripts/validate_cross_target.sh"), target])
     sysroot = resolved(value("ENV_PREFIX"))
@@ -102,17 +134,6 @@ def validate():
     require(resolved(run([ada, "-print-file-name=adalib"])) == resolved(runtime / "adalib"),
             "Ada runtime differs from compiler runtime")
     elf(resolved(runtime / "adalib/libgnat.a"), readelf)
-    config = resolved(value("OPENCV_CROSS_GPR_CONFIG"))
-    # Reject comments before checking actual declarations. Compilation probes
-    # independently check the selected drivers; text checks alone are not proof.
-    gpr = re.sub(r"--[^\n]*", "", config.read_text())
-    for declaration, message in [
-            (f'for Target use "{target}";', "GPR target mismatch"),
-            (f'"{ada}"', "GPR Ada compiler mismatch"),
-            (f'"{cxx}"', "GPR C++ compiler mismatch"),
-            (f'"{runtime}/"', "GPR Ada runtime mismatch"),
-            ('for Driver use Compiler\'Driver ("C++");', "GPR linker mismatch")]:
-        require(declaration in gpr, message)
     pkg = tool("OPENCV_CROSS_PKG_CONFIG")
     libdirs = value("PKG_CONFIG_LIBDIR").split(":")
     require(all(libdirs), "empty pkg-config search component")
@@ -152,16 +173,30 @@ def validate():
     require(all(numbers) and ".".join(match[1] for match in numbers) == version,
             "OpenCV header/pkg-config version mismatch")
     flags = run([pkg, "--cflags", "--libs", package], env=env).split()
+    advertised = []
+    search = [library]
+    for flag in flags:
+        if flag.startswith("-L"):
+            search.append(resolved(flag[2:], sysroot))
     for flag in flags:
         if flag.startswith(("-I", "-L")):
             directory = resolved(flag[2:], sysroot)
             require(directory.is_dir(), "missing pkg-config dependency directory")
-            tree(directory, sysroot)
+            if flag.startswith("-I"):
+                tree(directory, sysroot)
         elif flag.startswith("/"):
-            elf(resolved(flag, sysroot), readelf)
+            path = resolved(flag, sysroot)
+            elf(path, readelf)
+            advertised.append(path)
         else:
-            require(re.fullmatch(r"-l(?:opencv_core|opencv_imgproc|stdc\+\+)|-D[A-Za-z0-9_=]+|-pthread", flag),
+            require(re.fullmatch(r"-l(?:opencv_[a-z0-9_]+|stdc\+\+)|-D[A-Za-z0-9_=]+|-pthread", flag),
                     f"unsupported target pkg-config flag: {flag}")
+            if flag.startswith("-l"):
+                name = "lib" + flag[2:] + ".so"
+                matches = {resolved(directory / name, sysroot) for directory in search
+                           if (directory / name).exists()}
+                require(len(matches) == 1, f"unresolved or ambiguous target dependency flag: {flag}")
+                advertised.extend(matches)
     cflags = run([pkg, "--cflags", package], env=env).split()
     require(all(flag.startswith(("-I", "-D")) or flag == "-pthread" for flag in cflags),
             "invalid target cflags")
@@ -176,13 +211,56 @@ def validate():
         if ".so" in libraries[module]:
             dynamic = run([readelf, "-d", libraries[module]])
             abi = version.split(".")
-            require(f"libopencv_{module}.so.{abi[0]}{int(abi[1]):02d}" in dynamic,
+            sonames = re.findall(r'\(SONAME\).*\[([^\]]+)\]', dynamic)
+            expected_soname = f"libopencv_{module}.so.{abi[0]}{int(abi[1]):02d}"
+            require(expected_soname in sonames,
                     f"OpenCV {module} SONAME/version mismatch")
     for name in ["libc.so.6", "libstdc++.so.6"]:
         found = list(sysroot.rglob(name))
         require(found, f"missing target runtime library: {name}")
         for path in found:
             elf(resolved(path, sysroot), readelf)
+
+    closure = dependency_closure(advertised + list(libraries.values()), sysroot, readelf)
+    qualified = dict(target=target, sysroot=str(sysroot), ada=ada, cxx=cxx,
+                     runtime=str(runtime), readelf=readelf, include=str(include),
+                     library=str(library), libraries=libraries, version=version,
+                     cflags=cflags, pkgconfig_flags=flags, dependency_closure=closure,
+                     qualification="TARGET_SYSROOT_ONLY", production_qualified=False)
+    if sysroot_only:
+        require(all("-lopencv_" + module in flags for module in ["core", "imgproc"]),
+                "target pkg-config metadata lacks required Core/Imgproc link flags")
+        pcdir = resolved(run([pkg, "--variable=pcfiledir", package], env=env), sysroot)
+        metadata_file = resolved(pcdir / (package + ".pc"), sysroot)
+        qualified["pkgconfig_metadata"] = dict(path=str(metadata_file), sha256=digest(metadata_file))
+        for name in ["libgcc.a", "libstdc++.so"]:
+            compiler_runtime = resolved(run([cxx, "--sysroot=" + str(sysroot), "-print-file-name=" + name]))
+            elf(compiler_runtime, readelf)
+            if name == "libstdc++.so":
+                target_runtime = resolved(next(sysroot.rglob("libstdc++.so.6")), sysroot)
+                compiler_symbols = set(re.findall(r'(?:GLIBCXX|CXXABI)_[0-9.]+',
+                    run([readelf, "--version-info", str(compiler_runtime)])))
+                target_symbols = set(re.findall(r'(?:GLIBCXX|CXXABI)_[0-9.]+',
+                    run([readelf, "--version-info", str(target_runtime)])))
+                require(compiler_symbols and compiler_symbols <= target_symbols,
+                        "compiler/sysroot libstdc++ runtime mismatch")
+                qualified["cxx_runtime_symbols"] = sorted(target_symbols)
+        qualified["compiler_version"] = run([cxx, "-dumpfullversion"])
+        qualified["ada_version"] = run([ada, "-dumpfullversion"])
+        require(qualified["compiler_version"] == qualified["ada_version"],
+                "GCC/GNAT compiler runtime version mismatch")
+        return qualified
+
+    config = resolved(value("OPENCV_CROSS_GPR_CONFIG"))
+    # Gate C remains mandatory for all production/workspace operations.
+    gpr = re.sub(r"--[^\n]*", "", config.read_text())
+    for declaration, message in [
+            (f'for Target use "{target}";', "GPR target mismatch"),
+            (f'"{ada}"', "GPR Ada compiler mismatch"),
+            (f'"{cxx}"', "GPR C++ compiler mismatch"),
+            (f'"{runtime}/"', "GPR Ada runtime mismatch"),
+            ('for Driver use Compiler\'Driver ("C++");', "GPR linker mismatch")]:
+        require(declaration in gpr, message)
 
     core = resolved(value("OPENCV_CROSS_CORE_PREFIX"), sysroot)
     tree(core, sysroot)
@@ -245,6 +323,8 @@ def validate():
 
 
 def generate(settings, work):
+    require(settings.get("qualification") != "TARGET_SYSROOT_ONLY",
+            "partial sysroot qualification cannot generate production configuration")
     require((work / "source-revision.txt").is_file() and work != ROOT,
             "generation requires isolated exact-revision workspace")
     output = work / "config/opencv_imgproc_install.gpr"
@@ -276,6 +356,8 @@ def logged(args, log, env):
 
 
 def workspace(mode, destination, settings):
+    require(settings.get("qualification") != "TARGET_SYSROOT_ONLY",
+            "partial sysroot qualification cannot authorize production workspace")
     require(mode in ["--prepare", "--build"], "usage: --prepare|--build ABSOLUTE_WORKSPACE")
     require(Path(destination).is_absolute(), "workspace must be absolute")
     require(not re.search(r'[\s"\\]', destination), "unsafe workspace path")
@@ -345,9 +427,10 @@ def main():
     require(len(sys.argv) >= 3, "explicit configure --check or workspace operation required")
     operation = sys.argv[1]
     require(operation in ["configure", "workspace"], "unknown cross operation")
-    settings = validate()
+    partial = operation == "configure" and sys.argv[2:] == ["--check-sysroot"]
+    settings = validate(sysroot_only=partial)
     if operation == "configure":
-        require(sys.argv[2:] == ["--check"], "configuration generation is restricted to workspace entry point")
+        require(partial or sys.argv[2:] == ["--check"], "configuration generation is restricted to workspace entry point")
         print(json.dumps(settings, indent=2))
     else:
         require(len(sys.argv) == 4, "usage: --prepare|--build ABSOLUTE_WORKSPACE")
