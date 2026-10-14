@@ -195,8 +195,9 @@ obj/docs-example/example
 
 ## CI and Pages review gate
 
-`.github/workflows/documentation.yml` runs for pull requests targeting
-`main`, pushes to `main` and manual dispatch. It checks out Imgproc and Core
+`.github/workflows/documentation.yml` runs for every pull request
+(including stacked documentation PRs whose base is another branch), pushes
+to `main` and manual dispatch. It checks out Imgproc and Core
 `main` side by side, as the cross-platform workflow does. Pull-request runs
 have only `contents: read`: they test the tooling, generate and validate the
 site, repeat the validator mutations on the generated site, regenerate to

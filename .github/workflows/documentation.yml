@@ -1,8 +1,9 @@
 name: Ada API Documentation
 
 on:
+  # Every pull request, including stacked documentation PRs whose base is
+  # another feature branch. Pull-request runs never receive Pages permissions.
   pull_request:
-    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
