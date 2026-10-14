@@ -426,14 +426,26 @@ jobs:
             gprbuild=26.0.1
           alr toolchain
 
-      - name: Install MSYS2 OpenCV and C++ toolchain
+      - name: Verify Alire-deployed MSYS2 packages
         run: |
           set -eu
 
-          alr exec -- pacman -Sy --noconfirm --needed \
+          # Core's Alire dependencies deploy these packages before exec runs.
+          # Do not refresh repositories or partially upgrade that package set.
+          echo "=== Installed MSYS2 dependency versions ==="
+          alr exec -- pacman -Q \
+            mingw-w64-x86_64-gcc \
+            mingw-w64-x86_64-gcc-libs \
+            mingw-w64-x86_64-cc-libs \
+            mingw-w64-x86_64-libgfortran \
+            mingw-w64-x86_64-libquadmath \
             mingw-w64-x86_64-opencv \
-            mingw-w64-x86_64-pkg-config \
-            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkgconf
+
+          # -Dk checks installed dependencies/conflicts without changing packages
+          # or consulting newer sync-repository versions (unlike -Dkk).
+          echo "=== Installed MSYS2 package database consistency ==="
+          alr exec -- pacman -Dk
 
       - name: Report OpenCV and compiler resolution
         run: |
