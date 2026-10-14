@@ -39,17 +39,35 @@ check GitHub before starting a dependent phase.
   `alr -n build` fail to find `opencv_core.gpr`; deleting the generated
   `alire/` and `config/` directories (untracked, ignored) fixed it.
 
+## Execution model (from 2026-10-13, user-authorized)
+
+The user replaced "stop at each merge" with a stack of review PRs: each
+phase branches from the previous phase's verified head, its PR targets the
+previous phase's branch, and work continues immediately after the PR opens.
+No PR is merged, auto-merge stays off, nothing is force-pushed, and Pages is
+never deployed from a feature branch. Each PR body records its parent PR,
+parent commit and phase-specific delta. If an ancestor merges, verify GitHub
+state and reconcile downstream bases without rewriting published history.
+
+Comment groups B to G were drafted in parallel by documentation agents in
+isolated worktrees (`/home/zboll/git/opencv/imgproc-doc/agent-*`) from the
+DOC-002A foundation commit `f576f4a`, each restricted to its declaration
+list and verified with the build, GNATdoc, coverage, GNATformat and
+comment-only checks; each draft is then reviewed, applied on its stacked
+branch, regenerated and qualified there.
+
 ## Phase status
 
-| Phase | PR family | State |
-| --- | --- | --- |
-| 1 Infrastructure | IMGPROC-DOC-001 | Implemented and qualified locally; PR open for review |
-| 2 Warnings and API comments | IMGPROC-DOC-002A..G | Not started (depends on DOC-001 merge) |
-| 3 Theme, highlighting, type links | IMGPROC-DOC-003 | Not started |
-| 4 Operation browser | IMGPROC-DOC-004 | Not started |
-| 5 Guides and final audit | IMGPROC-DOC-005 | Not started |
+| Phase | Branch | PR (base) | State |
+| --- | --- | --- | --- |
+| DOC-001 infrastructure | `feature/imgproc-doc-001-gnatdoc-pages` | #52 (`main`) | Open; hosted CI success on `7e1279d` |
+| DOC-002A coverage foundation, groups D and H | `feature/imgproc-doc-002a-coverage-foundation` | see checkpoint (DOC-001) | Qualified locally |
+| DOC-002B..G groups A, B, C, E, F, G | `feature/imgproc-doc-002b..g-*` | stacked | In progress |
+| DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | stacked | Tooling staged locally |
+| DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | stacked | Tooling staged locally |
+| DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
 
-Open documentation PRs: see the DOC-001 entry under "Checkpoint log".
+GitHub Pages remains disabled (external administrator action).
 
 ## Feature-parity matrix (Core `7bcdc3a` versus Imgproc)
 
@@ -190,15 +208,45 @@ Known limitations:
 - The native index check reproduces the pinned GNATdoc 26.0.0 serialization;
   any generator change fails closed until requalified.
 
+### IMGPROC-DOC-002A — coverage foundation, groups D and H
+
+Branch `feature/imgproc-doc-002a-coverage-foundation` from DOC-001 head
+`7e1279d`; PR targets `feature/imgproc-doc-001-gnatdoc-pages`.
+
+- `scripts/check_doc_coverage.py` (+ 21 tests): source-derived inventory of
+  1,512 items (package, 314 declarations, 745 parameters, 114 returns, 256
+  literals, 82 components/discriminants); non-trivial rendered text per item;
+  attachment of every visible-part comment block; ratchet baseline. Its
+  real-site test failed first on the 22 attachment defects it was written
+  to catch (18 detached blocks, 4 emphasis-mangled formulas).
+- `scripts/check_comment_only.py` (+ 6 tests): declarations unchanged.
+- GNATdoc 26.0.0 findings (scratch experiments): code spans and indented
+  blocks render `*` literally, `\*` is not an escape; tag text continues over
+  lines; a package description may be the first block inside the package
+  (needed because GNATformat separates a leading comment from `package`);
+  `@exception OpenCV.OpenCV_Error` is split at the dot, so use
+  `@exception OpenCV_Error`; long enumeration snippets are elided with `…`.
+- Repairs: package description (conventions plus the drawing, Hough and
+  segmentation preambles), the 19-line Color_Conversion notes and 11 YUV,
+  Bayer and color-map notes now lead their declarations, banners removed,
+  four formulas use code spans or an indented block, private
+  `Boundary_Equal` documented.
+- Groups D and H fully documented (40 declarations; agent draft reviewed and
+  spot-checked against the body, shim and source reviews). Corrections: the
+  warps and Resize write Destination directly (OpenCV may reuse its storage),
+  not "always replace"; Remap and Warp_Polar publish privately; Linear_Exact
+  is rejected by warps, remaps and Warp_Polar; nearest-only fixed maps round
+  rather than truncate; the garbled Refine_Corners_Subpixel sentence was
+  rewritten (empty sources rejected; Float32 sources scanned for finiteness
+  even with no corners).
+- Warnings 1,357 -> 1,184; coverage 159 -> 328 of 1,512 items.
+
 ## Remaining roadmap
 
-Each step starts from verified merged `main`, uses an isolated worktree,
-rewrites the warning baseline it reduces, and stops at an open review PR.
+Each step branches from the previous phase's verified head, rewrites the
+baselines it reduces, and opens a stacked review PR; work then continues.
 
-1. **IMGPROC-DOC-002A** — automatic public-declaration coverage inventory
-   (identity, kind, overload profile, documentation presence per declaration
-   and member, checked in CI); package description; private `Boundary_Equal`
-   comment; GNATdoc formula form research (`*` emphasis); group H and group D.
+1. **IMGPROC-DOC-002A** — done (see checkpoint).
 2. **IMGPROC-DOC-002B** — group A filtering.
 3. **IMGPROC-DOC-002C** — group B threshold, morphology, distance,
    segmentation.
@@ -227,7 +275,9 @@ rewrites the warning baseline it reduces, and stops at an open review PR.
 
 ## Next executable task
 
-Wait for independent review and hosted CI of the DOC-001 PR. Do not start
-DOC-002A until that PR is verified merged on GitHub; then fetch `main`,
-record its SHA, and branch `feature/imgproc-doc-002a-...` in a fresh
-isolated worktree.
+Apply the reviewed group A draft (`agent-a`) on a new branch
+`feature/imgproc-doc-002b-filtering` from the DOC-002A head, regenerate both
+baselines, qualify and open the stacked PR; continue with groups B, C, E, F
+and G in that order, then DOC-003 (staged tooling in
+`/home/zboll/git/opencv/imgproc-doc/dev-003`, local commits), DOC-004 and
+DOC-005.

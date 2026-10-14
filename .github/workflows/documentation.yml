@@ -1,8 +1,9 @@
 name: Ada API Documentation
 
 on:
+  # Every pull request, including stacked documentation PRs whose base is
+  # another feature branch. Pull-request runs never receive Pages permissions.
   pull_request:
-    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
@@ -55,10 +56,16 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_compare_gnatdoc_warnings.py' -v
       - name: Test documentation validator
         run: python3 -m unittest discover -s scripts -p 'test_validate_docs.py' -v
+      - name: Test documentation coverage and comment-only checks
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_check_doc_coverage.py' -v
+          python3 -m unittest discover -s scripts -p 'test_check_comment_only.py' -v
       - name: Generate and validate public API
         run: sh scripts/generate_docs.sh
-      - name: Qualify generated site against validator mutations
-        run: python3 -m unittest discover -s scripts -p 'test_validate_docs.py' -v
+      - name: Qualify generated site against validator and coverage mutations
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_validate_docs.py' -v
+          python3 -m unittest discover -s scripts -p 'test_check_doc_coverage.py' -v
       - name: Qualify deterministic fresh generation
         run: |
           cp -a _site /tmp/documentation-first
