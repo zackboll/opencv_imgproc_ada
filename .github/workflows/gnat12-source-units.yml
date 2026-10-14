@@ -1,0 +1,54 @@
+name: GNAT 12 real source-unit controls (not production qualification)
+on:
+  pull_request:
+  push:
+    branches: [main, 'feature/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compiler-units:
+    runs-on: ubuntu-24.04
+    container: debian:12
+    steps:
+      - name: Actual Debian compilers
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git python3 gnat-12 gnat-12-aarch64-linux-gnu gcc-aarch64-linux-gnu g++-12 g++-aarch64-linux-gnu
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: c0709f864a2f426c40eeaf1d21486c6d9859a741
+          path: qualification-core
+      - name: Source and runtime identity
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir evidence
+          git rev-parse HEAD | tee evidence/imgproc-sha.txt
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git -C qualification-core rev-parse HEAD | tee evidence/core-sha.txt
+          test "$(git -C qualification-core rev-parse HEAD)" = c0709f864a2f426c40eeaf1d21486c6d9859a741
+          dpkg-query -W gnat-12 gnat-12-aarch64-linux-gnu > evidence/packages.txt
+          gcc-12 -v 2> evidence/native-compiler.txt
+          aarch64-linux-gnu-gcc -v 2> evidence/cross-compiler.txt
+          gcc-12 -print-file-name=adalib | tee evidence/native-runtime.txt
+          aarch64-linux-gnu-gcc -print-file-name=adalib | tee evidence/cross-runtime.txt
+          test "$(aarch64-linux-gnu-gcc -dumpmachine)" = aarch64-linux-gnu
+      - name: Real source-unit tests, native and cross compile-only
+        run: |
+          CORE_SOURCE="$PWD/qualification-core" ADA_COMPILER=gcc-12 python3 -m unittest discover -s tests -p test_gnat12_language_policy.py -v > evidence/native-units.log 2>&1
+          CORE_SOURCE="$PWD/qualification-core" ADA_COMPILER=aarch64-linux-gnu-gcc python3 -m unittest discover -s tests -p test_gnat12_language_policy.py -v > evidence/cross-units.log 2>&1
+      - name: Actual C declarations, compile-only layout controls
+        run: |
+          g++-12 -std=c++17 -Wall -Wextra -Werror -Icpp -c tests/gnat12_abi_layout.cpp -o evidence/native-layout.o
+          aarch64-linux-gnu-g++ -std=c++17 -Wall -Wextra -Werror -Icpp -c tests/gnat12_abi_layout.cpp -o evidence/cross-layout.o
+          readelf -h evidence/native-layout.o evidence/cross-layout.o > evidence/layout-elf.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gnat12-source-unit-evidence
+          path: evidence/
