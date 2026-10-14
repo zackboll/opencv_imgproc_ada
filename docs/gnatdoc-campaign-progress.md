@@ -64,8 +64,9 @@ branch, regenerated and qualified there.
 | DOC-002A coverage foundation, groups D and H | `feature/imgproc-doc-002a-coverage-foundation` | #53 (DOC-001 branch) | Open; head `859e66a` (tested `6a72ef3`) |
 | DOC-002B group A filtering | `feature/imgproc-doc-002b-filtering` | #54 (DOC-002A branch) | Open; head `4d6f7f0` |
 | DOC-002C group B morphology | `feature/imgproc-doc-002c-morphology` | #55 (DOC-002B branch) | Open; head `8c3feb6` |
-| DOC-002D group C color | `feature/imgproc-doc-002d-color` | DOC-002C branch | Qualified locally |
-| DOC-002E..G groups E, F, G | `feature/imgproc-doc-002e..g-*` | stacked | Drafts reviewed; in progress |
+| DOC-002D group C color | `feature/imgproc-doc-002d-color` | #56 (DOC-002C branch) | Open; head `bba9821` |
+| DOC-002E group E contours and drawing | `feature/imgproc-doc-002e-contours` | DOC-002D branch | Qualified locally |
+| DOC-002F..G groups F, G | `feature/imgproc-doc-002f..g-*` | stacked | Drafts reviewed; in progress |
 | DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | stacked | Tooling staged locally |
 | DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | stacked | Tooling staged locally |
 | DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
@@ -303,6 +304,23 @@ Branch `feature/imgproc-doc-002d-color` from DOC-002C head `8c3feb6`.
   by their native constant.
 - Warnings 726 -> 545; coverage 786 -> 967 of 1,512 items.
 
+### IMGPROC-DOC-002E — group E contours, components, drawing
+
+Branch `feature/imgproc-doc-002e-contours` from DOC-002D head `bba9821`.
+
+- 43 declarations documented, including both Draw_Contours and Fill_Contours
+  overloads, Optional_Contour_Index's discriminant and variant component,
+  every drawing primitive and the text metrics.
+- Corrections: Connected_Components_With_Stats writes Labels as a direct
+  native output (`_labels.create` reuses Int32 C1 storage of Source's size),
+  not "always replaced"; Text_Metrics baseline is measured from the
+  bottom-most text point up to the baseline; Measure_Text and Draw_Text
+  validate Font_Scale before treating empty text as a no-op; shim
+  text-geometry limits documented (Font_Scale at most about 15.26).
+- Unverified: ellipse rotation direction beyond the 90-degree test;
+  retrieval/approximation literal semantics beyond the tested modes.
+- Warnings 545 -> 340; coverage 967 -> 1,172 of 1,512 items.
+
 ## Findings for the maintainers (not changed: outside documentation scope)
 
 - CLAHE (shim `opencv_imgproc_clahe`): the isolating clone is taken only for
@@ -312,6 +330,8 @@ Branch `feature/imgproc-doc-002d-color` from DOC-002C head `8c3feb6`.
   clone by up to 14. The clip-limit guard assumes 65536 histogram bins, but
   UInt8 uses 256, so a large finite Clip_Limit can still overflow the
   native int conversion. Documented as implemented.
+- README "Connected components" says Labels is always rebound; the shim
+  passes it to OpenCV directly, which reuses matching storage (DOC-002E).
 - Further items are listed in the checkpoints of the phases that found them.
 
 ## Remaining roadmap
@@ -323,7 +343,7 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 2. **IMGPROC-DOC-002B** — done (see checkpoint).
 3. **IMGPROC-DOC-002C** — done (see checkpoint).
 4. **IMGPROC-DOC-002D** — done (see checkpoint).
-5. **IMGPROC-DOC-002E** — group E contours, components, drawing.
+5. **IMGPROC-DOC-002E** — done (see checkpoint).
 6. **IMGPROC-DOC-002F** — group F histograms, accumulation, integral, EMD.
 7. **IMGPROC-DOC-002G** — group G Hough and template matching; zero warnings;
    empty baseline.
@@ -346,9 +366,9 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 
 ## Next executable task
 
-Apply the reviewed group E draft (`agent-e`, diff against `f576f4a`) with
-`git apply -3` on `feature/imgproc-doc-002e-contours` from the DOC-002D
+Apply the reviewed group F draft (`agent-f`, diff against `f576f4a`) with
+`git apply -3` on `feature/imgproc-doc-002f-histograms` from the DOC-002E
 head, regenerate both baselines, qualify and open the stacked PR; continue
-with groups F and G, then DOC-003 (staged tooling in
+with group G, then DOC-003 (staged tooling in
 `/home/zboll/git/opencv/imgproc-doc/dev-003`, local commits), DOC-004 and
 DOC-005.

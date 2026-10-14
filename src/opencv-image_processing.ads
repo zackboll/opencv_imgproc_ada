@@ -1074,16 +1074,55 @@ package OpenCV.Image_Processing is
    --  must also be odd, and an even value raises OpenCV.OpenCV_Error.
    subtype Adaptive_Block_Size is Positive range 3 .. 2_147_483_647;
 
+   --  The boundary points of one shape, as a subtype of the shared point
+   --  array. Any OpenCV.Point_Array, with any Natural bounds, is a Contour,
+   --  and an extracted Contour can be passed directly to Draw_Polyline or
+   --  Fill_Polygon. Get_Contour returns zero-based arrays; a contour without
+   --  points has the null range 1 .. 0.
    subtype Contour is OpenCV.Point_Array;
 
+   --  Which contours Find_Contours retrieves and how their hierarchy entries
+   --  are linked. Each literal selects the OpenCV retrieval mode named below.
+   --  @enum External_Only Only the extreme outer contours (OpenCV
+   --  RETR_EXTERNAL); First_Child and Parent are absent for every contour. The
+   --  Find_Contours default.
+   --  @enum Flat_List Every contour without hierarchical relationships (OpenCV
+   --  RETR_LIST): First_Child and Parent are always absent.
+   --  @enum Two_Level Every contour in a two-level hierarchy (OpenCV
+   --  RETR_CCOMP): external boundaries of components at the top level and
+   --  boundaries of their holes at the second level. A contour inside a hole
+   --  is again placed at the top level.
+   --  @enum Full_Tree Every contour with the full hierarchy of nested contours
+   --  (OpenCV RETR_TREE); for example an outer boundary, a hole inside it and
+   --  an island inside the hole form parent, child and grandchild.
    type Contour_Retrieval_Mode is
      (External_Only, Flat_List, Two_Level, Full_Tree);
 
+   --  How Find_Contours stores the points of each boundary. Each literal
+   --  selects the OpenCV chain approximation method named below.
+   --  @enum Every_Point Every boundary point is kept (OpenCV
+   --  CHAIN_APPROX_NONE); consecutive points are horizontal, vertical or
+   --  diagonal neighbors. A filled 4 x 4 square yields 12 points.
+   --  @enum Simple Horizontal, vertical and diagonal runs are compressed to
+   --  their end points (OpenCV CHAIN_APPROX_SIMPLE), so an upright rectangle
+   --  yields its four corners. The Find_Contours default.
+   --  @enum Teh_Chin_L1 Teh-Chin chain approximation, OpenCV's
+   --  CHAIN_APPROX_TC89_L1 flavor.
+   --  @enum Teh_Chin_KCOS Teh-Chin chain approximation, OpenCV's
+   --  CHAIN_APPROX_TC89_KCOS flavor.
    type Contour_Approximation_Mode is
      (Every_Point, Simple, Teh_Chin_L1, Teh_Chin_KCOS);
 
+   --  Zero-based position of a contour in a Contour_Set. Valid values are
+   --  0 .. Contour_Count - 1; hierarchy links use the same numbering.
    type Contour_Index is new Natural;
 
+   --  A contour hierarchy link that may be absent, replacing OpenCV's -1
+   --  sentinel. The default value is absent.
+   --  @field Present True when the link designates a contour; False when
+   --  OpenCV reported no such contour (a negative native index).
+   --  @field Index Zero-based index of the linked contour in the same
+   --  Contour_Set. Exists only in the variant where Present is True.
    type Optional_Contour_Index (Present : Boolean := False) is record
       case Present is
          when False =>
@@ -1094,6 +1133,15 @@ package OpenCV.Image_Processing is
       end case;
    end record;
 
+   --  Topology of one contour in a Contour_Set, as reported by OpenCV for the
+   --  Contour_Retrieval_Mode used by Find_Contours. A link is absent when
+   --  there is no such contour; a present link is a Contour_Index of the same
+   --  set.
+   --  @field Next Next contour at the same hierarchy level.
+   --  @field Previous Previous contour at the same hierarchy level.
+   --  @field First_Child First contour one level below this one, nested inside
+   --  it.
+   --  @field Parent Contour one level above this one, enclosing it.
    type Contour_Hierarchy_Entry is record
       Next        : Optional_Contour_Index;
       Previous    : Optional_Contour_Index;
@@ -1101,17 +1149,59 @@ package OpenCV.Image_Processing is
       Parent      : Optional_Contour_Index;
    end record;
 
+   --  Ada-owned result of Find_Contours: the points and hierarchy entry of
+   --  every contour, indexed by Contour_Index. Points are copied as signed
+   --  32-bit coordinates, so the set does not depend on any native OpenCV
+   --  result; assignment copies it. A default-initialized set is empty.
    type Contour_Set is private;
 
+   --  Pixel neighborhood that defines connectivity for connected-component
+   --  labeling and flood fill. Unrelated to Drawing_Line_Style.
+   --  @enum Four_Connected Pixels connect through their four horizontal and
+   --  vertical neighbors only, so diagonal pixels stay separate.
+   --  @enum Eight_Connected Pixels also connect through their four diagonal
+   --  neighbors.
    type Pixel_Connectivity is (Four_Connected, Eight_Connected);
 
+   --  Rasterization of drawn lines and shape edges, separate from
+   --  Pixel_Connectivity. Every operation with a Line_Style parameter defaults
+   --  to Eight_Connected_Line.
+   --  @enum Four_Connected_Line 4-connected lines (OpenCV LINE_4): successive
+   --  pixels share an edge.
+   --  @enum Eight_Connected_Line 8-connected lines (OpenCV LINE_8): successive
+   --  pixels may also touch diagonally.
+   --  @enum Anti_Aliased_Line Antialiased lines (OpenCV LINE_AA) with
+   --  intermediate edge intensities. Accepted only for UInt8 images; other
+   --  depths raise OpenCV.OpenCV_Error, where OpenCV would silently draw
+   --  LINE_8 instead.
    type Drawing_Line_Style is
      (Four_Connected_Line, Eight_Connected_Line, Anti_Aliased_Line);
 
+   --  Thickness in pixels of drawn lines and outlines, and the glyph stroke
+   --  thickness of text. The upper bound keeps OpenCV's signed raster offsets
+   --  in range. Fill operations take no thickness: they select OpenCV's filled
+   --  mode internally, and negative thickness is not part of the API.
    subtype Drawing_Thickness is Positive range 1 .. 32_767;
 
+   --  Circle radius in pixels. Zero is excluded because OpenCV would draw a
+   --  degenerate point.
    subtype Drawing_Radius is Positive;
 
+   --  Marker shape for Draw_Marker, centered on the marker Position. Each
+   --  literal selects the OpenCV marker type at the same position, from
+   --  MARKER_CROSS through MARKER_TRIANGLE_DOWN.
+   --  @enum Cross_Marker Upright crosshair: one horizontal and one vertical
+   --  stroke through Position.
+   --  @enum Tilted_Cross_Marker Crosshair tilted by 45 degrees: two diagonal
+   --  strokes through Position.
+   --  @enum Star_Marker Combination of Cross_Marker and Tilted_Cross_Marker.
+   --  @enum Diamond_Marker Square outline rotated by 45 degrees, with vertices
+   --  above, below and beside Position.
+   --  @enum Square_Marker Axis-aligned square outline around Position.
+   --  @enum Triangle_Up_Marker Triangle outline pointing up, with its apex
+   --  above Position.
+   --  @enum Triangle_Down_Marker Triangle outline pointing down, with a
+   --  horizontal top edge above Position.
    type Drawing_Marker_Kind is
      (Cross_Marker,
       Tilted_Cross_Marker,
@@ -1121,6 +1211,24 @@ package OpenCV.Image_Processing is
       Triangle_Up_Marker,
       Triangle_Down_Marker);
 
+   --  Legacy Hershey font selector for Draw_Text, Measure_Text and
+   --  Font_Scale_For_Height. Each literal selects the OpenCV Hershey font at
+   --  the same position, from FONT_HERSHEY_SIMPLEX through
+   --  FONT_HERSHEY_SCRIPT_COMPLEX. OpenCV 4.1 and 4.10 render classic Hershey
+   --  strokes; OpenCV 5.0 maps the same selectors to built-in sans-serif,
+   --  serif and italic TrueType faces, so glyphs and exact metrics can differ
+   --  between generations. The legacy italic flag is not exposed.
+   --  @enum Hershey_Simplex Normal-size sans-serif font; the default.
+   --  @enum Hershey_Plain Small sans-serif font.
+   --  @enum Hershey_Duplex Normal-size sans-serif font, more complex than
+   --  Hershey_Simplex.
+   --  @enum Hershey_Complex Normal-size serif font.
+   --  @enum Hershey_Triplex Normal-size serif font, more complex than
+   --  Hershey_Complex.
+   --  @enum Hershey_Complex_Small Smaller version of Hershey_Complex.
+   --  @enum Hershey_Script_Simplex Hand-writing style font.
+   --  @enum Hershey_Script_Complex More complex variant of
+   --  Hershey_Script_Simplex.
    type Text_Font is
      (Hershey_Simplex,
       Hershey_Plain,
@@ -1131,6 +1239,13 @@ package OpenCV.Image_Processing is
       Hershey_Script_Simplex,
       Hershey_Script_Complex);
 
+   --  Native text extent reported by Measure_Text, in pixels.
+   --  @field Size Width and Height of the text's bounding box as reported by
+   --  OpenCV for the font, scale and thickness; (0, 0) for empty text.
+   --  @field Baseline Native baseline value, unadjusted by the binding: the
+   --  distance from the bottom-most text point up to the text baseline. Zero
+   --  for empty text. OpenCV's layout example adds the thickness to it for
+   --  padding; the binding does not.
    type Text_Metrics is record
       Size     : OpenCV.Size;
       Baseline : Natural;
@@ -1287,10 +1402,23 @@ package OpenCV.Image_Processing is
    type Hough_Circle_Center_Array is
      array (Natural range <>) of OpenCV.Float32_Point;
 
+   --  Pixel value of the Labels image of Connected_Components_With_Stats:
+   --  Background_Label for background pixels and 1 .. Component_Count for the
+   --  foreground components. Get_Component accepts foreground labels.
    type Component_Label is new Natural;
 
+   --  Label of every background (zero) Source pixel. The background has no
+   --  entry in a Connected_Component_Set, so Get_Component rejects it.
    Background_Label : constant Component_Label := 0;
 
+   --  Statistics of one foreground component, in the coordinates of the
+   --  labeled Source (relative to it when Source is a Region).
+   --  @field Bounds Smallest axis-aligned rectangle containing every pixel of
+   --  the component: X and Y are its first column and row, Width and Height
+   --  its extents in pixels.
+   --  @field Area Number of pixels in the component.
+   --  @field Centroid_X Mean column (X) of the component's pixels.
+   --  @field Centroid_Y Mean row (Y) of the component's pixels.
    type Component_Statistics is record
       Bounds     : OpenCV.Rect;
       Area       : Natural;
@@ -1298,6 +1426,11 @@ package OpenCV.Image_Processing is
       Centroid_Y : OpenCV.Float64_Value;
    end record;
 
+   --  Ada-owned foreground statistics from Connected_Components_With_Stats,
+   --  indexed by Component_Label 1 .. Component_Count; the background has no
+   --  entry. The set is copied out of OpenCV's statistics, so it does not
+   --  depend on native storage; assignment copies it. A default-initialized
+   --  set is empty.
    type Connected_Component_Set is private;
 
    --  Shape of a generated structuring element, built by
@@ -3943,36 +4076,86 @@ package OpenCV.Image_Processing is
       Clip_Limit     : OpenCV.Float64_Value := 40.0;
       Tile_Grid_Size : OpenCV.Size := (Width => 8, Height => 8));
 
-   --  Extracts contours from a non-empty, two-dimensional UInt8 single-channel
-   --  Source. Zero pixels are background and nonzero pixels are foreground.
-   --  Source remains unchanged. Contours and hierarchy are copied into the
-   --  returned Ada-owned Contour_Set. Indices are zero-based. An all-zero
-   --  Source returns an empty set. Invalid Source metadata, invalid contour
-   --  indices, and OpenCV failures raise OpenCV.OpenCV_Error.
+   --  Extracts the contours of a binary image with cv::findContours. Zero
+   --  Source pixels are background and nonzero pixels are foreground. Contour
+   --  points lie on foreground boundary pixels (a filled rectangle yields its
+   --  corner pixels under Simple), shifted by Offset. Contours and hierarchy
+   --  are copied into the returned Ada-owned Contour_Set and the native result
+   --  is released. Indices are zero-based. An all-zero Source returns an empty
+   --  set.
+   --  @param Source Binary image: a nonempty two-dimensional UInt8 C1 Mat. It
+   --  remains unchanged.
+   --  @param Retrieval Which contours are returned and how their hierarchy
+   --  entries are linked; defaults to External_Only.
+   --  @param Approximation How the boundary points of each contour are stored;
+   --  defaults to Simple.
+   --  @param Offset Added to every returned point, for example to express
+   --  contours of a Region in its parent's coordinates. Hierarchy links are
+   --  unaffected. Defaults to (0, 0).
+   --  @return A fresh Ada-owned Contour_Set, independent of Source and of
+   --  native storage.
+   --  @exception OpenCV_Error Raised when Source is empty, not
+   --  two-dimensional, not UInt8 or not single-channel, when a native contour
+   --  index or count is invalid or exceeds the C ABI range, and when OpenCV
+   --  fails.
    function Find_Contours
      (Source        : OpenCV.Core.Mat;
       Retrieval     : Contour_Retrieval_Mode := External_Only;
       Approximation : Contour_Approximation_Mode := Simple;
       Offset        : OpenCV.Point := (X => 0, Y => 0)) return Contour_Set;
 
+   --  Returns the number of contours stored in Self.
+   --  @param Self Contour set to inspect.
+   --  @return Number of stored contours, zero for an empty set. Valid indices
+   --  are 0 .. Contour_Count (Self) - 1.
    function Contour_Count (Self : Contour_Set) return Natural;
 
+   --  Returns a copy of the points of one stored contour.
+   --  @param Self Contour set to read.
+   --  @param Index Zero-based contour position; must be less than
+   --  Contour_Count (Self).
+   --  @return The contour's points in stored order, as a zero-based Contour
+   --  independent of Self; a contour without points has the null range 1 .. 0.
+   --  @exception OpenCV_Error Raised when Index is not less than Contour_Count
+   --  (Self).
    function Get_Contour
      (Self : Contour_Set; Index : Contour_Index) return Contour;
 
+   --  Returns the hierarchy entry of one stored contour.
+   --  @param Self Contour set to read.
+   --  @param Index Zero-based contour position; must be less than
+   --  Contour_Count (Self).
+   --  @return The contour's Next, Previous, First_Child and Parent links, as
+   --  produced by the Retrieval mode passed to Find_Contours.
+   --  @exception OpenCV_Error Raised when Index is not less than Contour_Count
+   --  (Self).
    function Get_Hierarchy
      (Self : Contour_Set; Index : Contour_Index)
       return Contour_Hierarchy_Entry;
 
-   --  Labels the nonzero regions of a non-empty two-dimensional UInt8
-   --  single-channel Source. Zero is background and every nonzero value is
-   --  foreground. Labels is replaced with a distinct Int32 single-channel Mat
-   --  having Source's geometry; zero is Background_Label and foreground labels
-   --  are 1 through Component_Count. Components contains Ada-owned foreground
-   --  statistics only. Four_Connected and Eight_Connected select 4- and
-   --  8-neighborhoods. Foreground label numbering has no spatial-order
-   --  guarantee. Source and Labels must not share storage. Contract violations
-   --  and OpenCV failures raise OpenCV.OpenCV_Error.
+   --  Labels the connected nonzero regions of a binary mask with
+   --  cv::connectedComponentsWithStats and collects per-component statistics.
+   --  Zero is background and every nonzero value is foreground. Zero in Labels
+   --  is Background_Label and foreground labels are 1 through Component_Count.
+   --  Foreground label numbering has no spatial-order guarantee. Labels is a
+   --  direct native output: OpenCV reuses its storage when it already is an
+   --  Int32 C1 Mat with Source's rows and columns (shallow copies of Labels
+   --  and a Region's parent then see the labels) and otherwise rebinds it to
+   --  new storage. The operation is not in place: Source and Labels must not
+   --  share storage.
+   --  @param Source Binary mask: a nonempty two-dimensional UInt8 C1 Mat.
+   --  @param Labels Receives the Int32 C1 label image with Source's rows and
+   --  columns. Must not share storage with Source, including the same Mat, a
+   --  shallow alias or an overlapping Region; this is checked before any
+   --  native write.
+   --  @param Components Receives the Ada-owned statistics of the foreground
+   --  components only; assigned only after success.
+   --  @param Connectivity Four_Connected or Eight_Connected select 4- and
+   --  8-neighborhoods; defaults to Eight_Connected.
+   --  @exception OpenCV_Error Raised when Source is empty, not
+   --  two-dimensional, not UInt8 or not single-channel, when Labels shares
+   --  storage with Source, when OpenCV returns an invalid label count, and
+   --  when OpenCV fails.
    procedure Connected_Components_With_Stats
      (Source       : OpenCV.Core.Mat;
       Labels       : in out OpenCV.Core.Mat;
@@ -3980,14 +4163,37 @@ package OpenCV.Image_Processing is
       Connectivity : Pixel_Connectivity := Eight_Connected);
 
    --  Returns the foreground count, excluding Background_Label.
+   --  @param Self Statistics set to inspect.
+   --  @return Number of foreground components, zero when there is none. Valid
+   --  Get_Component labels are 1 .. Component_Count.
    function Component_Count (Self : Connected_Component_Set) return Natural;
 
-   --  Label must designate a foreground component in 1 .. Component_Count.
-   --  Background_Label and out-of-range labels raise OpenCV.OpenCV_Error.
+   --  Returns the statistics of one foreground component. Label must designate
+   --  a foreground component in 1 .. Component_Count.
+   --  @param Self Statistics set to read.
+   --  @param Label Foreground label as stored in the Labels image.
+   --  @return Copy of the component's Bounds, Area and centroid.
+   --  @exception OpenCV_Error Raised when Label is Background_Label or greater
+   --  than Component_Count (Self).
    function Get_Component
      (Self : Connected_Component_Set; Label : Component_Label)
       return Component_Statistics;
 
+   --  Draws the straight segment from Start to Finish into Image in place with
+   --  cv::line, under the package drawing rules. Both endpoints are painted;
+   --  parts outside Image are clipped.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Start First endpoint; may lie outside Image.
+   --  @param Finish Second endpoint; may lie outside Image.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Thickness Line thickness in pixels; defaults to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when Image or a used Color component
+   --  violates the drawing rules, when Anti_Aliased_Line is used with a
+   --  non-UInt8 Image, and when OpenCV fails.
    procedure Draw_Line
      (Image      : in out OpenCV.Core.Mat;
       Start      : OpenCV.Point;
@@ -3996,8 +4202,31 @@ package OpenCV.Image_Processing is
       Thickness  : Drawing_Thickness := 1;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
-   --  Tip_Length is a finite fraction in (0, 1]. Coincident endpoints are
-   --  rejected. Unsafe native coordinate arithmetic raises OpenCV_Error.
+   --  Draws an arrow into Image in place with cv::arrowedLine, under the
+   --  package drawing rules: the shaft from Start to Finish and, at Finish, an
+   --  arrowhead of two strokes at 45 degrees to the shaft, each Tip_Length
+   --  times the Start-to-Finish distance long. Tip_Length is a finite fraction
+   --  in (0, 1]. Coincident endpoints are rejected. Unsafe native coordinate
+   --  arithmetic raises OpenCV_Error: the endpoint differences and the
+   --  arrowhead coordinates must fit the signed 32-bit range.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Start Tail of the arrow; may lie outside Image.
+   --  @param Finish Tip of the arrow, where the arrowhead is drawn; must
+   --  differ from Start.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Tip_Length Arrowhead stroke length as a fraction of the arrow
+   --  length: finite, greater than 0.0 and at most 1.0. Defaults to 0.1.
+   --  @param Thickness Thickness of shaft and arrowhead in pixels; defaults
+   --  to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when Tip_Length is outside (0, 1] or not
+   --  finite, when Start equals Finish, when the native coordinate arithmetic
+   --  would overflow, when Image or a used Color component violates the
+   --  drawing rules, when Anti_Aliased_Line is used with a non-UInt8 Image,
+   --  and when OpenCV fails.
    procedure Draw_Arrow
      (Image      : in out OpenCV.Core.Mat;
       Start      : OpenCV.Point;
@@ -4007,6 +4236,25 @@ package OpenCV.Image_Processing is
       Thickness  : Drawing_Thickness := 1;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
+   --  Draws a marker of shape Kind centered on Position into Image in place
+   --  with cv::drawMarker, under the package drawing rules. The marker extends
+   --  Marker_Size / 2 pixels from Position horizontally and vertically, and
+   --  Position plus or minus that half size must fit the signed 32-bit range.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Position Marker center; may lie outside Image.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Kind Marker shape; defaults to Cross_Marker.
+   --  @param Marker_Size Overall marker width and height in pixels; defaults
+   --  to 20.
+   --  @param Thickness Stroke thickness in pixels; defaults to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when a marker endpoint would leave the
+   --  signed 32-bit range, when Image or a used Color component violates the
+   --  drawing rules, when Anti_Aliased_Line is used with a non-UInt8 Image,
+   --  and when OpenCV fails.
    procedure Draw_Marker
      (Image       : in out OpenCV.Core.Mat;
       Position    : OpenCV.Point;
@@ -4016,11 +4264,42 @@ package OpenCV.Image_Processing is
       Thickness   : Drawing_Thickness := 1;
       Line_Style  : Drawing_Line_Style := Eight_Connected_Line);
 
-   --  Legacy Hershey selectors: OpenCV 4.x uses strokes; OpenCV 5 uses its
-   --  built-in TrueType compatibility renderer. Glyphs and metrics may differ.
-   --  Requires a nonempty 2-D UInt8 C1, C3 or C4 image. Text is a byte span,
-   --  including embedded NULs; empty text is a no-op after image/color checks.
-   --  Bottom_Left_Origin reverses the vertical direction of the glyphs.
+   --  Renders Text into Image in place with cv::putText. Legacy Hershey
+   --  selectors: OpenCV 4.x uses strokes; OpenCV 5 uses its built-in TrueType
+   --  compatibility renderer. Glyphs and metrics may differ. Requires a
+   --  nonempty 2-D UInt8 C1, C3 or C4 image, including a Region; this is
+   --  narrower than the package drawing rules, whose color, alias and clipping
+   --  rules otherwise apply. Text is a byte span, including embedded NULs,
+   --  with any lower bound; how non-ASCII bytes are rendered depends on the
+   --  OpenCV generation. Empty text is a no-op after the Font_Scale, image and
+   --  color checks. There is no line-style choice: the binding always requests
+   --  OpenCV LINE_8. Glyphs extend right of Origin and, by default, upward
+   --  from it. Bottom_Left_Origin reverses the vertical direction of the
+   --  glyphs.
+   --
+   --  For nonempty text, a conservative native-arithmetic preflight requires
+   --  `Font_Scale <= 1.0e6 / 65536.0` (about 15.26) and
+   --  `Text'Length * Font_Scale * 512.0 + Thickness < 1.0e6`; each Origin
+   --  coordinate must also stay at least
+   --  `(Text'Length + 1) * Font_Scale * 512.0 + Thickness + 64.0` (rounded up)
+   --  inside the signed 32-bit range.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8 C1, C3 or C4
+   --  Mat or Region.
+   --  @param Text Bytes to render, passed with their exact length.
+   --  @param Origin Bottom-left corner of the text in Image coordinates; may
+   --  lie outside Image.
+   --  @param Color Text value in channel order; the components used by Image's
+   --  channels must be finite.
+   --  @param Font Font selector; defaults to Hershey_Simplex.
+   --  @param Font_Scale Font scale factor: finite, positive and within the
+   --  preflight bound. Defaults to 1.0.
+   --  @param Thickness Glyph stroke thickness; defaults to 1.
+   --  @param Bottom_Left_Origin When True the glyphs are vertically reversed
+   --  and extend downward from Origin; defaults to False.
+   --  @exception OpenCV_Error Raised when Font_Scale is not finite and
+   --  positive, when Image is not a nonempty 2-D UInt8 C1, C3 or C4 Mat, when
+   --  a used Color component is not finite, when the text geometry or Origin
+   --  fails the preflight, and when OpenCV fails.
    procedure Draw_Text
      (Image              : in out OpenCV.Core.Mat;
       Text               : String;
@@ -4031,21 +4310,70 @@ package OpenCV.Image_Processing is
       Thickness          : Drawing_Thickness := 1;
       Bottom_Left_Origin : Boolean := False);
 
-   --  Empty text returns Size (0, 0) and Baseline 0. Otherwise the baseline
-   --  is the unadjusted native distance below the bottom-most point.
+   --  Measures the rendered extent of Text with cv::getTextSize, without
+   --  drawing. Empty text returns Size (0, 0) and Baseline 0 without calling
+   --  OpenCV; Font_Scale is still validated. Otherwise the result is the
+   --  native bounding Size and the unadjusted native baseline, which is the
+   --  distance from the bottom-most text point up to the baseline. Metrics
+   --  depend on the OpenCV generation (see Text_Font). Nonempty text is
+   --  subject to the Draw_Text Font_Scale and text-length preflight.
+   --  @param Text Bytes to measure, passed with their exact length, including
+   --  embedded NULs and any lower bound.
+   --  @param Font Font selector; defaults to Hershey_Simplex.
+   --  @param Font_Scale Font scale factor: finite, positive and within the
+   --  Draw_Text preflight bound. Defaults to 1.0.
+   --  @param Thickness Glyph stroke thickness; defaults to 1.
+   --  @return The text's bounding Size and Baseline, in pixels.
+   --  @exception OpenCV_Error Raised when Font_Scale is not finite and
+   --  positive, when nonempty text fails the preflight, and when OpenCV fails.
    function Measure_Text
      (Text       : String;
       Font       : Text_Font := Hershey_Simplex;
       Font_Scale : OpenCV.Float64_Value := 1.0;
       Thickness  : Drawing_Thickness := 1) return Text_Metrics;
 
-   --  Reject heights where 2 * Pixel_Height <= Thickness + 1 (the OpenCV 4
-   --  scale would be nonpositive), regardless of the linked OpenCV version.
+   --  Returns the font scale at which Font, drawn with Thickness, has the
+   --  requested pixel height, as computed by cv::getFontScaleFromHeight.
+   --  Reject heights where `2 * Pixel_Height <= Thickness + 1` (the OpenCV 4
+   --  scale would be nonpositive), regardless of the linked OpenCV version;
+   --  the comparison uses widened arithmetic. A nonfinite or nonpositive
+   --  native scale, or one outside the Draw_Text preflight bounds for a single
+   --  character, is also rejected. Text measured at the returned scale can
+   --  differ from Pixel_Height by a few pixels because of native rounding and
+   --  generation-specific font metrics.
+   --  @param Pixel_Height Desired text height in pixels, comparable with the
+   --  Size.Height reported by Measure_Text.
+   --  @param Font Font selector; defaults to Hershey_Simplex.
+   --  @param Thickness Intended glyph stroke thickness; defaults to 1.
+   --  @return Positive finite scale, usable as Font_Scale.
+   --  @exception OpenCV_Error Raised when `2 * Pixel_Height <= Thickness + 1`,
+   --  when the native scale is not finite and positive or fails the preflight,
+   --  and when OpenCV fails.
    function Font_Scale_For_Height
      (Pixel_Height : Positive;
       Font         : Text_Font := Hershey_Simplex;
       Thickness    : Drawing_Thickness := 1) return OpenCV.Float64_Value;
 
+   --  Outlines the rectangle Bounds in Image in place with cv::rectangle,
+   --  under the package drawing rules. The outline runs through the border
+   --  pixels of columns `Bounds.X .. Bounds.X + Bounds.Width - 1` and rows
+   --  `Bounds.Y .. Bounds.Y + Bounds.Height - 1`; the interior is not filled.
+   --  Width and Height must be positive. The far corner is saturated to the
+   --  signed 32-bit range, so extents reaching beyond it are clipped instead
+   --  of overflowing.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Bounds Rectangle to outline, with positive Width and Height; it
+   --  may extend outside Image.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Thickness Outline thickness in pixels; defaults to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when Bounds.Width or Bounds.Height is
+   --  zero, when Image or a used Color component violates the drawing rules,
+   --  when Anti_Aliased_Line is used with a non-UInt8 Image, and when OpenCV
+   --  fails.
    procedure Draw_Rectangle
      (Image      : in out OpenCV.Core.Mat;
       Bounds     : OpenCV.Rect;
@@ -4053,12 +4381,45 @@ package OpenCV.Image_Processing is
       Thickness  : Drawing_Thickness := 1;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
+   --  Fills the rectangle Bounds in Image in place with cv::rectangle in
+   --  OpenCV's filled mode, under the package drawing rules. Every pixel of
+   --  columns `Bounds.X .. Bounds.X + Bounds.Width - 1` and rows
+   --  `Bounds.Y .. Bounds.Y + Bounds.Height - 1` inside Image is painted.
+   --  Width and Height must be positive. As for Draw_Rectangle, the far corner
+   --  is saturated, so huge extents are clipped.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Bounds Rectangle to fill, with positive Width and Height; it may
+   --  extend outside Image.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Line_Style Edge rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when Bounds.Width or Bounds.Height is
+   --  zero, when Image or a used Color component violates the drawing rules,
+   --  when Anti_Aliased_Line is used with a non-UInt8 Image, and when OpenCV
+   --  fails.
    procedure Fill_Rectangle
      (Image      : in out OpenCV.Core.Mat;
       Bounds     : OpenCV.Rect;
       Color      : OpenCV.Scalar;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
+   --  Outlines the circle of Radius around Center in Image in place with
+   --  cv::circle, under the package drawing rules. The outline runs Radius
+   --  pixels from Center; the interior is not filled.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Center Circle center; may lie outside Image.
+   --  @param Radius Circle radius in pixels.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Thickness Outline thickness in pixels; defaults to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when Image or a used Color component
+   --  violates the drawing rules, when Anti_Aliased_Line is used with a
+   --  non-UInt8 Image, and when OpenCV fails.
    procedure Draw_Circle
      (Image      : in out OpenCV.Core.Mat;
       Center     : OpenCV.Point;
@@ -4067,6 +4428,20 @@ package OpenCV.Image_Processing is
       Thickness  : Drawing_Thickness := 1;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
+   --  Fills the disc of Radius around Center, including Center, in Image in
+   --  place with cv::circle in OpenCV's filled mode, under the package drawing
+   --  rules.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Center Disc center; may lie outside Image.
+   --  @param Radius Disc radius in pixels.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Line_Style Edge rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when Image or a used Color component
+   --  violates the drawing rules, when Anti_Aliased_Line is used with a
+   --  non-UInt8 Image, and when OpenCV fails.
    procedure Fill_Circle
      (Image      : in out OpenCV.Core.Mat;
       Center     : OpenCV.Point;
@@ -4074,11 +4449,34 @@ package OpenCV.Image_Processing is
       Color      : OpenCV.Scalar;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
-   --  Axes are the ellipse semi-axis lengths and must both be positive.
-   --  Angle, Start_Angle, and End_Angle must be finite. Radians are
-   --  converted to degrees in Ada; values are not otherwise normalized.
-   --  Fill_Ellipse fills the elliptic sector for a partial interval and
-   --  the whole ellipse for a full turn.
+   --  Outlines an elliptic arc in Image in place with cv::ellipse, under the
+   --  package drawing rules. The ellipse is centered on Center with semi-axes
+   --  Axes and rotated by Angle; the arc runs from Start_Angle to End_Angle,
+   --  so a full turn draws the closed outline. With Angle zero, Axes.Width
+   --  lies along X and arc angles increase from the +X direction toward +Y
+   --  (downward); an Angle of 90 degrees turns Axes.Width vertical. Axes are
+   --  the ellipse semi-axis lengths and must both be positive. Angle,
+   --  Start_Angle, and End_Angle must be finite. Radians are converted to
+   --  degrees in Ada; values are not otherwise normalized.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Center Ellipse center; may lie outside Image.
+   --  @param Axes Semi-axis lengths in pixels, Width for the first axis and
+   --  Height for the second; both must be positive.
+   --  @param Angle Rotation of the ellipse, in Units; must be finite.
+   --  @param Start_Angle Start of the arc, in Units; must be finite.
+   --  @param End_Angle End of the arc, in Units; must be finite.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Thickness Outline thickness in pixels; defaults to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @param Units Unit of Angle, Start_Angle and End_Angle; defaults to
+   --  Degrees.
+   --  @exception OpenCV_Error Raised when an axis is zero, when an angle is
+   --  not finite, when Image or a used Color component violates the drawing
+   --  rules, when Anti_Aliased_Line is used with a non-UInt8 Image, and when
+   --  OpenCV fails.
    procedure Draw_Ellipse
      (Image       : in out OpenCV.Core.Mat;
       Center      : OpenCV.Point;
@@ -4091,6 +4489,31 @@ package OpenCV.Image_Processing is
       Line_Style  : Drawing_Line_Style := Eight_Connected_Line;
       Units       : OpenCV.Angle_Unit := OpenCV.Degrees);
 
+   --  Fills an ellipse or elliptic sector in Image in place with cv::ellipse
+   --  in OpenCV's filled mode, under the package drawing rules. The geometry
+   --  is that of Draw_Ellipse. Fill_Ellipse fills the elliptic sector for a
+   --  partial interval and the whole ellipse, including Center, for a full
+   --  turn. Axes are the ellipse semi-axis lengths and must both be positive.
+   --  Angle, Start_Angle, and End_Angle must be finite. Radians are converted
+   --  to degrees in Ada; values are not otherwise normalized.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Center Ellipse center; may lie outside Image.
+   --  @param Axes Semi-axis lengths in pixels, Width for the first axis and
+   --  Height for the second; both must be positive.
+   --  @param Angle Rotation of the ellipse, in Units; must be finite.
+   --  @param Start_Angle Start of the sector, in Units; must be finite.
+   --  @param End_Angle End of the sector, in Units; must be finite.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Line_Style Edge rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @param Units Unit of Angle, Start_Angle and End_Angle; defaults to
+   --  Degrees.
+   --  @exception OpenCV_Error Raised when an axis is zero, when an angle is
+   --  not finite, when Image or a used Color component violates the drawing
+   --  rules, when Anti_Aliased_Line is used with a non-UInt8 Image, and when
+   --  OpenCV fails.
    procedure Fill_Ellipse
      (Image       : in out OpenCV.Core.Mat;
       Center      : OpenCV.Point;
@@ -4102,8 +4525,26 @@ package OpenCV.Image_Processing is
       Line_Style  : Drawing_Line_Style := Eight_Connected_Line;
       Units       : OpenCV.Angle_Unit := OpenCV.Degrees);
 
-   --  Points may use any Natural index bounds. An open or closed polyline
-   --  requires at least two points.
+   --  Draws the connected segments through Points, in array order, into Image
+   --  in place with cv::polylines, under the package drawing rules. When
+   --  Closed is True a segment from the last point back to the first is added.
+   --  Points may use any Natural index bounds, so an extracted Contour can be
+   --  passed directly. An open or closed polyline requires at least two
+   --  points.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Points Vertices in drawing order, at least two; they may lie
+   --  outside Image.
+   --  @param Closed True to join the last point back to the first; defaults to
+   --  False.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Thickness Line thickness in pixels; defaults to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when Points has fewer than two elements,
+   --  when Image or a used Color component violates the drawing rules, when
+   --  Anti_Aliased_Line is used with a non-UInt8 Image, and when OpenCV fails.
    procedure Draw_Polyline
      (Image      : in out OpenCV.Core.Mat;
       Points     : OpenCV.Point_Array;
@@ -4112,21 +4553,55 @@ package OpenCV.Image_Processing is
       Thickness  : Drawing_Thickness := 1;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
-   --  Points may use any Natural index bounds. A polygon requires at least
-   --  three points. Concave polygons are filled by OpenCV fillPoly.
+   --  Fills the polygon with vertices Points, in array order, in Image in
+   --  place, under the package drawing rules. Points may use any Natural index
+   --  bounds. A polygon requires at least three points. Concave polygons are
+   --  filled by OpenCV fillPoly, leaving their concave notches empty.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Points Polygon vertices, at least three; the polygon closes from
+   --  the last point back to the first. They may lie outside Image.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Line_Style Edge rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @exception OpenCV_Error Raised when Points has fewer than three
+   --  elements, when Image or a used Color component violates the drawing
+   --  rules, when Anti_Aliased_Line is used with a non-UInt8 Image, and when
+   --  OpenCV fails.
    procedure Fill_Polygon
      (Image      : in out OpenCV.Core.Mat;
       Points     : OpenCV.Point_Array;
       Color      : OpenCV.Scalar;
       Line_Style : Drawing_Line_Style := Eight_Connected_Line);
 
-   --  Select contours in Ada, independently of the linked OpenCV version.
-   --  All-overloads use every stored contour; Root overloads include Root and
-   --  up to Descendant_Levels generations of children (zero means Root only).
-   --  Filled contours use even-odd parity: holes remain empty and islands are
-   --  filled again. Offset shifts points in image/Region-local coordinates.
-   --  Image and Color obey the ordinary drawing contract above. Structural
-   --  errors leave Image unchanged; native drawing errors need not roll back.
+   --  Outlines every contour stored in Contours into Image in place with
+   --  cv::drawContours, under the package drawing rules. Select contours in
+   --  Ada, independently of the linked OpenCV version: all-contours overloads
+   --  use every stored contour (the Root overloads select a subtree), contours
+   --  without points are skipped, and the selection is passed to OpenCV as
+   --  independent contours without native hierarchy. Offset shifts points in
+   --  image/Region-local coordinates. Image and Color obey the ordinary
+   --  drawing contract, including UInt8-only Anti_Aliased_Line. When no
+   --  selected contour has points the call is a no-op after Image, Color and
+   --  Line_Style validation. Counts and point-plus-Offset sums are checked
+   --  before any pixel is written: structural errors leave Image unchanged;
+   --  native drawing errors need not roll back.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Contours Contour set to draw, normally from Find_Contours.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Thickness Outline thickness in pixels; defaults to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @param Offset Added to every point before rasterization, in Image
+   --  (Region-local) coordinates; defaults to (0, 0).
+   --  @exception OpenCV_Error Raised when Image or a used Color component
+   --  violates the drawing rules, when Anti_Aliased_Line is used with a
+   --  non-UInt8 Image, when the selected point or contour count exceeds the
+   --  signed 32-bit range, when a point plus Offset leaves that range, and
+   --  when OpenCV fails.
    procedure Draw_Contours
      (Image      : in out OpenCV.Core.Mat;
       Contours   : Contour_Set;
@@ -4135,6 +4610,38 @@ package OpenCV.Image_Processing is
       Line_Style : Drawing_Line_Style := Eight_Connected_Line;
       Offset     : OpenCV.Point := (X => 0, Y => 0));
 
+   --  Outlines the contour Root and up to Descendant_Levels generations of its
+   --  descendants into Image in place; otherwise as the all-contours
+   --  Draw_Contours. Contours are selected in Ada, independently of the linked
+   --  OpenCV version, by following First_Child and Next links rather than
+   --  storage order: zero levels means Root only, and a depth beyond the tree
+   --  includes every reachable descendant. Contours without points are
+   --  skipped. Offset shifts points in image/Region-local coordinates. Image
+   --  and Color obey the ordinary drawing contract. Structural errors,
+   --  including an invalid Root, leave Image unchanged; native drawing errors
+   --  need not roll back.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Contours Contour set containing Root, normally from
+   --  Find_Contours.
+   --  @param Root Index of the selected subtree's root; must be less than
+   --  Contour_Count (Contours).
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Descendant_Levels Generations below Root to include: zero selects
+   --  Root only, one adds its children, two also adds grandchildren. Defaults
+   --  to 0.
+   --  @param Thickness Outline thickness in pixels; defaults to 1.
+   --  @param Line_Style Rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @param Offset Added to every point before rasterization, in Image
+   --  (Region-local) coordinates; defaults to (0, 0).
+   --  @exception OpenCV_Error Raised when Root is not less than Contour_Count
+   --  (Contours), when the hierarchy reached from Root is inconsistent, when
+   --  Image or a used Color component violates the drawing rules, when
+   --  Anti_Aliased_Line is used with a non-UInt8 Image, when the selected
+   --  point count or a point plus Offset exceeds the signed 32-bit range, and
+   --  when OpenCV fails.
    procedure Draw_Contours
      (Image             : in out OpenCV.Core.Mat;
       Contours          : Contour_Set;
@@ -4145,6 +4652,34 @@ package OpenCV.Image_Processing is
       Line_Style        : Drawing_Line_Style := Eight_Connected_Line;
       Offset            : OpenCV.Point := (X => 0, Y => 0));
 
+   --  Fills every contour stored in Contours into Image in place with
+   --  cv::drawContours in OpenCV's filled mode, under the package drawing
+   --  rules. Filled contours use even-odd parity over the whole selection: an
+   --  outer contour alone fills its interior, an added hole remains empty, and
+   --  an island inside the hole is filled again, so holes and islands of one
+   --  Find_Contours result are preserved. Select contours in Ada,
+   --  independently of the linked OpenCV version: all-contours overloads use
+   --  every stored contour (the Root overloads select a subtree), and contours
+   --  without points are skipped. Offset shifts points in image/Region-local
+   --  coordinates. Image and Color obey the ordinary drawing contract,
+   --  including UInt8-only Anti_Aliased_Line. When no selected contour has
+   --  points the call is a no-op after Image, Color and Line_Style validation.
+   --  Structural errors leave Image unchanged; native drawing errors need not
+   --  roll back.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Contours Contour set to fill, normally from Find_Contours.
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Line_Style Edge rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @param Offset Added to every point before rasterization, in Image
+   --  (Region-local) coordinates; defaults to (0, 0).
+   --  @exception OpenCV_Error Raised when Image or a used Color component
+   --  violates the drawing rules, when Anti_Aliased_Line is used with a
+   --  non-UInt8 Image, when the selected point or contour count exceeds the
+   --  signed 32-bit range, when a point plus Offset leaves that range, and
+   --  when OpenCV fails.
    procedure Fill_Contours
      (Image      : in out OpenCV.Core.Mat;
       Contours   : Contour_Set;
@@ -4152,6 +4687,39 @@ package OpenCV.Image_Processing is
       Line_Style : Drawing_Line_Style := Eight_Connected_Line;
       Offset     : OpenCV.Point := (X => 0, Y => 0));
 
+   --  Fills the contour Root and up to Descendant_Levels generations of its
+   --  descendants into Image in place, with even-odd parity over that
+   --  selection; otherwise as the all-contours Fill_Contours. With zero levels
+   --  Root is filled including the area of its holes, one level empties its
+   --  child holes, and two refills islands inside them. Contours are selected
+   --  in Ada, independently of the linked OpenCV version, by following
+   --  First_Child and Next links rather than storage order; a depth beyond the
+   --  tree includes every reachable descendant. Contours without points are
+   --  skipped. Offset shifts points in image/Region-local coordinates. Image
+   --  and Color obey the ordinary drawing contract. Structural errors,
+   --  including an invalid Root, leave Image unchanged; native drawing errors
+   --  need not roll back.
+   --  @param Image Target modified in place: a nonempty 2-D UInt8, UInt16,
+   --  Int16, Float32 or Float64 Mat or Region with 1 to 4 channels.
+   --  @param Contours Contour set containing Root, normally from
+   --  Find_Contours.
+   --  @param Root Index of the selected subtree's root; must be less than
+   --  Contour_Count (Contours).
+   --  @param Color Value written in channel order; the components used by
+   --  Image's channels must be finite.
+   --  @param Descendant_Levels Generations below Root to include: zero selects
+   --  Root only, one adds its children, two also adds grandchildren. Defaults
+   --  to 0.
+   --  @param Line_Style Edge rasterization; defaults to Eight_Connected_Line.
+   --  Anti_Aliased_Line requires a UInt8 Image.
+   --  @param Offset Added to every point before rasterization, in Image
+   --  (Region-local) coordinates; defaults to (0, 0).
+   --  @exception OpenCV_Error Raised when Root is not less than Contour_Count
+   --  (Contours), when the hierarchy reached from Root is inconsistent, when
+   --  Image or a used Color component violates the drawing rules, when
+   --  Anti_Aliased_Line is used with a non-UInt8 Image, when the selected
+   --  point count or a point plus Offset exceeds the signed 32-bit range, and
+   --  when OpenCV fails.
    procedure Fill_Contours
      (Image             : in out OpenCV.Core.Mat;
       Contours          : Contour_Set;
