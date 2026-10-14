@@ -29,7 +29,7 @@ alr exec -- sh -c 'gnat --version; gprbuild --version; gcc -print-file-name=adal
 alr -n -C tests settings --set dependencies.shared false
 alr -n -C tests run > "$logs/aunit.log" 2>&1
 tail -5 "$logs/aunit.log"
-grep -E '^Successful Tests:[[:space:]]+1129$' "$logs/aunit.log"
+grep -E '^Successful Tests:[[:space:]]+1130$' "$logs/aunit.log"
 grep -E '^Failed Assertions:[[:space:]]+0$' "$logs/aunit.log"
 grep -E '^Unexpected Errors:[[:space:]]+0$' "$logs/aunit.log"
 for name in emd_signature_index bayer_layout morphology_expansion yuv420_layout \
@@ -50,6 +50,12 @@ c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
     $(pkg-config --libs-only-L "$package") -lopencv_core \
     -o "$logs/subpixel_patch_guard"
 "$logs/subpixel_patch_guard" > "$logs/subpixel_patch_guard.log" 2>&1
+c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+    -fsanitize=address,undefined -fno-omit-frame-pointer -g \
+    -isystem "$include" tests/opencv41_reference.cpp \
+    $(pkg-config --libs-only-L "$package") -lopencv_imgproc -lopencv_core \
+    -o "$logs/opencv41_reference"
+"$logs/opencv41_reference" > "$logs/opencv41_reference.log" 2>&1
 export OPENCV_CORE_TEST_PREFIX="$core"
 for name in subpixel_patch_native spatial_gradient_native squared_box_consistency \
     ballard_consistency guil_consistency masked_template_consistency \
