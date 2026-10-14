@@ -115,7 +115,7 @@ def dependency_closure(paths, sysroot, readelf, generated=None):
     return visited
 
 
-def validate(sysroot_only=False):
+def validate(sysroot_only=False, independent_toolchains=False):
     target = value("OPENCV_CROSS_TARGET")
     run(["sh", str(ROOT / "scripts/validate_cross_target.sh"), target])
     sysroot = resolved(value("ENV_PREFIX"))
@@ -247,8 +247,12 @@ def validate(sysroot_only=False):
                 qualified["cxx_runtime_symbols"] = sorted(target_symbols)
         qualified["compiler_version"] = run([cxx, "-dumpfullversion"])
         qualified["ada_version"] = run([ada, "-dumpfullversion"])
-        require(qualified["compiler_version"] == qualified["ada_version"],
-                "GCC/GNAT compiler runtime version mismatch")
+        if not independent_toolchains:
+            require(qualified["compiler_version"] == qualified["ada_version"],
+                    "GCC/GNAT compiler runtime version mismatch")
+        # Different versions are not ABI evidence: actual link and runtime
+        # symbol-version checks remain independent gates.
+        qualified["independent_toolchains"] = independent_toolchains
         return qualified
 
     config = resolved(value("OPENCV_CROSS_GPR_CONFIG"))
