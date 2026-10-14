@@ -62,8 +62,9 @@ branch, regenerated and qualified there.
 | --- | --- | --- | --- |
 | DOC-001 infrastructure | `feature/imgproc-doc-001-gnatdoc-pages` | #52 (`main`) | Open; hosted CI success on `7e1279d` |
 | DOC-002A coverage foundation, groups D and H | `feature/imgproc-doc-002a-coverage-foundation` | #53 (DOC-001 branch) | Open; head `859e66a` (tested `6a72ef3`) |
-| DOC-002B group A filtering | `feature/imgproc-doc-002b-filtering` | DOC-002A branch | Qualified locally |
-| DOC-002C..G groups B, C, E, F, G | `feature/imgproc-doc-002c..g-*` | stacked | Drafts reviewed; in progress |
+| DOC-002B group A filtering | `feature/imgproc-doc-002b-filtering` | #54 (DOC-002A branch) | Open; head `4d6f7f0` |
+| DOC-002C group B morphology | `feature/imgproc-doc-002c-morphology` | #55 (DOC-002B branch) | Open |
+| DOC-002D..G groups C, E, F, G | `feature/imgproc-doc-002d..g-*` | stacked | Drafts reviewed; in progress |
 | DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | stacked | Tooling staged locally |
 | DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | stacked | Tooling staged locally |
 | DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
@@ -264,6 +265,23 @@ Branch `feature/imgproc-doc-002b-filtering` from DOC-002A head `859e66a`.
   block are verbatim, not stripped.
 - Warnings 1,184 -> 990; coverage 328 -> 522 of 1,512 items.
 
+### IMGPROC-DOC-002C — group B thresholding, morphology, segmentation
+
+Branch `feature/imgproc-doc-002c-morphology` from DOC-002B head `4d6f7f0`;
+documentation commit `86e7c64`.
+
+- 62 declarations documented: thresholds, structuring elements and every
+  Erode/Dilate/Apply_Morphology/Hit_Or_Miss overload, distance transforms,
+  flood fill, Watershed and GrabCut. Direct native output for thresholds and
+  morphology; fresh owning results for distance transforms and structuring
+  elements; in-place mutation for Flood_Fill images and masks and Watershed
+  markers; GrabCut refinement works on private clones committed on success.
+- Corrections: Constant_Border uses Border_Value (OpenCV's neutral value
+  only by default); misattached custom-kernel, anchor, GrabCut model and
+  structuring-element comments redistributed; Apply_Adaptive_Threshold also
+  requires a finite Bias.
+- Warnings 990 -> 726; coverage 522 -> 786 of 1,512 items.
+
 ## Findings for the maintainers (not changed: outside documentation scope)
 
 - CLAHE (shim `opencv_imgproc_clahe`): the isolating clone is taken only for
@@ -282,8 +300,7 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 
 1. **IMGPROC-DOC-002A** — done (see checkpoint).
 2. **IMGPROC-DOC-002B** — done (see checkpoint).
-3. **IMGPROC-DOC-002C** — group B threshold, morphology, distance,
-   segmentation.
+3. **IMGPROC-DOC-002C** — done (see checkpoint).
 4. **IMGPROC-DOC-002D** — group C color (moves the unrendered Color_Conversion
    notes into `@enum` documentation).
 5. **IMGPROC-DOC-002E** — group E contours, components, drawing.
@@ -309,9 +326,9 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 
 ## Next executable task
 
-Apply the reviewed group B draft (`agent-b`, diff against `f576f4a`) with
-`git apply -3` on `feature/imgproc-doc-002c-morphology` from the DOC-002B
-head, regenerate both baselines, qualify and open the stacked PR; continue
-with groups C, E, F and G in that order, then DOC-003 (staged tooling in
+Apply the reviewed group C draft (`agent-c`, diff against `f576f4a`) with
+`git apply -3` on `feature/imgproc-doc-002d-color` from the DOC-002C head,
+regenerate both baselines, qualify and open the stacked PR; continue with
+groups E, F and G in that order, then DOC-003 (staged tooling in
 `/home/zboll/git/opencv/imgproc-doc/dev-003`, local commits), DOC-004 and
 DOC-005.
