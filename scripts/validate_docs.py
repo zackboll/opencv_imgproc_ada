@@ -86,7 +86,10 @@ RENDERED = {
 }
 # Generated presentation files allowed beside the native output.
 ENHANCEMENT_FILES = {"api/gnatdoc-theme.css", "api/presentation.json",
-                     "api/type-crossrefs.json"}
+                     "api/type-crossrefs.json", "api/gnatdoc-navigation.js"}
+# The only script: the repository-owned browser, once, in the API index; its
+# exact placement and bytes are verified by check_navigation.
+APPROVED_SCRIPT = ("api/index.html", "<script src=gnatdoc-navigation.js>")
 # Sanity floors for the recomputed links (measured: 331 and 551).
 MINIMUM_INTERNAL_LINKS = 300
 MINIMUM_CORE_LINKS = 500
@@ -128,7 +131,9 @@ class Page(HTMLParser):
         self.close()
 
     def handle_starttag(self, tag, attrs):
-        if tag in ACTIVE_TAGS:
+        if tag == "script":
+            self.active.append(f"<script src={dict(attrs).get('src')}>")
+        elif tag in ACTIVE_TAGS:
             self.active.append(f"<{tag}>")
         if tag == "meta" and any(k == "http-equiv" for k, _ in attrs):
             self.active.append("<meta http-equiv>")
@@ -275,11 +280,13 @@ def _check_links(site, pages, path, page, errors, enhanced):
 
 def _presentation_errors(api, root, core, packages, type_links):
     """Independent theme, type-link and highlighting integrity checks."""
+    from enhance_gnatdoc_navigation import check_navigation
     from install_gnatdoc_theme import check_theme
     errors = []
     try:
         with contextlib.redirect_stdout(io.StringIO()):
             check_theme(api)
+            check_navigation(api)
         counts, _ = process(api, root / "src", core, check=True, quiet=True,
                             minimum_internal=MINIMUM_INTERNAL_LINKS,
                             minimum_external=MINIMUM_CORE_LINKS)
@@ -351,7 +358,11 @@ def validate(site, root=ROOT, declarations=DECLARATIONS, rendered=RENDERED,
         errors.append(f"public package missing: {name}")
     for path, page in pages.items():
         relative = path.relative_to(site)
-        for item in page.active:
+        active = list(page.active)
+        if enhanced and (relative.as_posix(), APPROVED_SCRIPT[1]) == APPROVED_SCRIPT \
+                and active.count(APPROVED_SCRIPT[1]) == 1:
+            active.remove(APPROVED_SCRIPT[1])
+        for item in active:
             errors.append(f"unapproved active content in {relative}: {item}")
         duplicates = [i for i, n in collections.Counter(page.ids).items() if n > 1]
         for identifier in duplicates:
@@ -375,10 +386,15 @@ def validate(site, root=ROOT, declarations=DECLARATIONS, rendered=RENDERED,
         )
         native = INDEX_START + units + INDEX_END
         if enhanced:
+            from enhance_gnatdoc_navigation import augmented
             from install_gnatdoc_theme import themed
-            native = themed(native)
+            try:
+                native = augmented(themed(native), api)
+            except (CrossReferenceError, ValueError, OSError) as error:
+                errors.append(f"navigation integrity: {error}")
         if index.read_text(encoding="utf-8") != native:
-            errors.append("native API index does not match the pinned GNATdoc layout")
+            errors.append("API index does not match the pinned GNATdoc layout "
+                          "and approved navigation")
     if enhanced:
         errors.extend(_presentation_errors(api, root, core, packages, type_links))
     sections_total = subprograms = 0

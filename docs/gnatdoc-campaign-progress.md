@@ -68,8 +68,8 @@ branch, regenerated and qualified there.
 | DOC-002E group E contours and drawing | `feature/imgproc-doc-002e-contours` | #57 (DOC-002D branch) | Open; head `a465211` |
 | DOC-002F group F histograms | `feature/imgproc-doc-002f-histograms` | #58 (DOC-002E branch) | Open; head `56e9720` |
 | DOC-002G group G Hough and matching | `feature/imgproc-doc-002g-matching` | #59 (DOC-002F branch) | Open; head `0cd4817`; zero warnings, 1,512/1,512 |
-| DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | DOC-002G branch | Qualified locally |
-| DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | stacked | Tooling staged locally |
+| DOC-003 theme, highlighting, type links | `feature/imgproc-doc-003-presentation` | #60 (DOC-002G branch) | Open; head `910fb21` |
+| DOC-004 operation browser | `feature/imgproc-doc-004-navigation` | DOC-003 branch | Qualified locally |
 | DOC-005 guides and final audit | `feature/imgproc-doc-005-guides` | stacked | Not started |
 
 GitHub Pages remains disabled (external administrator action).
@@ -390,6 +390,28 @@ Tooling developed in the scratch worktree `dev-003` (local commit
   anchor navigation, focus outline, JavaScript-disabled native navigation;
   eight screenshots inspected.
 
+### IMGPROC-DOC-004 — operation-level API browser
+
+Branch `feature/imgproc-doc-004-navigation` from DOC-003 head `910fb21`.
+
+- `docs/api-categories.json`: reviewed manifest of 8 categories covering all
+  272 distinct public names (314 declarations) exactly once, derived from the
+  functional groups used for DOC-002 and checked against the specification
+  at every generation.
+- `enhance_gnatdoc_navigation.py`: static categorized declaration list with
+  verified native anchors, kinds and overload labels; hidden controls and one
+  deferred script added only to the native index; exact rebuild check;
+  idempotent. `gnatdoc-navigation.js`: case-insensitive multi-word search,
+  live status, Clear, `aria-current` selection, `?op=Name&overload=N`
+  bookmarks with Back/Forward/reload, canonicalization of unknown requests.
+- Tests: 11 navigation tests (manifest errors, real-site mutations,
+  idempotency); 138 Python tests in total, all passing.
+- Browser: navigation harness (searches for Gaussian, Warp, Contours, Hough,
+  Match_Template, Phase_Correlate and categories; overloads; bookmarks;
+  history; keyboard; no-results; JavaScript disabled) and presentation
+  harness pass at 1280/390 px in light and dark; screenshots inspected. The
+  mobile sidebar keeps Core's 30 % band and scrolls internally.
+
 ## Findings for the maintainers (not changed: outside documentation scope)
 
 - CLAHE (shim `opencv_imgproc_clahe`): the isolating clone is taken only for
@@ -429,18 +451,15 @@ baselines it reduces, and opens a stacked review PR; work then continues.
 7. **IMGPROC-DOC-002G** — done (see checkpoint): zero warnings, complete
    coverage, empty baselines enforced.
 8. **IMGPROC-DOC-003** — done (see checkpoint).
-9. **IMGPROC-DOC-004** — operation-level browser: source-backed category
-   manifest, case-insensitive search over the 184 subprograms and types,
-   overload identification, native anchors only, bookmarkable selection,
-   no-JavaScript fallback, Playwright qualification at 1280/390 px in
-   light/dark.
+9. **IMGPROC-DOC-004** — done (see checkpoint).
 10. **IMGPROC-DOC-005** — five developer guides with compiled examples,
     landing-page integration, README pointer and final audit against the
     Phase 6 gate.
 
 ## Next executable task
 
-Create `feature/imgproc-doc-004-navigation` from the DOC-003 head and apply
-the staged navigation work (the `dev-003` working-tree changes on top of
-`30978f9`) with `git apply -3`, regenerate, qualify (including the
-Playwright navigation harness) and open the stacked PR; then DOC-005.
+Create `feature/imgproc-doc-005-guides` from the DOC-004 head: five
+developer guides with compiled examples, a Markdown renderer adapted from
+Core (`render_gnatdoc_guides.py`, pinned `markdown-it-py`), landing-page
+and README integration, the README corrections listed under findings that
+are documentation-only, then the final audit and the full AUnit run.
