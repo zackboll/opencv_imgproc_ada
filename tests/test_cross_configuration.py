@@ -61,7 +61,7 @@ class CrossConfigurationTests(unittest.TestCase):
             '-dumpfullversion) echo 12.2.0 ;;\n*) echo aarch64-linux-gnu ;;\nesac\n')
         self.env["OPENCV_CROSS_CXX"] = executable("cxx", 'echo aarch64-linux-gnu\n')
         self.env["OPENCV_CROSS_READELF"] = executable("readelf",
-            'case "$1" in -d) echo "libopencv_core.so.406 libopencv_imgproc.so.406" ;;\n'
+            'case "$1" in -d) printf "%s\\n" "(SONAME) [libopencv_core.so.406]" "(SONAME) [libopencv_imgproc.so.406]" ;;\n'
             '*) printf "%s\\n" "Class: ELF64" "Machine: AArch64" '
             '"Data: 2\x27s complement, little endian" ;;\nesac\n')
         self.env["OPENCV_CROSS_PKG_CONFIG"] = executable("pkg-config",
@@ -311,6 +311,101 @@ class CrossConfigurationTests(unittest.TestCase):
     def test_source_configuration_generation_rejected(self):
         with self.assertRaisesRegex(cross.ConfigurationError, "isolated"):
             cross.generate(self.check(), ROOT)
+
+    def test_partial_cannot_authorize_workspace(self):
+        with self.assertRaisesRegex(cross.ConfigurationError, "partial sysroot"):
+            cross.workspace("--build", str(self.base / "new"),
+                            {"qualification": "TARGET_SYSROOT_ONLY"})
+
+    def partial_fixture(self):
+        """Synthetic partial-gate fixture, never target integration evidence."""
+        (self.library / "libgcc.a").touch()
+        (self.library / "libstdc++.so").touch()
+        pkg = Path(self.env["OPENCV_CROSS_PKG_CONFIG"])
+        pkg.write_text(pkg.read_text().replace('--exists)',
+            f'--cflags) case "$2" in --libs) echo -I{self.include.parent} -lopencv_core -lopencv_imgproc ;; *) echo -I{self.include.parent} ;; esac ;; '
+            '--libs) echo -lopencv_core -lopencv_imgproc ;; '
+            f'--variable=pcfiledir) echo {self.library}/pkgconfig ;; --exists)'))
+        pkg.write_text(pkg.read_text().replace('--exists) exit 0',
+                                             '--exists) test "$2" = opencv4; exit $?'))
+        (self.library / "pkgconfig/opencv4.pc").write_text("# synthetic negative-control metadata\n")
+        cxx = Path(self.env["OPENCV_CROSS_CXX"])
+        cxx.write_text('#!/bin/sh\ncase "$*" in *libgcc.a*) '
+            f'echo {self.library}/libgcc.a ;; *libstdc++.so*) echo {self.library}/libstdc++.so ;; '
+            '*dumpfullversion*) echo 12.2.0 ;; *) echo aarch64-linux-gnu ;; esac\n')
+        reader = Path(self.env["OPENCV_CROSS_READELF"])
+        reader.write_text(reader.read_text().replace('case "$1" in',
+            'case "$1" in --version-info) echo GLIBCXX_3.4.30 ;;'))
+
+    def partial_check(self):
+        with patch.dict(os.environ, self.env, clear=True):
+            return cross.validate(sysroot_only=True)
+
+    def test_partial_requires_real_metadata_location(self):
+        self.partial_fixture()
+        self.assertFalse(self.partial_check()["production_qualified"])
+        (self.library / "pkgconfig/opencv4.pc").unlink()
+        with self.assertRaisesRegex(cross.ConfigurationError, "missing or invalid"):
+            self.partial_check()
+
+    def test_partial_wrong_gcc_gnat_version(self):
+        self.partial_fixture()
+        cxx = Path(self.env["OPENCV_CROSS_CXX"])
+        cxx.write_text(cxx.read_text().replace('12.2.0', '13.1.0'))
+        with self.assertRaisesRegex(cross.ConfigurationError, "GCC/GNAT"):
+            self.partial_check()
+
+    def test_partial_missing_required_metadata_flags(self):
+        self.partial_fixture()
+        pkg = Path(self.env["OPENCV_CROSS_PKG_CONFIG"])
+        pkg.write_text(pkg.read_text().replace('-lopencv_imgproc', ''))
+        with self.assertRaisesRegex(cross.ConfigurationError, "lacks required"):
+            self.partial_check()
+
+    def test_partial_cannot_generate(self):
+        with self.assertRaisesRegex(cross.ConfigurationError, "partial sysroot"):
+            cross.generate({"qualification": "TARGET_SYSROOT_ONLY"}, self.base / "new")
+
+    def test_unresolved_advertised_dependency(self):
+        pkg = Path(self.env["OPENCV_CROSS_PKG_CONFIG"])
+        pkg.write_text(pkg.read_text().replace('--exists)', '--cflags) echo -lopencv_absent ;; --exists)'))
+        self.reject("unresolved.*dependency flag")
+
+    def test_missing_transitive_dependency(self):
+        reader = Path(self.env["OPENCV_CROSS_READELF"])
+        reader.write_text(reader.read_text().replace('-d)', '-d) echo "(NEEDED) [libabsent.so.1]";'))
+        self.reject("unresolved target dependency")
+
+    def test_broken_library_symlink(self):
+        path = self.library / "libopencv_imgproc.so"
+        path.unlink()
+        path.symlink_to(self.library / "absent.so")
+        self.reject("missing or invalid")
+
+    def test_embedded_host_search(self):
+        reader = Path(self.env["OPENCV_CROSS_READELF"])
+        reader.write_text(reader.read_text().replace('-d)', '-d) echo "(RUNPATH) [/usr/lib/x86_64-linux-gnu]";'))
+        self.reject("embedded target search")
+
+
+@unittest.skipUnless(os.environ.get("OPENCV_REAL_SYSROOT_TEST") == "1",
+                     "genuine SDK integration explicitly selected; no synthetic fallback")
+class GenuineSysrootTests(unittest.TestCase):
+    def test_partial_without_core(self):
+        with patch.dict(os.environ, {}, clear=False):
+            for name in ["OPENCV_CROSS_CORE_PREFIX", "OPENCV_CROSS_GPR_CONFIG",
+                         "OPENCV_CROSS_GPRBUILD", "OPENCV_CROSS_GPRINSTALL"]:
+                os.environ.pop(name, None)
+            result = cross.validate(sysroot_only=True)
+            self.assertFalse(result["production_qualified"])
+            self.assertTrue(result["dependency_closure"])
+            with self.assertRaisesRegex(cross.ConfigurationError, "OPENCV_CROSS_GPR_CONFIG"):
+                cross.validate()
+
+    def test_genuine_dependency_closure(self):
+        result = cross.validate(sysroot_only=True)
+        for module in ["core", "imgproc"]:
+            self.assertIn(result["libraries"][module], result["dependency_closure"])
 
 
 if __name__ == "__main__":

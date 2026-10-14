@@ -1,0 +1,60 @@
+name: Debian 12 AArch64 target dependencies (not production cross-build)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  target-dependencies:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container: debian:12
+    env:
+      OPENCV_CROSS_TARGET: aarch64-linux-gnu
+      ENV_PREFIX: /target
+      OPENCV_CROSS_ADA: aarch64-linux-gnu-gcc
+      OPENCV_CROSS_CXX: aarch64-linux-gnu-g++
+      OPENCV_CROSS_RUNTIME: /usr/lib/gcc-cross/aarch64-linux-gnu/12
+      OPENCV_CROSS_PKG_CONFIG: pkg-config
+      PKG_CONFIG_SYSROOT_DIR: /target
+      PKG_CONFIG_LIBDIR: /target/usr/lib/aarch64-linux-gnu/pkgconfig
+      PKG_CONFIG_PATH: ''
+    steps:
+      - name: Actual cross toolchain
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git python3 pkg-config binutils g++-aarch64-linux-gnu gnat-12-aarch64-linux-gnu
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: c0709f864a2f426c40eeaf1d21486c6d9859a741
+          path: qualification-core
+      - name: Exact source identities and genuine packages
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir evidence
+          git config --global --add safe.directory "$PWD"
+          git config --global --add safe.directory "$PWD/qualification-core"
+          git rev-parse HEAD > evidence/imgproc-sha.txt
+          test "$(cat evidence/imgproc-sha.txt)" = "$EXPECTED_SHA"
+          git -C qualification-core rev-parse HEAD > evidence/core-sha.txt
+          test "$(cat evidence/core-sha.txt)" = c0709f864a2f426c40eeaf1d21486c6d9859a741
+          sh scripts/prepare_debian12_target.sh /target "$PWD/evidence/debian" > evidence/construction.log 2>&1
+      - name: Synthetic negatives separate from genuine integration
+        run: |
+          python3 -m unittest discover -s tests -p test_cross_configuration.py -v > evidence/synthetic.log 2>&1
+          OPENCV_REAL_SYSROOT_TEST=1 python3 -m unittest discover -s tests -p test_cross_configuration.py -v > evidence/integration.log 2>&1
+      - name: Target link and unchanged production shim compile only
+        run: |
+          aarch64-linux-gnu-gcc -v 2> evidence/gcc.txt
+          aarch64-linux-gnu-g++ -v 2> evidence/gxx.txt
+          OPENCV_CROSS_CORE_BRIDGE="$PWD/qualification-core/cpp" python3 scripts/qualify_target_opencv.py "$PWD/evidence/link" > evidence/qualification.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aarch64-target-dependency-evidence
+          path: evidence/
