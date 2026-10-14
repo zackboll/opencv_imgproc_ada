@@ -29,6 +29,7 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import re
 import sys
 from collections import Counter
@@ -38,6 +39,7 @@ from compare_gnatdoc_warnings import (WarningComparisonError, code_tokens,
                                       declaration_index)
 
 ROOT = Path(__file__).resolve().parent.parent
+CORE_ROOT = Path(os.environ.get('DOC_CORE_SOURCE', ROOT.parent / 'core'))
 CORE_SITE = "https://zackboll.github.io/opencv_core_ada/api/index.html"
 # Core package identity -> its specification and published bookmark name.
 CORE_PACKAGES = {
@@ -309,7 +311,7 @@ def package_page(api, source):
     return pages[0][1]
 
 
-def process(api, source_root=ROOT / "src", core_root=ROOT.parent / "core",
+def process(api, source_root=ROOT / "src", core_root=CORE_ROOT,
             check=False, highlight=False, minimum_internal=0, minimum_external=0,
             quiet=False):
     """Link, verify, or (with highlight) color the package page snippets."""
@@ -378,7 +380,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('api', type=Path)
     parser.add_argument('--sources', type=Path, default=ROOT / 'src')
-    parser.add_argument('--core', type=Path, default=ROOT.parent / 'core')
+    parser.add_argument('--core', type=Path, default=CORE_ROOT)
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args(argv)
     try:

@@ -4,6 +4,7 @@ with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
 with Bayer_Fixtures;
 with Interfaces;
+with Native_Reference;
 with OpenCV.Core;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Image_Processing;
@@ -261,6 +262,12 @@ package body Bayer_Demosaicing_Tests is
                Different : Boolean := False;
             begin
                Metadata (S, B, 3);
+               AUnit.Assertions.Assert
+                 (Native_Reference.Bayer_Matches
+                    (S, B, IP.RGGB, Method, IP.BGR_Order)
+                  and then Native_Reference.Bayer_Matches
+                             (S, R, IP.RGGB, Method, IP.RGB_Order),
+                  "exact textured native selectors, including borders");
                for Channel in 0 .. 2 loop
                   declare
                      P : constant C.Mat := A.Extract_Channel (Channel);
@@ -272,9 +279,16 @@ package body Bayer_Demosaicing_Tests is
                            Different :=
                              Different
                              or else F.Pixel (P, Y, X) /= F.Pixel (Q, Y, X);
-                           AUnit.Assertions.Assert
-                             (F.Pixel (Q, Y, X) = F.Pixel (T, Y, X),
-                              "textured native BGR/RGB order");
+                           --  Legacy EA diagonal means round differently
+                           --  in the two selectors. Exact native oracle above
+                           --  replaces invalid cross-selector bit equality.
+                           if Method /= IP.Edge_Aware
+                             or else Native_Reference.Version >= 40_600
+                           then
+                              AUnit.Assertions.Assert
+                                (F.Pixel (Q, Y, X) = F.Pixel (T, Y, X),
+                                 "textured native BGR/RGB order");
+                           end if;
                         end loop;
                      end loop;
                   end;
@@ -568,6 +582,73 @@ package body Bayer_Demosaicing_Tests is
    procedure Raw_G is new Raw_Rejection (1);
    procedure Raw_A is new Raw_Rejection (2);
 
+   procedure EA_Physical_Texture (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      type Tile is array (0 .. 1, 0 .. 1) of Natural;
+      Tiles : constant array (IP.Bayer_Pattern) of Tile :=
+        (IP.RGGB => ((2, 1), (1, 0)),
+         IP.GRBG => ((1, 2), (0, 1)),
+         IP.BGGR => ((0, 1), (1, 2)),
+         IP.GBRG => ((1, 0), (2, 1)));
+   begin
+      for Pattern in IP.Bayer_Pattern loop
+         for Depth in C.Depth_Type range C.UInt8 .. C.UInt16 loop
+            if Depth = C.UInt8 or else Depth = C.UInt16 then
+               declare
+                  S      : constant C.Mat :=
+                    F.Mosaic
+                      (Pattern,
+                       Depth,
+                       Rows    => 32,
+                       Columns => 32,
+                       Texture => True);
+                  Before : constant C.Mat := S.Clone;
+               begin
+                  for Order in IP.Bayer_Color_Order loop
+                     declare
+                        D     : constant C.Mat :=
+                          IP.Demosaic_Bayer (S, Pattern, IP.Edge_Aware, Order);
+                        Wrong : constant IP.Bayer_Color_Order :=
+                          (if Order = IP.BGR_Order
+                           then IP.RGB_Order
+                           else IP.BGR_Order);
+                     begin
+                        Metadata (S, D, 3);
+                        AUnit.Assertions.Assert
+                          (Native_Reference.Bayer_Matches
+                             (S, D, Pattern, IP.Edge_Aware, Order),
+                           "EA all pixels equal direct native selector");
+                        AUnit.Assertions.Assert
+                          (not Native_Reference.Bayer_Matches
+                                 (S, D, Pattern, IP.Edge_Aware, Wrong),
+                           "EA oracle detects wrong requested channel order");
+                        for Y in 1 .. 30 loop
+                           for X in 1 .. 30 loop
+                              declare
+                                 Physical : constant Natural :=
+                                   Tiles (Pattern) (Y mod 2, X mod 2);
+                                 Channel  : constant Natural :=
+                                   (if Order = IP.BGR_Order
+                                    then Physical
+                                    else 2 - Physical);
+                                 Plane    : constant C.Mat :=
+                                   D.Extract_Channel (Channel);
+                              begin
+                                 AUnit.Assertions.Assert
+                                   (F.Pixel (Plane, Y, X) = F.Pixel (S, Y, X),
+                                    "EA physical sample channel");
+                              end;
+                           end loop;
+                        end loop;
+                        F.Equal (S, Before);
+                     end;
+                  end loop;
+               end;
+            end if;
+         end loop;
+      end loop;
+   end EA_Physical_Texture;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
       procedure Add (Name : String; Test : Caller.Test_Method) is
       begin
@@ -604,6 +685,9 @@ package body Bayer_Demosaicing_Tests is
       Add ("VNG GBRG UInt8 both orders", V3'Access);
       Add ("VNG 7x7 native bilinear fallback", Small_VNG'Access);
       Add ("EA textured interior differs from bilinear", EA_Texture'Access);
+      Add
+        ("EA textured physical phases and native oracle controls",
+         EA_Physical_Texture'Access);
       Add ("VNG textured interior uses gradients", VNG_Texture'Access);
       Add ("Bilinear Region isolated snapshot", Bilinear_Region'Access);
       Add ("EA Region isolated snapshot", EA_Region'Access);

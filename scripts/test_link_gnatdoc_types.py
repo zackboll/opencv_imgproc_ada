@@ -5,6 +5,9 @@ import contextlib
 import hashlib
 import io
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -94,6 +97,16 @@ class Fixture(unittest.TestCase):
 
     def link(self, **options):
         return self.run_step(process, self.api, self.src, self.core, **options)
+
+    def test_cli_uses_resolved_core_environment(self):
+        self.run_step(install, self.api)
+        script = Path(__file__).with_name('link_gnatdoc_types.py')
+        environment = dict(os.environ, DOC_CORE_SOURCE=str(self.core))
+        result = subprocess.run(
+            [sys.executable, str(script), str(self.api), '--sources', str(self.src)],
+            env=environment, capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Core package links', result.stdout)
 
     def enhance(self):
         self.run_step(install, self.api)

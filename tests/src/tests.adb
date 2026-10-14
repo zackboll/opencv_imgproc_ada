@@ -74,7 +74,11 @@ procedure Tests is
    function Selected return AUnit.Test_Suites.Access_Test_Suite is
    begin
       if Ada.Command_Line.Argument_Count = 1 then
-         if Ada.Command_Line.Argument (1) = "masked-template" then
+         if Ada.Command_Line.Argument (1) = "bayer" then
+            return Bayer_Demosaicing_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "automatic-threshold" then
+            return Automatic_Threshold_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "masked-template" then
             return Masked_Template_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "masked-ncc" then
             return Masked_NCC_Tests.Suite;

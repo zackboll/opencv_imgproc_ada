@@ -36,7 +36,7 @@ from compare_gnatdoc_warnings import (
     code_tokens,
     declaration_index,
 )
-from link_gnatdoc_types import CORE_DESTINATIONS, LINK, CrossReferenceError, process
+from link_gnatdoc_types import CORE_DESTINATIONS, CORE_ROOT, LINK, CrossReferenceError, process
 from render_gnatdoc_guides import GUIDES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -327,7 +327,7 @@ def validate(site, root=ROOT, declarations=DECLARATIONS, rendered=RENDERED,
     """
     site = Path(site).resolve()
     root = Path(root).resolve()
-    core = root.parent / "core" if core is None else Path(core)
+    core = (CORE_ROOT if root == ROOT else root.parent / "core") if core is None else Path(core)
     errors = []
     expected = public_specifications(root)
     api = site / "api"

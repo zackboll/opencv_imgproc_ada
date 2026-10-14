@@ -1,0 +1,8 @@
+name = "imgproc_release_consumer"
+description = "Pin-free Imgproc release qualification consumer"
+version = "0.1.0"
+licenses = "Apache-2.0"
+executables = ["release_consumer"]
+
+[[depends-on]]
+opencv_imgproc = "=0.2.0"
