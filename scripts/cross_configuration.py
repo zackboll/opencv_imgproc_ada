@@ -232,7 +232,9 @@ def validate():
     require(alis, "missing Core target ALIs")
     for ali in alis:
         first = ali.read_text().splitlines()[0]
-        require(first == f'V "GNAT Lib v{expected["ada_version"]}"',
+        # GNAT 12 records its ALI format major, not GCC's full patch version.
+        # Full compiler/runtime identity is checked separately in the attestation.
+        require(first == f'V "GNAT Lib v{expected["ada_version"].split(".")[0]}"',
                 f"mixed GNAT runtime/compiler ALI: {ali}")
     return dict(target=target, sysroot=str(sysroot), ada=ada, cxx=cxx,
                 runtime=str(runtime), config=str(config), readelf=readelf,

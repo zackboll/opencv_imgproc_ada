@@ -44,7 +44,7 @@ class CrossConfigurationTests(unittest.TestCase):
         (self.core / "share/gpr/opencv_core.gpr").write_text(
             'with "opencv_core_shim";\nfor Externally_Built use "true";\n')
         (self.core / "share/gpr/opencv_core_shim.gpr").write_text('for Externally_Built use "true";\n')
-        (self.core / "lib/opencv.ali").write_text('V "GNAT Lib v12.2.0"\n')
+        (self.core / "lib/opencv.ali").write_text('V "GNAT Lib v12"\n')
         self.env = {"PATH": os.environ["PATH"], "OPENCV_CROSS_TARGET": "aarch64-linux-gnu",
                     "ENV_PREFIX": str(self.sysroot), "OPENCV_CROSS_RUNTIME": str(self.runtime),
                     "PKG_CONFIG_LIBDIR": str(self.library / "pkgconfig"),
