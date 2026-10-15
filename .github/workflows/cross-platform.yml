@@ -231,6 +231,12 @@ jobs:
             gprbuild=26.0.1
           alr toolchain
 
+      - name: Use the selected Xcode SDK for GNAT links
+        # gnat_native defaults to the Command Line Tools SDK but links with the
+        # selected Xcode's ld-classic, which rejects newer CLT stubs (CLT 27
+        # libSystem.tbd, arm64e.x1); see alire-project/alire-index-checks#22.
+        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
+
       - name: Install Homebrew OpenCV
         run: brew install opencv
 
@@ -428,6 +434,12 @@ jobs:
             gprbuild=26.0.1
           alr toolchain
 
+      - name: Use the selected Xcode SDK for GNAT links
+        # gnat_native defaults to the Command Line Tools SDK but links with the
+        # selected Xcode's ld-classic, which rejects newer CLT stubs (CLT 27
+        # libSystem.tbd, arm64e.x1); see alire-project/alire-index-checks#22.
+        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
+
       - name: Install Homebrew OpenCV
         run: brew install opencv
 
@@ -478,10 +490,14 @@ jobs:
           set -eu
           package=opencv4
           if pkg-config --exists opencv5; then package=opencv5; fi
+          include=$(pkg-config --variable=includedir "$package")
+          if [ -z "$include" ]; then
+            include=$(pkg-config --variable=includedir_new "$package")
+          fi
           xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             -isysroot "$(xcrun --sdk macosx --show-sdk-path)" \
-            tests/subpixel_patch_guard_test.cpp \
-            $(pkg-config --cflags --libs "$package") \
+            -isystem "$include" tests/subpixel_patch_guard_test.cpp \
+            $(pkg-config --libs "$package") \
             -o subpixel_patch_guard_test
           ./subpixel_patch_guard_test
 
