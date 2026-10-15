@@ -1,6 +1,37 @@
 # Changelog
 
-## 0.2.0 — proposed, not tagged or published
+## 0.2.1 — corrective release, proposed
+
+Release preparation is tracked in
+[IMGPROC-REL-004 qualification](docs/imgproc-rel-004-qualification.md).
+Patch release of 0.2.0 with the same public API and `opencv_core = "~0.4.1"`.
+
+### Fixed
+
+* `Extract_Subpixel_Patch` returned wrong pixels on OpenCV builds with Intel
+  IPP (for example Homebrew's x86_64 bottles) when the patch window crossed
+  both the top and the right border of Source. IPP's
+  `ippiCopySubpixIntersect`, used by `cv::getRectSubPix` for UInt8 and
+  Float32 single-channel sources, fills samples above the image at or beyond
+  the last column from column `Columns - 2` instead of `Columns - 1`
+  ([opencv/opencv#30301](https://github.com/opencv/opencv/issues/30301)).
+  This affected UInt8, `Promote_To_Float32` and Float32 C1 results. Exactly
+  those requests are now sampled with OpenCV's portable implementation by
+  deselecting IPP on the calling thread for that one call, restoring the
+  caller's selection afterwards. Results on builds without IPP are unchanged,
+  and IPP stays enabled for all other requests and operations.
+
+### Tests and qualification
+
+* Ten AUnit regressions cover top+right windows for UInt8, Float32 and
+  promoted output, a one-column Source, and the caller's IPP selection
+  forced on and off (1140 tests).
+* The native ELF-wrap test runs every case with IPP selected and deselected
+  and asserts the IPP selection seen by the native call; the guard test checks
+  the geometry classification and selection restoration.
+* New hosted job: macOS x86_64 with Homebrew's IPP-enabled OpenCV.
+
+## 0.2.0 — tagged 2026-10-14, not published to the Alire index; superseded by 0.2.1
 
 Release preparation is tracked in
 [IMGPROC-REL-001 qualification](docs/imgproc-rel-001-qualification.md).

@@ -29,7 +29,7 @@ alr exec -- sh -c 'gnat --version; gprbuild --version; gcc -print-file-name=adal
 alr -n -C tests settings --set dependencies.shared false
 alr -n -C tests run > "$logs/aunit.log" 2>&1
 tail -5 "$logs/aunit.log"
-grep -E '^Successful Tests:[[:space:]]+1130$' "$logs/aunit.log"
+grep -E '^Successful Tests:[[:space:]]+1140$' "$logs/aunit.log"
 grep -E '^Failed Assertions:[[:space:]]+0$' "$logs/aunit.log"
 grep -E '^Unexpected Errors:[[:space:]]+0$' "$logs/aunit.log"
 for name in emd_signature_index bayer_layout morphology_expansion yuv420_layout \

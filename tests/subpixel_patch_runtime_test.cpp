@@ -6,6 +6,8 @@
 
 namespace {
 int calls = 0, direct_calls = 0, guarded_calls = 0, representation_cases = 0;
+int portable_calls = 0;
+bool caller_ipp = false;
 const cv::Mat *original = nullptr;
 cv::Size expected_size;
 cv::Point2f expected_center;
@@ -48,10 +50,16 @@ void exercise(const cv::Mat &image, cv::Size size, cv::Point2f center,
             "fixture plan");
     const cv::Mat before = image.clone();
     const int previous = calls;
-    require(opencv_imgproc_extract_subpixel_patch(source.handle,
-                size.width, size.height, center.x, center.y, selector,
-                output.handle) == OPENCV_IMGPROC_OK, "production success");
+    caller_ipp = cv::ipp::useIPP();
+    if (opencv_imgproc_extract_subpixel_patch(source.handle,
+            size.width, size.height, center.x, center.y, selector,
+            output.handle) != OPENCV_IMGPROC_OK) {
+        // A failed check inside the wrapped native call surfaces here.
+        throw std::runtime_error(std::string("production success: ") +
+                                 opencv_imgproc_last_error_message());
+    }
     require(calls == previous + 1, "one call");
+    require(cv::ipp::useIPP() == caller_ipp, "caller IPP selection restored");
     require(output.value->size() == size && output.value->depth() == depth &&
                 output.value->channels() == image.channels(), "metadata");
     require(output.value->data != image.data, "fresh result");
@@ -132,6 +140,13 @@ extern "C" void wrap_subpix(const cv::_InputArray &input, cv::Size size,
                              cv::Point2f center, const cv::_OutputArray &output,
                              int depth) {
     ++calls;
+    // IPP is deselected exactly for windows crossing the top and right
+    // borders (opencv/opencv#30301) and nowhere else.
+    const bool portable = !expected_guard.direct &&
+        opencv_imgproc_subpixel::requires_portable_sampler(expected_guard);
+    if (portable) ++portable_calls;
+    require(cv::ipp::useIPP() == (caller_ipp && !portable),
+            "IPP selection during the native call");
     const cv::Mat m = input.getMat();
     require(m.size() == original->size() && m.type() == original->type(),
             "unchanged logical geometry/type");
@@ -176,99 +191,128 @@ extern "C" void wrap_subpix(const cv::_InputArray &input, cv::Size size,
     real_subpix(input, size, center, output, depth);
 }
 
-int main() {
-    try {
-        // Exactly sized caller storage, with no accidental hidden guards.
-        uchar bytes[16];
-        cv::Mat external(4, 4, CV_8UC1, bytes);
-        for (int y = 0; y < 4; ++y)
-            for (int x = 0; x < 4; ++x) bytes[y*4+x] = uchar(y*40+x*8);
-        exercise(external, {3,3}, {0,0}, 0);
-        exercise(external, {1,1}, {3,3}, 0);
-        Mat empty(cv::Mat{}), destination(cv::Mat(2,2,CV_8UC1,cv::Scalar(71)));
-        for (const auto &bad_image : {cv::Mat{}, cv::Mat(2,2,CV_16UC1),
-                                     cv::Mat(2,2,CV_8UC2)}) {
-            *empty.value = bad_image;
-            const int previous = calls;
-            require(opencv_imgproc_extract_subpixel_patch(empty.handle,
-                        1,1,0,0,0,destination.handle) != OPENCV_IMGPROC_OK,
-                    "malformed source rejected");
-            require(calls == previous && destination.value->at<uchar>(0,0) == 71,
-                    "malformed source zero calls/atomicity");
-        }
-        const int dimensions[] = {2,2,2};
-        *empty.value = cv::Mat(3, dimensions, CV_8UC1);
+namespace {
+void exercise_all() {
+    // Exactly sized caller storage, with no accidental hidden guards.
+    uchar bytes[16];
+    cv::Mat external(4, 4, CV_8UC1, bytes);
+    for (int y = 0; y < 4; ++y)
+        for (int x = 0; x < 4; ++x) bytes[y*4+x] = uchar(y*40+x*8);
+    exercise(external, {3,3}, {0,0}, 0);
+    exercise(external, {1,1}, {3,3}, 0);
+    Mat empty(cv::Mat{}), destination(cv::Mat(2,2,CV_8UC1,cv::Scalar(71)));
+    for (const auto &bad_image : {cv::Mat{}, cv::Mat(2,2,CV_16UC1),
+                                 cv::Mat(2,2,CV_8UC2)}) {
+        *empty.value = bad_image;
+        const int previous = calls;
         require(opencv_imgproc_extract_subpixel_patch(empty.handle,
                     1,1,0,0,0,destination.handle) != OPENCV_IMGPROC_OK,
-                "ND rejected");
-        for (int channels : {1,3}) for (int depth : {CV_8U,CV_32F}) {
-            cv::Mat m(4, 4, CV_MAKETYPE(depth, channels));
-            for (int y = 0; y < 4; ++y) for (int x = 0; x < 4; ++x)
-                for (int c = 0; c < channels; ++c) {
-                    if (depth == CV_8U)
-                        m.ptr<uchar>(y)[x*channels+c] = uchar(y*40+x*8+c*4);
-                    else m.ptr<float>(y)[x*channels+c] = float(y*40+x*8+c*4);
-                }
-            for (int selector : {0,1}) {
-                exercise(m, {1,1}, {1.25f,1.25f}, selector);
-                exercise(m, {2,2}, {1.5f,1.5f}, selector);
-                exercise(m, {1,2}, {1.5f,1.5f}, selector);
-                exercise(m, {2,1}, {1.5f,1.5f}, selector);
-                for (const auto &center : {cv::Point2f(0,0), {3,0}, {0,3},
-                                         {3,3}, {0.25f,1.25f}, {2.75f,1.25f},
-                                         {1.25f,0.25f}, {1.25f,2.75f}})
-                    exercise(m, {3,3}, center, selector);
-                exercise(m, {7,3}, {1,1}, selector);
-                exercise(m, {3,7}, {1,1}, selector);
-                exercise(m, {7,7}, {1,1}, selector);
-                cv::Mat parent(6,6,m.type(),cv::Scalar::all(250));
-                cv::Mat region = parent(cv::Rect(1,1,4,4));
-                m.copyTo(region);
-                exercise(region, {7,7}, {0.25f,0.25f}, selector);
-                parent.row(0).setTo(cv::Scalar::all(200));
-                parent.col(0).setTo(cv::Scalar::all(200));
-                exercise(region, {7,7}, {0.25f,0.25f}, selector);
+                "malformed source rejected");
+        require(calls == previous && destination.value->at<uchar>(0,0) == 71,
+                "malformed source zero calls/atomicity");
+    }
+    const int dimensions[] = {2,2,2};
+    *empty.value = cv::Mat(3, dimensions, CV_8UC1);
+    require(opencv_imgproc_extract_subpixel_patch(empty.handle,
+                1,1,0,0,0,destination.handle) != OPENCV_IMGPROC_OK,
+            "ND rejected");
+    for (int channels : {1,3}) for (int depth : {CV_8U,CV_32F}) {
+        cv::Mat m(4, 4, CV_MAKETYPE(depth, channels));
+        for (int y = 0; y < 4; ++y) for (int x = 0; x < 4; ++x)
+            for (int c = 0; c < channels; ++c) {
+                if (depth == CV_8U)
+                    m.ptr<uchar>(y)[x*channels+c] = uchar(y*40+x*8+c*4);
+                else m.ptr<float>(y)[x*channels+c] = float(y*40+x*8+c*4);
+            }
+        for (int selector : {0,1}) {
+            exercise(m, {1,1}, {1.25f,1.25f}, selector);
+            exercise(m, {2,2}, {1.5f,1.5f}, selector);
+            exercise(m, {1,2}, {1.5f,1.5f}, selector);
+            exercise(m, {2,1}, {1.5f,1.5f}, selector);
+            for (const auto &center : {cv::Point2f(0,0), {3,0}, {0,3},
+                                     {3,3}, {0.25f,1.25f}, {2.75f,1.25f},
+                                     {1.25f,0.25f}, {1.25f,2.75f}})
+                exercise(m, {3,3}, center, selector);
+            exercise(m, {7,3}, {1,1}, selector);
+            exercise(m, {3,7}, {1,1}, selector);
+            exercise(m, {7,7}, {1,1}, selector);
+            // Windows crossing the top and right borders (IPP corner).
+            for (const auto &center : {cv::Point2f(2.5f,0), {3,0}})
+                exercise(m, {2,2}, center, selector);
+            exercise(m, {5,5}, {3,0}, selector);
+            exercise(m, {3,3}, {2.75f,0.25f}, selector);
+            exercise(m, {3,3}, {3.5f,0.5f}, selector);
+            exercise(m, {1,4}, {3,0}, selector);
+            exercise(m, {9,9}, {1.5f,1.5f}, selector);
+            // One-column source: IPP's column cols-2 precedes the image.
+            const cv::Mat column = m.col(3).clone();
+            exercise(column, {3,3}, {0,0}, selector);
+            exercise(column, {2,2}, {0.5f,0}, selector);
+            cv::Mat parent(6,6,m.type(),cv::Scalar::all(250));
+            cv::Mat region = parent(cv::Rect(1,1,4,4));
+            m.copyTo(region);
+            exercise(region, {7,7}, {0.25f,0.25f}, selector);
+            parent.row(0).setTo(cv::Scalar::all(200));
+            parent.col(0).setTo(cv::Scalar::all(200));
+            exercise(region, {7,7}, {0.25f,0.25f}, selector);
+        }
+    }
+    // Binary32 representations are copied without converting pixel values.
+    const uint32_t bits[] = {0x3fc00000, 0xc0200000, 0x00000000,
+                             0x80000000, 0x7f800000, 0xff800000,
+                             0x7fc12345, 0xffc54321};
+    for (int channels : {1,3}) {
+        cv::Mat parent(6,7,CV_MAKETYPE(CV_32F,channels));
+        for (int y = 0; y < parent.rows; ++y) {
+            for (int x = 0; x < parent.cols * channels; ++x) {
+                const uint32_t value = bits[(y * parent.cols * channels + x) % 8];
+                std::memcpy(parent.ptr<uchar>(y) + size_t(x) * 4,
+                            &value, sizeof(value));
             }
         }
-        // Binary32 representations are copied without converting pixel values.
-        const uint32_t bits[] = {0x3fc00000, 0xc0200000, 0x00000000,
-                                 0x80000000, 0x7f800000, 0xff800000,
-                                 0x7fc12345, 0xffc54321};
-        for (int channels : {1,3}) {
-            cv::Mat parent(6,7,CV_MAKETYPE(CV_32F,channels));
-            for (int y = 0; y < parent.rows; ++y) {
-                for (int x = 0; x < parent.cols * channels; ++x) {
-                    const uint32_t value = bits[(y * parent.cols * channels + x) % 8];
-                    std::memcpy(parent.ptr<uchar>(y) + size_t(x) * 4,
-                                &value, sizeof(value));
-                }
+        cv::Mat region = parent(cv::Rect(1,1,4,4));
+        for (int y = 0; y < region.rows; ++y) {
+            for (int x = 0; x < region.cols * channels; ++x) {
+                const uint32_t value = bits[(y * region.cols * channels + x) % 8];
+                std::memcpy(region.ptr<uchar>(y) + size_t(x) * 4,
+                            &value, sizeof(value));
             }
-            cv::Mat region = parent(cv::Rect(1,1,4,4));
-            for (int y = 0; y < region.rows; ++y) {
-                for (int x = 0; x < region.cols * channels; ++x) {
-                    const uint32_t value = bits[(y * region.cols * channels + x) % 8];
-                    std::memcpy(region.ptr<uchar>(y) + size_t(x) * 4,
-                                &value, sizeof(value));
-                }
-            }
-            require(!region.isContinuous(), "noncontinuous Float32 Region");
-            const cv::Mat before = parent.clone();
-            // Top-left/bottom-right, single-sided guards, all-sided oversized.
-            exercise(region, {3,3}, {0,0}, 0, true);
-            exercise(region, {1,1}, {3,3}, 0, true);
-            exercise(region, {3,1}, {0,1}, 0, true);
-            exercise(region, {1,1}, {3,1}, 0, true);
-            exercise(region, {1,3}, {1,0}, 0, true);
-            exercise(region, {1,1}, {1,3}, 0, true);
-            exercise(region, {9,9}, {1.25f,1.25f}, 0, true);
-            require(same_bytes(parent, before), "parent representation unchanged");
-            const cv::Mat single = region(cv::Rect(0,0,1,1));
-            exercise(single, {7,7}, {0,0}, 0, true);
+        }
+        require(!region.isContinuous(), "noncontinuous Float32 Region");
+        const cv::Mat before = parent.clone();
+        // Top-left/bottom-right, single-sided guards, all-sided oversized.
+        exercise(region, {3,3}, {0,0}, 0, true);
+        exercise(region, {1,1}, {3,3}, 0, true);
+        exercise(region, {3,1}, {0,1}, 0, true);
+        exercise(region, {1,1}, {3,1}, 0, true);
+        exercise(region, {1,3}, {1,0}, 0, true);
+        exercise(region, {1,1}, {1,3}, 0, true);
+        exercise(region, {9,9}, {1.25f,1.25f}, 0, true);
+        require(same_bytes(parent, before), "parent representation unchanged");
+        const cv::Mat single = region(cv::Rect(0,0,1,1));
+        exercise(single, {7,7}, {0,0}, 0, true);
+    }
+}
+}
+
+int main() {
+    try {
+        // Every case runs with the caller's IPP selection on and off; on
+        // builds without IPP both passes use the portable sampler.
+        for (const bool requested : {true, false}) {
+            cv::ipp::setUseIPP(requested);
+            const bool selected = cv::ipp::useIPP();
+            const int before = calls, before_portable = portable_calls;
+            exercise_all();
+            require(cv::ipp::useIPP() == selected, "selection preserved");
+            std::cout << "IPP requested=" << requested << " selected=" << selected
+                      << " native calls=" << calls - before
+                      << " portable=" << portable_calls - before_portable << '\n';
         }
         std::cout << "representation cases=" << representation_cases << '\n';
         std::cout << "native calls=" << calls << " direct=" << direct_calls
-                  << " guarded=" << guarded_calls << '\n';
-        std::cout << "IPP enabled=" << cv::ipp::useIPP() << '\n';
+                  << " guarded=" << guarded_calls
+                  << " portable=" << portable_calls << '\n';
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';
         return 1;

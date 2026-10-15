@@ -5,4 +5,4 @@ licenses = "Apache-2.0"
 executables = ["release_consumer"]
 
 [[depends-on]]
-opencv_imgproc = "=0.2.0"
+opencv_imgproc = "=0.2.1"

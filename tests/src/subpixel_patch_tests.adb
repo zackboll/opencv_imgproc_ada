@@ -10,6 +10,7 @@ with OpenCV.Core.Float32_Access;
 with OpenCV.Core.UInt8_Vec3_Access;
 with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Image_Processing;
+with Native_Reference;
 
 package body Subpixel_Patch_Tests is
    --  Intentional IEEE fixtures follow the existing nonfinite-test pattern.
@@ -161,6 +162,133 @@ package body Subpixel_Patch_Tests is
    procedure Fraction_Bottom is new Geometry (3, 3, 1.25, 2.75);
    procedure Fraction_Left is new Geometry (3, 3, 0.25, 1.25);
    procedure Fraction_Right is new Geometry (3, 3, 2.75, 1.25);
+   --  Windows crossing the top and right borders, where Intel IPP's corner
+   --  replication samples column 2 instead of 3 (opencv/opencv#30301).
+   procedure Top_Right_Wide is new Geometry (5, 5, 3.0, 0.0);
+   procedure Top_Right_Pair is new Geometry (2, 2, 2.5, 0.0);
+   procedure Top_Right_Fraction is new Geometry (3, 3, 2.75, 0.25);
+   procedure Top_Right_Half is new Geometry (3, 3, 3.5, 0.5);
+   procedure Top_Right_Column is new Geometry (1, 4, 3.0, 0.0);
+   procedure All_Borders is new Geometry (9, 9, 1.5, 1.5);
+
+   --  Float32 counterpart of Geometry for Float32 sources and promoted
+   --  UInt8 sources; the linear ramp keeps bilinear sampling exact.
+   generic
+      Width, Height : Positive;
+      X, Y : OpenCV.Float32_Value;
+   procedure Float_Geometry (T : in out Fixture);
+
+   procedure Float_Geometry (T : in out Fixture) is
+      pragma Unreferenced (T);
+      U8_Source  : constant C.Mat := Ramp;
+      F32_Source : C.Mat := C.Create (4, 4, (C.Float32, 1));
+      Size       : constant OpenCV.Size :=
+        (OpenCV.Size_Coordinate (Width), OpenCV.Size_Coordinate (Height));
+   begin
+      for R in 0 .. 3 loop
+         for Col in 0 .. 3 loop
+            F.Set
+              (F32_Source, R, Col, OpenCV.Float32_Value (R * 40 + Col * 8));
+         end loop;
+      end loop;
+      for Promote in Boolean loop
+         declare
+            P : constant C.Mat :=
+              (if Promote
+               then
+                 IP.Extract_Subpixel_Patch
+                   (U8_Source, Size, (X, Y), IP.Promote_To_Float32)
+               else IP.Extract_Subpixel_Patch (F32_Source, Size, (X, Y)));
+         begin
+            Assert (P.Depth = C.Float32, "Float32 output depth");
+            for R in 0 .. Height - 1 loop
+               for Col in 0 .. Width - 1 loop
+                  declare
+                     SX : constant OpenCV.Float32_Value :=
+                       OpenCV.Float32_Value'Max
+                         (0.0,
+                          OpenCV.Float32_Value'Min
+                            (3.0,
+                             X
+                             - OpenCV.Float32_Value (Width - 1) * 0.5
+                             + OpenCV.Float32_Value (Col)));
+                     SY : constant OpenCV.Float32_Value :=
+                       OpenCV.Float32_Value'Max
+                         (0.0,
+                          OpenCV.Float32_Value'Min
+                            (3.0,
+                             Y
+                             - OpenCV.Float32_Value (Height - 1) * 0.5
+                             + OpenCV.Float32_Value (R)));
+                  begin
+                     Assert
+                       (abs (F.Get (P, R, Col) - (SY * 40.0 + SX * 8.0))
+                        < 0.001,
+                        (if Promote
+                         then "promoted clamped ramp oracle"
+                         else "Float32 clamped ramp oracle"));
+                  end;
+               end loop;
+            end loop;
+         end;
+      end loop;
+   end Float_Geometry;
+
+   procedure Top_Right_Float is new Float_Geometry (3, 3, 3.0, 0.0);
+   procedure Top_Right_Float_Fraction is new
+     Float_Geometry (5, 5, 2.75, 0.25);
+
+   --  For a one-column Source, IPP's column cols-2 precedes the image.
+   procedure One_Column_Corner (T : in out Fixture) is
+      pragma Unreferenced (T);
+      S : C.Mat := C.Create (4, 1, (C.UInt8, 1));
+   begin
+      for R in 0 .. 3 loop
+         U.Set (S, R, 0, OpenCV.UInt8_Value (10 + R * 40));
+      end loop;
+      declare
+         P : constant C.Mat :=
+           IP.Extract_Subpixel_Patch (S, (3, 3), (0.0, 0.0));
+      begin
+         for R in 0 .. 2 loop
+            for Col in 0 .. 2 loop
+               Assert
+                 (U.Get (P, R, Col)
+                  = OpenCV.UInt8_Value (10 + Integer'Max (0, R - 1) * 40),
+                  "one-column replicated corner");
+            end loop;
+         end loop;
+      end;
+   end One_Column_Corner;
+
+   --  Exercises the corner cases with the calling thread's native IPP
+   --  selection on (where available) and off; the binding must restore it.
+   procedure IPP_Selection (T : in out Fixture) is
+      Original : constant Boolean := Native_Reference.IPP_Selected;
+      Ignored  : Boolean;
+   begin
+      for Requested in Boolean loop
+         declare
+            Effective : constant Boolean :=
+              Native_Reference.Select_IPP (Requested);
+         begin
+            Assert (Requested or else not Effective, "IPP deselected");
+            Top_Right (T);
+            Top_Right_Wide (T);
+            Top_Right_Fraction (T);
+            Top_Right_Float (T);
+            One_Column_Corner (T);
+            Assert
+              (Native_Reference.IPP_Selected = Effective,
+               "caller IPP selection preserved");
+         end;
+      end loop;
+      Ignored := Native_Reference.Select_IPP (Original);
+   exception
+      when others =>
+         Ignored := Native_Reference.Select_IPP (Original);
+         raise;
+   end IPP_Selection;
 
    procedure Invalid (T : in out Fixture) is
       pragma Unreferenced (T);
@@ -406,6 +534,24 @@ package body Subpixel_Patch_Tests is
                  (Caller.Create
                     ("Subpixel fraction right", Fraction_Right'Access));
                S.Add_Test
+                 (Caller.Create
+                    ("Subpixel top-right wide", Top_Right_Wide'Access));
+               S.Add_Test
+                 (Caller.Create
+                    ("Subpixel top-right pair", Top_Right_Pair'Access));
+               S.Add_Test
+                 (Caller.Create
+                    ("Subpixel top-right fraction",
+                     Top_Right_Fraction'Access));
+               S.Add_Test
+                 (Caller.Create
+                    ("Subpixel top-right half", Top_Right_Half'Access));
+               S.Add_Test
+                 (Caller.Create
+                    ("Subpixel top-right column", Top_Right_Column'Access));
+               S.Add_Test
+                 (Caller.Create ("Subpixel all borders", All_Borders'Access));
+               S.Add_Test
                  (Caller.Create ("Subpixel oversized", Oversized'Access));
                S.Add_Test
                  (Caller.Create ("Subpixel Region", Region_Isolation'Access));
@@ -453,6 +599,30 @@ package body Subpixel_Patch_Tests is
         (Caller.Create ("Subpixel fraction left", Fraction_Left'Access));
       Result.Add_Test
         (Caller.Create ("Subpixel fraction right", Fraction_Right'Access));
+      Result.Add_Test
+        (Caller.Create ("Subpixel top-right wide", Top_Right_Wide'Access));
+      Result.Add_Test
+        (Caller.Create ("Subpixel top-right pair", Top_Right_Pair'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Subpixel top-right fraction", Top_Right_Fraction'Access));
+      Result.Add_Test
+        (Caller.Create ("Subpixel top-right half", Top_Right_Half'Access));
+      Result.Add_Test
+        (Caller.Create ("Subpixel top-right column", Top_Right_Column'Access));
+      Result.Add_Test
+        (Caller.Create ("Subpixel all borders", All_Borders'Access));
+      Result.Add_Test
+        (Caller.Create ("Subpixel top-right Float32", Top_Right_Float'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Subpixel top-right Float32 fraction",
+            Top_Right_Float_Fraction'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Subpixel one-column corner", One_Column_Corner'Access));
+      Result.Add_Test
+        (Caller.Create ("Subpixel IPP selection", IPP_Selection'Access));
       Result.Add_Test (Caller.Create ("Subpixel empty", Empty_Source'Access));
       Result.Add_Test (Caller.Create ("Subpixel bad depth", Bad_Depth'Access));
       Result.Add_Test

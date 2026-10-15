@@ -231,6 +231,12 @@ jobs:
             gprbuild=26.0.1
           alr toolchain
 
+      - name: Use the selected Xcode SDK for GNAT links
+        # gnat_native defaults to the Command Line Tools SDK but links with the
+        # selected Xcode's ld-classic, which rejects newer CLT stubs (CLT 27
+        # libSystem.tbd, arm64e.x1); see alire-project/alire-index-checks#22.
+        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
+
       - name: Install Homebrew OpenCV
         run: brew install opencv
 
@@ -382,6 +388,124 @@ jobs:
 
       - name: Run Bayer Gray overflow boundary regression
         run: sh tests/run_bayer_gray_test.sh
+
+  # Homebrew's x86_64 OpenCV is built with Intel IPP; this job keeps the
+  # IPP-dispatched native paths (opencv/opencv#30301) under test.
+  macos-x86_64-ipp:
+    name: macOS x86_64 (Intel IPP)
+    runs-on: macos-15-intel
+    defaults:
+      run:
+        working-directory: imgproc
+
+    steps:
+      - name: Checkout Imgproc
+        uses: actions/checkout@v4
+        with:
+          path: imgproc
+
+      - name: Checkout Core
+        uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
+          path: core
+
+      - name: Verify two-checkout layout and bridge
+        run: |
+          set -eu
+          test -f ../core/cpp/opencv_core_module_bridge.hpp
+          echo "Imgproc: $(git rev-parse HEAD)"
+          echo "Core:    $(git -C ../core rev-parse HEAD)"
+          uname -a
+          sw_vers
+
+      - name: Set up Alire
+        uses: alire-project/setup-alire@latest
+        with:
+          version: "2.1.1"
+          toolchain: "gnat_native gprbuild"
+
+      - name: Select Ada toolchain
+        run: |
+          set -eu
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+          alr toolchain
+
+      - name: Use the selected Xcode SDK for GNAT links
+        # gnat_native defaults to the Command Line Tools SDK but links with the
+        # selected Xcode's ld-classic, which rejects newer CLT stubs (CLT 27
+        # libSystem.tbd, arm64e.x1); see alire-project/alire-index-checks#22.
+        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
+
+      - name: Install Homebrew OpenCV
+        run: brew install opencv
+
+      - name: Configure Homebrew pkg-config path
+        run: |
+          set -eu
+          opencv_prefix="$(brew --prefix opencv)"
+          brew_pkgconfig="$(brew --prefix)/lib/pkgconfig"
+          opencv_pkgconfig="${opencv_prefix}/lib/pkgconfig"
+          pkg_path=""
+
+          if [ -d "${brew_pkgconfig}" ]; then
+            pkg_path="${brew_pkgconfig}"
+          fi
+
+          if [ -d "${opencv_pkgconfig}" ]; then
+            pkg_path="${pkg_path:+${pkg_path}:}${opencv_pkgconfig}"
+          fi
+
+          if [ -n "${PKG_CONFIG_PATH:-}" ]; then
+            pkg_path="${pkg_path:+${pkg_path}:}${PKG_CONFIG_PATH}"
+          fi
+
+          echo "PKG_CONFIG_PATH=${pkg_path}" >> "$GITHUB_ENV"
+
+      - name: Require an IPP-enabled OpenCV
+        run: |
+          set -eu
+          package=opencv4
+          if pkg-config --exists opencv5; then package=opencv5; fi
+          pkg-config --modversion "$package"
+          cat > ipp_selected.cpp <<'EOF'
+          #include <opencv2/core.hpp>
+          #include <iostream>
+          int main() {
+              std::cout << "OpenCV " << CV_VERSION << ", IPP "
+                        << cv::ipp::getIppVersion() << '\n';
+              return cv::ipp::useIPP() ? 0 : 1;
+          }
+          EOF
+          xcrun clang++ -std=c++17 -isysroot "$(xcrun --sdk macosx --show-sdk-path)" \
+            ipp_selected.cpp $(pkg-config --cflags --libs "$package") \
+            -o ipp_selected
+          ./ipp_selected
+
+      - name: Run subpixel guard and IPP selection checks
+        run: |
+          set -eu
+          package=opencv4
+          if pkg-config --exists opencv5; then package=opencv5; fi
+          include=$(pkg-config --variable=includedir "$package")
+          if [ -z "$include" ]; then
+            include=$(pkg-config --variable=includedir_new "$package")
+          fi
+          xcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            -isysroot "$(xcrun --sdk macosx --show-sdk-path)" \
+            -isystem "$include" tests/subpixel_patch_guard_test.cpp \
+            $(pkg-config --libs "$package") \
+            -o subpixel_patch_guard_test
+          ./subpixel_patch_guard_test
+
+      - name: Build Imgproc with Core bridge
+        run: alr -n build
+
+      - name: Run Imgproc tests
+        run: alr -n -C tests run
 
   # Windows/MSYS2 is expensive, so it runs after merge on main and on
   # manual dispatch, but is skipped for pull-request review iterations.
