@@ -5875,6 +5875,19 @@ This does not fix upstream OpenCV. Region parent pixels
 do not participate. Arithmetic and backend representability limits may reject
 extreme dimensions/steps before native entry.
 
+**Intel IPP corner:** on OpenCV builds with Intel IPP (for example Homebrew's
+x86_64 bottles and default x86_64 source builds), `cv::getRectSubPix` uses
+`ippiCopySubpixIntersect` for UInt8 and Float32 single-channel sources. When
+the window crosses both the top and the right border, IPP fills samples above
+the image at or beyond the last column from column `Columns - 2` instead of
+`Columns - 1` (for a one-column Source, from before the image), contradicting
+both nearest-edge extension and IPP's own documented clamping
+([opencv/opencv#30301](https://github.com/opencv/opencv/issues/30301)). Since
+0.2.1 the binding samples exactly those requests with OpenCV's portable
+implementation, by deselecting IPP on the calling thread for that single call
+and restoring the caller's selection afterwards. All other requests, and IPP
+for every other operation, are unchanged.
+
 ## License
 
 Apache License 2.0. See [`LICENSE`](LICENSE).

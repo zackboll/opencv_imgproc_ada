@@ -4269,9 +4269,11 @@ package OpenCV.Image_Processing is
    --  into the samples that use them. UInt8 results use native fixed-point
    --  rounding. Source is unchanged and a Region's parent pixels never
    --  participate: requests touching the border sample a private
-   --  replicated guard copy with the same logical geometry. Arithmetic and
-   --  backend representability limits can reject extreme dimensions or
-   --  strides.
+   --  replicated guard copy with the same logical geometry. A patch
+   --  crossing both the top and the right border is sampled by OpenCV's
+   --  portable implementation even where Intel IPP is enabled, whose corner
+   --  replication there is wrong. Arithmetic and backend representability
+   --  limits can reject extreme dimensions or strides.
    --  @param Source Image to sample.
    --  @param Patch_Size Patch columns (Width) and rows (Height); both
    --  nonzero.

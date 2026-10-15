@@ -69,5 +69,37 @@ inline bool plan(int columns, int rows, int width, int height,
 inline bool input_step_safe(int channels, size_t step) {
     return channels != 1 || step <= size_t(INT_MAX);
 }
+
+// Intel IPP's ippiCopySubpixIntersect, which cv::getRectSubPix uses for
+// 8UC1->8U/32F and 32FC1->32F, mis-replicates the top-right corner: when the
+// window crosses both the top and the right border, samples above the image
+// at or beyond the last column receive column cols-2 instead of cols-1 (a
+// read before the image for one-column sources). Observed with IPP 2021.9.1,
+// 2021.11.0 and 2026.0.0; contradicts IPP's documented clamped coordinates
+// (opencv/opencv#30301). Such windows always take the guard path.
+inline bool requires_portable_sampler(const Guard &g) {
+    return g.top > 0 && g.right > 0;
+}
+
+// Deselects IPP on the calling thread for one native call and restores the
+// caller's selection afterwards, also when the call throws. cv::ipp's
+// selection is thread-local and a no-op without IPP; getRectSubPix runs on
+// the calling thread.
+class Scoped_Portable_Sampler {
+public:
+    explicit Scoped_Portable_Sampler(bool active)
+        : active_(active), previous_(active && cv::ipp::useIPP()) {
+        if (active_) cv::ipp::setUseIPP(false);
+    }
+    ~Scoped_Portable_Sampler() {
+        if (active_) cv::ipp::setUseIPP(previous_);
+    }
+    Scoped_Portable_Sampler(const Scoped_Portable_Sampler &) = delete;
+    Scoped_Portable_Sampler &operator=(const Scoped_Portable_Sampler &) = delete;
+
+private:
+    const bool active_;
+    const bool previous_;
+};
 } // namespace opencv_imgproc_subpixel
 #endif

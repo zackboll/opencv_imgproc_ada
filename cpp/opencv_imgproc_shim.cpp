@@ -6799,8 +6799,14 @@ opencv_imgproc_extract_subpixel_patch(
         if (!opencv_imgproc_subpixel::input_step_safe(src->channels(), input->step))
             return invalid_argument("subpixel patch input step exceeds IPP int range");
         cv::Mat result;
-        cv::getRectSubPix(*input, cv::Size(width, height), cv::Point2f(cx, cy),
-                          result, depth);
+        {
+            // Correctness: windows crossing the top and right borders bypass
+            // IPP's defective corner replication for this one call only.
+            const opencv_imgproc_subpixel::Scoped_Portable_Sampler portable(
+                opencv_imgproc_subpixel::requires_portable_sampler(guard));
+            cv::getRectSubPix(*input, cv::Size(width, height),
+                              cv::Point2f(cx, cy), result, depth);
+        }
         *dst = std::move(result);
         return OPENCV_IMGPROC_OK;
     } catch (...) {
