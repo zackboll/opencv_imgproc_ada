@@ -10,6 +10,13 @@ package Native_Reference is
       Method         : OpenCV.Image_Processing.Bayer_Demosaicing_Method;
       Order          : OpenCV.Image_Processing.Bayer_Color_Order)
       return Boolean;
+
+   --  The calling thread's native IPP selection.
+   function IPP_Selected return Boolean;
+
+   --  Requests the calling thread's native IPP selection and returns the
+   --  effective one, False where OpenCV has no usable IPP.
+   function Select_IPP (Enabled : Boolean) return Boolean;
 private
    function Native_Version return Interfaces.Integer_32
    with

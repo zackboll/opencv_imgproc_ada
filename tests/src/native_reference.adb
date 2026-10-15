@@ -49,4 +49,23 @@ package body Native_Reference is
       AUnit.Assertions.Assert (Result >= 0, "native Bayer oracle completed");
       return Result = 1;
    end Bayer_Matches;
+
+   --  Request -1 queries; 0 and 1 deselect and select.
+   function Native_Select_IPP
+     (Request : Interfaces.Integer_32) return Interfaces.Integer_32
+   with Import, Convention => C, External_Name => "imgproc_test_select_ipp";
+
+   function Checked_Select_IPP (Request : Interfaces.Integer_32) return Boolean
+   is
+      Value : constant Interfaces.Integer_32 := Native_Select_IPP (Request);
+   begin
+      AUnit.Assertions.Assert (Value >= 0, "native IPP selection completed");
+      return Value = 1;
+   end Checked_Select_IPP;
+
+   function IPP_Selected return Boolean
+   is (Checked_Select_IPP (-1));
+
+   function Select_IPP (Enabled : Boolean) return Boolean
+   is (Checked_Select_IPP (if Enabled then 1 else 0));
 end Native_Reference;

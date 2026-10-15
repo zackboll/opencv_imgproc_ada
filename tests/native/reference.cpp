@@ -15,6 +15,16 @@ extern "C" int32_t imgproc_test_native_version() noexcept
     } catch (...) { return -1; }
 }
 
+// Test-only access to the calling thread's cv::ipp selection. Requesting IPP
+// has no effect where OpenCV was built without it or OPENCV_IPP=disabled.
+extern "C" int32_t imgproc_test_select_ipp(int32_t requested) noexcept
+{
+    try {
+        if (requested==0 || requested==1) cv::ipp::setUseIPP(requested==1);
+        return cv::ipp::useIPP() ? 1 : 0;
+    } catch (...) { return -1; }
+}
+
 // Independent numeric native selectors, never production bayer_code().
 // Compare every pixel including borders against the same native operation.
 extern "C" int32_t imgproc_test_bayer_reference(
