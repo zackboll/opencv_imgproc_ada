@@ -1,6 +1,6 @@
 name = "opencv_imgproc"
 description = "Thick Ada binding to OpenCV ImgProc"
-version = "0.2.0"
+version = "0.2.1"
 
 authors = ["Zack Boll"]
 maintainers = ["Zack Boll <zackboll@gmail.com>"]
