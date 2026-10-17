@@ -1,0 +1,126 @@
+{
+  "ada_policy": "exact-examples",
+  "anchors": null,
+  "api_label": "API browser",
+  "attribution_base": "https://github.com/zackboll/opencv_imgproc_ada/blob/main/",
+  "directory_pages": [],
+  "example_project": "docs/examples/examples.gpr",
+  "examples": [
+    "docs/examples/color_and_representation.adb",
+    "docs/examples/features_and_analysis.adb",
+    "docs/examples/filtering_and_transforms.adb",
+    "docs/examples/matching_and_registration.adb",
+    "docs/examples/segmentation_and_contours.adb"
+  ],
+  "groups": [],
+  "guides": [
+    {
+      "entry_points": [
+        "Gaussian_Blur/1",
+        "Sobel/1",
+        "Pyramid_Down/1",
+        "Resize/1",
+        "Warp_Affine/1",
+        "Remap/1"
+      ],
+      "id": "filtering-and-transforms",
+      "label": "Filtering and image transformations",
+      "path": "guides/filtering-and-transforms.html",
+      "source": "docs/guides/filtering-and-transforms.md"
+    },
+    {
+      "entry_points": [
+        "Convert_Color/1",
+        "Color_Conversion/1",
+        "Decode_YUV420/1",
+        "Demosaic_Bayer/1",
+        "Apply_Color_Map/1"
+      ],
+      "id": "color-and-image-representation",
+      "label": "Color conversion and image representation",
+      "path": "guides/color-and-image-representation.html",
+      "source": "docs/guides/color-and-image-representation.md"
+    },
+    {
+      "entry_points": [
+        "Canny_Edges/1",
+        "Harris_Corner_Response/1",
+        "Find_Hough_Lines/1",
+        "Calculate_Histogram/1",
+        "Integral_Sum/1"
+      ],
+      "id": "features-and-structural-analysis",
+      "label": "Geometry, features and structural analysis",
+      "path": "guides/features-and-structural-analysis.html",
+      "source": "docs/guides/features-and-structural-analysis.md"
+    },
+    {
+      "entry_points": [
+        "Apply_Threshold/1",
+        "Apply_Morphology/1",
+        "Find_Contours/1",
+        "Connected_Components_With_Stats/1",
+        "Flood_Fill/1"
+      ],
+      "id": "segmentation-contours-and-morphology",
+      "label": "Segmentation, contours and morphology",
+      "path": "guides/segmentation-contours-and-morphology.html",
+      "source": "docs/guides/segmentation-contours-and-morphology.md"
+    },
+    {
+      "entry_points": [
+        "Template_Matching_Method/1",
+        "Match_Template/1",
+        "Phase_Correlate/1",
+        "Find_Guil_Template_Matches/1"
+      ],
+      "id": "template-matching-and-registration",
+      "label": "Template matching and image registration",
+      "path": "guides/template-matching-and-registration.html",
+      "source": "docs/guides/template-matching-and-registration.md"
+    }
+  ],
+  "home": {
+    "path": "index.html",
+    "source": "docs/index.html"
+  },
+  "inputs": {
+    "docs/assets/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "docs/example.adb": "3ec3559071ec734aa152e04bca11904afb68952253c857032c62cd3117d70842",
+    "docs/example.gpr": "9c6e8650bb8a38a57b08c931f689abe535fb601171a8f12b00ff9d68d9f6782c",
+    "docs/examples/color_and_representation.adb": "258d4b4bca84154e6f76bfeb3d995b9c574f7b68e520b863408e5d8557201340",
+    "docs/examples/examples.gpr": "ca01090488f9e1b227e9c50c33fc16361a53cb5f2b87150ebcf92fdf1529d532",
+    "docs/examples/features_and_analysis.adb": "b7d5d3d5c2d0c2beb012c91353d2fcfdaa6a79bbc8b6f750a805b3b2847e9ad2",
+    "docs/examples/filtering_and_transforms.adb": "e6f34a878fa10123b8e89c4b70af6128d24021eee8fba8116cd96639efd8d669",
+    "docs/examples/matching_and_registration.adb": "0fb1eeae7cb335579d836da14c9003ba67b418d2740a1ce4d1f8645a572b3597",
+    "docs/examples/segmentation_and_contours.adb": "405241e15d46a56fcd6cf21adc5464f0d28fc705a5a3c7dcb7fc663c46ef9f1d",
+    "docs/guides/color-and-image-representation.md": "bcaa534d2e4fb136076fd2a8c56416591f83c742e5aac85573f06b152d3795de",
+    "docs/guides/features-and-structural-analysis.md": "95bba7531fcd82282ee0aa606c6f5891b8cc2d7ecd9d94caea78a03af95cc48e",
+    "docs/guides/filtering-and-transforms.md": "77a9571850193e7f0c996e176c98a0fa1f7d5b74506e3b63da53deb36ab34656",
+    "docs/guides/segmentation-contours-and-morphology.md": "f9419b65d9bd9de6b4780813dd18d250a87f9793c01b2383f4dceca4928b2c33",
+    "docs/guides/template-matching-and-registration.md": "a069f6aebf74d6f82adf003910bb085b6378fd35170cee995f7a7b772c102704",
+    "docs/index.html": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+  },
+  "landing_example": "docs/example.adb",
+  "landing_project": "docs/example.gpr",
+  "languages": [
+    "ada",
+    "sh",
+    "text"
+  ],
+  "native_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "b1ace2e8cbf9821e929afaf9bcad80b5a14b34c05376cfe307a30654180152f4",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "5a3e975118ff3eb4c2a9d407ecff16dcab1208986bf18bb76948583ca9b3134e"
+  },
+  "renderer_exceptions": [],
+  "schema_version": 2,
+  "site_map": null,
+  "source_inventory": "docs/guides",
+  "source_links": {},
+  "stylesheet": {
+    "path": "guides/gnatdoc-guides.css",
+    "source": "docs/assets/gnatdoc-guides.css"
+  },
+  "title_suffix": "OpenCV Imgproc Ada"
+}

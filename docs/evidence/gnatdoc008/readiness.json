@@ -1,0 +1,15 @@
+{
+  "disposition": "BLOCKED_BY_SHARED_TOOL",
+  "full_shadow_qualification": false,
+  "hosted_exact_head": "consult immutable Actions run; not inferred from local execution",
+  "missing_evidence": [],
+  "non_deployable": true,
+  "production_https_verified": false,
+  "production_migration_complete": false,
+  "reports": {
+    "browser": "c8010138e4d5277f8abee2bbcfeff13bff404c271a09e1ced8ee816aa00e6683",
+    "navigation-comparison": "903b29ae5e58af710402cbffcd2910819947dc43d0daebe110e47dba73da25b1",
+    "negative": "26a0cd51c527849569d29e846675accc312cb9fb8fbb842b4157a0d8734474f7",
+    "qualification": "4b14c4ba7dec260cc8822122f999d6719e28efd4863bc09099c8413b82ed2dc6"
+  }
+}

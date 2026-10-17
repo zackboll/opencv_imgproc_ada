@@ -1,0 +1,150 @@
+{
+  "executed": 24,
+  "status": "pass",
+  "tests": [
+    {
+      "mutation_observed": true,
+      "name": "incorrect shared enhancer SHA",
+      "reason": "incorrect shared enhancer SHA",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unpinned enhancer checkout",
+      "reason": "command failed (0): ['git', 'symbolic-ref', '-q', 'HEAD']; see /tmp/gnatdoc008-negative-9jb5l2eh/command-011.log",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "incorrect Core 0.4.1 origin",
+      "reason": "unqualified Core resolution/origin",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "Core 0.5.0 substitution",
+      "reason": "unqualified Core resolution/origin",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "changed real public specification",
+      "reason": "authority mismatch: src/opencv-image_processing.ads",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "changed staged specification",
+      "reason": "source differs from qualified presentation manifest",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "altered pristine GNATdoc bytes",
+      "reason": "pristine identity changed",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "wrong-but-existing external anchor",
+      "reason": "external manifest hash mismatch",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "swapped operation overload target",
+      "reason": "published file differs from reconstructed output: api/index.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "missing guide",
+      "reason": "published file differs from reconstructed output: guides/filtering-and-transforms.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "modified guide stylesheet",
+      "reason": "authored source changed: docs/assets/gnatdoc-guides.css",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "modified Ada example fence",
+      "reason": "authored source changed: docs/guides/filtering-and-transforms.md",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "changed compiled example source",
+      "reason": "authored source changed: docs/examples/filtering_and_transforms.adb",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "missing source-owned category",
+      "reason": "enhanced output does not match source/manifest",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unapproved output HTML",
+      "reason": "unapproved output file: unapproved.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unapproved production URLs",
+      "reason": "published file differs from reconstructed output: api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "symlinked source path",
+      "reason": "symlink Ada source: /tmp/gnatdoc008/full-reviewed/first/qualification-public/src/opencv-image_processing.ads",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "symlinked output path",
+      "reason": "symlink published: /tmp/gnatdoc008/full-reviewed/first/_site/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "output-manifest tampering",
+      "reason": "unexpected presentation manifest fields",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unknown config key",
+      "reason": "unsupported root keys: ['unknown_key']",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "duplicate config key",
+      "reason": "Cannot overwrite a value (at line 2, column 19)",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "partial failed enhancement",
+      "reason": "published file differs from reconstructed output: api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "failed enhancement is atomic",
+      "reason": "unresolved operation: OpenCV.Image_Processing.No_Such_Real_Operation",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "nondeterministic regeneration",
+      "reason": "output copies differ",
+      "rejected": true
+    }
+  ]
+}
