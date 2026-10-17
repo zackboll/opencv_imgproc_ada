@@ -20,7 +20,7 @@ from qualify_shared_gnatdoc_shadow import (
 
 def run(workspace, enhancer):
     from ada_gnatdoc_enhancer.config import load
-    from ada_gnatdoc_enhancer.pipeline import verify
+    from ada_gnatdoc_enhancer.pipeline import enhance, verify
     from ada_gnatdoc_enhancer.qualification import bind_pristine
     root = safe(workspace / "first")
     site = root / "_site"
@@ -156,6 +156,19 @@ def run(workspace, enhancer):
         mutation("duplicate config key", toml, b"schema_version = 1\n" + toml.read_bytes(),
                  lambda: load(root, "qualification.toml"))
         mutation("partial failed enhancement", output, output.read_bytes()[:100])
+        # A real failed enhancement must not publish a partial caller-owned tree.
+        original = categories.read_bytes()
+        try:
+            data = read_json(categories)
+            data["categories"][0]["declarations"].append("No_Such_Real_Operation")
+            changed = (json.dumps(data, indent=2) + "\n").encode()
+            categories.write_bytes(changed)
+            before_failure = hashes(site)
+            reject("failed enhancement is atomic", lambda: enhance(config(), site),
+                   observed=categories.read_bytes() == changed and changed != original)
+            require(hashes(site) == before_failure, "failed enhancement partially published output")
+        finally:
+            categories.write_bytes(original)
         second_output = workspace / "second/_site/api/index.html"
         mutation("nondeterministic regeneration", second_output, second_output.read_bytes() + b"\n",
                  lambda: require(hashes(site) == hashes(workspace / "second/_site"), "output copies differ"))
@@ -165,8 +178,8 @@ def run(workspace, enhancer):
         bind_pristine(pristine, site)
     finally:
         write_json(workspace / "negative.json", {"tests": results, "executed": len(results),
-                    "status": "pass" if len(results) == 23 and all(r["rejected"] for r in results) else "fail"})
-    require(len(results) == 23, "incomplete adversarial suite")
+                    "status": "pass" if len(results) == 24 and all(r["rejected"] for r in results) else "fail"})
+    require(len(results) == 24, "incomplete adversarial suite")
     return results
 
 

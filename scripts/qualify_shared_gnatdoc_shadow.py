@@ -159,8 +159,8 @@ def provenance(session, enhancer):
             "modified enhancer checkout")
     session.run(["git", "symbolic-ref", "-q", "HEAD"], enhancer, accepted=(1,))
     origin = session.run(["git", "remote", "get-url", "origin"], enhancer)
-    require(origin in ("https://github.com/zackboll/ada-gnatdoc-enhancer.git",
-                       "git@github.com:zackboll/ada-gnatdoc-enhancer.git"),
+    require(origin.removesuffix(".git") in ("https://github.com/zackboll/ada-gnatdoc-enhancer",
+                       "git@github.com:zackboll/ada-gnatdoc-enhancer"),
             "incorrect enhancer repository")
     session.run(["git", "merge-base", "--is-ancestor", ENHANCER, "origin/main"], enhancer)
     dist = importlib.metadata.distribution("ada-gnatdoc-enhancer")
@@ -279,9 +279,9 @@ def qualify(args):
         # Clone exact tested head, not the mutable working tree or a reduced fixture.
         s.export(ROOT, args.expected_head, legacy)
         s.export(ROOT, args.expected_head, source)
-        require(s.run(["git", "remote", "get-url", "origin"], args.core) in
-                ("https://github.com/zackboll/opencv_core_ada.git",
-                 "git@github.com:zackboll/opencv_core_ada.git"), "incorrect Core acquisition repository")
+        require(s.run(["git", "remote", "get-url", "origin"], args.core).removesuffix(".git") in
+                ("https://github.com/zackboll/opencv_core_ada",
+                 "git@github.com:zackboll/opencv_core_ada"), "incorrect Core acquisition repository")
         s.export(safe(args.core), CORE, core)
         consumer = read_json(ROOT / EVIDENCE / "consumer-input.json")
         authored = read_json(ROOT / EVIDENCE / "authored.json")
