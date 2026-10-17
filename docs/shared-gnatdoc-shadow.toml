@@ -1,0 +1,35 @@
+schema_version = 1
+project = "opencv_imgproc_ada"
+
+[gnatdoc]
+version = "26.0.0"
+[sources]
+directories = ["qualification-public"]
+packages = ["OpenCV.Image_Processing"]
+comment_style = "leading"
+[navigation]
+mode = "operations"
+categories = "docs/api-categories.json"
+[presentation]
+theme = true
+syntax_highlighting = true
+type_links = true
+[guides]
+mode = "authored-markdown"
+manifest = "docs/evidence/gnatdoc008/authored.json"
+sha256 = "c7f5bb0ad8afe4c8d530a2bcf04c8a9ba243c016d6500e251005c95e9858727c"
+[security]
+external_hosts = ["core.invalid", "github.com", "zackboll.github.io"]
+
+[[external_dependencies]]
+repository = "https://github.com/zackboll/opencv_core_ada"
+revision = "386c5360ac51f2b62e522853d94290aec4ee14a0"
+manifest = "docs/evidence/gnatdoc008/core-types.json"
+manifest_sha256 = "eaf814b7e7b66cc57d856e861420b4c049e0f2cdfb5f2b7d94dc6604f85e06a4"
+acquisition = "docs/evidence/gnatdoc008/core-input.json"
+acquisition_sha256 = "c8512e0ff729d9bcc2903a144384288756be8da93fa591facddf6f0461fed2f4"
+source = "qualification-dependencies/core-0.4.1/source"
+site = "qualification-dependencies/core-0.4.1/native"
+base_url = "https://core.invalid/386c5360ac51f2b62e522853d94290aec4ee14a0/api/"
+publication = "offline-test"
+types = ["OpenCV.Angle_Unit", "OpenCV.Border_Kind", "OpenCV.Core.Mat", "OpenCV.Core.Mat_Array", "OpenCV.Float32_Point", "OpenCV.Float32_Value", "OpenCV.Float64_Value", "OpenCV.Point", "OpenCV.Point_Array", "OpenCV.Rect", "OpenCV.Scalar", "OpenCV.Size", "OpenCV.Size_Coordinate", "OpenCV.UInt8_Value"]
