@@ -27,6 +27,7 @@ def run(workspace):
     from ada_gnatdoc_enhancer.external_types import destinations
     from ada_gnatdoc_enhancer.pipeline import verify
     from ada_gnatdoc_enhancer.validation import Page
+    from ada_gnatdoc_enhancer.qualification import identities
     root = workspace / "first"
     site = root / "_site"
     config = load(root, "qualification.toml")
@@ -175,6 +176,23 @@ def run(workspace):
                                 require(frame.locator('[id="' + urlsplit(target).fragment + '"]').count() == 1,
                                         "local type destination missing")
                             check("native declaration and local type anchors", local_anchor, **dimensions)
+                            native_pages = identities(workspace / "pristine-first")
+                            for native_name, native_page in native_pages.items():
+                                if not native_page["package"]:
+                                    continue
+
+                                def all_native_anchors():
+                                    page.goto(urljoin(base, native_name))
+                                    observed = page.locator("h4[id]").evaluate_all("es => es.map(e => e.id)")
+                                    expected = [anchor for anchor, _ in native_page["declarations"]]
+                                    require(observed == expected, "native browser declaration anchors differ")
+                                check("all 314 genuine native declaration anchors", all_native_anchors, **dimensions)
+
+                            def responsive_api():
+                                page.goto(base + "api/index.html")
+                                require(page.locator("body").evaluate("e => e.scrollWidth <= innerWidth + 2"),
+                                        "API shell unexpectedly overflows viewport")
+                            check("responsive API browser viewport", responsive_api, **dimensions)
 
                             def external_click():
                                 page.goto(base + "api/index.html")

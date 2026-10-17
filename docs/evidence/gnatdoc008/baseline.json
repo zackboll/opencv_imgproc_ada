@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/zackboll/opencv_imgproc_ada",
+  "starting_sha": "9ce22ae5ab70008e1147475a9e6d7baef82f1df0",
+  "fetch": "git fetch origin main",
+  "starting_working_tree_porcelain": "",
+  "branch": "docs/008-shared-enhancer-shadow",
+  "enhancer_repository": "https://github.com/zackboll/ada-gnatdoc-enhancer",
+  "enhancer_sha": "f52dcfe37dc2819d86e72e1c38425e5e49d914eb",
+  "enhancer_on_fetched_main_history": true,
+  "core_resolved_sha": "386c5360ac51f2b62e522853d94290aec4ee14a0",
+  "core_origin": "git+https://github.com/zackboll/opencv_core_ada.git",
+  "consumer_version": "0.2.1",
+  "core_constraint": "~0.4.1",
+  "alire": "2.1.1",
+  "compiler": "GNAT 16.1.0",
+  "gprbuild_alire_release": "26.0.1",
+  "gprbuild_binary": "GPRBUILD 26.0.0 (2026-04-15)",
+  "gnatdoc": "GNATdoc 26.0.0 (20260415)",
+  "markdown_it_py": "3.0.0",
+  "mdurl": "0.1.2",
+  "local_opencv": "4.10.0",
+  "first_legacy_attempt": {
+    "status": "failed and retained, then corrected acquisition prerequisite",
+    "reason": "Legacy highlight_gnatdoc_ada.py defaults to adjacent core; acquisition was not yet checked out",
+    "resolution": "Independently checked out required Core 0.4.1 SHA; reran unchanged original generation successfully"
+  },
+  "initial_interrupted_browser_attempt": {
+    "credited": false,
+    "reason": "Interrupted to enable incremental assertion evidence; full restarted run recorded separately"
+  },
+  "production_https_verified": false,
+  "production_migration_complete": false
+}
