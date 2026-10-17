@@ -4,11 +4,17 @@ import tempfile
 import unittest
 
 from qualify_shared_gnatdoc_shadow import CORE, check_files, dependency, digest, hashes, read_json, trusted_inputs
+from compare_shared_gnatdoc_navigation import Links
 
 
 class ShadowBoundaries(unittest.TestCase):
     def test_checked_in_authority_matches(self):
         trusted_inputs()
+
+    def test_navigation_audit_preserves_real_target_and_visible_label(self):
+        links = Links('<a href="native.html#anchor" target=document-content>Filter_2D (17)</a>'
+                      '<a href="native.html" target=document-content>Package</a>')
+        self.assertEqual(links.links, [["native.html#anchor", "Filter_2D (17)"]])
 
     def test_duplicate_authority_key_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

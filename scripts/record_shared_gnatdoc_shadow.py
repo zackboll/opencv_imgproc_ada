@@ -18,6 +18,9 @@ def record(workspace):
     success = (not missing and not reports["qualification"].get("failure")
                and all(reports[n]["status"] == "pass"
                        for n in ("negative", "browser", "navigation-comparison")))
+    if "browser" in reports and "qualification" in reports:
+        success = success and (reports["browser"].get("tested_shadow_sha256")
+                               == reports["qualification"].get("shadow_sha256"))
     blocked = reports.get("navigation-comparison", {}).get("status") == "fail"
     result = {"disposition": "BLOCKED_BY_SHARED_TOOL" if blocked else
               "HOSTED_CI_PENDING" if success else "PARTIAL_SHADOW_COMPATIBILITY",

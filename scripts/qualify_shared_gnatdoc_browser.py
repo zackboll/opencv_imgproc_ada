@@ -13,7 +13,7 @@ from pathlib import Path
 import threading
 from urllib.parse import urljoin, urlsplit
 
-from qualify_shared_gnatdoc_shadow import CORE, EVIDENCE, digest, read_json, require, write_json
+from qualify_shared_gnatdoc_shadow import CORE, EVIDENCE, digest, hashes, read_json, require, write_json
 
 
 class Quiet(SimpleHTTPRequestHandler):
@@ -40,7 +40,8 @@ def run(workspace):
     thread.start()
     base = f"http://127.0.0.1:{server.server_port}/"
     report = {"checks": [], "production_https_verified": False,
-              "external_transport": "explicit local interception of pinned Core 0.4.1; offline-test"}
+              "external_transport": "explicit local interception of pinned Core 0.4.1; offline-test",
+              "tested_shadow_sha256": hashes(site)}
 
     def check(name, action, **dimensions):
         try:

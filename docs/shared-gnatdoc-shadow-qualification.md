@@ -94,7 +94,8 @@ The first complete isolated local structural integration established:
 | Compiled/executed examples | 6 / 6, exit 0 |
 | Landing, guides, stylesheet | all 7 outputs byte-identical |
 | Independent enhanced copies / repeat enhancement | byte-identical |
-| Consumer integration tamper cases | 23 observed mutations rejected |
+| Consumer integration tamper cases | 24 observed mutations rejected, including failed-enhancement atomicity |
+| Expanded Chromium matrix | 1,840 executed assertions, 0 failures |
 
 The legacy linker reports **331 Imgproc / 551 Core package links**, not the
 shared tool's 326 / 549 type links. These are different classifications: legacy
