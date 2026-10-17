@@ -7,17 +7,14 @@ This suite does not run in, replace, or relax the legacy documentation suite.
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 from pathlib import Path
-import re
-import shutil
 import sys
 import tempfile
 
 from qualify_shared_gnatdoc_shadow import (
-    BASE, CORE, CONFIG, EVIDENCE, ENHANCER, Session, check_files, compare,
-    dependency, digest, hashes, provenance, read_json, require, safe, write_json,
+    EVIDENCE, ENHANCER, Session, check_files,
+    dependency, hashes, provenance, read_json, require, safe, write_json,
 )
 
 
@@ -99,10 +96,15 @@ def run(workspace, enhancer):
         changed_json("wrong-but-existing external anchor", manifest,
                      lambda d: d["types"]["opencv.core.mat"].update(anchor=wrong["anchor"]))
         index = site / "api/index.html"
-        anchors = re.findall(r'href=["\']?([^\s>"\']+\.html#[a-f0-9]{64})', index.read_text())
-        require(len(set(anchors)) > 1, "need two real declaration links")
-        # Swap two destinations while preserving all real anchor identities.
-        first, second = list(dict.fromkeys(anchors))[:2]
+        from ada_gnatdoc_enhancer.qualification import identities
+        declarations = next(v for v in identities(pristine).values() if v["package"])["declarations"]
+        by_name = {}
+        for anchor, name in declarations:
+            by_name.setdefault(name, []).append(anchor)
+        overloaded = next(values for values in by_name.values() if len(values) > 1)
+        first, second = overloaded[:2]
+        require(first in index.read_text() and second in index.read_text(), "overload links missing")
+        # Use two genuine targets of the SAME overloaded operation, not unrelated names.
         mutation("swapped operation overload target", index,
                  index.read_bytes().replace(first.encode(), second.encode(), 1))
         guide = site / "guides/filtering-and-transforms.html"
@@ -163,8 +165,8 @@ def run(workspace, enhancer):
         bind_pristine(pristine, site)
     finally:
         write_json(workspace / "negative.json", {"tests": results, "executed": len(results),
-                    "status": "pass" if len(results) == 22 and all(r["rejected"] for r in results) else "fail"})
-    require(len(results) == 22, "incomplete adversarial suite")
+                    "status": "pass" if len(results) == 23 and all(r["rejected"] for r in results) else "fail"})
+    require(len(results) == 23, "incomplete adversarial suite")
     return results
 
 

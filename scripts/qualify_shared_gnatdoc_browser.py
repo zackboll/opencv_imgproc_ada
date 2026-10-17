@@ -48,6 +48,7 @@ def run(workspace):
         except Exception as exc:
             record = {"name": name, "status": "fail", "reason": str(exc), **dimensions}
         report["checks"].append(record)
+        write_json(workspace / "browser-progress.json", report)
 
     def intercept(route):
         url = urlsplit(route.request.url)
@@ -131,7 +132,7 @@ def run(workspace):
 
                                 def keyboard():
                                     page.goto(url)
-                                    link = page.locator("a").first
+                                    link = page.locator('a:not([href^="https:"])').first
                                     link.focus()
                                     require(link.evaluate("e => e === document.activeElement"), "focus missing")
                                     require(link.evaluate("e => getComputedStyle(e).outlineStyle !== 'none'"),
@@ -143,24 +144,23 @@ def run(workspace):
 
                             def api_browser():
                                 page.goto(base + "api/index.html")
-                                require(page.locator("#api-browser").count() == 1, "operation browser missing")
-                                require(page.locator("[data-op]").count() == 314, "operation inventory changed")
-                                category = page.locator("details.api-category").first
-                                category.locator("summary").click()
-                                require(category.get_attribute("open") is not None, "category did not open")
+                                require(page.locator("#operation-navigation").count() == 1, "operation browser missing")
+                                require(page.locator(".operation-group a").count() == 314, "operation inventory changed")
+                                categories = read_json(root / "docs/api-categories.json")["categories"]
+                                require(page.locator(".operation-group h3").all_text_contents()
+                                        == [c["title"] for c in categories], "category order/identity mismatch")
                                 if javascript:
                                     page.locator("#package-search").fill("Gaussian_Blur")
-                                    require(page.locator('[data-op="Gaussian_Blur"]').first.is_visible(),
+                                    require(page.locator('.operation-group a').filter(has_text="Gaussian_Blur").first.is_visible(),
                                             "search lost expected operation")
-                                    require(page.locator('[data-op="Convert_Color"]').first.is_hidden(),
+                                    require(page.locator('.operation-group a').filter(has_text="Convert_Color").first.is_hidden(),
                                             "search did not filter unrelated operation")
                                     page.locator("#package-clear").click()
                             check("operation browser search and categories", api_browser, **dimensions)
 
                             def local_anchor():
                                 page.goto(base + "api/index.html")
-                                entry = page.locator('[data-op="Gaussian_Blur"] a').first
-                                entry.locator("xpath=ancestor::details").evaluate("e => e.open = true")
+                                entry = page.locator('.operation-group a').filter(has_text="Gaussian_Blur").first
                                 href = entry.get_attribute("href")
                                 entry.click()
                                 frame = page.frame(name="document-content")

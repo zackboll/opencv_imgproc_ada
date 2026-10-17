@@ -27,6 +27,7 @@ CORE = "386c5360ac51f2b62e522853d94290aec4ee14a0"
 CONFIG = "docs/shared-gnatdoc-shadow.toml"
 EVIDENCE = "docs/evidence/gnatdoc008"
 TRUST = {
+    "authority.json": "9df0e47850828534fb250432baebfc8a36d6e20dd3e7d476189568dd14eebf5e",
     "authored.json": "c7f5bb0ad8afe4c8d530a2bcf04c8a9ba243c016d6500e251005c95e9858727c",
     "consumer-input.json": "aff70e359331e95951465bcd1e34f2048db6558eca4dbd00136e80af5cb02be4",
     "core-input.json": "c8512e0ff729d9bcc2903a144384288756be8da93fa591facddf6f0461fed2f4",
@@ -237,6 +238,15 @@ def compare(legacy, shadow, pristine, authored):
             "production_https_verified": False}
 
 
+def trusted_inputs():
+    """Verify checked-in approval; never mint authority from current working bytes."""
+    check_files(ROOT / EVIDENCE, TRUST)
+    authority = read_json(ROOT / EVIDENCE / "authority.json")
+    require(authority["consumer_start"] == BASE and authority["shared_enhancer"] == ENHANCER
+            and authority["core"] == CORE, "authority revision mismatch")
+    check_files(ROOT, authority["files"])
+
+
 def qualify(args):
     from ada_gnatdoc_enhancer.external_types import inventory
     from ada_gnatdoc_enhancer.qualification import check_snapshot
@@ -251,16 +261,16 @@ def qualify(args):
         require(s.run(["git", "rev-parse", "HEAD"], ROOT) == args.expected_head,
                 "consumer exact head mismatch")
         s.run(["git", "merge-base", "--is-ancestor", BASE, "HEAD"], ROOT)
-        check_files(ROOT / EVIDENCE, TRUST)
-        # Configuration authority is separately recorded and checked, not derived from output.
-        authority = read_json(ROOT / EVIDENCE / "authority.json")
-        check_files(ROOT, authority["files"])
+        trusted_inputs()
         report["tool"] = provenance(s, safe(args.enhancer))
         require(s.run(["alr", "--version"], ROOT) == "alr 2.1.1", "unqualified Alire")
         legacy, source, core = (workspace / n for n in ("legacy", "source", "core"))
         # Clone exact tested head, not the mutable working tree or a reduced fixture.
         s.export(ROOT, args.expected_head, legacy)
         s.export(ROOT, args.expected_head, source)
+        require(s.run(["git", "remote", "get-url", "origin"], args.core) in
+                ("https://github.com/zackboll/opencv_core_ada.git",
+                 "git@github.com:zackboll/opencv_core_ada.git"), "incorrect Core acquisition repository")
         s.export(safe(args.core), CORE, core)
         consumer = read_json(ROOT / EVIDENCE / "consumer-input.json")
         authored = read_json(ROOT / EVIDENCE / "authored.json")
@@ -274,6 +284,11 @@ def qualify(args):
         s.run(["alr", "-n", "build"], core)
         s.run(["alr", "-n", "build"], source)
         report["resolved_core"] = dependency(source / "alire/alire.lock")
+        resolved = Path(s.run(["alr", "exec", "--", "printenv", "OPENCV_CORE_ALIRE_PREFIX"], source))
+        # The lock alone is not a claim that the cache contains those source bytes.
+        check_files(resolved, {n: h for n, h in core_spec["source_sha256"].items()
+                               if n.startswith("src/")})
+        report["resolved_core_source"] = str(resolved)
         report["compiler"] = s.run(["alr", "exec", "--", "gnat", "--version"], source)
         report["gprbuild"] = s.run(["alr", "exec", "--", "gprbuild", "--version"], source)
         require(report["compiler"].splitlines()[0] == "GNAT 16.1.0", "unqualified compiler")
@@ -285,6 +300,15 @@ def qualify(args):
         report["gnatdoc"] = {"version": GNATDOC, "binary_sha256": digest(gnatdoc.read_bytes())}
         # The unchanged oracle runs first and is never the shared tool's input.
         s.run(["sh", "scripts/generate_docs.sh"], legacy)
+        legacy_first = hashes(legacy / "_site")
+        s.run(["sh", "scripts/generate_docs.sh"], legacy)
+        require(hashes(legacy / "_site") == legacy_first, "legacy fresh regeneration differs")
+        for script in ("install_gnatdoc_theme.py", "link_gnatdoc_types.py", "highlight_gnatdoc_ada.py",
+                       "enhance_gnatdoc_navigation.py"):
+            s.run([sys.executable, "scripts/" + script, legacy / "_site/api"], legacy)
+        s.run([sys.executable, "scripts/render_gnatdoc_guides.py", legacy / "_site"], legacy)
+        require(hashes(legacy / "_site") == legacy_first, "legacy re-enhancement differs")
+        report["legacy_deterministic"] = report["legacy_byte_idempotent"] = True
         report["legacy_core"] = dependency(legacy / "alire/alire.lock")
         s.run([sys.executable, "-m", "unittest", "discover", "-s", "scripts", "-p", "test_*.py", "-v"], legacy)
         report["legacy_validator"] = s.run([sys.executable, "scripts/validate_docs.py", legacy / "_site"], legacy)
@@ -303,6 +327,8 @@ def qualify(args):
         require(hashes(pristine) == hashes(workspace / "pristine-second") == consumer["pristine_sha256"],
                 "nondeterministic or unapproved pristine native bytes")
         report["native_sha256"] = hashes(pristine)
+        from ada_gnatdoc_enhancer.qualification import identities
+        write_json(workspace / "native-identities.json", identities(pristine))
         report["native_gates"] = original_gates(s, source, pristine, workspace / "native-first.log")
         # Export the actual Core sources before introducing the documentation-only harness.
         dep_source = workspace / "core-snapshot"
@@ -322,6 +348,7 @@ def qualify(args):
         require(manifest == read_json(ROOT / EVIDENCE / "core-types.json"), "full Core type manifest mismatch")
         report["core_manifest_types"] = len(manifest["types"])
         outputs = []
+        report["legacy_sha256"] = hashes(legacy / "_site")
         for label in ("first", "second"):
             root = workspace / label
             root.mkdir()
@@ -354,8 +381,11 @@ def qualify(args):
             require(hashes(site) == state, "enhancement is not byte-idempotent")
             outputs.append(state)
             report["comparison"] = compare(legacy / "_site", site, pristine, authored)
-            report["shadow_gates"] = original_gates(s, source, site, workspace / "native-first.log")
+            # Persist structural evidence even if a later consumer gate rejects the presentation.
+            report["shadow_sha256"] = state
             report["publication"] = publication
+            write_json(workspace / "qualification.json", report)
+            report["shadow_gates"] = original_gates(s, source, site, workspace / "native-first.log")
         require(outputs[0] == outputs[1], "independent output regeneration is nondeterministic")
         report.update({"consumer_start": BASE, "consumer_tested": args.expected_head,
                        "deterministic": True, "byte_idempotent": True,

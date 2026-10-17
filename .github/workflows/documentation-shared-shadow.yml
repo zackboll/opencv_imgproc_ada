@@ -63,11 +63,23 @@ jobs:
             --workspace "$RUNNER_TEMP/gnatdoc008"
       - name: Independent consumer adversarial qualification
         run: |
+          "$RUNNER_TEMP/shadow-tools/bin/python" -m unittest discover -s imgproc/scripts -p test_shared_gnatdoc_shadow.py -v
           "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_negative.py \
             --workspace "$RUNNER_TEMP/gnatdoc008" --enhancer "$GITHUB_WORKSPACE/enhancer"
       - name: Chromium consumer qualification
+        if: success() || failure()
         run: |
           "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_browser.py \
+            --workspace "$RUNNER_TEMP/gnatdoc008"
+      - name: Independent source-order navigation parity (no baseline waiver)
+        if: success() || failure()
+        run: |
+          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/compare_shared_gnatdoc_navigation.py \
+            --workspace "$RUNNER_TEMP/gnatdoc008"
+      - name: Record final readiness without treating static success as qualification
+        if: always()
+        run: |
+          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/record_shared_gnatdoc_shadow.py \
             --workspace "$RUNNER_TEMP/gnatdoc008"
       - name: Upload shadow NON-DEPLOYABLE review evidence and sites
         if: always()
