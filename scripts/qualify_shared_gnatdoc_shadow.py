@@ -261,6 +261,17 @@ def qualify(args):
         require(s.run(["git", "rev-parse", "HEAD"], ROOT) == args.expected_head,
                 "consumer exact head mismatch")
         s.run(["git", "merge-base", "--is-ancestor", BASE, "HEAD"], ROOT)
+        # No consumer compatibility "fix" may quietly change the independent oracle.
+        s.run(["git", "diff", "--exit-code", BASE, "--", "src", "cpp", "alire.toml",
+               ".github/workflows/documentation.yml", "scripts/generate_docs.sh",
+               "scripts/validate_docs.py", "scripts/check_doc_coverage.py",
+               "scripts/compare_gnatdoc_warnings.py", "scripts/render_gnatdoc_guides.py",
+               "scripts/enhance_gnatdoc_navigation.py", "scripts/install_gnatdoc_theme.py",
+               "scripts/link_gnatdoc_types.py", "scripts/highlight_gnatdoc_ada.py",
+               "docs_api.gpr", "docs_internal.gpr", "docs/requirements.txt",
+               "docs/index.html", "docs/assets", "docs/api-categories.json", "docs/guides",
+               "docs/example.adb", "docs/example.gpr", "docs/examples",
+               "docs/gnatdoc-coverage-baseline.txt", "docs/gnatdoc-warning-baseline.txt"], ROOT)
         trusted_inputs()
         report["tool"] = provenance(s, safe(args.enhancer))
         require(s.run(["alr", "--version"], ROOT) == "alr 2.1.1", "unqualified Alire")

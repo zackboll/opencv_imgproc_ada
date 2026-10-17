@@ -176,6 +176,27 @@ def run(workspace):
                                         "local type destination missing")
                             check("native declaration and local type anchors", local_anchor, **dimensions)
 
+                            def external_click():
+                                page.goto(base + "api/index.html")
+                                entry = page.locator('.operation-group a').filter(has_text="Gaussian_Blur").first
+                                href = entry.get_attribute("href")
+                                entry.click()
+                                frame = page.frame(name="document-content")
+                                frame.wait_for_url(urljoin(base + "api/index.html", href))
+                                link = frame.locator('a.type-reference[href^="https://core.invalid/"]').first
+                                require(link.count() == 1, "external type hyperlink missing")
+                                destination = link.get_attribute("href")
+                                before = frame.url
+                                link.click()
+                                frame.wait_for_url(destination)
+                                require(frame.locator('h4[id="' + urlsplit(destination).fragment + '"]').count() == 1,
+                                        "clicked Core declaration missing")
+                                page.evaluate("history.back()")
+                                frame.wait_for_url(before)
+                                page.evaluate("history.forward()")
+                                frame.wait_for_url(destination)
+                            check("offline Core type click and frame Back Forward", external_click, **dimensions)
+
                             # Every selected external type is exercised directly, with real bytes and signature proof.
                             for identity in config.dependencies[0]["types"]:
                                 proof = core["types"][identity.lower()]
