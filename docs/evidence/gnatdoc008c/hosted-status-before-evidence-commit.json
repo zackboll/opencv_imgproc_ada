@@ -1,0 +1,64 @@
+{
+  "disposition": "HOSTED_CI_PENDING",
+  "final_head_location": "Existing PR #72 description and immutable qualification comment after normal push",
+  "observed_runs": [
+    {
+      "conclusion": "success",
+      "databaseId": 39094519029,
+      "headSha": "fea2b4e992c7bafb7263d25c47875ffbe027bee6",
+      "name": "Cross configuration controls",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 39094519009,
+      "headSha": "fea2b4e992c7bafb7263d25c47875ffbe027bee6",
+      "name": "External AdaCore adapter controls (synthetic, not qualification)",
+      "status": "completed"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 39094519094,
+      "headSha": "fea2b4e992c7bafb7263d25c47875ffbe027bee6",
+      "name": "Shared GNATdoc shadow (non-deployable)",
+      "status": "in_progress"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 39094519079,
+      "headSha": "fea2b4e992c7bafb7263d25c47875ffbe027bee6",
+      "name": "GNAT 12 real source-unit controls (not production qualification)",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 39094519033,
+      "headSha": "fea2b4e992c7bafb7263d25c47875ffbe027bee6",
+      "name": "Debian 12 AArch64 target dependencies (not production cross-build)",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 39094519032,
+      "headSha": "fea2b4e992c7bafb7263d25c47875ffbe027bee6",
+      "name": "Debian 12 independent installed consumers",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 39094519018,
+      "headSha": "fea2b4e992c7bafb7263d25c47875ffbe027bee6",
+      "name": "Cross-Platform Bridge CI",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 39094519024,
+      "headSha": "fea2b4e992c7bafb7263d25c47875ffbe027bee6",
+      "name": "Ada API Documentation",
+      "status": "completed"
+    }
+  ],
+  "production_migration_complete": false,
+  "scope": "Snapshot before final evidence commit; no final-head success inferred"
+}

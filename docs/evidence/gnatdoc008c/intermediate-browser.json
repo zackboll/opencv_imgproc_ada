@@ -1,0 +1,12 @@
+{
+  "additional_history_assertions": 152,
+  "consumer_tested": "7c6a45a6884f64107ad414cb5c7759c578923c07",
+  "executed": 1992,
+  "failures": 0,
+  "full_report_sha256": "c2d9a24f89f8c448c3336d464d7356144228eee77f5ec62bfb72b3db6602a139",
+  "original_assertion_names_retained": true,
+  "original_assertions_retained": 1840,
+  "production_https_verified": false,
+  "scope": "Second complete real regenerated site; intermediate consumer head; not final current-run readiness evidence",
+  "status": "pass"
+}

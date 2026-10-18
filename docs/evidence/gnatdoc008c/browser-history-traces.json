@@ -1,0 +1,1442 @@
+[
+  {
+    "javascript": true,
+    "label": "Bilateral_Filter (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#bea61d6357911eca7b83602171dbb6292c71e4d3efee6e883ae4f3ce5665ccb3",
+    "native_profile": "procedure Bilateral_Filter\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Sigma_Color : OpenCV.Float64_Value;\n   Sigma_Space : OpenCV.Float64_Value;\n   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=bea61d6357911eca7b83602171dbb6292c71e4d3efee6e883ae4f3ce5665ccb3",
+    "source_profile": "procedure Bilateral_Filter (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Sigma_Color : OpenCV.Float64_Value; Sigma_Space : OpenCV.Float64_Value; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Bilateral_Filter (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#7de23684aa22b3a5cd63ab2d378e96d256d0c6169a37770a43095e8ee776f7e3",
+    "native_profile": "procedure Bilateral_Filter\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Diameter    : Bilateral_Diameter;\n   Sigma_Color : OpenCV.Float64_Value;\n   Sigma_Space : OpenCV.Float64_Value;\n   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=7de23684aa22b3a5cd63ab2d378e96d256d0c6169a37770a43095e8ee776f7e3",
+    "source_profile": "procedure Bilateral_Filter (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Diameter : Bilateral_Diameter; Sigma_Color : OpenCV.Float64_Value; Sigma_Space : OpenCV.Float64_Value; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Pyramid_Up (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#ee285b2587a97264b473ef0d7394c132c9f592fc073755ea084cd6c0ce25b798",
+    "native_profile": "procedure Pyramid_Up\n  (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=ee285b2587a97264b473ef0d7394c132c9f592fc073755ea084cd6c0ce25b798",
+    "source_profile": "procedure Pyramid_Up (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Pyramid_Up (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#7cd18c514bd4162491ac1f5ba2d7f70368bfc0a6b7164e02205af88e2394446f",
+    "native_profile": "procedure Pyramid_Up\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Output_Size : OpenCV.Size)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=7cd18c514bd4162491ac1f5ba2d7f70368bfc0a6b7164e02205af88e2394446f",
+    "source_profile": "procedure Pyramid_Up (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Bilateral_Filter (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#bea61d6357911eca7b83602171dbb6292c71e4d3efee6e883ae4f3ce5665ccb3",
+    "native_profile": "procedure Bilateral_Filter\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Sigma_Color : OpenCV.Float64_Value;\n   Sigma_Space : OpenCV.Float64_Value;\n   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=bea61d6357911eca7b83602171dbb6292c71e4d3efee6e883ae4f3ce5665ccb3",
+    "source_profile": "procedure Bilateral_Filter (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Sigma_Color : OpenCV.Float64_Value; Sigma_Space : OpenCV.Float64_Value; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Bilateral_Filter (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#7de23684aa22b3a5cd63ab2d378e96d256d0c6169a37770a43095e8ee776f7e3",
+    "native_profile": "procedure Bilateral_Filter\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Diameter    : Bilateral_Diameter;\n   Sigma_Color : OpenCV.Float64_Value;\n   Sigma_Space : OpenCV.Float64_Value;\n   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=7de23684aa22b3a5cd63ab2d378e96d256d0c6169a37770a43095e8ee776f7e3",
+    "source_profile": "procedure Bilateral_Filter (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Diameter : Bilateral_Diameter; Sigma_Color : OpenCV.Float64_Value; Sigma_Space : OpenCV.Float64_Value; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Pyramid_Up (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#ee285b2587a97264b473ef0d7394c132c9f592fc073755ea084cd6c0ce25b798",
+    "native_profile": "procedure Pyramid_Up\n  (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=ee285b2587a97264b473ef0d7394c132c9f592fc073755ea084cd6c0ce25b798",
+    "source_profile": "procedure Pyramid_Up (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Pyramid_Up (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#7cd18c514bd4162491ac1f5ba2d7f70368bfc0a6b7164e02205af88e2394446f",
+    "native_profile": "procedure Pyramid_Up\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Output_Size : OpenCV.Size)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=7cd18c514bd4162491ac1f5ba2d7f70368bfc0a6b7164e02205af88e2394446f",
+    "source_profile": "procedure Pyramid_Up (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 1280
+  },
+  {
+    "javascript": true,
+    "label": "Bilateral_Filter (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#bea61d6357911eca7b83602171dbb6292c71e4d3efee6e883ae4f3ce5665ccb3",
+    "native_profile": "procedure Bilateral_Filter\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Sigma_Color : OpenCV.Float64_Value;\n   Sigma_Space : OpenCV.Float64_Value;\n   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=bea61d6357911eca7b83602171dbb6292c71e4d3efee6e883ae4f3ce5665ccb3",
+    "source_profile": "procedure Bilateral_Filter (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Sigma_Color : OpenCV.Float64_Value; Sigma_Space : OpenCV.Float64_Value; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Bilateral_Filter (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#7de23684aa22b3a5cd63ab2d378e96d256d0c6169a37770a43095e8ee776f7e3",
+    "native_profile": "procedure Bilateral_Filter\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Diameter    : Bilateral_Diameter;\n   Sigma_Color : OpenCV.Float64_Value;\n   Sigma_Space : OpenCV.Float64_Value;\n   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=7de23684aa22b3a5cd63ab2d378e96d256d0c6169a37770a43095e8ee776f7e3",
+    "source_profile": "procedure Bilateral_Filter (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Diameter : Bilateral_Diameter; Sigma_Color : OpenCV.Float64_Value; Sigma_Space : OpenCV.Float64_Value; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Pyramid_Up (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#ee285b2587a97264b473ef0d7394c132c9f592fc073755ea084cd6c0ce25b798",
+    "native_profile": "procedure Pyramid_Up\n  (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=ee285b2587a97264b473ef0d7394c132c9f592fc073755ea084cd6c0ce25b798",
+    "source_profile": "procedure Pyramid_Up (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Pyramid_Up (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#7cd18c514bd4162491ac1f5ba2d7f70368bfc0a6b7164e02205af88e2394446f",
+    "native_profile": "procedure Pyramid_Up\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Output_Size : OpenCV.Size)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=7cd18c514bd4162491ac1f5ba2d7f70368bfc0a6b7164e02205af88e2394446f",
+    "source_profile": "procedure Pyramid_Up (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Bilateral_Filter (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#bea61d6357911eca7b83602171dbb6292c71e4d3efee6e883ae4f3ce5665ccb3",
+    "native_profile": "procedure Bilateral_Filter\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Sigma_Color : OpenCV.Float64_Value;\n   Sigma_Space : OpenCV.Float64_Value;\n   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=bea61d6357911eca7b83602171dbb6292c71e4d3efee6e883ae4f3ce5665ccb3",
+    "source_profile": "procedure Bilateral_Filter (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Sigma_Color : OpenCV.Float64_Value; Sigma_Space : OpenCV.Float64_Value; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Bilateral_Filter (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#7de23684aa22b3a5cd63ab2d378e96d256d0c6169a37770a43095e8ee776f7e3",
+    "native_profile": "procedure Bilateral_Filter\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Diameter    : Bilateral_Diameter;\n   Sigma_Color : OpenCV.Float64_Value;\n   Sigma_Space : OpenCV.Float64_Value;\n   Border      : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=7de23684aa22b3a5cd63ab2d378e96d256d0c6169a37770a43095e8ee776f7e3",
+    "source_profile": "procedure Bilateral_Filter (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Diameter : Bilateral_Diameter; Sigma_Color : OpenCV.Float64_Value; Sigma_Space : OpenCV.Float64_Value; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Pyramid_Up (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#ee285b2587a97264b473ef0d7394c132c9f592fc073755ea084cd6c0ce25b798",
+    "native_profile": "procedure Pyramid_Up\n  (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=ee285b2587a97264b473ef0d7394c132c9f592fc073755ea084cd6c0ce25b798",
+    "source_profile": "procedure Pyramid_Up (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Pyramid_Up (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#7cd18c514bd4162491ac1f5ba2d7f70368bfc0a6b7164e02205af88e2394446f",
+    "native_profile": "procedure Pyramid_Up\n  (Source      : OpenCV.Core.Mat;\n   Destination : in out OpenCV.Core.Mat;\n   Output_Size : OpenCV.Size)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=7cd18c514bd4162491ac1f5ba2d7f70368bfc0a6b7164e02205af88e2394446f",
+    "source_profile": "procedure Pyramid_Up (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Output_Size : OpenCV.Size)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=85eed978831f60165407d558d2bcdd2f0836aa8643dbe53d58d243671f16ff96",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Get_Gaussian_Kernel (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "native_profile": "function Get_Gaussian_Kernel\n  (Kernel_Size : Gaussian_Kernel_Size;\n   Sigma       : OpenCV.Float64_Value;\n   Depth       : Gaussian_Kernel_Depth := Float64_Kernel)\n   return OpenCV.Core.Mat\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=c4f236f069153235f9a3f9ce1cca3bd26e1a696a088b8b0fda3257faaecd3731",
+    "source_profile": "function Get_Gaussian_Kernel (Kernel_Size : Gaussian_Kernel_Size; Sigma : OpenCV.Float64_Value; Depth : Gaussian_Kernel_Depth := Float64_Kernel) return OpenCV.Core.Mat",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (1)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=fbd2fb812a53fcd97a2120c5d9706f73fe023cc2342c9cd73d2c864c4afc2755",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "javascript": true,
+    "label": "Filter_2D (2)",
+    "native": "http://local/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "native_profile": "procedure Filter_2D\n  (Source            : OpenCV.Core.Mat;\n   Destination       : in out OpenCV.Core.Mat;\n   Kernel            : OpenCV.Core.Mat;\n   Anchor            : OpenCV.Point;\n   Destination_Depth : Filter_Depth := Same_Depth;\n   Offset            : OpenCV.Float64_Value := 0.0;\n   Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)\n",
+    "outer": "http://local/api/index.html?package=OpenCV.Image_Processing&declaration=9ab947c2183dce1b2192b9c136df6cc69e3ff7240d3ba5c6b14437d855d9257f",
+    "source_profile": "procedure Filter_2D (Source : OpenCV.Core.Mat; Destination : in out OpenCV.Core.Mat; Kernel : OpenCV.Core.Mat; Anchor : OpenCV.Point; Destination_Depth : Filter_Depth := Same_Depth; Offset : OpenCV.Float64_Value := 0.0; Border : OpenCV.Border_Kind := OpenCV.Reflect_101)",
+    "theme": "dark",
+    "width": 390
+  }
+]

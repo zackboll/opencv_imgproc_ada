@@ -73,6 +73,18 @@ executed intermediate-head results, not proof for a later head. A final fresh
 workspace and exact-head hosted workflows must pass before independent-review
 readiness. Checked-in current reports identify their actual tested consumer SHA.
 
+The final local workspace `/tmp/gnatdoc008c/full-final` completed the entire
+current driver matrix: 164 documentation tests, 6 executables, 36 restored and
+independently verified mutations, 1,992 browser checks (1,840 original + 152 new),
+zero navigation mismatches and all native/link/coverage/warning/guide gates.
+`docs/evidence/gnatdoc008c/readiness.json` records complete local evidence and
+`HOSTED_CI_PENDING`. The freshly generated inputs were consumer
+`55d2f3d9d09d9856e6744bfdec4ba2de3d8398b5`; newer boundary-test/recorder hardening
+was executed explicitly against those reports and does not pretend to be a
+rebuild of a later commit. Exact final-head hosted CI remains mandatory after
+committing the review evidence. Its final SHA/run IDs belong in the PR description
+and immutable PR comment, avoiding a self-referential evidence commit hash.
+
 ## Historical GNATDOC-008 record (unchanged evidence)
 
 ## Disposition and scope

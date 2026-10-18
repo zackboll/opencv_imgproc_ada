@@ -1,0 +1,66 @@
+{
+  "authored_parity": {
+    "guides/color-and-image-representation.html": {
+      "classification": "Equivalent and verified",
+      "sha256": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177"
+    },
+    "guides/features-and-structural-analysis.html": {
+      "classification": "Equivalent and verified",
+      "sha256": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028"
+    },
+    "guides/filtering-and-transforms.html": {
+      "classification": "Equivalent and verified",
+      "sha256": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7"
+    },
+    "guides/gnatdoc-guides.css": {
+      "classification": "Equivalent and verified",
+      "sha256": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba"
+    },
+    "guides/segmentation-contours-and-morphology.html": {
+      "classification": "Equivalent and verified",
+      "sha256": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41"
+    },
+    "guides/template-matching-and-registration.html": {
+      "classification": "Equivalent and verified",
+      "sha256": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518"
+    },
+    "index.html": {
+      "classification": "Equivalent and verified",
+      "sha256": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+    }
+  },
+  "authority_transition_sha256": "bf399766834fd80fdbf359486abcd504d2e290b59244dda5097e01e16e770bab",
+  "byte_idempotent": true,
+  "consumer_tested": "55d2f3d9d09d9856e6744bfdec4ba2de3d8398b5",
+  "core_manifest_types": 203,
+  "deterministic": true,
+  "documentation_tests": {
+    "executed": 164,
+    "status": "pass"
+  },
+  "full_qualification_sha256": "be4ed8960ea980600a6604d89774b66240ebb30eb2a4ff79cba6269e5a809548",
+  "legacy_gates": {
+    "coverage": "Documentation coverage: 1512/1512 items (100.0%); 0 newly undocumented, 0 newly documented",
+    "warnings": "GNATdoc warning delta: 0 added, 0 removed"
+  },
+  "local_type_links": 326,
+  "missing_native_anchors": 0,
+  "native_gates": {
+    "coverage": "Documentation coverage: 1512/1512 items (100.0%); 0 newly undocumented, 0 newly documented",
+    "warnings": "GNATdoc warning delta: 0 added, 0 removed"
+  },
+  "native_preservation": {
+    "declarations": 314,
+    "packages": 1,
+    "pages": 2,
+    "signatures": 467,
+    "status": "preserved"
+  },
+  "offline_external_type_links": 549,
+  "scope": "Independent static/source/native and full consumer generation gates, separate from browser and compiled execution reports",
+  "shadow_gates": {
+    "coverage": "Documentation coverage: 1512/1512 items (100.0%); 0 newly undocumented, 0 newly documented",
+    "warnings": "GNATdoc warning delta: 0 added, 0 removed"
+  },
+  "unexpected_native_declarations": 0
+}

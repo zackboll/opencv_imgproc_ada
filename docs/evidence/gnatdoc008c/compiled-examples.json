@@ -1,0 +1,45 @@
+{
+  "consumer_tested": "55d2f3d9d09d9856e6744bfdec4ba2de3d8398b5",
+  "evidence_category": "original consumer compiled-example execution, not static fixtures",
+  "examples": [
+    {
+      "build_exit": 0,
+      "executable": "example",
+      "project": "docs/example.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "filtering_and_transforms",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "color_and_representation",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "features_and_analysis",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "segmentation_and_contours",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "matching_and_registration",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    }
+  ],
+  "executed": 6,
+  "scope": "Actual compiled original consumer landing and five guide programs in fresh full-final legacy workspace",
+  "status": "pass"
+}

@@ -1,0 +1,9 @@
+{
+  "consumer_tested": "7c6a45a6884f64107ad414cb5c7759c578923c07",
+  "failures": [],
+  "operations": 314,
+  "oracle": "unchanged source-backed consumer entries()",
+  "scope": "Executed intermediate-head full site; final current-run reports required for readiness",
+  "status": "pass",
+  "upstream_cause": "navigation.operation_entries uses len(resolved)+1 across a category, not per-name source-order overload numbering"
+}

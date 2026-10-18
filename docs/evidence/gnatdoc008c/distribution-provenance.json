@@ -1,0 +1,111 @@
+{
+  "authority_transition_sha256": "bf399766834fd80fdbf359486abcd504d2e290b59244dda5097e01e16e770bab",
+  "compiler": "GNAT 16.1.0\nCopyright (C) 1996-2025, Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "consumer_tested": "55d2f3d9d09d9856e6744bfdec4ba2de3d8398b5",
+  "core": {
+    "actions": [
+      {
+        "command": [
+          "sh",
+          "scripts/configure_opencv.sh"
+        ],
+        "directory": ".",
+        "type": "pre-build"
+      },
+      {
+        "command": [
+          "alr",
+          "-n",
+          "build"
+        ],
+        "directory": ".",
+        "type": "test"
+      },
+      {
+        "command": [
+          "alr",
+          "run"
+        ],
+        "directory": "tests",
+        "type": "test"
+      }
+    ],
+    "authors": [
+      "Zack Boll"
+    ],
+    "depends-on": [
+      {
+        "opencv": "*",
+        "pkg_config": "*"
+      }
+    ],
+    "description": "Thick Ada binding to OpenCV Core Library",
+    "licenses": "Apache-2.0",
+    "maintainers": [
+      "Zack Boll <zackboll@gmail.com>"
+    ],
+    "maintainers-logins": [
+      "zackboll"
+    ],
+    "name": "opencv_core",
+    "origin": {
+      "commit": "386c5360ac51f2b62e522853d94290aec4ee14a0",
+      "url": "git+https://github.com/zackboll/opencv_core_ada.git"
+    },
+    "tags": [
+      "opencv",
+      "computer-vision",
+      "binding",
+      "ada"
+    ],
+    "version": "0.4.1",
+    "website": "https://github.com/zackboll/opencv_core_ada"
+  },
+  "gnatdoc": {
+    "binary_sha256": "d256f0ece2f181046dfeb3ce490d7aa5c994992550c78da14e9065d453aa52c5",
+    "version": "GNATdoc 26.0.0 (20260415)"
+  },
+  "gprbuild": "GPRBUILD 26.0.0 (2026-04-15) (x86_64-pc-linux-gnu)\nCopyright (C) 2004-2026, AdaCore\nThis is free software; see the source for copying conditions.\nThere is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "production_https_verified": false,
+  "scope": "Non-editable installed package equals immutable detached checkout; pip dependency integrity checked",
+  "tool": {
+    "installed_sha256": {
+      "ada_gnatdoc_enhancer/__init__.py": "21896c73fca800e37688baf29579a31a9a19f232fdc2845dfd2bc3caa085c17b",
+      "ada_gnatdoc_enhancer/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+      "ada_gnatdoc_enhancer/adapters/__init__.py": "bc7839c1ed01b2d028cbb28537f7ab636ae839e11e9c6fba0c82ae9669a882d3",
+      "ada_gnatdoc_enhancer/adapters/mel.py": "4e3d20173d81a03a18d1027814334100f00d9159ba3031d5a94f2f85a3a9bef8",
+      "ada_gnatdoc_enhancer/adapters/opencv.py": "7f45fca90c6c8656398a56ff02bf4aacbde19a96dc4f81d553e7d16a87c55410",
+      "ada_gnatdoc_enhancer/assets/gnatdoc-guides.css": "79f3fc6d5f1e854eb42d225f9bec113b7a41fa833b12d3bd70ca089ba5df0a8c",
+      "ada_gnatdoc_enhancer/assets/gnatdoc-navigation.js": "b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd",
+      "ada_gnatdoc_enhancer/assets/gnatdoc-theme.css": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc",
+      "ada_gnatdoc_enhancer/authored.py": "ab263beb88bbd5602b8f61b5269486a56b6ffb91930d641ab192e87dc2cb66de",
+      "ada_gnatdoc_enhancer/cli.py": "2236a2c01928a42772ddb3a8b4e16f02fdbec63fb30f396a8ddd3366d6a1789e",
+      "ada_gnatdoc_enhancer/config.py": "01dab5ed7c0b26bd027f0bba4e7ce57b960705a1a010aca3001f95d3eb6f41fb",
+      "ada_gnatdoc_enhancer/conformance.py": "ae2f04143abf23dd70f0c56ff82fe500af6111b1a8abbff18cff904778d4507d",
+      "ada_gnatdoc_enhancer/coverage.py": "b5e78be5f070f65731bcc16e1338ad034e6feac4420b2ed3ed31c91d737fdecf",
+      "ada_gnatdoc_enhancer/destinations.py": "7a10181adafbfe236ee7999db5f5093ef746fe367e4e186a15698cb9c04e2bc6",
+      "ada_gnatdoc_enhancer/errors.py": "6fa7d9eab4bac0a32a114685606f11fd1e8838fc8463c8852766edacf8a480da",
+      "ada_gnatdoc_enhancer/external_types.py": "86333d6a961a5f02af71f14cb276e888f35ef4fbd531921f2ea71ae4fc85bc33",
+      "ada_gnatdoc_enhancer/generic_instances.py": "07efc9e92201548f7c33939c57ef1f8c3c3aecd92f3199a52f657aff65ff12f8",
+      "ada_gnatdoc_enhancer/guides.py": "c5e66f5fd1e22dca2990d015ffdbea2f633e2e868cae3ae7c5838fe31bc6bdf0",
+      "ada_gnatdoc_enhancer/inventory.py": "d8e29273e8960cee5cf435eaa7a52ba266a8ad9d2fc8ceb1e0fa4eb13e01b593",
+      "ada_gnatdoc_enhancer/native_html.py": "1e29e589c7ed30de1933c7902fa920894d5b4f2decb77502d3dbc337cb8193ca",
+      "ada_gnatdoc_enhancer/navigation.py": "8687b0ebd90eaf92c7fe1c27749bb063654754ad11dedbceda8f10047cdabc8c",
+      "ada_gnatdoc_enhancer/pipeline.py": "ef611672577fe2650ab02513e325b53af17b3224dd61bdea779b6c0fd86fcc23",
+      "ada_gnatdoc_enhancer/profiles.py": "be0fa1b79f2a522d6c830841709906953c7f746c1a021bc9fdda11a6642c6ab2",
+      "ada_gnatdoc_enhancer/qualification.py": "1e36e59542e19c5a30689e8b94aa6703f7081f733de7463b2bce42bc4c70d28d",
+      "ada_gnatdoc_enhancer/syntax.py": "3d4868b5efa69799b32c5af29ae0690838c45d10a24a6e0c8263f8c73f589848",
+      "ada_gnatdoc_enhancer/theme.py": "ec24fcdd209c976a8d17473544f2ad5ed1b6e92ae4d7a6c85d5500697680d55e",
+      "ada_gnatdoc_enhancer/util.py": "0b2c9d554263ca6d3251737e191b2859c738a64b7b41607adecf0e7e204a66f1",
+      "ada_gnatdoc_enhancer/validation.py": "067cc2ef12cb1716c1292d3e0338dd8c64552765f626686a9e86d55daec30e52",
+      "ada_gnatdoc_enhancer/warnings.py": "3e3e2090f541c5872b08594e72af4fedb39301cd66c919cf040d63ba9e6e15fc"
+    },
+    "origin": {
+      "dir_info": {},
+      "url": "file:///tmp/gnatdoc008c/enhancer"
+    },
+    "resolved_python": "ada-gnatdoc-enhancer @ file:///tmp/gnatdoc008c/enhancer\ngreenlet==3.5.6\nmarkdown-it-py==3.0.0\nmdurl==0.1.2\npip==25.1.1\nplaywright==1.56.0\npyee==13.0.1\ntyping_extensions==4.16.0",
+    "revision": "53a321915da2c5a02a54581040673b61f8595b25",
+    "version": "0.1.0.dev0"
+  }
+}
