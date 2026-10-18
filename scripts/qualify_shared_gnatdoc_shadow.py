@@ -288,6 +288,8 @@ def qualify(args):
         require(s.run(["git", "rev-parse", "HEAD"], ROOT) == args.expected_head,
                 "consumer exact head mismatch")
         s.run(["git", "merge-base", "--is-ancestor", BASE, "HEAD"], ROOT)
+        s.run(["git", "diff", "--exit-code", PR_START, "--",
+               "scripts/compare_shared_gnatdoc_navigation.py", EVIDENCE], ROOT)
         # No consumer compatibility "fix" may quietly change the independent oracle.
         s.run(["git", "diff", "--exit-code", BASE, "--", "src", "cpp", "alire.toml",
                ".github/workflows/documentation.yml", "scripts/generate_docs.sh",

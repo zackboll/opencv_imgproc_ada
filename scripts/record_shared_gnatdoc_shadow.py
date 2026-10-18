@@ -35,6 +35,8 @@ def record(workspace):
                 and qualification.get("comparison", {}).get("offline_external_type_links") == 549
                 and qualification.get("comparison", {}).get("native", {}).get("declarations") == 314
                 and reports.get("browser", {}).get("executed", 0) >= 1840
+                and reports.get("browser", {}).get("original_assertions_retained", 0) >= 1840
+                and reports.get("browser", {}).get("original_assertion_names_retained") is True
                 and bool(reports.get("browser", {}).get("history_traces"))
                 and reports.get("negative", {}).get("executed") == 36
                 and reports.get("navigation-comparison", {}).get("operations") == 314

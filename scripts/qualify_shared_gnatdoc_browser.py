@@ -389,6 +389,12 @@ def run(workspace):
             c["status"] == "pass" for c in report["checks"]) else "fail"
         report["executed"] = len(report["checks"])
         report["failures"] = sum(c["status"] != "pass" for c in report["checks"])
+        historical = read_json(workspace / "legacy" / EVIDENCE / "browser-summary.json")
+        original_names = set(historical["assertion_names"])
+        report["original_assertions_retained"] = sum(c["name"] in original_names for c in report["checks"])
+        report["original_assertion_names_retained"] = original_names <= {c["name"] for c in report["checks"]}
+        if report["original_assertions_retained"] < 1840 or not report["original_assertion_names_retained"]:
+            report["status"] = "fail"
         write_json(workspace / "browser.json", report)
     require(report["status"] == "pass", f"browser qualification: {report['failures']} failures")
     return report
