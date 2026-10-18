@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+* Gradient-input `Canny_Edges` for matching Int16 C1/C3 derivatives, L1/L2
+  norms, strided Regions, explicit alias rejection and guarded native signed
+  arithmetic. The existing image-input overload is unchanged.
+* Centered and explicit-anchor `Box_Filter` overloads with normalized means
+  or unnormalized sums, `Filter_Depth`, rectangular/even kernels, four border
+  modes, logical-Region isolation and failure-atomic owning output.
+  Existing `Box_Blur` behavior is unchanged.
+* Public AUnit, native-reference, malformed-ABI and instrumented native
+  qualification; see [IMGPROC-API-001](docs/canny-box-source-review.md).
+
 ## 0.2.1 — corrective release, proposed
 
 Release preparation is tracked in

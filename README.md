@@ -1,3 +1,46 @@
+# Gradient-input Canny and generalized box filtering
+
+`Canny_Edges (Derivative_X, Derivative_Y, Destination, Lower_Threshold,
+Upper_Threshold, Gradient_Norm)` calls native derivative-input `cv::Canny`
+without recomputing gradients. Matching nonempty 2-D Int16 C1/C3 derivatives
+are supported, including noncontiguous Regions. Thresholds are finite,
+nonnegative and ordered; L1 thresholds must fit signed 32-bit integers and
+L2 thresholds must fit finite Float32 for optional IPP dispatch. Destination
+must not overlap either derivative. Native signed sample arithmetic is
+preflighted: unsafe L2 squared magnitudes and direction-classification sums
+are rejected, never clamped. Existing image-input Canny is unchanged.
+
+`Box_Filter (Source, Destination, Kernel_Size, Destination_Depth => Same_Depth,
+Normalize => True, Border => Reflect_101)` calls native `cv::boxFilter` for
+means or sums. An overload adds an explicit `Anchor : OpenCV.Point`; otherwise
+the anchor is `(Width / 2, Height / 2)`. Kernels are positive rectangles, even
+sizes included. Constant (zero), Replicate, Reflect and Reflect_101 borders
+are supported; Wrap is rejected.
+
+| Source | Supported `Filter_Depth` |
+|---|---|
+| UInt8 | Same_Depth, Int16_Depth, Float32_Depth, Float64_Depth |
+| UInt16 | Same_Depth, Float32_Depth, Float64_Depth |
+| Int16 | Same_Depth, Int16_Depth, Float32_Depth, Float64_Depth |
+| Float32 / Float64 | Same_Depth, Float32_Depth, Float64_Depth |
+
+Integer results use native rounding and saturation; floating results retain
+native rounding, overflow and nonfinite propagation. This is not a guarantee
+of exact per-window summation or bitwise cross-version floating results.
+Unnormalized integer kernel areas are bounded to 8,388,608 (UInt8), 32,768
+(UInt16), or 65,536 (Int16), before additional native layout limits. All
+effective kernel areas fit signed int. Normalized nonconstant singleton axes
+have effective kernel extent one, following native isolated-image semantics.
+
+Both new operations publish **fresh owning output only after success**.
+Old Destination aliases and Region parents are untouched. Box_Filter treats
+a Source Region as an independent logical image, not a window into its
+parent; distinct overlapping source/destination headers are safe, but the
+same Ada object is rejected. Existing `Box_Blur` retains its direct native
+output/ROI/in-place behavior. See the
+[source review and qualification](docs/canny-box-source-review.md) for native
+safety limits, adapter geometry, backend differences and executed checks.
+
 # Portable masked template matching
 
 The masked `Match_Template` overload supports `Squared_Difference`,

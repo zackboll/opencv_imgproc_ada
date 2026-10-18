@@ -713,6 +713,15 @@ package OpenCV.Image_Processing.Internal.C_API is
       Border        : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_box_blur";
 
+   function Box_Filter
+     (Source                                                      :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination                                                 :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Width, Height, Depth, Anchor_X, Anchor_Y, Normalize, Border :
+        Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_box_filter";
+
    function Bilateral_Filter
      (Source      : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle;
@@ -843,6 +852,18 @@ package OpenCV.Image_Processing.Internal.C_API is
       Aperture        : Interfaces.Integer_32;
       Gradient_Norm   : Interfaces.Integer_32) return Status
    with Import, Convention => C, External_Name => "opencv_imgproc_canny";
+
+   function Canny_Derivatives
+     (Derivative_X, Derivative_Y       :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Destination                      :
+        OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Lower_Threshold, Upper_Threshold : Interfaces.C.double;
+      Gradient_Norm                    : Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_canny_derivatives";
 
    function Threshold
      (Source          : OpenCV.Core.Module_Interop.Input_Mat_Handle;

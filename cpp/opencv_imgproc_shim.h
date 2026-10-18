@@ -525,6 +525,14 @@ opencv_imgproc_box_blur(
     int32_t kernel_height,
     int32_t border);
 
+/* Depth uses the derivative-depth selectors; normalize is exactly 0 or 1.
+ * Anchor coordinates are explicit and nonnegative. Fresh output is published
+ * only after success; the source object must differ from destination. */
+opencv_imgproc_status opencv_imgproc_box_filter(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t width, int32_t height, int32_t depth, int32_t anchor_x,
+    int32_t anchor_y, int32_t normalize, int32_t border);
+
 opencv_imgproc_status
 opencv_imgproc_bilateral_filter(
     const opencv_core_mat_handle *source,
@@ -628,6 +636,14 @@ opencv_imgproc_canny(
     double upper_threshold,
     int32_t aperture,
     int32_t gradient_norm);
+
+/* Fresh output after success. Neither input may overlap destination.
+ * Norm uses the existing Canny norm selectors. Unsafe native signed sample
+ * arithmetic and layout are rejected without modifying any Mat. */
+opencv_imgproc_status opencv_imgproc_canny_derivatives(
+    const opencv_core_mat_handle *dx, const opencv_core_mat_handle *dy,
+    opencv_core_mat_handle *destination, double lower_threshold,
+    double upper_threshold, int32_t gradient_norm);
 
 opencv_imgproc_status
 opencv_imgproc_threshold(

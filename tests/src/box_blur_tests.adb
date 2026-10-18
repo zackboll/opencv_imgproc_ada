@@ -24,6 +24,8 @@ package body Box_Blur_Tests is
    use type Interfaces.Unsigned_16;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Border_Kind;
+   use type OpenCV.Point_Coordinate;
    use type OpenCV.Float32_Value;
    use type OpenCV.Float64_Value;
    use type OpenCV.Core.UInt8_Vec3.Vector;
@@ -404,8 +406,342 @@ package body Box_Blur_Tests is
       Check (Three_D, 3, 3, C_API.Border_Reflect_101, "two-dimensional");
    end C_ABI_Rejects_Malformed_Inputs;
 
+   procedure Generalized_Depths_And_Saturation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      D : OpenCV.Core.Mat;
+   begin
+      for Depth in OpenCV.Core.Depth_Type loop
+         if Depth
+            in OpenCV.Core.UInt8
+             | OpenCV.Core.UInt16
+             | OpenCV.Core.Int16
+             | OpenCV.Core.Float32
+             | OpenCV.Core.Float64
+         then
+            declare
+               S   : OpenCV.Core.Mat := OpenCV.Core.Create (3, 4, (Depth, 1));
+               Old : OpenCV.Core.Mat;
+            begin
+               OpenCV.Core.Set_To (S, (others => 100.0));
+               for Output_Depth in Filter_Depth loop
+                  if Output_Depth /= Int16_Depth
+                    or else Depth in OpenCV.Core.UInt8 | OpenCV.Core.Int16
+                  then
+                     for Normalize in Boolean loop
+                        Box_Filter
+                          (S,
+                           D,
+                           (2, 3),
+                           Destination_Depth => Output_Depth,
+                           Normalize         => Normalize,
+                           Border            => OpenCV.Replicate);
+                        AUnit.Assertions.Assert
+                          (D.Rows = 3
+                           and then D.Columns = 4
+                           and then D.Channels = 1,
+                           "box output geometry and channels");
+                        declare
+                           Expected : constant OpenCV.Float64_Value :=
+                             (if Normalize
+                              then 100.0
+                              elsif D.Depth = OpenCV.Core.UInt8
+                              then 255.0
+                              else 600.0);
+                           Actual   : OpenCV.Float64_Value;
+                        begin
+                           case D.Depth is
+                              when OpenCV.Core.UInt8   =>
+                                 Actual :=
+                                   OpenCV.Float64_Value
+                                     (OpenCV.Core.UInt8_Access.Get (D, 1, 1));
+
+                              when OpenCV.Core.UInt16  =>
+                                 Actual :=
+                                   OpenCV.Float64_Value
+                                     (OpenCV.Core.UInt16_Access.Get (D, 1, 1));
+
+                              when OpenCV.Core.Int16   =>
+                                 Actual :=
+                                   OpenCV.Float64_Value
+                                     (OpenCV.Core.Int16_Access.Get (D, 1, 1));
+
+                              when OpenCV.Core.Float32 =>
+                                 Actual :=
+                                   OpenCV.Float64_Value
+                                     (OpenCV.Core.Float32_Access.Get
+                                        (D, 1, 1));
+
+                              when OpenCV.Core.Float64 =>
+                                 Actual :=
+                                   OpenCV.Core.Float64_Access.Get (D, 1, 1);
+
+                              when others              =>
+                                 Actual := -1.0;
+                           end case;
+                           AUnit.Assertions.Assert
+                             (Actual = Expected,
+                              "exact depth oracle and UInt8 saturation");
+                        end;
+                     end loop;
+                  end if;
+               end loop;
+               Old := D;
+               Box_Filter (S, D, (1, 1));
+               AUnit.Assertions.Assert
+                 (Old.Rows = 3, "old output remains usable");
+            end;
+         end if;
+      end loop;
+   end Generalized_Depths_And_Saturation;
+
+   procedure Generalized_Borders_And_Regions (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 7, (OpenCV.Core.UInt8, 1));
+      S          : OpenCV.Core.Mat := Parent.Region ((1, 1, 3, 3));
+      D, Blurred : OpenCV.Core.Mat;
+      function Lookup (P : Integer; B : OpenCV.Border_Kind) return Integer is
+      begin
+         if P >= 0 and then P < 3 then
+            return P;
+         end if;
+         case B is
+            when OpenCV.Constant_Border =>
+               return -1;
+
+            when OpenCV.Replicate       =>
+               return (if P < 0 then 0 else 2);
+
+            when OpenCV.Reflect         =>
+               return (if P < 0 then -P - 1 else 5 - P);
+
+            when OpenCV.Reflect_101     =>
+               return (if P < 0 then -P else 4 - P);
+
+            when OpenCV.Wrap            =>
+               return 0;
+         end case;
+      end Lookup;
+   begin
+      OpenCV.Core.Set_To (Parent, (others => 99.0));
+      for R in 0 .. 2 loop
+         for C in 0 .. 2 loop
+            OpenCV.Core.UInt8_Access.Set
+              (S, R, C, Interfaces.Unsigned_8 (R * 3 + C + 1));
+         end loop;
+      end loop;
+      for B in OpenCV.Border_Kind loop
+         if B /= OpenCV.Wrap then
+            Box_Filter (S, D, (2, 2), (0, 1), Float64_Depth, False, B);
+            for R in 0 .. 2 loop
+               for C in 0 .. 2 loop
+                  declare
+                     Expected : OpenCV.Float64_Value := 0.0;
+                  begin
+                     for J in 0 .. 1 loop
+                        for I in 0 .. 1 loop
+                           declare
+                              Y : constant Integer := Lookup (R + J - 1, B);
+                              X : constant Integer := Lookup (C + I, B);
+                           begin
+                              if X >= 0 and then Y >= 0 then
+                                 Expected :=
+                                   Expected
+                                   + OpenCV.Float64_Value (Y * 3 + X + 1);
+                              end if;
+                           end;
+                        end loop;
+                     end loop;
+                     AUnit.Assertions.Assert
+                       (OpenCV.Core.Float64_Access.Get (D, R, C) = Expected,
+                        "explicit-anchor rectangular border oracle");
+                  end;
+               end loop;
+            end loop;
+            declare
+               Copy : constant OpenCV.Core.Mat := S.Clone;
+            begin
+               Box_Filter (S, D, (2, 2), Border => B);
+               Box_Blur (Copy, Blurred, (2, 2), B);
+               for R in 0 .. 2 loop
+                  for C in 0 .. 2 loop
+                     AUnit.Assertions.Assert
+                       (OpenCV.Core.UInt8_Access.Get (D, R, C)
+                        = OpenCV.Core.UInt8_Access.Get (Blurred, R, C),
+                        "equivalent to blur of isolated logical image");
+                  end loop;
+               end loop;
+            end;
+         end if;
+      end loop;
+      D := S;
+      Box_Filter (S, D, (1, 1));
+      OpenCV.Core.Set_To (D, (others => 42.0));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (S, 0, 0) = 1
+         and then OpenCV.Core.UInt8_Access.Get (Parent, 0, 0) = 99,
+         "overlapping distinct header detaches and preserves Region parent");
+      for Rows of OpenCV.Core.Dimension_Array'(1, 3) loop
+         for Cols of OpenCV.Core.Dimension_Array'(1, 3) loop
+            declare
+               Single : OpenCV.Core.Mat :=
+                 OpenCV.Core.Create
+                   (Natural (Rows), Natural (Cols), (OpenCV.Core.Float64, 1));
+            begin
+               OpenCV.Core.Set_To (Single, (others => 2.0));
+               Box_Filter
+                 (Single,
+                  D,
+                  (4, 2),
+                  Normalize => False,
+                  Border    => OpenCV.Replicate);
+               AUnit.Assertions.Assert
+                 (OpenCV.Core.Float64_Access.Get (D, 0, 0) = 16.0,
+                  "singleton sums keep kernel area");
+               Box_Filter (Single, D, (4, 2));
+               AUnit.Assertions.Assert
+                 (OpenCV.Core.Float64_Access.Get (D, 0, 0) = 2.0,
+                  "singleton normalization");
+            end;
+         end loop;
+      end loop;
+   end Generalized_Borders_And_Regions;
+
+   procedure Generalized_Rejections (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      S      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      D      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Kernel : OpenCV.Size := (0, 3);
+      Anchor : OpenCV.Point := (0, 0);
+      Border : OpenCV.Border_Kind := OpenCV.Replicate;
+      Depth  : Filter_Depth := Same_Depth;
+      procedure Attempt is
+      begin
+         Box_Filter (S, D, Kernel, Anchor, Depth, False, Border);
+      end Attempt;
+      procedure Self is
+      begin
+         Box_Filter (S, S, (3, 3));
+      end Self;
+   begin
+      OpenCV.Core.Set_To (S, (others => 10.0));
+      OpenCV.Core.Set_To (D, (others => 23.0));
+      Assert_Raises_OpenCV_Error (Attempt'Access, "zero kernel");
+      Kernel := (3, 3);
+      Anchor := (-1, 0);
+      Assert_Raises_OpenCV_Error (Attempt'Access, "negative anchor");
+      Anchor := (3, 0);
+      Assert_Raises_OpenCV_Error (Attempt'Access, "anchor outside kernel");
+      Anchor := (0, 0);
+      Border := OpenCV.Wrap;
+      Assert_Raises_OpenCV_Error (Attempt'Access, "Wrap border");
+      Border := OpenCV.Replicate;
+      Kernel := (50_000, 50_000);
+      Assert_Raises_OpenCV_Error
+        (Attempt'Access, "kernel signed area overflow");
+      Assert_Raises_OpenCV_Error (Self'Access, "same object");
+      S := OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt16, 1));
+      Kernel := (3, 3);
+      Depth := Int16_Depth;
+      Assert_Raises_OpenCV_Error
+        (Attempt'Access, "unsupported output combination");
+      S := OpenCV.Core.Create (3, 3, (OpenCV.Core.Int32, 1));
+      Depth := Same_Depth;
+      Assert_Raises_OpenCV_Error (Attempt'Access, "unsupported source");
+      AUnit.Assertions.Assert
+        (D.Rows = 1 and then OpenCV.Core.UInt8_Access.Get (D, 0, 0) = 23,
+         "box rejection preserves destination");
+      S := OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      OpenCV.Core.Set_To (S, (others => 10.0));
+      Attempt;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (D, 1, 1) = 90,
+         "box recovery after rejected calls");
+   end Generalized_Rejections;
+
+   procedure Generalized_ABI_And_Int16_Saturation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      S      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Int16, 1));
+      D      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Status : C_API.Status := C_API.Success;
+      W      : Interfaces.Integer_32 := -1;
+      N      : Interfaces.Integer_32 := 0;
+      procedure Input (HS : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (HD : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+         is
+         begin
+            Status :=
+              C_API.Box_Filter
+                (HS, HD, W, 3, 0, 0, 0, N, C_API.Border_Replicate);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle (D, Output'Access);
+      end Input;
+   begin
+      OpenCV.Core.Set_To (S, (others => -32768.0));
+      OpenCV.Core.Set_To (D, (others => 37.0));
+      OpenCV.Core.Module_Interop.With_Input_Handle (S, Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Error_Invalid_Argument,
+         "negative raw box kernel rejected");
+      W := 3;
+      N := 2;
+      OpenCV.Core.Module_Interop.With_Input_Handle (S, Input'Access);
+      AUnit.Assertions.Assert
+        (Status = C_API.Error_Invalid_Argument,
+         "malformed raw normalization rejected");
+      AUnit.Assertions.Assert
+        (D.Rows = 1 and then OpenCV.Core.UInt8_Access.Get (D, 0, 0) = 37,
+         "raw box rejection atomicity");
+      Box_Filter (S, D, (3, 3), Normalize => False);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (D, 1, 1) = -32768,
+         "negative Int16 sum saturates");
+      OpenCV.Core.Set_To (S, (others => 32767.0));
+      Box_Filter (S, D, (3, 3), Normalize => False);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (D, 1, 1) = 32767,
+         "positive Int16 sum saturates");
+      declare
+         Color : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 3));
+      begin
+         OpenCV.Core.Set_To (Color, (2.0, 3.0, 4.0, 0.0));
+         Box_Filter
+           (Color, D, (2, 2), Normalize => False, Border => OpenCV.Replicate);
+         AUnit.Assertions.Assert
+           (D.Channels = 3
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (D, 1, 1) = (8, 12, 16),
+            "generalized box processes channels independently");
+      end;
+   end Generalized_ABI_And_Int16_Saturation;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Generalized box malformed ABI Int16 saturation and channels",
+            Generalized_ABI_And_Int16_Saturation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Generalized box depth matrix and saturation",
+            Generalized_Depths_And_Saturation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Generalized box anchors borders Regions aliases and singletons",
+            Generalized_Borders_And_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Generalized box rejections atomicity and recovery",
+            Generalized_Rejections'Access));
       Result.Add_Test
         (Caller.Create
            ("Box blur UInt8 C1 3x3 produces exact center",

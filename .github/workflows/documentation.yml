@@ -27,6 +27,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Inventory regression compares full profiles to the immutable
+          # pre-feature source, not merely the current declaration counts.
+          fetch-depth: 0
           path: imgproc
       # Indexed-release source snapshot for helper controls and identity audit.
       # Production builds resolve Core from the community index without pins.

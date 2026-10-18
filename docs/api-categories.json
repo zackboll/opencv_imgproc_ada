@@ -9,6 +9,7 @@
         "Bilateral_Filter",
         "Blend_Linear",
         "Box_Blur",
+        "Box_Filter",
         "Build_Gaussian_Pyramid",
         "Build_Laplacian_Pyramid",
         "Canny_Aperture",
