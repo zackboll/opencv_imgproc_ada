@@ -1,10 +1,13 @@
 """Small runner boundary tests; full-site tampering is a separate command."""
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
-from qualify_shared_gnatdoc_shadow import CORE, check_files, dependency, digest, hashes, read_json, trusted_inputs
+from qualify_shared_gnatdoc_shadow import (CORE, EVIDENCE, ROOT, TRANSITION, check_files,
+    dependency, digest, hashes, read_json, trusted_inputs)
 from compare_shared_gnatdoc_navigation import Links
+from record_shared_gnatdoc_shadow import record
 
 
 class ShadowBoundaries(unittest.TestCase):
@@ -15,6 +18,45 @@ class ShadowBoundaries(unittest.TestCase):
         links = Links('<a href="native.html#anchor" target=document-content>Filter_2D (17)</a>'
                       '<a href="native.html" target=document-content>Package</a>')
         self.assertEqual(links.links, [["native.html#anchor", "Filter_2D (17)"]])
+
+    def test_transition_cannot_approve_changed_historical_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT / EVIDENCE, root / EVIDENCE)
+            (root / TRANSITION).parent.mkdir(parents=True)
+            shutil.copyfile(ROOT / TRANSITION, root / TRANSITION)
+            config = root / "docs/shared-gnatdoc-shadow.toml"
+            shutil.copyfile(ROOT / "docs/shared-gnatdoc-shadow.toml", config)
+            trusted_inputs(root)
+            for path in (root / TRANSITION, root / EVIDENCE / "authority.json",
+                         root / EVIDENCE / "core-types.json", config):
+                original = path.read_bytes()
+                path.write_bytes(original + b"\n")
+                self.assertNotEqual(path.read_bytes(), original)
+                with self.assertRaisesRegex(ValueError, "authority mismatch"):
+                    trusted_inputs(root)
+                path.write_bytes(original)
+            (root / TRANSITION).unlink()
+            with self.assertRaisesRegex(ValueError, "authority mismatch"):
+                trusted_inputs(root)
+
+    def test_readiness_fails_closed_without_current_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = record(Path(directory))
+            self.assertFalse(result["full_shadow_qualification"])
+            self.assertFalse(result["current_run_complete"])
+            self.assertEqual(len(result["missing_evidence"]), 4)
+
+    def test_historical_reports_cannot_qualify_new_pin(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for old, current in (("local-qualification", "qualification"),
+                                 ("adversarial", "negative"), ("navigation-comparison", "navigation-comparison"),
+                                 ("browser-summary", "browser")):
+                shutil.copyfile(ROOT / EVIDENCE / (old + ".json"), root / (current + ".json"))
+            result = record(root)
+            self.assertFalse(result["full_shadow_qualification"])
+            self.assertFalse(result["current_run_complete"])
 
     def test_duplicate_authority_key_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

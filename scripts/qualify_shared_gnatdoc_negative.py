@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import importlib.metadata
 from pathlib import Path
 import sys
 import tempfile
 
 from qualify_shared_gnatdoc_shadow import (
-    EVIDENCE, ENHANCER, Session, check_files,
-    dependency, hashes, provenance, read_json, require, safe, write_json,
+    EVIDENCE, ENHANCER, OLD_ENHANCER, TRANSITION, Session, check_files,
+    dependency, digest, hashes, provenance, read_json, require, safe, trusted_inputs, write_json,
 )
 
 
@@ -70,6 +71,41 @@ def run(workspace, enhancer):
             session.run(["git", "checkout", "-b", "unpinned", ENHANCER], checkout)
             reject("unpinned enhancer checkout", lambda: provenance(session, checkout),
                    observed=session.run(["git", "symbolic-ref", "--short", "HEAD"], checkout) == "unpinned")
+            for label, revision in (("previous enhancer pin rejected", OLD_ENHANCER),
+                                    ("feature HEAD rejected instead of merge", ENHANCER + "^2")):
+                session.run(["git", "checkout", "--detach", revision], checkout)
+                reject(label, lambda: provenance(session, checkout),
+                       observed=session.run(["git", "rev-parse", "HEAD"], checkout) != ENHANCER)
+        provenance_logs = workspace / "negative-provenance"
+        provenance_logs.mkdir()
+        negative_session = Session(provenance_logs)
+        asset = enhancer / "src/ada_gnatdoc_enhancer/assets/gnatdoc-navigation.js"
+        mutation("modified pinned enhancer JavaScript", asset, asset.read_bytes() + b"\n/* altered */\n",
+                 lambda: provenance(negative_session, enhancer))
+        dist = importlib.metadata.distribution("ada-gnatdoc-enhancer")
+        installed = Path(dist.locate_file("ada_gnatdoc_enhancer/assets/gnatdoc-navigation.js"))
+        mutation("installed asset differs from pinned checkout", installed,
+                 installed.read_bytes() + b"\n/* installed alteration */\n",
+                 lambda: provenance(negative_session, enhancer))
+        transition = root / TRANSITION
+        mutation("modified authority transition", transition, transition.read_bytes() + b"\n",
+                 lambda: trusted_inputs(root))
+        original_transition = transition.read_bytes()
+        try:
+            transition.unlink()
+            reject("missing authority transition", lambda: trusted_inputs(root),
+                   observed=not transition.exists())
+        finally:
+            transition.write_bytes(original_transition)
+        changed_json("altered historical authority hash in transition", transition,
+                     lambda d: d["historical_records_sha256"].update({"authority.json": "0" * 64}),
+                     lambda: trusted_inputs(root))
+        historical = root / EVIDENCE / "authority.json"
+        mutation("altered historical authority bytes", historical, historical.read_bytes() + b"\n",
+                 lambda: trusted_inputs(root))
+        authoritative_core = root / EVIDENCE / "core-types.json"
+        mutation("unapproved authoritative Core manifest", authoritative_core,
+                 authoritative_core.read_bytes() + b"\n", lambda: trusted_inputs(root))
         lock = workspace / "source/alire/alire.lock"
         original = lock.read_bytes()
         mutation("incorrect Core 0.4.1 origin", lock,
@@ -107,6 +143,23 @@ def run(workspace, enhancer):
         # Use two genuine targets of the SAME overloaded operation, not unrelated names.
         mutation("swapped operation overload target", index,
                  index.read_bytes().replace(first.encode(), second.encode(), 1))
+        mutation("forged declaration fragment", index,
+                 index.read_bytes().replace(first.encode(), b"f" * 64, 1))
+        original_index = index.read_bytes()
+        metadata = site / "api/presentation.json"
+        original_metadata = metadata.read_bytes()
+        try:
+            changed_index = original_index.replace(first.encode(), second.encode(), 1)
+            index.write_bytes(changed_index)
+            changed_metadata = original_metadata.replace(digest(original_index).encode(),
+                                                         digest(changed_index).encode())
+            require(changed_metadata != original_metadata, "output hash not present in metadata")
+            metadata.write_bytes(changed_metadata)
+            reject("forged navigation with matching output-side metadata", lambda: verify(config(), site),
+                   observed=index.read_bytes() == changed_index and metadata.read_bytes() == changed_metadata)
+        finally:
+            index.write_bytes(original_index)
+            metadata.write_bytes(original_metadata)
         guide = site / "guides/filtering-and-transforms.html"
         original = guide.read_bytes()
         try:
@@ -129,6 +182,13 @@ def run(workspace, enhancer):
             reject("unapproved output HTML", lambda: verify(config(), site), observed=extra.is_file())
         finally:
             extra.unlink()
+        extra_binary = site / "unapproved.bin"
+        try:
+            extra_binary.write_bytes(b"not an approved publication")
+            reject("extra non-HTML published file", lambda: verify(config(), site),
+                   observed=extra_binary.read_bytes() == b"not an approved publication")
+        finally:
+            extra_binary.unlink()
         output = next(p for p in site.glob("api/*.html") if p.name != "index.html")
         mutation("unapproved production URLs", output,
                  output.read_bytes().replace(b"https://core.invalid/", b"https://zackboll.github.io/opencv_core_ada/", 1))
@@ -176,10 +236,13 @@ def run(workspace, enhancer):
         require(hashes(site) == baseline, "negative tests did not restore output")
         verify(config(), site)
         bind_pristine(pristine, site)
+        trusted_inputs(root)
     finally:
         write_json(workspace / "negative.json", {"tests": results, "executed": len(results),
-                    "status": "pass" if len(results) == 24 and all(r["rejected"] for r in results) else "fail"})
-    require(len(results) == 24, "incomplete adversarial suite")
+                    "qualification_sha256": digest((workspace / "qualification.json").read_bytes()),
+                    "tested_shadow_sha256": baseline, "restored_shadow_sha256": hashes(site),
+                    "status": "pass" if len(results) == 36 and all(r["rejected"] for r in results) else "fail"})
+    require(len(results) == 36, "incomplete adversarial suite")
     return results
 
 

@@ -1,8 +1,60 @@
-# GNATDOC-008 — read-only Imgproc shadow integration
+# GNATDOC-008C — merged-enhancer Imgproc shadow requalification
+
+## Current GNATDOC-008C transition
+
+**Qualification in progress; no production migration is authorized.**
+
+The existing PR #72 starts at `f2989da6c6a593f6196d1d989be0b2d126743dc6`.
+Its original main baseline remains `9ce22ae5ab70008e1147475a9e6d7baef82f1df0`.
+The new immutable enhancer pin is `53a321915da2c5a02a54581040673b61f8595b25`,
+the actual merge of shared PR #9, independently checked against fetched main.
+It is not feature HEAD `6187976c53cf42783b82a15a587ae458adf17a18`.
+The former pin is `f52dcfe37dc2819d86e72e1c38425e5e49d914eb` and is rejected.
+
+The proposed reviewed transition lives in
+`docs/evidence/gnatdoc008c/authority-transition.json`, protected by the runner's
+literal SHA-256 `bf399766834fd80fdbf359486abcd504d2e290b59244dda5097e01e16e770bab`.
+It binds the exact five historical trust digests, canonical source/native/input
+maps, Core acquisition and manifests, configuration and publication policy.
+Neither the runner nor the collector can create or approve that authority.
+Independent reviewers must review this record and its literal digest together.
+All historical GNATDOC-008 files remain unchanged, including the 66-label
+failure, old red CI and the historical authority's old enhancer binding.
+
+The approved publication differences against the historical shared inventory
+are exactly `api/gnatdoc-navigation.js` (shared declaration history),
+`api/index.html` (source-order label correction), and `api/presentation.json`
+(matching output metadata). Every other file must remain byte-identical;
+native integrity is independently checked, not waived for these differences.
+
+The browser suite retains the original 1,840 named checks and adds real-site
+source-order profiles, declaration query state, repeated Back/Forward,
+active-selection deduplication, deep-link reload, package/native bookmarks,
+search history, keyboard operation and invalid/duplicate/wrong-owner queries.
+The new tests wait on URL, control readiness and actual native headings, and
+reacquire the iframe after transitions. A sentinel proves the outer API
+document stays loaded during declaration traversal. No arbitrary sleeps.
+The original 24 observed mutations remain, with 12 additional rejection checks.
+Tampering runs serially before browsers; restored hashes and reconstructed
+publication must match the qualified site before browser execution.
+
+Fresh results belong only in `docs/evidence/gnatdoc008c/` and isolated
+`/tmp/gnatdoc008c/` workspaces. The readiness recorder fails closed on incomplete
+or old-pin evidence, requires current qualification-report digests and exact
+site inventories, and exits nonzero unless the complete local matrix passes.
+Local success means `HOSTED_CI_PENDING`, never exact-head hosted success.
+Final hosted run IDs and final consumer identity must be recorded separately
+after the normal push to the existing branch. No merge or auto-merge is allowed.
+
+Production blockers remain independent review, version-stable independently
+verified Core HTTPS hosting, explicit migration approval and production release/
+deployment qualification. The reserved Core 0.4.1 mapping remains offline only.
+
+## Historical GNATDOC-008 record (unchanged evidence)
 
 ## Disposition and scope
 
-**BLOCKED_BY_SHARED_TOOL. Production migration is not complete.**
+**Historical disposition: BLOCKED_BY_SHARED_TOOL. Production migration is not complete.**
 
 This is a PR-only, non-deployable review integration. It neither replaces the
 existing generator nor publishes a second documentation site. The original
@@ -157,7 +209,7 @@ From the consumer checkout, substituting absolute directories:
   --workspace /absolute/new-shadow-workspace
 ```
 
-The navigation command is expected to **fail on the current pin**. A workflow
+The navigation command was expected to **fail on the historical pin**. A workflow
 failure here is evidence of a functioning independent gate, not readiness.
 Never run tamper tests concurrently with browser assertions against the same
 site: mutations must finish and restore all bytes first.

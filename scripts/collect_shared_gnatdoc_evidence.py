@@ -8,12 +8,14 @@ import argparse
 from pathlib import Path
 import shutil
 
-from qualify_shared_gnatdoc_shadow import EVIDENCE, ROOT, digest, read_json, require, write_json
+from qualify_shared_gnatdoc_shadow import CURRENT_EVIDENCE, ROOT, digest, read_json, require, write_json
 
 
 def collect(workspace, destination):
     require(workspace.is_dir(), "missing qualification workspace")
     destination.mkdir(parents=True, exist_ok=True)
+    require(destination.resolve() == (ROOT / CURRENT_EVIDENCE).resolve(),
+            "evidence collection must not rewrite historical GNATDOC-008")
     for source, target in (("qualification.json", "local-qualification.json"),
                            ("negative.json", "adversarial.json"),
                            ("navigation-comparison.json", "navigation-comparison.json"),
@@ -21,6 +23,7 @@ def collect(workspace, destination):
         require((workspace / source).is_file(), f"missing executed evidence: {source}")
         shutil.copyfile(workspace / source, destination / target)
     browser = read_json(workspace / "browser.json")
+    write_json(destination / "browser-history-traces.json", browser.get("history_traces", []))
     write_json(destination / "browser-summary.json", {
         "status": browser["status"], "executed": browser["executed"], "failures": browser["failures"],
         "chromium": browser["chromium"], "full_report_sha256": digest((workspace / "browser.json").read_bytes()),
@@ -52,6 +55,6 @@ def read_json_list(path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", type=Path, required=True)
-    parser.add_argument("--destination", type=Path, default=ROOT / EVIDENCE)
+    parser.add_argument("--destination", type=Path, default=ROOT / CURRENT_EVIDENCE)
     args = parser.parse_args()
     collect(args.workspace, args.destination)

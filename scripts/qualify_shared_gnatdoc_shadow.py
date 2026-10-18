@@ -349,7 +349,10 @@ def qualify(args):
         require(hashes(legacy / "_site") == legacy_first, "legacy re-enhancement differs")
         report["legacy_deterministic"] = report["legacy_byte_idempotent"] = True
         report["legacy_core"] = dependency(legacy / "alire/alire.lock")
-        s.run([sys.executable, "-m", "unittest", "discover", "-s", "scripts", "-p", "test_*.py", "-v"], legacy)
+        tests = s.run([sys.executable, "-m", "unittest", "discover", "-s", "scripts", "-p", "test_*.py", "-v"], legacy)
+        test_count = re.search(r"Ran (\d+) tests", tests)
+        require(test_count and int(test_count[1]) >= 155, "incomplete original documentation tests")
+        report["documentation_tests"] = {"executed": int(test_count[1]), "status": "pass"}
         report["legacy_validator"] = s.run([sys.executable, "scripts/validate_docs.py", legacy / "_site"], legacy)
         report["legacy_gates"] = original_gates(s, legacy, legacy / "_site", legacy / "obj/docs/gnatdoc.log")
         examples = []

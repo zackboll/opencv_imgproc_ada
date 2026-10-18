@@ -60,27 +60,27 @@ jobs:
           "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_shadow.py \
             --expected-head '${{ github.event.pull_request.head.sha }}' \
             --enhancer "$GITHUB_WORKSPACE/enhancer" --core "$GITHUB_WORKSPACE/core" \
-            --workspace "$RUNNER_TEMP/gnatdoc008"
+            --workspace "$RUNNER_TEMP/gnatdoc008c"
       - name: Independent consumer adversarial qualification
         run: |
           "$RUNNER_TEMP/shadow-tools/bin/python" -m unittest discover -s imgproc/scripts -p test_shared_gnatdoc_shadow.py -v
           "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_negative.py \
-            --workspace "$RUNNER_TEMP/gnatdoc008" --enhancer "$GITHUB_WORKSPACE/enhancer"
+            --workspace "$RUNNER_TEMP/gnatdoc008c" --enhancer "$GITHUB_WORKSPACE/enhancer"
       - name: Chromium consumer qualification
         if: success() || failure()
         run: |
           "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_browser.py \
-            --workspace "$RUNNER_TEMP/gnatdoc008"
+            --workspace "$RUNNER_TEMP/gnatdoc008c"
       - name: Independent source-order navigation parity (no baseline waiver)
         if: success() || failure()
         run: |
           "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/compare_shared_gnatdoc_navigation.py \
-            --workspace "$RUNNER_TEMP/gnatdoc008"
+            --workspace "$RUNNER_TEMP/gnatdoc008c"
       - name: Record final readiness without treating static success as qualification
         if: always()
         run: |
           "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/record_shared_gnatdoc_shadow.py \
-            --workspace "$RUNNER_TEMP/gnatdoc008"
+            --workspace "$RUNNER_TEMP/gnatdoc008c"
       - name: Upload shadow NON-DEPLOYABLE review evidence and sites
         if: always()
         uses: actions/upload-artifact@v4
@@ -88,12 +88,12 @@ jobs:
           name: shadow-NON-DEPLOYABLE-${{ github.event.pull_request.head.sha }}
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/gnatdoc008/*.json
-            ${{ runner.temp }}/gnatdoc008/*.log
-            ${{ runner.temp }}/gnatdoc008/legacy/_site
-            ${{ runner.temp }}/gnatdoc008/legacy/alire/alire.lock
-            ${{ runner.temp }}/gnatdoc008/source/alire/alire.lock
-            ${{ runner.temp }}/gnatdoc008/first/_site
-            ${{ runner.temp }}/gnatdoc008/pristine-first
-            ${{ runner.temp }}/gnatdoc008/core-native
+            ${{ runner.temp }}/gnatdoc008c/*.json
+            ${{ runner.temp }}/gnatdoc008c/*.log
+            ${{ runner.temp }}/gnatdoc008c/legacy/_site
+            ${{ runner.temp }}/gnatdoc008c/legacy/alire/alire.lock
+            ${{ runner.temp }}/gnatdoc008c/source/alire/alire.lock
+            ${{ runner.temp }}/gnatdoc008c/first/_site
+            ${{ runner.temp }}/gnatdoc008c/pristine-first
+            ${{ runner.temp }}/gnatdoc008c/core-native
           if-no-files-found: error

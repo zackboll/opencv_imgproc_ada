@@ -11,9 +11,153 @@ import functools
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import threading
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urlencode, urljoin, urlsplit
 
 from qualify_shared_gnatdoc_shadow import CORE, EVIDENCE, digest, hashes, read_json, require, write_json
+
+
+def history_checks(page, base, workspace, check, report, dimensions):
+    """Independent consumer source oracle, genuine native bytes, real shared UI."""
+    from enhance_gnatdoc_navigation import entries
+    from link_gnatdoc_types import SECTION, plain
+    legacy = workspace / "legacy"
+    _, groups = entries(legacy / "_site/api", legacy / "src", legacy / "docs/api-categories.json")
+    selected = [e for _, _, group in groups for e in group
+                if e["name"] in ("Filter_2D", "Get_Gaussian_Kernel", "Bilateral_Filter", "Pyramid_Up")]
+    native = {}
+    for path in (workspace / "pristine-first/api").glob("*.html"):
+        for section in SECTION.finditer(path.read_text()):
+            native[path.name + "#" + section[1]] = plain(section[3])
+    package = "OpenCV.Image_Processing"
+    shell = base + "api/index.html"
+
+    def outer(entry=None):
+        query = {"package": package}
+        if entry:
+            query["declaration"] = urlsplit(entry["href"]).fragment
+        return shell + "?" + urlencode(query)
+
+    def declaration(frame, entry):
+        heading = frame.locator('h4[id="' + urlsplit(entry["href"]).fragment + '"]')
+        heading.wait_for(state="attached")
+        require(heading.count() == 1 and heading.inner_text() == entry["name"],
+                "wrong native declaration identity")
+        code = heading.locator("xpath=following-sibling::pre[1]").inner_text()
+        require(" ".join(code.split()) == " ".join(native[entry["href"]].split()),
+                "restored content differs from complete genuine native declaration")
+        # entries() independently source-matches that exact native profile.
+        require(entry["profile"].split()[0] in code, "source declaration kind missing")
+
+    def restored(entry):
+        page.wait_for_url(outer(entry))
+        require(page.evaluate("window.__consumerHistoryDocument") == "same-shell",
+                "top-level API document reloaded during declaration history")
+        frame = page.frame(name="document-content")
+        frame.wait_for_url(urljoin(shell, entry["href"]))
+        declaration(frame, entry)
+        label = entry["name"] + f" ({entry['overload']})"
+        active = page.locator('a[aria-current="location"]')
+        require(active.inner_text() == label and active.get_attribute("href") == entry["href"],
+                "wrong source-order active overload label")
+        report.setdefault("history_traces", []).append({"outer": page.url.replace(base, "http://local/"),
+            "native": frame.url.replace(base, "http://local/"), "label": label,
+            "source_profile": entry["profile"], "native_profile": native[entry["href"]], **dimensions})
+
+    def initialize(url):
+        page.goto(url)
+        page.locator('#package-navigation[data-ready="true"]').wait_for(state="visible")
+        page.evaluate('window.__consumerHistoryDocument = "same-shell"')
+
+    for entry in selected:
+        label = entry["name"] + f" ({entry['overload']})"
+
+        def native_selection(entry=entry, label=label):
+            page.goto(shell)
+            link = page.get_by_role("link", name=label, exact=True)
+            require(link.get_attribute("href") == entry["href"], "source-order destination differs")
+            link.focus()
+            page.keyboard.press("Enter")
+            frame = page.frame(name="document-content")
+            frame.wait_for_url(urljoin(shell, entry["href"]))
+            declaration(frame, entry)
+        check("additional source-order keyboard selection full native profile", native_selection,
+              label=label, **dimensions)
+
+        def direct(entry=entry):
+            page.goto(urljoin(shell, entry["href"]))
+            declaration(page, entry)
+        check("additional direct native declaration bookmark full profile", direct, label=label, **dimensions)
+
+    if not dimensions["javascript"]:
+        return
+
+    def sequence(name, filtered=False):
+        first, second = [e for e in selected if e["name"] == name]
+        initialize(outer())
+        page.frame(name="document-content").wait_for_url(urljoin(shell, urlsplit(first["href"]).path))
+        if filtered:
+            page.locator("#package-search").fill(name)
+        for entry in (first, second):
+            page.get_by_role("link", name=entry["name"] + f" ({entry['overload']})", exact=True).click()
+            restored(entry)
+        length = page.evaluate("history.length")
+        page.get_by_role("link", name=name + " (2)", exact=True).click()
+        require(page.evaluate("history.length") == length, "active overload duplicated history")
+        for _ in range(3):
+            page.evaluate("history.back()")
+            restored(first)
+            page.evaluate("history.forward()")
+            restored(second)
+            require(page.evaluate("history.length") == length, "traversal added history")
+        if filtered:
+            page.locator("#package-clear").click()
+            require(page.locator("#package-search").input_value() == "", "search reset failed")
+
+    check("declaration history Filter_2D repeated Back Forward and active selection",
+          lambda: sequence("Filter_2D"), **dimensions)
+    check("declaration history Get_Gaussian_Kernel source order differs from native order",
+          lambda: sequence("Get_Gaussian_Kernel"), **dimensions)
+    check("declaration history after operation search", lambda: sequence("Filter_2D", True), **dimensions)
+
+    def reload():
+        entry = selected[0]
+        initialize(outer(entry))
+        restored(entry)
+        length = page.evaluate("history.length")
+        page.reload()
+        page.locator('#package-navigation[data-ready="true"]').wait_for(state="visible")
+        page.evaluate('window.__consumerHistoryDocument = "same-shell"')
+        restored(entry)
+        require(page.evaluate("history.length") == length, "reload duplicated history")
+    check("declaration deep link reload full profile", reload, **dimensions)
+
+    def invalid():
+        anchor = urlsplit(selected[0]["href"]).fragment
+        core = read_json(workspace / "first" / EVIDENCE / "core-types.json")
+        wrong_owner = core["types"]["opencv.core.mat"]["anchor"]
+        for query in ("package=Unknown", "package=" + package + "&declaration=" + "f" * 64,
+                      "package=" + package + "&declaration=%ZZ",
+                      "package=" + package + "&declaration=%23" + anchor,
+                      "package=" + package + "&package=" + package,
+                      "package=" + package + "&declaration=" + anchor + "&declaration=" + anchor,
+                      "package=" + package + "&declaration=" + wrong_owner):
+            initialize(shell + "?" + query)
+            page.wait_for_url(outer())
+            frame = page.frame(name="document-content")
+            frame.wait_for_url(urljoin(shell, urlsplit(selected[0]["href"]).path))
+            frame.locator("h1").wait_for(state="attached")
+            require(frame.locator("h1").inner_text() == package, "invalid query lost genuine package content")
+            require(page.locator('a[aria-current="location"]').count() == 0,
+                    "invalid query selected a declaration")
+    check("invalid duplicate unknown and wrong-owner declaration queries fail closed", invalid, **dimensions)
+
+    def package_bookmark():
+        initialize(outer())
+        frame = page.frame(name="document-content")
+        frame.wait_for_url(urljoin(shell, urlsplit(selected[0]["href"]).path))
+        frame.locator("h1").wait_for(state="attached")
+        require(frame.locator("h1").inner_text() == package, "package-only bookmark broken")
+    check("package-only bookmark compatibility", package_bookmark, **dimensions)
 
 
 class Quiet(SimpleHTTPRequestHandler):
@@ -30,6 +174,9 @@ def run(workspace):
     from ada_gnatdoc_enhancer.qualification import identities
     root = workspace / "first"
     site = root / "_site"
+    qualification = read_json(workspace / "qualification.json")
+    require(hashes(site) == qualification["shadow_sha256"],
+            "browser input differs from independently qualified output (tamper restoration required)")
     config = load(root, "qualification.toml")
     verify(config, site)
     destinations(config)
@@ -40,6 +187,7 @@ def run(workspace):
     thread.start()
     base = f"http://127.0.0.1:{server.server_port}/"
     report = {"checks": [], "production_https_verified": False,
+              "qualification_sha256": digest((workspace / "qualification.json").read_bytes()),
               "external_transport": "explicit local interception of pinned Core 0.4.1; offline-test",
               "tested_shadow_sha256": hashes(site)}
 
@@ -230,6 +378,7 @@ def run(workspace):
                                     require(digest(code.encode()) == proof["native_declaration_sha256"],
                                             "external declaration text mismatch")
                                 check("offline pinned Core destination", external, destination=destination, **dimensions)
+                            history_checks(page, base, workspace, check, report, dimensions)
                             check("no JavaScript errors", lambda: require(not errors, str(errors)), **dimensions)
                         finally:
                             context.close()
