@@ -8,9 +8,11 @@ with OpenCV.Core;
 with OpenCV.Core.Int32_Access;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.UInt8_Access;
+with OpenCV.Core.UInt16_Access;
 with OpenCV.Image_Processing;
 with OpenCV.Image_Processing.Internal.C_API;
 with System;
+with Native_Reference;
 
 package body Connected_Component_Tests is
 
@@ -80,7 +82,11 @@ package body Connected_Component_Tests is
       return OpenCV.Image_Processing.Component_Label
    is
       Value : constant Interfaces.Integer_32 :=
-        OpenCV.Core.Int32_Access.Get (Labels, Row, Column);
+        (if Labels.Depth = OpenCV.Core.UInt16
+         then
+           Interfaces.Integer_32
+             (OpenCV.Core.UInt16_Access.Get (Labels, Row, Column))
+         else OpenCV.Core.Int32_Access.Get (Labels, Row, Column));
    begin
       AUnit.Assertions.Assert (Value >= 0, "labels must be nonnegative");
       return OpenCV.Image_Processing.Component_Label (Value);
@@ -577,6 +583,407 @@ package body Connected_Component_Tests is
          "valid raw call after failure must recover");
    end Raw_C_ABI;
 
+   procedure Portable_Masks (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 6, (OpenCV.Core.UInt8, 1));
+      Labels : OpenCV.Core.Mat;
+      Count  : Natural;
+   begin
+      for Depth in Connected_Component_Label_Depth loop
+         Clear (Source);
+         Connected_Components (Source, Labels, Count, Label_Depth => Depth);
+         AUnit.Assertions.Assert (Count = 1, "empty mask includes background");
+         for R in 0 .. 3 loop
+            for C in 0 .. 5 loop
+               AUnit.Assertions.Assert
+                 (Label_At (Labels, R, C) = 0, "all background is zero");
+            end loop;
+         end loop;
+         OpenCV.Core.Set_To (Source, (others => 127.0));
+         Connected_Components (Source, Labels, Count, Label_Depth => Depth);
+         AUnit.Assertions.Assert
+           (Count = 2 and then Label_At (Labels, 3, 5) = 1,
+            "all nonzero is one component plus background");
+         Clear (Source);
+         Set (Source, 0, 0, 1);
+         Set (Source, 1, 1, 127);
+         Set (Source, 3, 5, 255);
+         Connected_Components
+           (Source, Labels, Count, Four_Connected, Depth, SAUF);
+         AUnit.Assertions.Assert
+           (Count = 4
+            and then Label_At (Labels, 0, 0) = 1
+            and then Label_At (Labels, 1, 1) = 2
+            and then Label_At (Labels, 3, 5) = 3,
+            "SAUF four-connected row-major nonzero labels");
+         Connected_Components
+           (Source, Labels, Count, Eight_Connected, Depth, SAUF);
+         AUnit.Assertions.Assert
+           (Count = 3
+            and then Label_At (Labels, 0, 0) = Label_At (Labels, 1, 1),
+            "diagonal eight-connected contact");
+      end loop;
+   end Portable_Masks;
+
+   procedure Portable_Thin (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source, Labels : OpenCV.Core.Mat;
+      Count          : Natural;
+   begin
+      for Vertical in Boolean loop
+         Source :=
+           OpenCV.Core.Create
+             ((if Vertical then 9 else 1),
+              (if Vertical then 1 else 9),
+              (OpenCV.Core.UInt8, 1));
+         Clear (Source);
+         for I in 0 .. 8 loop
+            if I /= 4 then
+               Set
+                 (Source,
+                  (if Vertical then I else 0),
+                  (if Vertical then 0 else I));
+            end if;
+         end loop;
+         for Connectivity in Pixel_Connectivity loop
+            Connected_Components
+              (Source, Labels, Count, Connectivity, Algorithm => SAUF);
+            AUnit.Assertions.Assert
+              (Count = 3, "thin row/column has two components");
+         end loop;
+      end loop;
+   end Portable_Thin;
+
+   procedure Portable_Algorithms (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source            : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 8, (OpenCV.Core.UInt8, 1));
+      Reference, Labels : OpenCV.Core.Mat;
+      Count, Expected   : Natural;
+   begin
+      Clear (Source);
+      for I in 0 .. 7 loop
+         Set (Source, I, I);
+         Set (Source, I, 7 - I, 127);
+      end loop;
+      for Connectivity in Pixel_Connectivity loop
+         Connected_Components
+           (Source, Reference, Expected, Connectivity, Algorithm => SAUF);
+         for Algorithm in Connected_Component_Algorithm loop
+            if Algorithm = Spaghetti and then Native_Reference.Version < 40502
+            then
+               declare
+                  procedure Attempt is
+                  begin
+                     Connected_Components
+                       (Source,
+                        Labels,
+                        Count,
+                        Connectivity,
+                        Algorithm => Algorithm);
+                  end Attempt;
+               begin
+                  Assert_Raises (Attempt'Access, "unsupported Spaghetti");
+               end;
+            else
+               for Depth in Connected_Component_Label_Depth loop
+                  Connected_Components
+                    (Source, Labels, Count, Connectivity, Depth, Algorithm);
+                  AUnit.Assertions.Assert
+                    (Count = Expected, "algorithms have same component count");
+                  --  Compare the equivalence relation, not numeric label IDs.
+                  for R in 0 .. 7 loop
+                     for C in 0 .. 7 loop
+                        for Y in 0 .. 7 loop
+                           for X in 0 .. 7 loop
+                              AUnit.Assertions.Assert
+                                ((Label_At (Labels, R, C)
+                                  = Label_At (Labels, Y, X))
+                                 = (Label_At (Reference, R, C)
+                                    = Label_At (Reference, Y, X)),
+                                 "same connected partition");
+                           end loop;
+                        end loop;
+                     end loop;
+                  end loop;
+               end loop;
+            end if;
+         end loop;
+      end loop;
+   end Portable_Algorithms;
+
+   procedure Portable_Statistics (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source                     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 8, (OpenCV.Core.UInt8, 1));
+      Labels, Legacy             : OpenCV.Core.Mat;
+      Components, Old_Components : Connected_Component_Set;
+   begin
+      Clear (Source);
+      Set (Source, 1, 1, 1);
+      Set (Source, 1, 2, 127);
+      Set (Source, 2, 2);
+      Set (Source, 4, 6);
+      Connected_Components_With_Stats (Source, Legacy, Old_Components);
+      for Depth in Connected_Component_Label_Depth loop
+         for Algorithm in Connected_Component_Algorithm loop
+            if Algorithm /= Spaghetti or else Native_Reference.Version >= 40502
+            then
+               Connected_Components_With_Stats
+                 (Source, Labels, Components, Depth, Algorithm => Algorithm);
+               AUnit.Assertions.Assert
+                 (Component_Count (Components)
+                  = Component_Count (Old_Components),
+                  "legacy foreground count equivalence");
+               Assert_Component
+                 (Components,
+                  Label_At (Labels, 1, 1),
+                  1,
+                  1,
+                  2,
+                  2,
+                  3,
+                  5.0 / 3.0,
+                  4.0 / 3.0,
+                  "portable statistics");
+               Assert_Component
+                 (Components,
+                  Label_At (Labels, 4, 6),
+                  6,
+                  4,
+                  1,
+                  1,
+                  1,
+                  6.0,
+                  4.0,
+                  "portable isolated pixel");
+               AUnit.Assertions.Assert
+                 (Label_At (Labels, 0, 0) = Background_Label,
+                  "statistics excludes background");
+            end if;
+         end loop;
+      end loop;
+   end Portable_Statistics;
+
+   procedure Portable_Regions (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Parent              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 10, (OpenCV.Core.UInt8, 1));
+      Destination         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 10, (OpenCV.Core.Int32, 1));
+      Source, Labels, Old : OpenCV.Core.Mat;
+      Components          : Connected_Component_Set;
+      Count               : Natural;
+   begin
+      Clear (Parent);
+      Set (Parent, 0, 0);
+      Set (Parent, 3, 4, 127);
+      Set (Parent, 3, 5, 1);
+      Source := Parent.Region ((2, 2, 6, 4));
+      OpenCV.Core.Set_To (Destination, (others => 91.0));
+      Labels := Destination.Region ((2, 2, 6, 4));
+      Old := Labels;
+      Connected_Components_With_Stats
+        (Source, Labels, Components, UInt16_Labels, Algorithm => SAUF);
+      Assert_Component
+        (Components,
+         Label_At (Labels, 1, 2),
+         2,
+         1,
+         2,
+         1,
+         2,
+         2.5,
+         1.0,
+         "Region-local coordinates");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int32_Access.Get (Destination, 3, 4) = 91
+         and then OpenCV.Core.Int32_Access.Get (Old, 1, 2) = 91
+         and then OpenCV.Core.UInt8_Access.Get (Parent, 3, 4) = 127,
+         "fresh publication preserves parent, aliases and source");
+      Connected_Components (Source, Labels, Count);
+      AUnit.Assertions.Assert (Count = 2, "outside Region excluded");
+   end Portable_Regions;
+
+   procedure Portable_Aliases (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 8, (OpenCV.Core.UInt8, 1));
+      Labels : OpenCV.Core.Mat;
+      Count  : Natural;
+      procedure Identical is
+      begin
+         Connected_Components (Source, Source, Count);
+      end Identical;
+      procedure Alias is
+      begin
+         Connected_Components (Source, Labels, Count);
+      end Alias;
+   begin
+      Clear (Source);
+      Set (Source, 2, 2, 127);
+      Assert_Raises (Identical'Access, "same object rejected");
+      Labels := Source;
+      Assert_Raises (Alias'Access, "shallow alias rejected");
+      Labels := Source.Region ((1, 1, 4, 4));
+      Assert_Raises (Alias'Access, "overlapping Region rejected");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, 2, 2) = 127,
+         "alias rejection preserves storage");
+      Labels := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+      Connected_Components (Source, Labels, Count);
+      AUnit.Assertions.Assert (Count = 2, "recovery after alias rejection");
+   end Portable_Aliases;
+
+   procedure Portable_Capacity (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (512, 256, (OpenCV.Core.UInt8, 1));
+      Labels, Alias : OpenCV.Core.Mat;
+      Count         : Natural;
+      Components    : Connected_Component_Set;
+      procedure Overflow is
+      begin
+         Connected_Components
+           (Source, Labels, Count, Four_Connected, UInt16_Labels, SAUF);
+      end Overflow;
+      procedure Stats_Overflow is
+      begin
+         Connected_Components_With_Stats
+           (Source, Labels, Components, UInt16_Labels, Four_Connected, SAUF);
+      end Stats_Overflow;
+   begin
+      Clear (Source);
+      for R in 0 .. 511 loop
+         for C in 0 .. 255 loop
+            if (R + C) mod 2 = 0 then
+               Set (Source, R, C);
+            end if;
+         end loop;
+      end loop;
+      Set (Source, 511, 255, 0);
+      Connected_Components
+        (Source, Labels, Count, Four_Connected, UInt16_Labels, SAUF);
+      AUnit.Assertions.Assert
+        (Count = 65536
+         and then Labels.Depth = OpenCV.Core.UInt16
+         and then Label_At (Labels, 511, 253) = 65535,
+         "maximum representable ID and total count");
+      Alias := Labels;
+      Set (Source, 511, 255);
+      Assert_Raises (Overflow'Access, "65537 labels exceeds UInt16");
+      Assert_Raises (Stats_Overflow'Access, "statistics overflow is atomic");
+      AUnit.Assertions.Assert
+        (Labels.Depth = OpenCV.Core.UInt16
+         and then Label_At (Labels, 511, 255) = 0
+         and then Label_At (Alias, 511, 253) = 65535,
+         "overflow preserves destination and aliases");
+      Connected_Components
+        (Source, Labels, Count, Four_Connected, Int32_Labels, SAUF);
+      AUnit.Assertions.Assert
+        (Count = 65537 and then Label_At (Labels, 511, 255) = 65536,
+         "Int32 large-geometry recovery");
+   end Portable_Capacity;
+
+   procedure Portable_Invalid_Source (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source     : OpenCV.Core.Mat;
+      Labels     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+      Count      : Natural;
+      Components : Connected_Component_Set;
+      procedure Attempt is
+      begin
+         Connected_Components (Source, Labels, Count);
+      end Attempt;
+      procedure Stats_Attempt is
+      begin
+         Connected_Components_With_Stats
+           (Source, Labels, Components, UInt16_Labels);
+      end Stats_Attempt;
+   begin
+      OpenCV.Core.Set_To (Labels, (others => 37.0));
+      Assert_Raises (Attempt'Access, "empty portable source");
+      Assert_Raises (Stats_Attempt'Access, "empty portable statistics source");
+      Source := OpenCV.Core.Create (4, 4, (OpenCV.Core.UInt16, 1));
+      Assert_Raises (Attempt'Access, "portable wrong source depth");
+      Source := OpenCV.Core.Create (4, 4, (OpenCV.Core.UInt8, 3));
+      Assert_Raises (Attempt'Access, "portable wrong source channels");
+      Source :=
+        OpenCV.Core.Create
+          (OpenCV.Core.Dimension_Array'(2, 3, 4), (OpenCV.Core.UInt8, 1));
+      Assert_Raises (Attempt'Access, "portable N-D source");
+      AUnit.Assertions.Assert
+        (Labels.Rows = 2
+         and then Labels.Columns = 2
+         and then OpenCV.Core.Int32_Access.Get (Labels, 0, 0) = 37,
+         "invalid source leaves prior destination unchanged");
+   end Portable_Invalid_Source;
+
+   procedure Portable_Uniform_Statistics (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 6, (OpenCV.Core.UInt8, 1));
+      Labels     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+      Components : Connected_Component_Set;
+      procedure Attempt is
+      begin
+         Connected_Components_With_Stats
+           (Source, Labels, Components, UInt16_Labels, Algorithm => SAUF);
+      end Attempt;
+   begin
+      Clear (Source);
+      Attempt;
+      AUnit.Assertions.Assert
+        (Component_Count (Components) = 0, "all background has no foreground");
+      OpenCV.Core.Set_To (Source, (others => 255.0));
+      if Native_Reference.Version < 40200 then
+         Assert_Raises (Attempt'Access, "4.1 absent-background safety gate");
+         AUnit.Assertions.Assert
+           (Label_At (Labels, 0, 0) = 0, "native safety rejection is atomic");
+      else
+         Attempt;
+         AUnit.Assertions.Assert
+           (Component_Count (Components) = 1, "one all-foreground component");
+         Assert_Component
+           (Components,
+            1,
+            0,
+            0,
+            6,
+            4,
+            24,
+            2.5,
+            1.5,
+            "all foreground statistics");
+      end if;
+      Clear (Source);
+      Set (Source, 2, 3);
+      Attempt;
+      Assert_Component
+        (Components,
+         Label_At (Labels, 2, 3),
+         3,
+         2,
+         1,
+         1,
+         1,
+         3.0,
+         2.0,
+         "statistics recovery after rejection");
+   end Portable_Uniform_Statistics;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
       Result.Add_Test
@@ -601,6 +1008,38 @@ package body Connected_Component_Tests is
             Aliases_Invalid_Source_And_Statistics_Access'Access));
       Result.Add_Test
         (Caller.Create ("Connected components raw C ABI", Raw_C_ABI'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable masks", Portable_Masks'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable thin", Portable_Thin'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable algorithms",
+            Portable_Algorithms'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable statistics",
+            Portable_Statistics'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable Regions", Portable_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable aliases", Portable_Aliases'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable capacity",
+            Portable_Capacity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable source validation",
+            Portable_Invalid_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components portable uniform statistics",
+            Portable_Uniform_Statistics'Access));
       return Result'Access;
    end Suite;
 

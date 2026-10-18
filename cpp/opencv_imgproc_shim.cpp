@@ -6325,6 +6325,160 @@ opencv_imgproc_clahe(
     }
 }
 
+namespace {
+opencv_imgproc_status connected_components_options(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *labels,
+    opencv_core_mat_handle *stats, opencv_core_mat_handle *centroids,
+    int32_t connectivity, int32_t label_depth, int32_t algorithm,
+    int32_t *label_count, bool with_stats)
+{
+    clear_error();
+    if (label_count == nullptr) return invalid_argument("null label count");
+    *label_count = 0;
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr, *statistics = nullptr, *centroid_image = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src)
+            return invalid_argument("invalid connected-components source");
+        if (opencv_core_module_output_mat(labels, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid connected-components labels");
+        if (with_stats &&
+            (opencv_core_module_output_mat(stats, &statistics) != OPENCV_CORE_OK ||
+             !statistics ||
+             opencv_core_module_output_mat(centroids, &centroid_image) != OPENCV_CORE_OK ||
+             !centroid_image))
+            return invalid_argument("invalid connected-components statistics outputs");
+
+        if (connectivity != 4 && connectivity != 8)
+            return invalid_argument("invalid connectivity selector");
+        if (label_depth != 0 && label_depth != 1)
+            return invalid_argument("invalid label-depth selector");
+        int native_algorithm = cv::CCL_DEFAULT;
+        switch (algorithm) {
+        case 0: break;
+        case 1:
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && (CV_VERSION_MINOR > 5 || (CV_VERSION_MINOR == 5 && CV_VERSION_REVISION >= 2)))
+            native_algorithm = cv::CCL_SAUF;
+#else
+            native_algorithm = cv::CCL_WU;
+#endif
+            break;
+        case 2:
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && (CV_VERSION_MINOR > 5 || (CV_VERSION_MINOR == 5 && CV_VERSION_REVISION >= 2)))
+            native_algorithm = cv::CCL_BBDT;
+#else
+            native_algorithm = cv::CCL_GRANA;
+#endif
+            break;
+        case 3:
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && (CV_VERSION_MINOR > 5 || (CV_VERSION_MINOR == 5 && CV_VERSION_REVISION >= 2)))
+            native_algorithm = cv::CCL_SPAGHETTI;
+            break;
+#else
+            return invalid_argument("Spaghetti is unavailable in this OpenCV version");
+#endif
+        default: return invalid_argument("invalid algorithm selector");
+        }
+
+        // ABI safety: native scans access row zero and use signed rows/cols
+        // even for empty/N-D Mats, before any useful dimensional validation.
+        if (src->dims != 2 || src->empty() || src->rows <= 0 || src->cols <= 0)
+            return invalid_argument("unsafe empty or non-2-D connected-components source");
+        // Depth/channel validation belongs to Ada; OpenCV safely asserts them.
+        const uint64_t rows = static_cast<uint64_t>(src->rows);
+        const uint64_t cols = static_cast<uint64_t>(src->cols);
+        const uint64_t pixels = rows * cols;
+        // ABI safety: Wu stripe offsets multiply row*width in signed int;
+        // block scans use h+1/w+1, roundUp(h,2), and sentinel label increments.
+        // CCStatsOp areas are signed int. Bounding pixels also bounds all
+        // provisional labels, 64-bit centroid sums and statistics row indices.
+        // Check native allocation and pointer-offset sizes independently.
+        if (rows > INT_MAX - 2U || cols > INT_MAX - 2U || pixels > INT_MAX - 2U ||
+            pixels > static_cast<uint64_t>(PTRDIFF_MAX) / (5U * sizeof(double)) ||
+            src->step[0] > static_cast<size_t>(PTRDIFF_MAX) / rows ||
+            src->step[0] < cols * src->elemSize())
+            return invalid_argument("connected-components native arithmetic limit exceeded");
+        // ABI safety: reject header/storage aliases before publishing several
+        // outputs; rebinding an input/output header would corrupt another result
+        // or the borrowed source. No writes to old output storage are permitted.
+        const cv::Mat *objects[] = {src, dst, statistics, centroid_image};
+        const size_t object_count = with_stats ? 4 : 2;
+        for (size_t i = 0; i < object_count; ++i)
+            for (size_t j = i + 1; j < object_count; ++j)
+                if (objects[i] == objects[j] || mat_storage_overlaps(*objects[i], *objects[j]))
+                    return invalid_argument("connected-components objects overlap");
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 1
+        // ABI safety: 4.1 allocates h chunk entries then writes/reads startR+1.
+        // An odd final parallel stripe can access element h out of bounds.
+        // currentParallelFramework is not public in 4.1. Conservatively reject
+        // when its public thread-count gate permits the unsafe parallel path.
+        if ((src->rows & 1) && cv::getNumThreads() > 1 &&
+            src->rows / cv::getNumThreads() >= 2)
+            return invalid_argument("OpenCV 4.1 odd-height parallel CCL is unsafe");
+        // ABI safety: 4.1 CCStatsOp::finish unconditionally subtracts INT_MAX
+        // from INT_MIN for absent background bounds, causing signed overflow.
+        // Do not fabricate a background pixel or substitute an algorithm.
+        if (with_stats && src->type() == CV_8UC1 &&
+            cv::countNonZero(*src) == static_cast<int>(pixels))
+            return invalid_argument("OpenCV 4.1 statistics without background are unsafe");
+#endif
+        cv::Mat result, native_stats, native_centroids;
+        const int count = with_stats
+            ? cv::connectedComponentsWithStats(*src, result, native_stats,
+                  native_centroids, connectivity, CV_32S, native_algorithm)
+            : cv::connectedComponents(*src, result, connectivity, CV_32S, native_algorithm);
+        // ABI safety: validate metadata/count before typed row access and
+        // before publishing data consumed through Ada's checked numeric types.
+        if (count < 1 || static_cast<uint64_t>(count) > pixels + 1 ||
+            result.dims != 2 || result.size() != src->size() || result.type() != CV_32SC1)
+            return invalid_argument("invalid native connected-components output");
+        if (label_depth == 0 && count > 65536)
+            return invalid_argument("connected-components UInt16 label capacity exceeded");
+        for (int r = 0; r < result.rows; ++r) {
+            const int *line = result.ptr<int>(r);
+            for (int c = 0; c < result.cols; ++c)
+                if (line[c] < 0 || line[c] >= count || (label_depth == 0 && line[c] > 65535))
+                    return invalid_argument("native label outside checked output range");
+        }
+        if (with_stats &&
+            (native_stats.dims != 2 || native_stats.rows != count ||
+             native_stats.cols != 5 || native_stats.type() != CV_32SC1 ||
+             native_centroids.dims != 2 || native_centroids.rows != count ||
+             native_centroids.cols != 2 || native_centroids.type() != CV_64FC1))
+            return invalid_argument("unsafe native statistics shape");
+        cv::Mat published;
+        if (label_depth == 0) result.convertTo(published, CV_16U);
+        else published = std::move(result);
+        // Swaps do not allocate or copy pixels: every throwing operation has
+        // completed. Previous output aliases/parents keep their original data.
+        std::swap(*dst, published);
+        if (with_stats) {
+            std::swap(*statistics, native_stats);
+            std::swap(*centroid_image, native_centroids);
+        }
+        *label_count = count;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+} // namespace
+
+opencv_imgproc_status opencv_imgproc_connected_components(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *labels,
+    int32_t connectivity, int32_t label_depth, int32_t algorithm, int32_t *label_count)
+{
+    return connected_components_options(source, labels, nullptr, nullptr,
+        connectivity, label_depth, algorithm, label_count, false);
+}
+
+opencv_imgproc_status opencv_imgproc_connected_components_with_stats_options(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *labels,
+    opencv_core_mat_handle *stats, opencv_core_mat_handle *centroids,
+    int32_t connectivity, int32_t label_depth, int32_t algorithm, int32_t *label_count)
+{
+    return connected_components_options(source, labels, stats, centroids,
+        connectivity, label_depth, algorithm, label_count, true);
+}
+
 opencv_imgproc_status
 opencv_imgproc_connected_components_with_stats(
     const opencv_core_mat_handle *source,
@@ -6390,6 +6544,20 @@ opencv_imgproc_connected_components_with_stats(
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_imgproc_status opencv_imgproc_mat_swap(
+    opencv_core_mat_handle *first, opencv_core_mat_handle *second)
+{
+    clear_error();
+    try {
+        cv::Mat *a = nullptr, *b = nullptr;
+        if (opencv_core_module_output_mat(first, &a) != OPENCV_CORE_OK || !a ||
+            opencv_core_module_output_mat(second, &b) != OPENCV_CORE_OK || !b)
+            return invalid_argument("invalid publication Mat");
+        std::swap(*a, *b);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_imgproc_status

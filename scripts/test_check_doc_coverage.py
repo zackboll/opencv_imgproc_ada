@@ -307,11 +307,11 @@ class GeneratedCoverageTest(unittest.TestCase):
         self.assertEqual(self.errors, [])
         kinds = list(self.items.values())
         self.assertEqual(self.missing, [])
-        self.assertEqual(kinds.count("function") + kinds.count("procedure"), 187)
+        self.assertEqual(kinds.count("function") + kinds.count("procedure"), 189)
         self.assertEqual(len(kinds) - kinds.count("parameter") - kinds.count("return")
                          - kinds.count("literal") - kinds.count("component")
-                         - kinds.count("package"), 317)
-        self.assertEqual(len(kinds), 1534)
+                         - kinds.count("package"), 321)
+        self.assertEqual(len(kinds), 1556)
 
     def test_new_overloads_have_their_own_documented_parameters(self):
         sections = rendered_sections(self.page.read_text(encoding="utf-8"))
@@ -326,6 +326,10 @@ class GeneratedCoverageTest(unittest.TestCase):
                  "Aperture", "Gradient_Norm"],
                 ["Derivative_X", "Derivative_Y", "Destination",
                  "Lower_Threshold", "Upper_Threshold", "Gradient_Norm"]],
+            "Connected_Components_With_Stats": [
+                ["Source", "Labels", "Components", "Connectivity"],
+                ["Source", "Labels", "Components", "Label_Depth",
+                 "Connectivity", "Algorithm"]],
         }
         for name, profiles in expected.items():
             found = [value[0] for (n, kind, _), value in sections.items()
@@ -344,7 +348,7 @@ class GeneratedCoverageTest(unittest.TestCase):
         # Immutable pre-feature public source: compare full profiles, not just
         # names or counts (which could hide replacing an earlier overload).
         baseline = subprocess.run(
-            ["git", "show", "6715ed13ee8d2ea0f4ac089722ed926cfef77eb6:"
+            ["git", "show", "0fe5162ba47f91c8b54e66356e9ec9d037ce29dd:"
              "src/opencv-image_processing.ads"], cwd=ROOT, check=True,
             capture_output=True, text=True).stdout
         spec = Path(self.temporary.name) / "previous.ads"
@@ -356,7 +360,7 @@ class GeneratedCoverageTest(unittest.TestCase):
             (_profile(d["signature"]) if _kind(d["signature"]) in
              ("procedure", "function") else _kind(d["signature"]) + " " + d["name"])
             + ": description" for d in declarations}
-        self.assertEqual(len(identities), 314)
+        self.assertEqual(len(identities), 317)
         self.assertEqual(identities - self.items.keys(), set())
 
     def test_swapped_box_overload_parameter_text_is_rejected(self):

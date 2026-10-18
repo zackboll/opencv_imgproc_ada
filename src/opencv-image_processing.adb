@@ -4071,7 +4071,7 @@ package body OpenCV.Image_Processing is
    end Validate_Connected_Component_Source;
 
    procedure Validate_Connected_Component_Storage
-     (Source, Labels : OpenCV.Core.Mat)
+     (Source, Labels : OpenCV.Core.Mat; Exact_Bytes : Boolean := False)
    is
       use type Interfaces.Unsigned_8;
       use type Internal.C_API.Status;
@@ -4085,9 +4085,15 @@ package body OpenCV.Image_Processing is
          procedure Second_Input
            (Second_Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
          begin
-            Status :=
-              Internal.C_API.Mats_Overlap
-                (First_Handle, Second_Handle, Overlap'Access);
+            if Exact_Bytes then
+               Status :=
+                 Internal.C_API.Mat_Storage_Overlap
+                   (First_Handle, Second_Handle, Overlap'Access);
+            else
+               Status :=
+                 Internal.C_API.Mats_Overlap
+                   (First_Handle, Second_Handle, Overlap'Access);
+            end if;
          end Second_Input;
       begin
          OpenCV.Core.Module_Interop.With_Input_Handle
@@ -7480,6 +7486,210 @@ package body OpenCV.Image_Processing is
                  OpenCV.Core.Float64_Access.Get (Native_Centroids, Label, 1)));
       end loop;
       Components := Result;
+   end Connected_Components_With_Stats;
+
+   procedure Analyze_Connected_Components
+     (Source       : OpenCV.Core.Mat;
+      Labels       : in out OpenCV.Core.Mat;
+      Total_Labels : out Natural;
+      Components   : out Connected_Component_Set;
+      With_Stats   : Boolean;
+      Connectivity : Pixel_Connectivity;
+      Label_Depth  : Connected_Component_Label_Depth;
+      Algorithm    : Connected_Component_Algorithm)
+   is
+      Staged_Labels, Native_Stats, Native_Centroids : OpenCV.Core.Mat;
+      Count                                         :
+        aliased Interfaces.Integer_32 := 0;
+      Status                                        : Internal.C_API.Status :=
+        Internal.C_API.Success;
+      Result                                        : Connected_Component_Set;
+      use type Interfaces.Integer_32;
+      use type OpenCV.Core.Channel_Count;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Float64_Value;
+
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (L : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+            procedure Stats_Output
+              (T : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+               procedure Centroids_Output
+                 (C : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+               begin
+                  Status :=
+                    Internal.C_API.Connected_Components_With_Stats_Options
+                      (S,
+                       L,
+                       T,
+                       C,
+                       To_C_Connectivity (Connectivity),
+                       Connected_Component_Label_Depth'Pos (Label_Depth),
+                       Connected_Component_Algorithm'Pos (Algorithm),
+                       Count'Access);
+               end Centroids_Output;
+            begin
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Native_Centroids, Centroids_Output'Access);
+            end Stats_Output;
+         begin
+            if With_Stats then
+               OpenCV.Core.Module_Interop.With_Output_Handle
+                 (Native_Stats, Stats_Output'Access);
+            else
+               Status :=
+                 Internal.C_API.Connected_Components
+                   (S,
+                    L,
+                    To_C_Connectivity (Connectivity),
+                    Connected_Component_Label_Depth'Pos (Label_Depth),
+                    Connected_Component_Algorithm'Pos (Algorithm),
+                    Count'Access);
+            end if;
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Staged_Labels, Output'Access);
+      end Input;
+
+      procedure Publish
+        (Destination : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      is
+         procedure Staged
+           (Temporary : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Raise_On_Error
+              (Internal.C_API.Mat_Swap (Destination, Temporary),
+               "connected-components publication");
+         end Staged;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Staged_Labels, Staged'Access);
+      end Publish;
+   begin
+      Validate_Connected_Component_Source (Source);
+      Validate_Connected_Component_Storage
+        (Source, Labels, Exact_Bytes => True);
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "connected-components analysis");
+      if Count <= 0
+        or else Staged_Labels.Rows /= Source.Rows
+        or else Staged_Labels.Columns /= Source.Columns
+        or else Staged_Labels.Channels /= 1
+        or else Staged_Labels.Depth
+                /= (if Label_Depth = UInt16_Labels
+                    then OpenCV.Core.UInt16
+                    else OpenCV.Core.Int32)
+      then
+         raise OpenCV.OpenCV_Error with "invalid connected-components result";
+      end if;
+      if With_Stats then
+         if Native_Stats.Rows /= Natural (Count)
+           or else Native_Stats.Columns /= 5
+           or else Native_Stats.Depth /= OpenCV.Core.Int32
+           or else Native_Stats.Channels /= 1
+           or else Native_Centroids.Rows /= Natural (Count)
+           or else Native_Centroids.Columns /= 2
+           or else Native_Centroids.Depth /= OpenCV.Core.Float64
+           or else Native_Centroids.Channels /= 1
+         then
+            raise OpenCV.OpenCV_Error
+              with "invalid component statistics shape";
+         end if;
+         for Label in 1 .. Natural (Count) - 1 loop
+            declare
+               X    : constant OpenCV.Int32_Value :=
+                 OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 0);
+               Y    : constant OpenCV.Int32_Value :=
+                 OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 1);
+               W    : constant OpenCV.Int32_Value :=
+                 OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 2);
+               H    : constant OpenCV.Int32_Value :=
+                 OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 3);
+               Area : constant OpenCV.Int32_Value :=
+                 OpenCV.Core.Int32_Access.Get (Native_Stats, Label, 4);
+               CX   : constant OpenCV.Float64_Value :=
+                 OpenCV.Core.Float64_Access.Get (Native_Centroids, Label, 0);
+               CY   : constant OpenCV.Float64_Value :=
+                 OpenCV.Core.Float64_Access.Get (Native_Centroids, Label, 1);
+            begin
+               if X < 0
+                 or else Y < 0
+                 or else W <= 0
+                 or else H <= 0
+                 or else X > OpenCV.Int32_Value (Source.Columns) - W
+                 or else Y > OpenCV.Int32_Value (Source.Rows) - H
+                 or else Area <= 0
+                 or else not Is_Finite (CX)
+                 or else not Is_Finite (CY)
+                 or else CX < OpenCV.Float64_Value (X)
+                 or else CY < OpenCV.Float64_Value (Y)
+                 or else CX > OpenCV.Float64_Value (X + W - 1)
+                 or else CY > OpenCV.Float64_Value (Y + H - 1)
+               then
+                  raise OpenCV.OpenCV_Error
+                    with "component statistics cannot be represented";
+               end if;
+               Result.Components.Append
+                 (Component_Statistics'
+                    (Bounds     =>
+                       (X      => OpenCV.Point_Coordinate (X),
+                        Y      => OpenCV.Point_Coordinate (Y),
+                        Width  => OpenCV.Size_Coordinate (W),
+                        Height => OpenCV.Size_Coordinate (H)),
+                     Area       => Natural (Area),
+                     Centroid_X => CX,
+                     Centroid_Y => CY));
+            end;
+         end loop;
+      end if;
+      --  Ada vector assignment can allocate. Complete it before the final
+      --  nonallocating header swap; never use controlled Mat assignment here.
+      Components := Result;
+      Total_Labels := Natural (Count);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Labels, Publish'Access);
+   end Analyze_Connected_Components;
+
+   procedure Connected_Components
+     (Source       : OpenCV.Core.Mat;
+      Labels       : in out OpenCV.Core.Mat;
+      Total_Labels : out Natural;
+      Connectivity : Pixel_Connectivity := Eight_Connected;
+      Label_Depth  : Connected_Component_Label_Depth := Int32_Labels;
+      Algorithm    : Connected_Component_Algorithm := Native_Default)
+   is
+      Unused : Connected_Component_Set;
+   begin
+      Analyze_Connected_Components
+        (Source,
+         Labels,
+         Total_Labels,
+         Unused,
+         False,
+         Connectivity,
+         Label_Depth,
+         Algorithm);
+   end Connected_Components;
+
+   procedure Connected_Components_With_Stats
+     (Source       : OpenCV.Core.Mat;
+      Labels       : in out OpenCV.Core.Mat;
+      Components   : out Connected_Component_Set;
+      Label_Depth  : Connected_Component_Label_Depth;
+      Connectivity : Pixel_Connectivity := Eight_Connected;
+      Algorithm    : Connected_Component_Algorithm := Native_Default)
+   is
+      Count : Natural;
+   begin
+      Analyze_Connected_Components
+        (Source,
+         Labels,
+         Count,
+         Components,
+         True,
+         Connectivity,
+         Label_Depth,
+         Algorithm);
    end Connected_Components_With_Stats;
 
    function Component_Count (Self : Connected_Component_Set) return Natural is

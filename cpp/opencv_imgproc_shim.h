@@ -695,6 +695,34 @@ opencv_imgproc_connected_components_with_stats(
     int32_t *label_count);
 
 opencv_imgproc_status
+opencv_imgproc_connected_components(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *labels,
+    int32_t connectivity, int32_t label_depth, int32_t algorithm,
+    int32_t *label_count);
+
+/* New entry points stage privately and rebind outputs only after validation.
+ * label_depth: 0 UInt16, 1 Int32; algorithm: 0 default, 1 SAUF, 2 BBDT,
+ * 3 Spaghetti (unsupported versions fail). Count includes background.
+ * No handle is retained. Output headers must be distinct and nonoverlapping.
+ * Outputs and their old storage are unchanged on failure; count is reset to 0.
+ */
+opencv_imgproc_status
+opencv_imgproc_connected_components_with_stats_options(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle *labels,
+    opencv_core_mat_handle *stats,
+    opencv_core_mat_handle *centroids,
+    int32_t connectivity, int32_t label_depth, int32_t algorithm,
+    int32_t *label_count);
+
+/* Internal publication helper: resolve both Core outputs before a nonallocating
+ * header swap. Neither handle is retained and no pixel storage is written. */
+opencv_imgproc_status
+opencv_imgproc_mat_swap(opencv_core_mat_handle *first,
+                       opencv_core_mat_handle *second);
+
+opencv_imgproc_status
 opencv_imgproc_mats_overlap(
     const opencv_core_mat_handle *first,
     const opencv_core_mat_handle *second,
