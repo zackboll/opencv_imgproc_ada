@@ -34,7 +34,8 @@ class CategoryManifestTest(unittest.TestCase):
     def test_repository_manifest_covers_each_public_name_once(self):
         categories, owner = load_categories()
         self.assertEqual(len(categories), 8)
-        self.assertEqual(len(owner), 272)
+        self.assertEqual(len(owner), 273)
+        self.assertEqual(owner["Box_Filter"], "filtering")
         self.assertEqual(owner["Match_Template"], "matching")
         self.assertEqual(owner["Phase_Correlate"], "registration")
         self.assertEqual(owner["Warp_Affine"], "geometry")
@@ -82,14 +83,18 @@ class GeneratedNavigationTest(unittest.TestCase):
     def test_every_declaration_has_one_verified_entry(self):
         page, groups = entries(self.api)
         items = [item for _, _, group in groups for item in group]
-        self.assertEqual(len(items), 314)
+        self.assertEqual(len(items), 317)
         text = (self.api / page).read_text(encoding="utf-8")
         anchors = set(re.findall(r"<h4 id=([^ >]+)>", text))
         self.assertEqual({item["href"].split("#")[1] for item in items}, anchors)
         index = self.index.read_text(encoding="utf-8")
-        self.assertEqual(index.count("<li data-op="), 314)
+        self.assertEqual(index.count("<li data-op="), 317)
         match = [i for i in items if i["name"] == "Match_Template"]
         self.assertEqual([(i["overload"], i["overloads"]) for i in match], [(1, 2), (2, 2)])
+        for name in ("Box_Filter", "Canny_Edges"):
+            overloads = [i for i in items if i["name"] == name]
+            self.assertEqual([(i["overload"], i["overloads"]) for i in overloads],
+                             [(1, 2), (2, 2)])
         self.assertIn("overload 2 of 4", index)
 
     def test_enhancement_is_idempotent(self):

@@ -105,6 +105,13 @@ no production or native test code changed; original exact-version evidence
 remains scoped to those unchanged bytes. Exact corrective SHA and hosted run
 results are recorded on PR #73 after normal commit/push, not inferred here.
 
+The full mutation campaign also exposed the same stale inventory in navigation
+tests after the coverage failure was fixed. Current navigation now requires
+273 unique public names (Box_Filter adds one), 317 exact declaration entries,
+and separate two-overload mappings for Box_Filter and Canny_Edges. The anchor
+set and existing-overload assertions remain strict; historical navigation
+tests remain frozen in the isolated historical consumer.
+
 Windows remains intentionally post-merge/manually dispatched; skipped Windows
 is not a pass. No merge, auto-merge, tag, release, production shadow migration,
 or independent approval is authorized by this correction.
