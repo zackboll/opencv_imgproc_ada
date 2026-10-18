@@ -72,7 +72,10 @@ def history_checks(page, base, workspace, check, report, dimensions):
         label = entry["name"] + f" ({entry['overload']})"
 
         def native_selection(entry=entry, label=label):
-            page.goto(shell)
+            if dimensions["javascript"]:
+                initialize(shell)
+            else:
+                page.goto(shell)
             link = page.get_by_role("link", name=label, exact=True)
             require(link.get_attribute("href") == entry["href"], "source-order destination differs")
             link.focus()
@@ -80,6 +83,8 @@ def history_checks(page, base, workspace, check, report, dimensions):
             frame = page.frame(name="document-content")
             frame.wait_for_url(urljoin(shell, entry["href"]))
             declaration(frame, entry)
+            if dimensions["javascript"]:
+                restored(entry)
         check("additional source-order keyboard selection full native profile", native_selection,
               label=label, **dimensions)
 
@@ -93,6 +98,11 @@ def history_checks(page, base, workspace, check, report, dimensions):
 
     def sequence(name, filtered=False):
         first, second = [e for e in selected if e["name"] == name]
+        if name == "Get_Gaussian_Kernel":
+            native_text = (workspace / "pristine-first/api" / urlsplit(first["href"]).path).read_text()
+            require(native_text.index('id=' + urlsplit(first["href"]).fragment)
+                    > native_text.index('id=' + urlsplit(second["href"]).fragment),
+                    "Gaussian reversal regression precondition no longer holds")
         initialize(outer())
         page.frame(name="document-content").wait_for_url(urljoin(shell, urlsplit(first["href"]).path))
         if filtered:
