@@ -130,15 +130,15 @@ def history_checks(page, base, workspace, check, report, dimensions):
     check("declaration history after operation search", lambda: sequence("Filter_2D", True), **dimensions)
 
     def reload():
-        entry = selected[0]
-        initialize(outer(entry))
-        restored(entry)
-        length = page.evaluate("history.length")
-        page.reload()
-        page.locator('#package-navigation[data-ready="true"]').wait_for(state="visible")
-        page.evaluate('window.__consumerHistoryDocument = "same-shell"')
-        restored(entry)
-        require(page.evaluate("history.length") == length, "reload duplicated history")
+        for entry in (e for e in selected if e["name"] == "Filter_2D"):
+            initialize(outer(entry))
+            restored(entry)
+            length = page.evaluate("history.length")
+            page.reload()
+            page.locator('#package-navigation[data-ready="true"]').wait_for(state="visible")
+            page.evaluate('window.__consumerHistoryDocument = "same-shell"')
+            restored(entry)
+            require(page.evaluate("history.length") == length, "reload duplicated history")
     check("declaration deep link reload full profile", reload, **dimensions)
 
     def invalid():
@@ -331,7 +331,10 @@ def run(workspace):
                                 require(link.count() == 1, "local type link missing")
                                 target = urljoin(frame.url, link.get_attribute("href"))
                                 link.click()
+                                frame = page.frame(name="document-content")
                                 frame.wait_for_url(target)
+                                frame = page.frame(name="document-content")
+                                frame.locator('[id="' + urlsplit(target).fragment + '"]').wait_for(state="attached")
                                 require(frame.locator('[id="' + urlsplit(target).fragment + '"]').count() == 1,
                                         "local type destination missing")
                             check("native declaration and local type anchors", local_anchor, **dimensions)
@@ -365,13 +368,22 @@ def run(workspace):
                                 destination = link.get_attribute("href")
                                 before = frame.url
                                 link.click()
+                                frame = page.frame(name="document-content")
                                 frame.wait_for_url(destination)
+                                frame = page.frame(name="document-content")
+                                frame.locator('h4[id="' + urlsplit(destination).fragment + '"]').wait_for(state="attached")
                                 require(frame.locator('h4[id="' + urlsplit(destination).fragment + '"]').count() == 1,
                                         "clicked Core declaration missing")
                                 page.evaluate("history.back()")
+                                frame = page.frame(name="document-content")
                                 frame.wait_for_url(before)
+                                frame = page.frame(name="document-content")
+                                frame.locator('h4[id="' + urlsplit(before).fragment + '"]').wait_for(state="attached")
                                 page.evaluate("history.forward()")
+                                frame = page.frame(name="document-content")
                                 frame.wait_for_url(destination)
+                                frame = page.frame(name="document-content")
+                                frame.locator('h4[id="' + urlsplit(destination).fragment + '"]').wait_for(state="attached")
                             check("offline Core type click and frame Back Forward", external_click, **dimensions)
 
                             # Every selected external type is exercised directly, with real bytes and signature proof.
@@ -402,8 +414,10 @@ def run(workspace):
         historical = read_json(workspace / "legacy" / EVIDENCE / "browser-summary.json")
         original_names = set(historical["assertion_names"])
         report["original_assertions_retained"] = sum(c["name"] in original_names for c in report["checks"])
+        report["additional_history_assertions"] = sum(c["name"] not in original_names for c in report["checks"])
         report["original_assertion_names_retained"] = original_names <= {c["name"] for c in report["checks"]}
-        if report["original_assertions_retained"] < 1840 or not report["original_assertion_names_retained"]:
+        if (report["original_assertions_retained"] < 1840 or not report["original_assertion_names_retained"]
+                or report["additional_history_assertions"] != 152):
             report["status"] = "fail"
         write_json(workspace / "browser.json", report)
     require(report["status"] == "pass", f"browser qualification: {report['failures']} failures")

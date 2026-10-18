@@ -34,6 +34,11 @@ search history, keyboard operation and invalid/duplicate/wrong-owner queries.
 The new tests wait on URL, control readiness and actual native headings, and
 reacquire the iframe after transitions. A sentinel proves the outer API
 document stays loaded during declaration traversal. No arbitrary sleeps.
+The retained local-type and external-Core click assertions now reacquire the
+frame after each navigation and wait for the genuine destination heading;
+previously they retained one frame and checked anchor count immediately after
+URL arrival. The expected links, anchors, Back/Forward sequence and check names
+are unchanged. This separates URL acknowledgement from loaded native content.
 The original 24 observed mutations remain, with 12 additional rejection checks.
 Tampering runs serially before browsers; restored hashes and reconstructed
 publication must match the qualified site before browser execution.

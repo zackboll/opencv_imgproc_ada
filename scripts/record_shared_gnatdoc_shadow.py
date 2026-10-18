@@ -8,6 +8,14 @@ from qualify_shared_gnatdoc_shadow import ENHANCER, TRANSITION_SHA256, digest, h
 
 
 def record(workspace):
+    # The unchanged comparator carries no run-identity field. Reexecute it
+    # against this workspace, rather than credit a copied passing JSON report.
+    if (workspace / "legacy/_site/api").is_dir() and (workspace / "first/_site/api").is_dir():
+        from compare_shared_gnatdoc_navigation import run
+        try:
+            run(workspace)
+        except ValueError:
+            pass  # The written failing report remains an explicit readiness gate.
     reports = {}
     missing = []
     for name in ("qualification", "negative", "browser", "navigation-comparison"):
@@ -37,6 +45,7 @@ def record(workspace):
                 and reports.get("browser", {}).get("executed", 0) >= 1840
                 and reports.get("browser", {}).get("original_assertions_retained", 0) >= 1840
                 and reports.get("browser", {}).get("original_assertion_names_retained") is True
+                and reports.get("browser", {}).get("additional_history_assertions") == 152
                 and bool(reports.get("browser", {}).get("history_traces"))
                 and reports.get("negative", {}).get("executed") == 36
                 and reports.get("navigation-comparison", {}).get("operations") == 314

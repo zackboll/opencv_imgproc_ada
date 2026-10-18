@@ -26,6 +26,10 @@ def collect(workspace, destination):
     write_json(destination / "browser-history-traces.json", browser.get("history_traces", []))
     write_json(destination / "browser-summary.json", {
         "status": browser["status"], "executed": browser["executed"], "failures": browser["failures"],
+        "original_assertions_retained": browser["original_assertions_retained"],
+        "original_assertion_names_retained": browser["original_assertion_names_retained"],
+        "additional_history_assertions": browser["additional_history_assertions"],
+        "qualification_sha256": browser["qualification_sha256"],
         "chromium": browser["chromium"], "full_report_sha256": digest((workspace / "browser.json").read_bytes()),
         "full_report": "review-only CI artifact or retained local qualification workspace/browser.json",
         "assertion_names": sorted({c["name"] for c in browser["checks"]}),
