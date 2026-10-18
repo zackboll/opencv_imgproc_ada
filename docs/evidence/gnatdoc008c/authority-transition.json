@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "consumer_main": "9ce22ae5ab70008e1147475a9e6d7baef82f1df0",
+  "consumer_pr": 72,
+  "consumer_pr_start": "f2989da6c6a593f6196d1d989be0b2d126743dc6",
+  "old_enhancer": "f52dcfe37dc2819d86e72e1c38425e5e49d914eb",
+  "new_enhancer": "53a321915da2c5a02a54581040673b61f8595b25",
+  "enhancer_merge_pr": 9,
+  "core": "386c5360ac51f2b62e522853d94290aec4ee14a0",
+  "publication": "shadow-only / offline-test / non-deployable",
+  "approval_scope": "Revision transition only; original GNATDOC-008 trust digests and all source, native, acquisition, authored and configuration bytes remain authoritative. Subject to independent review on existing PR #72; runtime evidence cannot authorize this record.",
+  "historical_records_sha256": {
+    "authority.json": "9df0e47850828534fb250432baebfc8a36d6e20dd3e7d476189568dd14eebf5e",
+    "authored.json": "c7f5bb0ad8afe4c8d530a2bcf04c8a9ba243c016d6500e251005c95e9858727c",
+    "consumer-input.json": "aff70e359331e95951465bcd1e34f2048db6558eca4dbd00136e80af5cb02be4",
+    "core-input.json": "c8512e0ff729d9bcc2903a144384288756be8da93fa591facddf6f0461fed2f4",
+    "core-types.json": "eaf814b7e7b66cc57d856e861420b4c049e0f2cdfb5f2b7d94dc6604f85e06a4"
+  },
+  "configuration_sha256": "97ab099d45cfb26aa60131881d0c774a01b7d39749bc00e6f5ccbbfcf41ca30d",
+  "canonical_map_encoding": "UTF-8 JSON, sorted keys, separators comma and colon, no trailing newline",
+  "unchanged_maps_sha256": {
+    "consumer-input.json:source_sha256": "d26fa0e2bd399dea6b07d02e6cbeb3a1a3fa8cd013820ff885fec7c854a22b56",
+    "consumer-input.json:pristine_sha256": "a1659359b7711ca266eb5d511cfa9fc2d3fc9205aa8995c2cab221e326242128",
+    "authored.json:inputs": "0850a098fac6f183b025eeb5104a3261776d22813bacaccdfd695b5f800d343d",
+    "authored.json:native_sha256": "a1659359b7711ca266eb5d511cfa9fc2d3fc9205aa8995c2cab221e326242128",
+    "core-input.json:source_sha256": "fc920f233c1583c05bbe271943e3a1e708b9e071a2c31d7e6393f58b37b16021",
+    "core-input.json:pristine_sha256": "fb8e67f053e51d0818cbac7ca8a3e8995e1f6e1a8aeb2b70b8a001de966f2807",
+    "core-input.json:acquisition": "c090f14c3b97a04086b433d8d5dc6c84ec031c8e1009ed9eef6283b871b2d270",
+    "core-types.json:source_sha256": "fc920f233c1583c05bbe271943e3a1e708b9e071a2c31d7e6393f58b37b16021",
+    "core-types.json:native_sha256": "fb8e67f053e51d0818cbac7ca8a3e8995e1f6e1a8aeb2b70b8a001de966f2807"
+  },
+  "historical_output_record": "docs/evidence/gnatdoc008/local-qualification.json",
+  "historical_output_record_sha256": "4b14c4ba7dec260cc8822122f999d6719e28efd4863bc09099c8413b82ed2dc6",
+  "approved_changed_publications": {
+    "api/gnatdoc-navigation.js": "GNATDOC-008B declaration-aware outer history; must equal the pinned installed asset. No consumer implementation workaround.",
+    "api/index.html": "GNATDOC-008A source-order overload labels; unchanged independent consumer oracle must prove all 314 associations.",
+    "api/presentation.json": "Output metadata binds changed navigation/index bytes; independent verify and native preservation remain mandatory."
+  }
+}

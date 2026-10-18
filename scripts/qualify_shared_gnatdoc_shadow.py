@@ -22,10 +22,15 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).absolute().parents[1]
 BASE = "9ce22ae5ab70008e1147475a9e6d7baef82f1df0"
-ENHANCER = "f52dcfe37dc2819d86e72e1c38425e5e49d914eb"
+OLD_ENHANCER = "f52dcfe37dc2819d86e72e1c38425e5e49d914eb"
+ENHANCER = "53a321915da2c5a02a54581040673b61f8595b25"
+PR_START = "f2989da6c6a593f6196d1d989be0b2d126743dc6"
 CORE = "386c5360ac51f2b62e522853d94290aec4ee14a0"
 CONFIG = "docs/shared-gnatdoc-shadow.toml"
 EVIDENCE = "docs/evidence/gnatdoc008"
+CURRENT_EVIDENCE = "docs/evidence/gnatdoc008c"
+TRANSITION = CURRENT_EVIDENCE + "/authority-transition.json"
+TRANSITION_SHA256 = "bf399766834fd80fdbf359486abcd504d2e290b59244dda5097e01e16e770bab"
 TRUST = {
     "authority.json": "9df0e47850828534fb250432baebfc8a36d6e20dd3e7d476189568dd14eebf5e",
     "authored.json": "c7f5bb0ad8afe4c8d530a2bcf04c8a9ba243c016d6500e251005c95e9858727c",
@@ -178,6 +183,10 @@ def provenance(session, enhancer):
             and importlib.metadata.version("mdurl") == "0.1.2", "unqualified Markdown dependencies")
     session.run([sys.executable, "-m", "pip", "check"], ROOT)
     return {"revision": ENHANCER, "version": dist.version, "origin": direct,
+            "installed_sha256": {p.relative_to(enhancer / "src").as_posix():
+                                 digest(p.read_bytes()) for p in
+                                 (enhancer / "src/ada_gnatdoc_enhancer").rglob("*")
+                                 if p.is_file() and "__pycache__" not in p.parts},
             "resolved_python": session.run([sys.executable, "-m", "pip", "freeze", "--all"], ROOT)}
 
 
@@ -238,13 +247,31 @@ def compare(legacy, shadow, pristine, authored):
             "production_https_verified": False}
 
 
-def trusted_inputs():
+def trusted_inputs(root=ROOT):
     """Verify checked-in approval; never mint authority from current working bytes."""
-    check_files(ROOT / EVIDENCE, TRUST)
-    authority = read_json(ROOT / EVIDENCE / "authority.json")
-    require(authority["consumer_start"] == BASE and authority["shared_enhancer"] == ENHANCER
+    check_files(root / EVIDENCE, TRUST)
+    check_files(root, {TRANSITION: TRANSITION_SHA256})
+    authority = read_json(root / EVIDENCE / "authority.json")
+    transition = read_json(root / TRANSITION)
+    require(authority["consumer_start"] == BASE and authority["shared_enhancer"] == OLD_ENHANCER
             and authority["core"] == CORE, "authority revision mismatch")
-    check_files(ROOT, authority["files"])
+    require(transition["consumer_main"] == BASE and transition["consumer_pr_start"] == PR_START
+            and transition["consumer_pr"] == 72 and transition["old_enhancer"] == OLD_ENHANCER
+            and transition["new_enhancer"] == ENHANCER and transition["core"] == CORE
+            and transition["historical_records_sha256"] == TRUST
+            and transition["publication"] == "shadow-only / offline-test / non-deployable",
+            "unapproved enhancer authority transition")
+    check_files(root, authority["files"])
+    require(authority["files"][CONFIG] == transition["configuration_sha256"],
+            "transition configuration mismatch")
+    for key, sha in transition["unchanged_maps_sha256"].items():
+        name, field = key.split(":")
+        content = read_json(root / EVIDENCE / name)[field]
+        require(digest(json.dumps(content, sort_keys=True, separators=(",", ":")).encode()) == sha,
+                f"transition input mismatch: {key}")
+    check_files(root, {transition["historical_output_record"]:
+                      transition["historical_output_record_sha256"]})
+    return transition
 
 
 def qualify(args):
@@ -272,7 +299,8 @@ def qualify(args):
                "docs/index.html", "docs/assets", "docs/api-categories.json", "docs/guides",
                "docs/example.adb", "docs/example.gpr", "docs/examples",
                "docs/gnatdoc-coverage-baseline.txt", "docs/gnatdoc-warning-baseline.txt"], ROOT)
-        trusted_inputs()
+        transition = trusted_inputs()
+        report["authority_transition_sha256"] = TRANSITION_SHA256
         report["tool"] = provenance(s, safe(args.enhancer))
         require(s.run(["alr", "--version"], ROOT) == "alr 2.1.1", "unqualified Alire")
         legacy, source, core = (workspace / n for n in ("legacy", "source", "core"))
@@ -364,6 +392,7 @@ def qualify(args):
             root = workspace / label
             root.mkdir()
             for name in {*consumer["source_sha256"], *authored["inputs"], CONFIG,
+                         TRANSITION, transition["historical_output_record"],
                          *(EVIDENCE + "/" + n for n in TRUST)}:
                 target = root / name
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -388,6 +417,14 @@ def qualify(args):
             s.run(cli + ["enhance"] + options, root)
             publication = json.loads(s.run(cli + ["verify"] + options, root))
             state = hashes(site)
+            historical = read_json(ROOT / transition["historical_output_record"])["shadow_sha256"]
+            require(set(state) == set(historical), "published file inventory changed")
+            changed = sorted(n for n in state if state[n] != historical[n])
+            require(set(changed) == set(transition["approved_changed_publications"]),
+                    f"unapproved published differences: {changed}")
+            report["published_changes"] = {n: {"old_sha256": historical[n],
+                "new_sha256": state[n], "approval": transition["approved_changed_publications"][n]}
+                for n in changed}
             s.run(cli + ["enhance"] + options, root)
             require(hashes(site) == state, "enhancement is not byte-idempotent")
             outputs.append(state)
@@ -398,7 +435,7 @@ def qualify(args):
             write_json(workspace / "qualification.json", report)
             report["shadow_gates"] = original_gates(s, source, site, workspace / "native-first.log")
         require(outputs[0] == outputs[1], "independent output regeneration is nondeterministic")
-        report.update({"consumer_start": BASE, "consumer_tested": args.expected_head,
+        report.update({"consumer_start": BASE, "pr_start": PR_START, "consumer_tested": args.expected_head,
                        "deterministic": True, "byte_idempotent": True,
                        "legacy_sha256": hashes(legacy / "_site"), "shadow_sha256": outputs[0],
                        "disposition": "HOSTED_CI_PENDING"})
