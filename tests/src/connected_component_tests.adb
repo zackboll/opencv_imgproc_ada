@@ -1036,7 +1036,7 @@ package body Connected_Component_Tests is
                  (Label_At (Parent, R, C) = Label_At (Labels, R - 1, C - 1)
                   and then Label_At (Alias, R - 1, C - 1)
                            = Label_At (Labels, R - 1, C - 1),
-                  "legacy native writes reach shallow alias and Region parent");
+                  "legacy writes reach shallow alias and Region parent");
             else
                AUnit.Assertions.Assert
                  (OpenCV.Core.Int32_Access.Get (Parent, R, C) = 73,
