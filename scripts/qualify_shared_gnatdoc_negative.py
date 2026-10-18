@@ -30,6 +30,7 @@ def run(workspace, enhancer):
     baseline = hashes(site)
     verify(config(), site)
     results = []
+    restored_and_verified = False
 
     def reject(label, assertion, *, observed):
         require(observed, f"mutation did not occur: {label}")
@@ -237,11 +238,14 @@ def run(workspace, enhancer):
         verify(config(), site)
         bind_pristine(pristine, site)
         trusted_inputs(root)
+        restored_and_verified = True
     finally:
         write_json(workspace / "negative.json", {"tests": results, "executed": len(results),
                     "qualification_sha256": digest((workspace / "qualification.json").read_bytes()),
                     "tested_shadow_sha256": baseline, "restored_shadow_sha256": hashes(site),
-                    "status": "pass" if len(results) == 36 and all(r["rejected"] for r in results) else "fail"})
+                    "restored_and_verified": restored_and_verified,
+                    "status": "pass" if restored_and_verified and len(results) == 36
+                    and all(r["rejected"] for r in results) else "fail"})
     require(len(results) == 36, "incomplete adversarial suite")
     return results
 

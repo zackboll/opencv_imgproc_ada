@@ -83,6 +83,7 @@ class ShadowBoundaries(unittest.TestCase):
             q.write_text(json.dumps(qualification))
             binding = {"qualification_sha256": digest(q.read_bytes()), "tested_shadow_sha256": output}
             reports = {"negative": {"status": "pass", "executed": 36,
+                                    "restored_and_verified": True,
                                     "restored_shadow_sha256": output, **binding},
                        "browser": {"status": "pass", "executed": 1992,
                                    "original_assertions_retained": 1840,

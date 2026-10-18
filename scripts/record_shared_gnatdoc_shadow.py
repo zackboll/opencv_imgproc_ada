@@ -56,6 +56,7 @@ def record(workspace):
                 and reports.get("browser", {}).get("additional_history_assertions") == 152
                 and bool(reports.get("browser", {}).get("history_traces"))
                 and reports.get("negative", {}).get("executed") == 36
+                and reports.get("negative", {}).get("restored_and_verified") is True
                 and reports.get("navigation-comparison", {}).get("operations") == 314
                 and reports.get("navigation-comparison", {}).get("failures") == [])
     qualification_sha = (digest((workspace / "qualification.json").read_bytes())
