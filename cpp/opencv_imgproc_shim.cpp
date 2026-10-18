@@ -11,6 +11,7 @@
 #include "blend_linear_layout_fits.hpp"
 #include "subpixel_patch_guard.hpp"
 #include "squared_box_layout_fits.hpp"
+#include "canny_box_layout.hpp"
 #include "ballard_layout_fits.hpp"
 #include "guil_layout_fits.hpp"
 #include "masked_template_layout_fits.hpp"
@@ -5869,6 +5870,141 @@ opencv_imgproc_canny(
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_imgproc_status opencv_imgproc_canny_derivatives(
+    const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
+    opencv_core_mat_handle *destination, double lower, double upper,
+    int32_t norm)
+{
+    clear_error();
+    try {
+        const cv::Mat *dx = nullptr, *dy = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(x, &dx) != OPENCV_CORE_OK || !dx ||
+            opencv_core_module_input_mat(y, &dy) != OPENCV_CORE_OK || !dy ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid derivative Canny Mat handle");
+        bool l2 = false;
+        if (!to_opencv_canny_gradient_norm(norm, l2))
+            return invalid_argument("invalid derivative Canny norm selector");
+        // ABI safety: cvFloor converts thresholds to signed int; the IPP path
+        // first narrows them to float. L2's native min(32767) bounds positives.
+        if (!std::isfinite(lower) || !std::isfinite(upper) ||
+            lower < 0 || upper < 0 ||
+            lower > std::numeric_limits<float>::max() ||
+            upper > std::numeric_limits<float>::max() ||
+            (!l2 && (lower > INT_MAX || upper > INT_MAX)))
+            return invalid_argument("unsafe derivative Canny threshold conversion");
+        // ABI safety: the sample-arithmetic preflight below reads paired
+        // short rows. Geometry/type equality is required for those reads.
+        if (dx->dims != 2 || dy->dims != 2 || dx->size() != dy->size() ||
+            dx->type() != dy->type() ||
+            (dx->type() != CV_16SC1 && dx->type() != CV_16SC3) ||
+            !opencv_imgproc_detail::canny_layout(dx->rows, dx->cols, dx->channels()))
+            return invalid_argument("unsafe derivative Canny layout or type");
+        // ABI safety: preserve borrowed inputs and prevent output publication
+        // from rebinding an input object or overwriting its shared storage.
+        if (dx == dst || dy == dst || mat_storage_overlaps(*dx, *dst) ||
+            mat_storage_overlaps(*dy, *dst))
+            return invalid_argument("derivative Canny destination aliases input");
+        for (const cv::Mat *m : {dx, dy}) {
+            const size_t row = size_t(m->cols) * m->elemSize();
+            // ABI safety: bound strided row-pointer formation before scanning.
+            if (m->step < row || m->step > size_t(INT_MAX) ||
+                row > size_t(PTRDIFF_MAX) || size_t(m->rows - 1) >
+                    (size_t(PTRDIFF_MAX) - row) / m->step)
+                return invalid_argument("unsafe derivative Canny byte extent");
+        }
+        for (int r = 0; r < dx->rows; ++r) {
+            const short *a = dx->ptr<short>(r), *b = dy->ptr<short>(r);
+            for (int c = 0; c < dx->cols * dx->channels(); ++c) {
+                const int64_t ax = std::abs(int(a[c])), ay = std::abs(int(b[c]));
+                // ABI safety: native scalar squared magnitude and direction
+                // arithmetic are signed int, not saturating or widened. Test
+                // the actual direction branch without changing input samples.
+                if ((l2 && ax * ax + ay * ay > INT_MAX) ||
+                    (ay * 32768 >= ax * 13573 && ax * 79109 > INT_MAX))
+                    return invalid_argument("unsafe derivative Canny sample arithmetic");
+            }
+        }
+        cv::Mat result;
+        cv::Canny(*dx, *dy, result, lower, upper, l2);
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_imgproc_status opencv_imgproc_box_filter(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t width, int32_t height, int32_t depth, int32_t ax, int32_t ay,
+    int32_t normalize, int32_t border)
+{
+    clear_error();
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src ||
+            opencv_core_module_output_mat(destination, &dst) != OPENCV_CORE_OK || !dst)
+            return invalid_argument("invalid box filter Mat handle");
+        int ddepth = 0, native_border = 0;
+        if (!to_opencv_derivative_depth(depth, ddepth) ||
+            !to_opencv_border(border, native_border) ||
+            (normalize != 0 && normalize != 1))
+            return invalid_argument("invalid box filter primitive selector");
+        // ABI safety: the shifted adapter accesses 2-D pixels and subtracts
+        // anchors while constructing its halo. Invalid anchors/kernels would
+        // mis-size that halo. Publication must not rebind the source object.
+        if (src == dst || src->dims != 2 || width <= 0 || height <= 0 ||
+            ax < 0 || ay < 0 || ax >= width || ay >= height)
+            return invalid_argument("unsafe box filter geometry or identical objects");
+        // ABI safety: Wrap is not part of the adapter's border-index
+        // representation; treating it as reflection would copy wrong donors.
+        if (native_border != cv::BORDER_CONSTANT && native_border != cv::BORDER_REPLICATE &&
+            native_border != cv::BORDER_REFLECT && native_border != cv::BORDER_REFLECT_101)
+            return invalid_argument("invalid box filter border representation");
+        opencv_imgproc_detail::Box_Layout p;
+        if (!opencv_imgproc_detail::box_layout(src->rows, src->cols, src->channels(),
+                width, height, normalize != 0, native_border, p))
+            return invalid_argument("unsafe box filter native layout");
+        const int sdepth = src->depth();
+        const int64_t area = int64_t(p.kw) * p.kh;
+        // ABI safety: native unnormalized integer paths always choose int
+        // accumulators, even for floating output. Reject overflow, not merely
+        // output saturation. Normalized larger kernels choose double instead.
+        const int64_t integer_limit = sdepth == CV_8U ? 8388608 :
+            sdepth == CV_16U ? 32768 : sdepth == CV_16S ? 65536 : 0;
+        if (sdepth <= CV_32S &&
+            (integer_limit == 0 || (!normalize && area > integer_limit)))
+            return invalid_argument("unsafe box filter signed accumulator");
+        const size_t bytes = src->elemSize(), row = size_t(src->cols) * bytes;
+        // ABI safety: bound every strided donor access before forming pointers.
+        if (src->step < row || src->step > size_t(INT_MAX) ||
+            row > size_t(PTRDIFF_MAX) || size_t(src->rows - 1) >
+                (size_t(PTRDIFF_MAX) - row) / src->step)
+            return invalid_argument("unsafe box filter source byte extent");
+        cv::Mat parent(p.ph, p.pw, src->type());
+        const int anchor_x = p.kw == 1 ? 0 : ax;
+        const int anchor_y = p.kh == 1 ? 0 : ay;
+        for (int r = 0; r < parent.rows; ++r) {
+            const int sy = opencv_imgproc_squared_box::border_index(
+                int64_t(r) - anchor_y, src->rows, native_border);
+            for (int c = 0; c < parent.cols; ++c) {
+                const int sx = opencv_imgproc_squared_box::border_index(
+                    int64_t(c) - anchor_x, src->cols, native_border);
+                uchar *target = parent.ptr(r) + size_t(c) * bytes;
+                if (sx < 0 || sy < 0) std::memset(target, 0, bytes);
+                else std::memcpy(target, src->ptr(sy) + size_t(sx) * bytes, bytes);
+            }
+        }
+        const cv::Mat input = parent(cv::Rect(0, 0, p.nw, p.nh));
+        cv::Mat native_result;
+        cv::boxFilter(input, native_result, ddepth, cv::Size(p.kw, p.kh),
+                      cv::Point(0, 0), normalize != 0, cv::BORDER_REPLICATE);
+        cv::Mat result = native_result(cv::Rect(0, 0, src->cols, src->rows)).clone();
+        *dst = std::move(result);
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_imgproc_status

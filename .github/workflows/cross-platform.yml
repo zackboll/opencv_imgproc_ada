@@ -188,6 +188,9 @@ jobs:
             tests/blend_linear_layout_test.cpp -o blend_linear_layout_test
           ./blend_linear_layout_test
 
+      - name: Run gradient Canny and generalized box native qualification
+        run: sh tests/run_canny_box_native.sh
+
   macos-arm64:
     name: macOS ARM64
     runs-on: macos-latest

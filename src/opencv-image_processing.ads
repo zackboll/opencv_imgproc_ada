@@ -3499,6 +3499,56 @@ package OpenCV.Image_Processing is
       Kernel_Size : OpenCV.Size;
       Border      : OpenCV.Border_Kind := OpenCV.Reflect_101);
 
+   --  Native cv::boxFilter over Source's logical image (a Region does not
+   --  read its parent). Source is nonempty 2-D UInt8, UInt16, Int16, Float32
+   --  or Float64; channels are independent. UInt8 accepts all Filter_Depths;
+   --  UInt16 accepts Same_Depth or either floating depth; Int16 also accepts
+   --  Int16_Depth; floating sources accept either float depth or Same_Depth.
+   --  Integer outputs round and saturate using OpenCV's conversions. Floating
+   --  outputs retain native rounding, overflow and nonfinite propagation;
+   --  incremental sums need not equal independently summed windows.
+   --
+   --  Destination is rebound to fresh owning storage after success, keeping
+   --  Source's dimensions and channels. Distinct overlapping headers are safe;
+   --  Source and Destination must not be the same Ada object. Other aliases
+   --  of Destination, including a Region's parent, remain unchanged. Invalid
+   --  inputs and native failures leave Destination unchanged. Normalized
+   --  nonconstant singleton axes use an effective kernel dimension of one.
+   --  @param Source Image to filter; preserved.
+   --  @param Destination Receives an independently owned result.
+   --  @param Kernel_Size Positive rectangle; even sizes allowed.
+   --  @param Destination_Depth Output depth; Same_Depth by default.
+   --  @param Normalize True computes the mean; False computes the sum.
+   --  @param Border Constant_Border (zero), Replicate, Reflect or Reflect_101.
+   --  @exception OpenCV_Error Unsupported inputs, Wrap, unsafe native layout
+   --  or accumulator arithmetic, identical objects, or native failure.
+   procedure Box_Filter
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_Size       : OpenCV.Size;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Normalize         : Boolean := True;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
+
+   --  Box_Filter with an explicit nonnegative anchor inside Kernel_Size.
+   --  All other semantics and safety limits match the centered overload.
+   --  @param Source Image to filter; preserved.
+   --  @param Destination Receives an independently owned result.
+   --  @param Kernel_Size Positive rectangular neighborhood.
+   --  @param Anchor Zero-based kernel position aligned with each output pixel.
+   --  @param Destination_Depth Output depth; Same_Depth by default.
+   --  @param Normalize True computes the mean; False computes the sum.
+   --  @param Border Extrapolation outside the logical image; Wrap is rejected.
+   --  @exception OpenCV_Error Invalid anchor or any centered-overload error.
+   procedure Box_Filter
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_Size       : OpenCV.Size;
+      Anchor            : OpenCV.Point;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Normalize         : Boolean := True;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101);
+
    --  Bilateral_Filter replaces Destination with an edge-preserving smoothing
    --  of Source (native cv::bilateralFilter). Spatial distance and
    --  pixel/color distance both weight the neighborhood average, so strong
@@ -4245,6 +4295,38 @@ package OpenCV.Image_Processing is
       Lower_Threshold : OpenCV.Float64_Value;
       Upper_Threshold : OpenCV.Float64_Value;
       Aperture        : Canny_Aperture := Sobel_3x3;
+      Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
+
+   --  Native derivative-input cv::Canny; gradients are not recomputed.
+   --  Derivatives must be nonempty 2-D Int16 C1 or C3 with identical geometry
+   --  and type. C3 selects the channel with greatest magnitude per pixel.
+   --  Noncontiguous Regions are supported and both derivatives are preserved.
+   --  Destination must not overlap either derivative (including self); after
+   --  success it receives fresh owning UInt8 C1 storage of their geometry.
+   --  Previous Destination aliases and Region parents are not modified.
+   --  Rejected calls and native failures leave Destination unchanged.
+   --
+   --  Native signed arithmetic is checked before execution: L2 rejects pairs
+   --  whose squared magnitude exceeds Integer_32'Last; both norms reject
+   --  samples whose native direction-classification branch would overflow.
+   --  Padded map/ring-buffer sizes and byte extents are bounded as well.
+   --  No samples or thresholds are silently clamped by the binding.
+   --  @param Derivative_X Signed horizontal derivatives.
+   --  @param Derivative_Y Signed vertical derivatives.
+   --  @param Destination Receives the edge map (values zero or 255).
+   --  @param Lower_Threshold Finite nonnegative lower hysteresis threshold.
+   --  @param Upper_Threshold Finite threshold not below Lower_Threshold.
+   --  @param Gradient_Norm L1_Norm (default) or L2_Norm.
+   --  @exception OpenCV_Error Invalid derivatives, thresholds, aliasing,
+   --  unsafe native arithmetic/layout, or native failure. L1 thresholds above
+   --  2_147_483_647 are rejected before native integer conversion.
+   --  L2 thresholds must fit finite Float32 for optional IPP dispatch.
+   procedure Canny_Edges
+     (Derivative_X    : OpenCV.Core.Mat;
+      Derivative_Y    : OpenCV.Core.Mat;
+      Destination     : in out OpenCV.Core.Mat;
+      Lower_Threshold : OpenCV.Float64_Value;
+      Upper_Threshold : OpenCV.Float64_Value;
       Gradient_Norm   : Canny_Gradient_Norm := L1_Norm);
 
    --  Result depth of Extract_Subpixel_Patch.

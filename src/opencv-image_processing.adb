@@ -7,6 +7,8 @@ with Interfaces.C;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Int32_Access;
+with OpenCV.Core.Int16_Row_Access;
+with OpenCV.Core.Int16_Vec3_Row_Access;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Row_Access;
 with OpenCV.Core.UInt8_Access;
@@ -6042,6 +6044,109 @@ package body OpenCV.Image_Processing is
       Raise_On_Error (Status, "box blur");
    end Box_Blur;
 
+   procedure Box_Filter
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_Size       : OpenCV.Size;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Normalize         : Boolean := True;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101) is
+   begin
+      Box_Filter
+        (Source,
+         Destination,
+         Kernel_Size,
+         (OpenCV.Point_Coordinate (Kernel_Size.Width / 2),
+          OpenCV.Point_Coordinate (Kernel_Size.Height / 2)),
+         Destination_Depth,
+         Normalize,
+         Border);
+   end Box_Filter;
+
+   procedure Box_Filter
+     (Source            : OpenCV.Core.Mat;
+      Destination       : in out OpenCV.Core.Mat;
+      Kernel_Size       : OpenCV.Size;
+      Anchor            : OpenCV.Point;
+      Destination_Depth : Filter_Depth := Same_Depth;
+      Normalize         : Boolean := True;
+      Border            : OpenCV.Border_Kind := OpenCV.Reflect_101)
+   is
+      use type System.Address;
+      use type Interfaces.Integer_64;
+      use type OpenCV.Core.Depth_Type;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      Width  : Interfaces.Integer_64 :=
+        Interfaces.Integer_64 (Kernel_Size.Width);
+      Height : Interfaces.Integer_64 :=
+        Interfaces.Integer_64 (Kernel_Size.Height);
+      Limit  : Interfaces.Integer_64 := 2_147_483_647;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.Box_Filter
+                (S,
+                 D,
+                 Interfaces.Integer_32 (Kernel_Size.Width),
+                 Interfaces.Integer_32 (Kernel_Size.Height),
+                 To_C_Derivative_Depth (Destination_Depth),
+                 Interfaces.Integer_32 (Anchor.X),
+                 Interfaces.Integer_32 (Anchor.Y),
+                 Boolean'Pos (Normalize),
+                 To_C_Border (Border));
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle
+           (Destination, Output'Access);
+      end Input;
+   begin
+      Validate_Box_Blur (Source, Kernel_Size, Border);
+      if Source'Address = Destination'Address
+        or else Anchor.X < 0
+        or else Anchor.Y < 0
+        or else Interfaces.Integer_64 (Anchor.X) >= Width
+        or else Interfaces.Integer_64 (Anchor.Y) >= Height
+      then
+         raise OpenCV.OpenCV_Error
+           with "Box_Filter invalid anchor or identical objects";
+      end if;
+      if Destination_Depth = Int16_Depth
+        and then Source.Depth not in OpenCV.Core.UInt8 | OpenCV.Core.Int16
+      then
+         raise OpenCV.OpenCV_Error with "Box_Filter unsupported output depth";
+      end if;
+      if Normalize and then Border /= OpenCV.Constant_Border then
+         if Source.Columns = 1 then
+            Width := 1;
+         end if;
+         if Source.Rows = 1 then
+            Height := 1;
+         end if;
+      end if;
+      if not Normalize then
+         case Source.Depth is
+            when OpenCV.Core.UInt8  =>
+               Limit := 8_388_608;
+
+            when OpenCV.Core.UInt16 =>
+               Limit := 32_768;
+
+            when OpenCV.Core.Int16  =>
+               Limit := 65_536;
+
+            when others             =>
+               null;
+         end case;
+      end if;
+      if Width * Height > Limit then
+         raise OpenCV.OpenCV_Error
+           with "Box_Filter unsafe native kernel arithmetic";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
+      Raise_On_Error (Status, "Box_Filter");
+   end Box_Filter;
+
    procedure Apply_Bilateral_Filter
      (Source      : OpenCV.Core.Mat;
       Destination : in out OpenCV.Core.Mat;
@@ -6732,6 +6837,138 @@ package body OpenCV.Image_Processing is
       OpenCV.Core.Module_Interop.With_Input_Handle
         (Source, Canny_Input'Access);
       Raise_On_Error (Status, "Canny edge detection");
+   end Canny_Edges;
+
+   procedure Canny_Edges
+     (Derivative_X    : OpenCV.Core.Mat;
+      Derivative_Y    : OpenCV.Core.Mat;
+      Destination     : in out OpenCV.Core.Mat;
+      Lower_Threshold : OpenCV.Float64_Value;
+      Upper_Threshold : OpenCV.Float64_Value;
+      Gradient_Norm   : Canny_Gradient_Norm := L1_Norm)
+   is
+      --  IEEE NaN/Inf must reach the explicit public error policy rather
+      --  than GNAT's optional scalar validity checks at a call boundary.
+      pragma Suppress (Validity_Check);
+      use type OpenCV.Float64_Value;
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Check_Pair (X, Y : OpenCV.Int16_Value) is
+         use type Interfaces.Integer_64;
+         AX : constant Interfaces.Integer_64 := abs Interfaces.Integer_64 (X);
+         AY : constant Interfaces.Integer_64 := abs Interfaces.Integer_64 (Y);
+      begin
+         if (Gradient_Norm = L2_Norm
+             and then AX * AX + AY * AY > 2_147_483_647)
+           or else (AY * 32_768 >= AX * 13_573
+                    and then AX * 79_109 > 2_147_483_647)
+         then
+            raise OpenCV.OpenCV_Error
+              with "Canny_Edges unsafe native derivative arithmetic";
+         end if;
+      end Check_Pair;
+      procedure Check_Row (Row : Natural) is
+         procedure X1 (X : aliased OpenCV.Core.Int16_Row_Access.Row_Array) is
+            procedure Y1 (Y : aliased OpenCV.Core.Int16_Row_Access.Row_Array)
+            is
+            begin
+               for C in X'Range loop
+                  Check_Pair (X (C), Y (C));
+               end loop;
+            end Y1;
+         begin
+            OpenCV.Core.Int16_Row_Access.With_Read_Only_Row
+              (Derivative_Y, Row, Y1'Access);
+         end X1;
+         procedure X3 (X : aliased OpenCV.Core.Int16_Vec3_Row_Access.Row_Array)
+         is
+            procedure Y3
+              (Y : aliased OpenCV.Core.Int16_Vec3_Row_Access.Row_Array) is
+            begin
+               for C in X'Range loop
+                  for Channel in X (C)'Range loop
+                     Check_Pair (X (C) (Channel), Y (C) (Channel));
+                  end loop;
+               end loop;
+            end Y3;
+         begin
+            OpenCV.Core.Int16_Vec3_Row_Access.With_Read_Only_Row
+              (Derivative_Y, Row, Y3'Access);
+         end X3;
+      begin
+         if Derivative_X.Channels = 1 then
+            OpenCV.Core.Int16_Row_Access.With_Read_Only_Row
+              (Derivative_X, Row, X1'Access);
+         else
+            OpenCV.Core.Int16_Vec3_Row_Access.With_Read_Only_Row
+              (Derivative_X, Row, X3'Access);
+         end if;
+      end Check_Row;
+      procedure X_Input (X : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Y_Input (Y : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+            is
+            begin
+               Status :=
+                 Internal.C_API.Canny_Derivatives
+                   (X,
+                    Y,
+                    D,
+                    Interfaces.C.double (Lower_Threshold),
+                    Interfaces.C.double (Upper_Threshold),
+                    To_C_Canny_Gradient_Norm (Gradient_Norm));
+            end Output;
+         begin
+            OpenCV.Core.Module_Interop.With_Output_Handle
+              (Destination, Output'Access);
+         end Y_Input;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Derivative_Y, Y_Input'Access);
+      end X_Input;
+   begin
+      if Derivative_X.Is_Empty
+        or else Derivative_Y.Is_Empty
+        or else Derivative_X.Dimension_Count /= 2
+        or else Derivative_Y.Dimension_Count /= 2
+        or else Derivative_X.Depth /= OpenCV.Core.Int16
+        or else Derivative_Y.Depth /= OpenCV.Core.Int16
+        or else Derivative_X.Channels not in 1 | 3
+        or else Derivative_X.Channels /= Derivative_Y.Channels
+        or else Derivative_X.Rows /= Derivative_Y.Rows
+        or else Derivative_X.Columns /= Derivative_Y.Columns
+      then
+         raise OpenCV.OpenCV_Error
+           with
+             "Canny_Edges requires matching nonempty 2-D Int16 C1/C3 inputs";
+      end if;
+      if Lower_Threshold /= Lower_Threshold
+        or else Lower_Threshold > OpenCV.Float64_Value'Last
+        or else Lower_Threshold < 0.0
+        or else Upper_Threshold /= Upper_Threshold
+        or else Upper_Threshold > OpenCV.Float64_Value'Last
+        or else Upper_Threshold
+                > OpenCV.Float64_Value (OpenCV.Float32_Value'Last)
+        or else Upper_Threshold < Lower_Threshold
+        or else (Gradient_Norm = L1_Norm
+                 and then Upper_Threshold > 2_147_483_647.0)
+      then
+         raise OpenCV.OpenCV_Error
+           with "Canny_Edges invalid derivative thresholds";
+      end if;
+      if Storage_Overlaps (Derivative_X, Destination, "Canny_Edges")
+        or else Storage_Overlaps (Derivative_Y, Destination, "Canny_Edges")
+      then
+         raise OpenCV.OpenCV_Error
+           with "Canny_Edges destination aliases a derivative";
+      end if;
+      for Row in 0 .. Derivative_X.Rows - 1 loop
+         Check_Row (Row);
+      end loop;
+      OpenCV.Core.Module_Interop.With_Input_Handle
+        (Derivative_X, X_Input'Access);
+      Raise_On_Error (Status, "derivative Canny_Edges");
    end Canny_Edges;
 
    procedure Sobel

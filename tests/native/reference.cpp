@@ -3,6 +3,23 @@
 #include <opencv2/core/utility.hpp>
 #include <cstdint>
 
+extern "C" int32_t imgproc_test_gradient_canny_reference(
+    const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
+    const opencv_core_mat_handle *output, double low, double high, int32_t norm) noexcept
+{
+    try {
+        const cv::Mat *dx=nullptr, *dy=nullptr, *actual=nullptr;
+        if (opencv_core_module_input_mat(x,&dx)!=OPENCV_CORE_OK || !dx ||
+            opencv_core_module_input_mat(y,&dy)!=OPENCV_CORE_OK || !dy ||
+            opencv_core_module_input_mat(output,&actual)!=OPENCV_CORE_OK || !actual)
+            return -1;
+        cv::Mat expected;
+        cv::Canny(*dx,*dy,expected,low,high,norm==1);
+        return actual->size()==expected.size() && actual->type()==expected.type() &&
+            cv::norm(*actual,expected,cv::NORM_INF)==0 ? 1 : 0;
+    } catch (...) { return -1; }
+}
+
 // Test-only C ABI. Runtime library version, not caller-provided configuration.
 extern "C" int32_t imgproc_test_native_version() noexcept
 {
