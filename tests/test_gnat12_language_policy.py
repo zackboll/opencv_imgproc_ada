@@ -43,9 +43,14 @@ class LanguagePolicyTests(unittest.TestCase):
     def test_forced_ada2022_is_not_the_native_policy(self):
         result = self.compile("opencv-image_processing.adb", "-gnat2022")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("array aggregate using ()", result.stderr)
-        self.assertIn("opencv-image_processing.adb:90:", result.stderr)
-        self.assertIn('ambiguous call to "Append"', result.stderr)
+        # Require diagnostics from the actual production source, not a fixed
+        # line that moves whenever legitimate context clauses are added.
+        self.assertRegex(result.stderr,
+                         r'opencv-image_processing\.adb:\d+:\d+: warning: '
+                         r'.*array aggregate using \(\).*obsolescent')
+        self.assertRegex(result.stderr,
+                         r'opencv-image_processing\.adb:\d+:\d+: error: '
+                         r'ambiguous call to "Append"')
 
     def test_thin_body_and_actual_representations(self):
         for mode in (None, "-gnat2012", "-gnat2022"):

@@ -4,12 +4,14 @@
 import contextlib
 import io
 import shutil
+import subprocess
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
 
-from check_doc_coverage import check_site, main, parameter_names
+from check_doc_coverage import (check_site, main, parameter_names,
+                              rendered_sections, specification)
 
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = "d" * 64 + ".html"
@@ -304,10 +306,91 @@ class GeneratedCoverageTest(unittest.TestCase):
     def test_generated_site_inventory_matches_source(self):
         self.assertEqual(self.errors, [])
         kinds = list(self.items.values())
-        self.assertEqual(kinds.count("function") + kinds.count("procedure"), 184)
+        self.assertEqual(self.missing, [])
+        self.assertEqual(kinds.count("function") + kinds.count("procedure"), 187)
         self.assertEqual(len(kinds) - kinds.count("parameter") - kinds.count("return")
                          - kinds.count("literal") - kinds.count("component")
-                         - kinds.count("package"), 314)
+                         - kinds.count("package"), 317)
+        self.assertEqual(len(kinds), 1534)
+
+    def test_new_overloads_have_their_own_documented_parameters(self):
+        sections = rendered_sections(self.page.read_text(encoding="utf-8"))
+        expected = {
+            "Box_Filter": [
+                ["Source", "Destination", "Kernel_Size", "Destination_Depth",
+                 "Normalize", "Border"],
+                ["Source", "Destination", "Kernel_Size", "Anchor",
+                 "Destination_Depth", "Normalize", "Border"]],
+            "Canny_Edges": [
+                ["Source", "Destination", "Lower_Threshold", "Upper_Threshold",
+                 "Aperture", "Gradient_Norm"],
+                ["Derivative_X", "Derivative_Y", "Destination",
+                 "Lower_Threshold", "Upper_Threshold", "Gradient_Norm"]],
+        }
+        for name, profiles in expected.items():
+            found = [value[0] for (n, kind, _), value in sections.items()
+                     if n == name and kind == "procedure"]
+            self.assertEqual(len(found), 2, name)
+            for names in profiles:
+                section = next(s for s in found if
+                               [n for n, _ in s["groups"]["Parameters"]] == names)
+                self.assertTrue(section["description"])
+                self.assertTrue(all(len(text.split()) >= 2
+                                    for _, text in section["groups"]["Parameters"]))
+        self.assertEqual(self.errors, [])  # includes exact source-text attachment
+        self.assertEqual(self.missing, [])
+
+    def test_all_previous_declaration_identities_are_retained(self):
+        # Immutable pre-feature public source: compare full profiles, not just
+        # names or counts (which could hide replacing an earlier overload).
+        baseline = subprocess.run(
+            ["git", "show", "6715ed13ee8d2ea0f4ac089722ed926cfef77eb6:"
+             "src/opencv-image_processing.ads"], cwd=ROOT, check=True,
+            capture_output=True, text=True).stdout
+        spec = Path(self.temporary.name) / "previous.ads"
+        spec.write_text(baseline, encoding="utf-8")
+        _, _, _, _, declarations, _ = specification(spec)
+        from validate_docs import _kind, _profile
+        identities = {
+            "OpenCV.Image_Processing: " +
+            (_profile(d["signature"]) if _kind(d["signature"]) in
+             ("procedure", "function") else _kind(d["signature"]) + " " + d["name"])
+            + ": description" for d in declarations}
+        self.assertEqual(len(identities), 314)
+        self.assertEqual(identities - self.items.keys(), set())
+
+    def test_swapped_box_overload_parameter_text_is_rejected(self):
+        text = self.page.read_text(encoding="utf-8")
+        # These descriptions are unique to the two Box_Filter profiles.
+        centered = "Positive rectangle; even sizes allowed."
+        explicit = "Positive rectangular neighborhood."
+        self.assertIn(centered, text)
+        self.assertIn(explicit, text)
+        text = text.replace(centered, "SWAP_SENTINEL", 1)
+        # Locate the explicit Box_Filter section rather than another filter.
+        start = text.index(">Box_Filter</h4>", text.index(">Box_Filter</h4>") + 1)
+        prefix, tail = text[:start], text[start:]
+        self.assertIn(explicit, tail)
+        tail = tail.replace(explicit, centered, 1)
+        self.page.write_text((prefix + tail).replace("SWAP_SENTINEL", explicit, 1),
+                             encoding="utf-8")
+        _, _, errors = check_site(self.site, ROOT)
+        self.assertTrue(any("does not render" in error for error in errors))
+
+    def test_derivative_parameter_documentation_cannot_attach_to_image_canny(self):
+        text = self.page.read_text(encoding="utf-8")
+        description = "Signed horizontal derivatives."
+        self.assertIn(description, text)
+        # Even text still present on the page must fail if it is rendered
+        # under the image-input overload rather than its derivative profile.
+        text = text.replace(description, "", 1)
+        start = text.index(">Canny_Edges</h4>")
+        paragraph = text.index("<p>", start)
+        self.page.write_text(text[:paragraph] + "<p>" + description +
+                             text[paragraph:], encoding="utf-8")
+        _, missing, errors = check_site(self.site, ROOT)
+        self.assertTrue(any("Derivative_X" in identity for identity in missing))
+        self.assertTrue(any("does not render" in error for error in errors))
 
     def test_removing_a_rendered_description_is_detected(self):
         text = self.page.read_text(encoding="utf-8")

@@ -22,7 +22,30 @@ jobs:
           fetch-depth: 0
           path: imgproc
           persist-credentials: false
+      # Do not use trigger/path/job filtering: the named shadow check must
+      # finish on every PR, including explicit non-applicability.
+      - name: Test applicability controls
+        run: python3 -m unittest discover -s imgproc/scripts -p test_shared_shadow_applicability.py -v
+      - name: Record historical qualification applicability
+        id: applicability
+        run: |
+          python3 imgproc/scripts/shared_shadow_applicability.py \
+            --base '${{ github.event.pull_request.base.sha }}' \
+            --head '${{ github.event.pull_request.head.sha }}' \
+            --report "$RUNNER_TEMP/shadow-applicability.json" \
+            --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+      - name: Prepare isolated historical consumer with exact-head integration
+        id: historical
+        if: steps.applicability.outputs.applicable == 'true'
+        run: |
+          python3 imgproc/scripts/shared_shadow_applicability.py \
+            --base '${{ github.event.pull_request.base.sha }}' \
+            --head '${{ github.event.pull_request.head.sha }}' \
+            --report "$RUNNER_TEMP/shadow-source-binding.json" \
+            --github-output "$GITHUB_OUTPUT" \
+            --prepare "$GITHUB_WORKSPACE/historical"
       - name: Checkout immutable reviewed enhancer
+        if: steps.applicability.outputs.applicable == 'true'
         uses: actions/checkout@v4
         with:
           repository: zackboll/ada-gnatdoc-enhancer
@@ -31,12 +54,14 @@ jobs:
           path: enhancer
           persist-credentials: false
       - name: Verify enhancer main ancestry
+        if: steps.applicability.outputs.applicable == 'true'
         working-directory: enhancer
         run: |
           git fetch origin main:refs/remotes/origin/main
           test "$(git rev-parse HEAD)" = 53a321915da2c5a02a54581040673b61f8595b25
           git merge-base --is-ancestor HEAD origin/main
       - name: Checkout Core 0.4.1 acquisition source
+        if: steps.applicability.outputs.applicable == 'true'
         uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
@@ -44,6 +69,7 @@ jobs:
           path: core
           persist-credentials: false
       - name: Install native and documentation prerequisites
+        if: steps.applicability.outputs.applicable == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential libopencv-dev pkg-config unzip python3-venv
@@ -56,30 +82,36 @@ jobs:
           "$RUNNER_TEMP/shadow-tools/bin/pip" check
           "$RUNNER_TEMP/shadow-tools/bin/playwright" install --with-deps chromium
       - name: Independently build legacy, pristine input, Core and shared shadow
+        id: qualification
+        if: steps.applicability.outputs.applicable == 'true'
         run: |
-          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_shadow.py \
-            --expected-head '${{ github.event.pull_request.head.sha }}' \
+          "$RUNNER_TEMP/shadow-tools/bin/python" historical/scripts/qualify_shared_gnatdoc_shadow.py \
+            --expected-head '${{ steps.historical.outputs.tested_head }}' \
             --enhancer "$GITHUB_WORKSPACE/enhancer" --core "$GITHUB_WORKSPACE/core" \
             --workspace "$RUNNER_TEMP/gnatdoc008c"
       - name: Independent consumer adversarial qualification
+        id: adversarial
+        if: success() && steps.qualification.outcome == 'success'
         run: |
-          "$RUNNER_TEMP/shadow-tools/bin/python" -m unittest discover -s imgproc/scripts -p test_shared_gnatdoc_shadow.py -v
-          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_negative.py \
+          "$RUNNER_TEMP/shadow-tools/bin/python" -m unittest discover -s historical/scripts -p test_shared_gnatdoc_shadow.py -v
+          "$RUNNER_TEMP/shadow-tools/bin/python" historical/scripts/qualify_shared_gnatdoc_negative.py \
             --workspace "$RUNNER_TEMP/gnatdoc008c" --enhancer "$GITHUB_WORKSPACE/enhancer"
       - name: Chromium consumer qualification
-        if: success() || failure()
+        id: browser
+        if: success() && steps.adversarial.outcome == 'success'
         run: |
-          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_browser.py \
+          "$RUNNER_TEMP/shadow-tools/bin/python" historical/scripts/qualify_shared_gnatdoc_browser.py \
             --workspace "$RUNNER_TEMP/gnatdoc008c"
       - name: Independent source-order navigation parity (no baseline waiver)
-        if: success() || failure()
+        id: parity
+        if: success() && steps.browser.outcome == 'success'
         run: |
-          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/compare_shared_gnatdoc_navigation.py \
+          "$RUNNER_TEMP/shadow-tools/bin/python" historical/scripts/compare_shared_gnatdoc_navigation.py \
             --workspace "$RUNNER_TEMP/gnatdoc008c"
       - name: Record final readiness without treating static success as qualification
-        if: always()
+        if: success() && steps.parity.outcome == 'success'
         run: |
-          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/record_shared_gnatdoc_shadow.py \
+          "$RUNNER_TEMP/shadow-tools/bin/python" historical/scripts/record_shared_gnatdoc_shadow.py \
             --workspace "$RUNNER_TEMP/gnatdoc008c"
       - name: Upload shadow NON-DEPLOYABLE review evidence and sites
         if: always()
@@ -88,6 +120,8 @@ jobs:
           name: shadow-NON-DEPLOYABLE-${{ github.event.pull_request.head.sha }}
           include-hidden-files: true
           path: |
+            ${{ runner.temp }}/shadow-applicability.json
+            ${{ runner.temp }}/shadow-source-binding.json
             ${{ runner.temp }}/gnatdoc008c/*.json
             ${{ runner.temp }}/gnatdoc008c/*.log
             ${{ runner.temp }}/gnatdoc008c/legacy/_site
