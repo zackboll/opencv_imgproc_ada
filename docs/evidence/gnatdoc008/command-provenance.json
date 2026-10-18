@@ -1,0 +1,852 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/home/zboll/git/opencv/imgproc",
+      "exit_status": 0,
+      "log": "command-000.log",
+      "sha256": "23ada3d4fd77f34bf41502ec1376290c6ab2c5a2efd6deb7cd714621e73aee1f"
+    },
+    {
+      "argv": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "9ce22ae5ab70008e1147475a9e6d7baef82f1df0",
+        "HEAD"
+      ],
+      "cwd": "/home/zboll/git/opencv/imgproc",
+      "exit_status": 0,
+      "log": "command-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/tmp/gnatdoc008/enhancer",
+      "exit_status": 0,
+      "log": "command-002.log",
+      "sha256": "1d64869ba0c60645f05166ec775da146cd2d6fbef31804880fb742724abde22f"
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain",
+        "--untracked-files=no"
+      ],
+      "cwd": "/tmp/gnatdoc008/enhancer",
+      "exit_status": 0,
+      "log": "command-003.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "git",
+        "symbolic-ref",
+        "-q",
+        "HEAD"
+      ],
+      "cwd": "/tmp/gnatdoc008/enhancer",
+      "exit_status": 1,
+      "log": "command-004.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "git",
+        "remote",
+        "get-url",
+        "origin"
+      ],
+      "cwd": "/tmp/gnatdoc008/enhancer",
+      "exit_status": 0,
+      "log": "command-005.log",
+      "sha256": "aacb53185eda23c523067badb603d13e62a2b65c32854e82323e74a9703c4561"
+    },
+    {
+      "argv": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "f52dcfe37dc2819d86e72e1c38425e5e49d914eb",
+        "origin/main"
+      ],
+      "cwd": "/tmp/gnatdoc008/enhancer",
+      "exit_status": 0,
+      "log": "command-006.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "cwd": "/home/zboll/git/opencv/imgproc",
+      "exit_status": 0,
+      "log": "command-007.log",
+      "sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "-m",
+        "pip",
+        "freeze",
+        "--all"
+      ],
+      "cwd": "/home/zboll/git/opencv/imgproc",
+      "exit_status": 0,
+      "log": "command-008.log",
+      "sha256": "2f49da54079250e1dc6c7988c24598411b59a09185a53ac345a41e12e8e16bd0"
+    },
+    {
+      "argv": [
+        "alr",
+        "--version"
+      ],
+      "cwd": "/home/zboll/git/opencv/imgproc",
+      "exit_status": 0,
+      "log": "command-009.log",
+      "sha256": "bc69cbe3b96c2a756c94be2d0a337991bcd628c1cc5601f7cbeeadef8dc16d6d"
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--no-hardlinks",
+        "--no-checkout",
+        "/home/zboll/git/opencv/imgproc",
+        "/tmp/gnatdoc008/full-reviewed/legacy"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed",
+      "exit_status": 0,
+      "log": "command-010.log",
+      "sha256": "ee7c2cd24288442f3ac1eab6c28871112ccdb6166b516f74b438e7141264c7b6"
+    },
+    {
+      "argv": [
+        "git",
+        "checkout",
+        "--detach",
+        "a2f20b167bd8938f704d865067055a3f32251647"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-011.log",
+      "sha256": "a0d7c4674fcb5be1fd93c6e97e7f0b7be9971042bd2b2063f00f3673e0f7f1f9"
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-012.log",
+      "sha256": "23ada3d4fd77f34bf41502ec1376290c6ab2c5a2efd6deb7cd714621e73aee1f"
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--no-hardlinks",
+        "--no-checkout",
+        "/home/zboll/git/opencv/imgproc",
+        "/tmp/gnatdoc008/full-reviewed/source"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed",
+      "exit_status": 0,
+      "log": "command-013.log",
+      "sha256": "90ea89c61e93b1d65f4b768e8e9124940a043bd14dc7285d9e5c7d42dd094be7"
+    },
+    {
+      "argv": [
+        "git",
+        "checkout",
+        "--detach",
+        "a2f20b167bd8938f704d865067055a3f32251647"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-014.log",
+      "sha256": "a0d7c4674fcb5be1fd93c6e97e7f0b7be9971042bd2b2063f00f3673e0f7f1f9"
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-015.log",
+      "sha256": "23ada3d4fd77f34bf41502ec1376290c6ab2c5a2efd6deb7cd714621e73aee1f"
+    },
+    {
+      "argv": [
+        "git",
+        "remote",
+        "get-url",
+        "origin"
+      ],
+      "cwd": "/tmp/gnatdoc008/core",
+      "exit_status": 0,
+      "log": "command-016.log",
+      "sha256": "e3585e84358a2b21619c47ba4e8b1b5a7d8a511364a4897ad5c815afa5b30027"
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--no-hardlinks",
+        "--no-checkout",
+        "/tmp/gnatdoc008/core",
+        "/tmp/gnatdoc008/full-reviewed/core"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed",
+      "exit_status": 0,
+      "log": "command-017.log",
+      "sha256": "e9e433244eba78d723792c9ad292ac4d5cbd8a040b5f038c990be9fbd7274402"
+    },
+    {
+      "argv": [
+        "git",
+        "checkout",
+        "--detach",
+        "386c5360ac51f2b62e522853d94290aec4ee14a0"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/core",
+      "exit_status": 0,
+      "log": "command-018.log",
+      "sha256": "772c93bf3cd2b5ae8db67008b59db39a3022d21008e19694854167587ce7614d"
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/core",
+      "exit_status": 0,
+      "log": "command-019.log",
+      "sha256": "4458aa7737e6a270a401effb6d848933a6f7e1924a3da737b55dd67034b9e6a9"
+    },
+    {
+      "argv": [
+        "alr",
+        "-n",
+        "build"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/core",
+      "exit_status": 0,
+      "log": "command-020.log",
+      "sha256": "3ad4a7438337cb24765ff9a09176cdc5324d5abe727fc40180d5341b01aca411"
+    },
+    {
+      "argv": [
+        "alr",
+        "-n",
+        "build"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-021.log",
+      "sha256": "fb703888074d6334a07c61ba3821ebdb4ab2e41f324c5a2280d49b4e7bce9391"
+    },
+    {
+      "argv": [
+        "alr",
+        "exec",
+        "--",
+        "printenv",
+        "OPENCV_CORE_ALIRE_PREFIX"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-022.log",
+      "sha256": "c493eb118cfe238204e1c0f1761390591d32357ac8a9f874442410bcab9aa865"
+    },
+    {
+      "argv": [
+        "alr",
+        "exec",
+        "--",
+        "gnat",
+        "--version"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-023.log",
+      "sha256": "0017b5544d754e87af5e1e3097ecb777c53c6c1fda879f7cd02a77b67b110936"
+    },
+    {
+      "argv": [
+        "alr",
+        "exec",
+        "--",
+        "gprbuild",
+        "--version"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-024.log",
+      "sha256": "1b8e012ae0c0a5ec3979231f67666ff60523da207d7548048a7f276a32feb61f"
+    },
+    {
+      "argv": [
+        "alr",
+        "-n",
+        "install",
+        "--prefix=/tmp/gnatdoc008/full-reviewed/gnatdoc",
+        "gnatdoc_bin=26.0.0"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-025.log",
+      "sha256": "0402fbb9af1a70289e0f8aca8baa77c3f5120532301f4b40f376b49d73fff690"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/full-reviewed/gnatdoc/bin/gnatdoc",
+        "--version"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 1,
+      "log": "command-026.log",
+      "sha256": "6bf45f82862cae34ca448f8951b53f441528ef5825cbd304f2624f9e6abf5c98"
+    },
+    {
+      "argv": [
+        "sh",
+        "scripts/generate_docs.sh"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-027.log",
+      "sha256": "7b61a7a300dc6491bf2c28e856a5064bd2b715111b4d470f1fb921477200b17a"
+    },
+    {
+      "argv": [
+        "sh",
+        "scripts/generate_docs.sh"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-028.log",
+      "sha256": "adffe55a6ecbea1599031a6cee4065a7792c8f509c319cc830b8cbd8f566f8d8"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/install_gnatdoc_theme.py",
+        "/tmp/gnatdoc008/full-reviewed/legacy/_site/api"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-029.log",
+      "sha256": "3addef9a3cf4ede24d1f117740daad88933a88ccdcb20743209a5bc4d23208c8"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/link_gnatdoc_types.py",
+        "/tmp/gnatdoc008/full-reviewed/legacy/_site/api"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-030.log",
+      "sha256": "bffdb8c3ef334753e326474ac0799dbfa24c09796fabf4ef549e3161cf30fd32"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/highlight_gnatdoc_ada.py",
+        "/tmp/gnatdoc008/full-reviewed/legacy/_site/api"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-031.log",
+      "sha256": "bd42200a57abfbd53de454239eb4c0ae18c8fb46b23e0a188817b39b3536bcdf"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/enhance_gnatdoc_navigation.py",
+        "/tmp/gnatdoc008/full-reviewed/legacy/_site/api"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-032.log",
+      "sha256": "a2a567c9bdea6308bd38d350ef014ac500a8ee537d518677712df08896b2190a"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/render_gnatdoc_guides.py",
+        "/tmp/gnatdoc008/full-reviewed/legacy/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-033.log",
+      "sha256": "dacad8025269bd69c39d7c18cba03593cd64ede4c9d37bf530f72cecbc53a0a0"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-034.log",
+      "sha256": "06ea1a33b6724cc457014d1103519d46cda8e6c1f34231568dbf7e5d026eaf87"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/validate_docs.py",
+        "/tmp/gnatdoc008/full-reviewed/legacy/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-035.log",
+      "sha256": "1c6d2fcc019e63f67693842d556acbf2f101e8479a2ea8f87afba6a141a27863"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/check_doc_coverage.py",
+        "--fail-on-removed",
+        "docs/gnatdoc-coverage-baseline.txt",
+        "/tmp/gnatdoc008/full-reviewed/legacy/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-036.log",
+      "sha256": "9fb697a59ce0fa407e23ee981eba811d978cc06792958e2917be7ad35c8479ef"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/compare_gnatdoc_warnings.py",
+        "--fail-on-removed",
+        "docs/gnatdoc-warning-baseline.txt",
+        "/tmp/gnatdoc008/full-reviewed/legacy/obj/docs/gnatdoc.log"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-037.log",
+      "sha256": "820cd029e977b6224b66399dc7bffe2fbb0ec2c207380baa03431e5ba7630376"
+    },
+    {
+      "argv": [
+        "alr",
+        "exec",
+        "--",
+        "gprbuild",
+        "-P",
+        "docs/example.gpr"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-038.log",
+      "sha256": "c9499c73b162252de94c0795f4ce7df7138a597522c9f9423178f75f9fb7e783"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/full-reviewed/legacy/obj/docs-example/example"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-039.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "alr",
+        "exec",
+        "--",
+        "gprbuild",
+        "-P",
+        "docs/examples/examples.gpr"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-040.log",
+      "sha256": "ef258f9976f8b0667e7451a68890f1c4264a3de59d16cad82b6138a8593bf7c0"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/full-reviewed/legacy/obj/docs-examples/filtering_and_transforms"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-041.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/full-reviewed/legacy/obj/docs-examples/color_and_representation"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-042.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/full-reviewed/legacy/obj/docs-examples/features_and_analysis"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-043.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/full-reviewed/legacy/obj/docs-examples/segmentation_and_contours"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-044.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/full-reviewed/legacy/obj/docs-examples/matching_and_registration"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/legacy",
+      "exit_status": 0,
+      "log": "command-045.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "alr",
+        "exec",
+        "--",
+        "/tmp/gnatdoc008/full-reviewed/gnatdoc/bin/gnatdoc",
+        "-P",
+        "docs_api.gpr",
+        "--backend",
+        "html",
+        "--generate",
+        "public",
+        "--style",
+        "leading",
+        "--warnings",
+        "-O",
+        "/tmp/gnatdoc008/full-reviewed/pristine-first/api"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-046.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "alr",
+        "exec",
+        "--",
+        "/tmp/gnatdoc008/full-reviewed/gnatdoc/bin/gnatdoc",
+        "-P",
+        "docs_api.gpr",
+        "--backend",
+        "html",
+        "--generate",
+        "public",
+        "--style",
+        "leading",
+        "--warnings",
+        "-O",
+        "/tmp/gnatdoc008/full-reviewed/pristine-second/api"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-047.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/check_doc_coverage.py",
+        "--fail-on-removed",
+        "docs/gnatdoc-coverage-baseline.txt",
+        "/tmp/gnatdoc008/full-reviewed/pristine-first"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-048.log",
+      "sha256": "9fb697a59ce0fa407e23ee981eba811d978cc06792958e2917be7ad35c8479ef"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/compare_gnatdoc_warnings.py",
+        "--fail-on-removed",
+        "docs/gnatdoc-warning-baseline.txt",
+        "/tmp/gnatdoc008/full-reviewed/native-first.log"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-049.log",
+      "sha256": "820cd029e977b6224b66399dc7bffe2fbb0ec2c207380baa03431e5ba7630376"
+    },
+    {
+      "argv": [
+        "alr",
+        "exec",
+        "--",
+        "/tmp/gnatdoc008/full-reviewed/gnatdoc/bin/gnatdoc",
+        "-P",
+        "docs_api.gpr",
+        "--backend",
+        "html",
+        "--generate",
+        "public",
+        "--style",
+        "leading",
+        "--warnings",
+        "-O",
+        "/tmp/gnatdoc008/full-reviewed/core-native/api"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/core",
+      "exit_status": 0,
+      "log": "command-050.log",
+      "sha256": "35d000cd90f89d0ff0b437d4e59b1ba5563bad0777454e2749069d3b512ea5e7"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "inventory",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/first",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/first/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/first",
+      "exit_status": 0,
+      "log": "command-051.log",
+      "sha256": "f1a7436f0b2c9e6000a5d6115dba292d84b9f0ec12ad8887a89a592019302f92"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "enhance",
+        "--dry-run",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/first",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/first/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/first",
+      "exit_status": 0,
+      "log": "command-052.log",
+      "sha256": "dc6dc24ad8d83d96830225f83582084e49832d23b8399b5f5a80a4671c414e6f"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "enhance",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/first",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/first/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/first",
+      "exit_status": 0,
+      "log": "command-053.log",
+      "sha256": "3a9a0e91fae3293fba86c37f5f966222e6abc619c036a8d9083ec7b17cf2d19a"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "verify",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/first",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/first/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/first",
+      "exit_status": 0,
+      "log": "command-054.log",
+      "sha256": "e85ee89a5453be53caefaab43cdd4ceb1de5bc94ac8deda2ac12dab30bdd8b5c"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "enhance",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/first",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/first/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/first",
+      "exit_status": 0,
+      "log": "command-055.log",
+      "sha256": "e85ee89a5453be53caefaab43cdd4ceb1de5bc94ac8deda2ac12dab30bdd8b5c"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/check_doc_coverage.py",
+        "--fail-on-removed",
+        "docs/gnatdoc-coverage-baseline.txt",
+        "/tmp/gnatdoc008/full-reviewed/first/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-056.log",
+      "sha256": "9fb697a59ce0fa407e23ee981eba811d978cc06792958e2917be7ad35c8479ef"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/compare_gnatdoc_warnings.py",
+        "--fail-on-removed",
+        "docs/gnatdoc-warning-baseline.txt",
+        "/tmp/gnatdoc008/full-reviewed/native-first.log"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-057.log",
+      "sha256": "820cd029e977b6224b66399dc7bffe2fbb0ec2c207380baa03431e5ba7630376"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "inventory",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/second",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/second/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/second",
+      "exit_status": 0,
+      "log": "command-058.log",
+      "sha256": "f1a7436f0b2c9e6000a5d6115dba292d84b9f0ec12ad8887a89a592019302f92"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "enhance",
+        "--dry-run",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/second",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/second/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/second",
+      "exit_status": 0,
+      "log": "command-059.log",
+      "sha256": "dc6dc24ad8d83d96830225f83582084e49832d23b8399b5f5a80a4671c414e6f"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "enhance",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/second",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/second/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/second",
+      "exit_status": 0,
+      "log": "command-060.log",
+      "sha256": "3a9a0e91fae3293fba86c37f5f966222e6abc619c036a8d9083ec7b17cf2d19a"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "verify",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/second",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/second/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/second",
+      "exit_status": 0,
+      "log": "command-061.log",
+      "sha256": "e85ee89a5453be53caefaab43cdd4ceb1de5bc94ac8deda2ac12dab30bdd8b5c"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/gnatdoc-enhancer",
+        "enhance",
+        "--source-root",
+        "/tmp/gnatdoc008/full-reviewed/second",
+        "--config",
+        "qualification.toml",
+        "--site",
+        "/tmp/gnatdoc008/full-reviewed/second/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/second",
+      "exit_status": 0,
+      "log": "command-062.log",
+      "sha256": "e85ee89a5453be53caefaab43cdd4ceb1de5bc94ac8deda2ac12dab30bdd8b5c"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/check_doc_coverage.py",
+        "--fail-on-removed",
+        "docs/gnatdoc-coverage-baseline.txt",
+        "/tmp/gnatdoc008/full-reviewed/second/_site"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-063.log",
+      "sha256": "9fb697a59ce0fa407e23ee981eba811d978cc06792958e2917be7ad35c8479ef"
+    },
+    {
+      "argv": [
+        "/tmp/gnatdoc008/venv/bin/python",
+        "scripts/compare_gnatdoc_warnings.py",
+        "--fail-on-removed",
+        "docs/gnatdoc-warning-baseline.txt",
+        "/tmp/gnatdoc008/full-reviewed/native-first.log"
+      ],
+      "cwd": "/tmp/gnatdoc008/full-reviewed/source",
+      "exit_status": 0,
+      "log": "command-064.log",
+      "sha256": "820cd029e977b6224b66399dc7bffe2fbb0ec2c207380baa03431e5ba7630376"
+    }
+  ],
+  "commands_sha256": "ca212c13dc60e5dd93049ed698cd21d246061bc69e37a357319a886f2ce59535",
+  "full_logs": "review-only CI artifact; retained local workspace; each log SHA-256 is recorded"
+}

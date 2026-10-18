@@ -1,0 +1,38 @@
+{
+  "assertion_names": [
+    "all 314 genuine native declaration anchors",
+    "authored page and responsive tables",
+    "direct authored heading fragment",
+    "guide-to-guide navigation",
+    "keyboard focus and activation",
+    "native declaration and local type anchors",
+    "no JavaScript errors",
+    "offline Core type click and frame Back Forward",
+    "offline pinned Core destination",
+    "operation browser search and categories",
+    "responsive API browser viewport",
+    "source-backed API overload and Back Forward"
+  ],
+  "chromium": "141.0.7390.37",
+  "dimensions": {
+    "javascript": [
+      false,
+      true
+    ],
+    "theme": [
+      "dark",
+      "light"
+    ],
+    "width": [
+      390,
+      1280
+    ]
+  },
+  "executed": 1840,
+  "failed_assertions": [],
+  "failures": 0,
+  "full_report": "review-only CI artifact or retained local qualification workspace/browser.json",
+  "full_report_sha256": "c8010138e4d5277f8abee2bbcfeff13bff404c271a09e1ced8ee816aa00e6683",
+  "production_https_verified": false,
+  "status": "pass"
+}

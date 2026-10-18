@@ -1,0 +1,255 @@
+{
+  "consumer_tested": "7c6a45a6884f64107ad414cb5c7759c578923c07",
+  "executed": 36,
+  "qualification_sha256": "39211c0f0391af365562b03afd20673500a00b106f47222291e812e8bb06c5e7",
+  "restored_shadow_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "1379b13f3d3020421d80c5882938cae71b779a9e8b4b9746f6a0f94ad753cea0",
+    "api/gnatdoc-navigation.js": "b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd",
+    "api/gnatdoc-theme.css": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "3293bed3773bbe034e4f0d2260bdc310614c874c0257a3f03a57900ba578ed68",
+    "api/presentation.json": "791dca480ea57e490540c4c3adb58a620461ae2bee37a4a71eccf91368b89e01",
+    "guides/color-and-image-representation.html": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177",
+    "guides/features-and-structural-analysis.html": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028",
+    "guides/filtering-and-transforms.html": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41",
+    "guides/template-matching-and-registration.html": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518",
+    "index.html": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+  },
+  "scope": "Executed intermediate-head full site; final current-run reports required for readiness",
+  "status": "pass",
+  "tested_shadow_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "1379b13f3d3020421d80c5882938cae71b779a9e8b4b9746f6a0f94ad753cea0",
+    "api/gnatdoc-navigation.js": "b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd",
+    "api/gnatdoc-theme.css": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "3293bed3773bbe034e4f0d2260bdc310614c874c0257a3f03a57900ba578ed68",
+    "api/presentation.json": "791dca480ea57e490540c4c3adb58a620461ae2bee37a4a71eccf91368b89e01",
+    "guides/color-and-image-representation.html": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177",
+    "guides/features-and-structural-analysis.html": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028",
+    "guides/filtering-and-transforms.html": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41",
+    "guides/template-matching-and-registration.html": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518",
+    "index.html": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+  },
+  "tests": [
+    {
+      "mutation_observed": true,
+      "name": "incorrect shared enhancer SHA",
+      "reason": "incorrect shared enhancer SHA",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unpinned enhancer checkout",
+      "reason": "command failed (0): ['git', 'symbolic-ref', '-q', 'HEAD']; see /tmp/gnatdoc008-negative-ttzlaoct/command-011.log",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "previous enhancer pin rejected",
+      "reason": "incorrect shared enhancer SHA",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "feature HEAD rejected instead of merge",
+      "reason": "incorrect shared enhancer SHA",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "modified pinned enhancer JavaScript",
+      "reason": "modified enhancer checkout",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "installed asset differs from pinned checkout",
+      "reason": "installed package differs from pin",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "modified authority transition",
+      "reason": "authority mismatch: docs/evidence/gnatdoc008c/authority-transition.json",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "missing authority transition",
+      "reason": "authority mismatch: docs/evidence/gnatdoc008c/authority-transition.json",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "altered historical authority hash in transition",
+      "reason": "authority mismatch: docs/evidence/gnatdoc008c/authority-transition.json",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "altered historical authority bytes",
+      "reason": "authority mismatch: authority.json",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unapproved authoritative Core manifest",
+      "reason": "authority mismatch: core-types.json",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "incorrect Core 0.4.1 origin",
+      "reason": "unqualified Core resolution/origin",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "Core 0.5.0 substitution",
+      "reason": "unqualified Core resolution/origin",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "changed real public specification",
+      "reason": "authority mismatch: src/opencv-image_processing.ads",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "changed staged specification",
+      "reason": "source differs from qualified presentation manifest",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "altered pristine GNATdoc bytes",
+      "reason": "pristine identity changed",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "wrong-but-existing external anchor",
+      "reason": "external manifest hash mismatch",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "swapped operation overload target",
+      "reason": "published file differs from reconstructed output: api/index.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "forged declaration fragment",
+      "reason": "published file differs from reconstructed output: api/index.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "forged navigation with matching output-side metadata",
+      "reason": "enhanced output does not match source/manifest",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "missing guide",
+      "reason": "published file differs from reconstructed output: guides/filtering-and-transforms.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "modified guide stylesheet",
+      "reason": "authored source changed: docs/assets/gnatdoc-guides.css",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "modified Ada example fence",
+      "reason": "authored source changed: docs/guides/filtering-and-transforms.md",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "changed compiled example source",
+      "reason": "authored source changed: docs/examples/filtering_and_transforms.adb",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "missing source-owned category",
+      "reason": "missing category assignments: OpenCV.Image_Processing: ['corner_aperture', 'corner_block_size', 'corner_dead_zone', 'corner_eigenvalues_and_vectors', 'corner_iteration_limit', 'corner_minimum_eigenvalue', 'corner_point_array', 'corner_termination', 'create_hanning_window', 'hanning_window_depth', 'harris_corner_response', 'phase_correlate', 'phase_correlation_result', 'pre_corner_response', 'refine_corners_subpixel']",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unapproved output HTML",
+      "reason": "unapproved output file: unapproved.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "extra non-HTML published file",
+      "reason": "unapproved output file: unapproved.bin",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unapproved production URLs",
+      "reason": "published file differs from reconstructed output: api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "symlinked source path",
+      "reason": "symlink Ada source: /tmp/gnatdoc008c/full-current/first/qualification-public/src/opencv-image_processing.ads",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "symlinked output path",
+      "reason": "symlink published: /tmp/gnatdoc008c/full-current/first/_site/api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "output-manifest tampering",
+      "reason": "unexpected presentation manifest fields",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "unknown config key",
+      "reason": "unsupported root keys: ['unknown_key']",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "duplicate config key",
+      "reason": "Cannot overwrite a value (at line 2, column 19)",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "partial failed enhancement",
+      "reason": "published file differs from reconstructed output: api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "failed enhancement is atomic",
+      "reason": "unresolved operation: OpenCV.Image_Processing.No_Such_Real_Operation",
+      "rejected": true
+    },
+    {
+      "mutation_observed": true,
+      "name": "nondeterministic regeneration",
+      "reason": "output copies differ",
+      "rejected": true
+    }
+  ]
+}

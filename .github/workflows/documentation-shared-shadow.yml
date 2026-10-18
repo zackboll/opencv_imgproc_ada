@@ -1,0 +1,99 @@
+name: Shared GNATdoc shadow (non-deployable)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-shared-shadow-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  shadow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact consumer PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: imgproc
+          persist-credentials: false
+      - name: Checkout immutable reviewed enhancer
+        uses: actions/checkout@v4
+        with:
+          repository: zackboll/ada-gnatdoc-enhancer
+          ref: 53a321915da2c5a02a54581040673b61f8595b25
+          fetch-depth: 0
+          path: enhancer
+          persist-credentials: false
+      - name: Verify enhancer main ancestry
+        working-directory: enhancer
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = 53a321915da2c5a02a54581040673b61f8595b25
+          git merge-base --is-ancestor HEAD origin/main
+      - name: Checkout Core 0.4.1 acquisition source
+        uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
+          path: core
+          persist-credentials: false
+      - name: Install native and documentation prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential libopencv-dev pkg-config unzip python3-venv
+          curl --fail --location --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          unzip /tmp/alire.zip -d /tmp/alire
+          sudo install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr
+          alr -n --force toolchain --select gnat_native=16.1.0 gprbuild=26.0.1
+          python3 -m venv "$RUNNER_TEMP/shadow-tools"
+          "$RUNNER_TEMP/shadow-tools/bin/pip" install './enhancer[guides]' playwright==1.56.0
+          "$RUNNER_TEMP/shadow-tools/bin/pip" check
+          "$RUNNER_TEMP/shadow-tools/bin/playwright" install --with-deps chromium
+      - name: Independently build legacy, pristine input, Core and shared shadow
+        run: |
+          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_shadow.py \
+            --expected-head '${{ github.event.pull_request.head.sha }}' \
+            --enhancer "$GITHUB_WORKSPACE/enhancer" --core "$GITHUB_WORKSPACE/core" \
+            --workspace "$RUNNER_TEMP/gnatdoc008c"
+      - name: Independent consumer adversarial qualification
+        run: |
+          "$RUNNER_TEMP/shadow-tools/bin/python" -m unittest discover -s imgproc/scripts -p test_shared_gnatdoc_shadow.py -v
+          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_negative.py \
+            --workspace "$RUNNER_TEMP/gnatdoc008c" --enhancer "$GITHUB_WORKSPACE/enhancer"
+      - name: Chromium consumer qualification
+        if: success() || failure()
+        run: |
+          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/qualify_shared_gnatdoc_browser.py \
+            --workspace "$RUNNER_TEMP/gnatdoc008c"
+      - name: Independent source-order navigation parity (no baseline waiver)
+        if: success() || failure()
+        run: |
+          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/compare_shared_gnatdoc_navigation.py \
+            --workspace "$RUNNER_TEMP/gnatdoc008c"
+      - name: Record final readiness without treating static success as qualification
+        if: always()
+        run: |
+          "$RUNNER_TEMP/shadow-tools/bin/python" imgproc/scripts/record_shared_gnatdoc_shadow.py \
+            --workspace "$RUNNER_TEMP/gnatdoc008c"
+      - name: Upload shadow NON-DEPLOYABLE review evidence and sites
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shadow-NON-DEPLOYABLE-${{ github.event.pull_request.head.sha }}
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/gnatdoc008c/*.json
+            ${{ runner.temp }}/gnatdoc008c/*.log
+            ${{ runner.temp }}/gnatdoc008c/legacy/_site
+            ${{ runner.temp }}/gnatdoc008c/legacy/alire/alire.lock
+            ${{ runner.temp }}/gnatdoc008c/source/alire/alire.lock
+            ${{ runner.temp }}/gnatdoc008c/first/_site
+            ${{ runner.temp }}/gnatdoc008c/pristine-first
+            ${{ runner.temp }}/gnatdoc008c/core-native
+          if-no-files-found: error

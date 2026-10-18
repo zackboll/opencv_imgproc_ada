@@ -1,0 +1,76 @@
+{
+  "consumer_tested": "55d2f3d9d09d9856e6744bfdec4ba2de3d8398b5",
+  "enhancer": "53a321915da2c5a02a54581040673b61f8595b25",
+  "exact_approved_changes": {
+    "api/gnatdoc-navigation.js": {
+      "approval": "GNATDOC-008B declaration-aware outer history; must equal the pinned installed asset. No consumer implementation workaround.",
+      "new_sha256": "b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd",
+      "old_sha256": "61eac070e65b38ac63242a54ed0546a8f4a27b25d8958c2824557860623f40b2"
+    },
+    "api/index.html": {
+      "approval": "GNATDOC-008A source-order overload labels; unchanged independent consumer oracle must prove all 314 associations.",
+      "new_sha256": "3293bed3773bbe034e4f0d2260bdc310614c874c0257a3f03a57900ba578ed68",
+      "old_sha256": "c289ed925e7e5c14bc2bc2d4d8cf553d97639a2adb61c942c780862725ab8a13"
+    },
+    "api/presentation.json": {
+      "approval": "Output metadata binds changed navigation/index bytes; independent verify and native preservation remain mandatory.",
+      "new_sha256": "791dca480ea57e490540c4c3adb58a620461ae2bee37a4a71eccf91368b89e01",
+      "old_sha256": "8af4a9c2f9b89e61e11029962ea589c0acd452f2d3c7975163c55f5b3713be3e"
+    }
+  },
+  "historical_consumer_tested": "a2f20b167bd8938f704d865067055a3f32251647",
+  "historical_enhancer": "f52dcfe37dc2819d86e72e1c38425e5e49d914eb",
+  "historical_shadow_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "1379b13f3d3020421d80c5882938cae71b779a9e8b4b9746f6a0f94ad753cea0",
+    "api/gnatdoc-navigation.js": "61eac070e65b38ac63242a54ed0546a8f4a27b25d8958c2824557860623f40b2",
+    "api/gnatdoc-theme.css": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "c289ed925e7e5c14bc2bc2d4d8cf553d97639a2adb61c942c780862725ab8a13",
+    "api/presentation.json": "8af4a9c2f9b89e61e11029962ea589c0acd452f2d3c7975163c55f5b3713be3e",
+    "guides/color-and-image-representation.html": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177",
+    "guides/features-and-structural-analysis.html": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028",
+    "guides/filtering-and-transforms.html": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41",
+    "guides/template-matching-and-registration.html": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518",
+    "index.html": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+  },
+  "integrity": "All unlisted publications byte-identical to historical shared output; authentic native and authored integrity independently verified.",
+  "legacy_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "a302c0d082232781bb7f8fd9bf6261ad74761617e0d27a4f383915fc432d24bb",
+    "api/gnatdoc-navigation.js": "2616ce765cceefa194f28a4bc325db287699a73c5193d5d2758bc323db5bf1fa",
+    "api/gnatdoc-theme.css": "af2fb959c2daff0a6399b949ef50e3a91823c16347e2779b93b36def862f9f21",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "6ba9aaa46423bf432637cf8303a6a1979efe1dbc8c70217eb5f4727681952b05",
+    "api/presentation.json": "536fc8425218e0570dd1963c57f8aec26e31104eac7639f16f85f842f86b7f27",
+    "api/type-crossrefs.json": "7e1276dc5bad19994f98ec122a780c008ef6f39fbcf718d212efc72933b95e74",
+    "guides/color-and-image-representation.html": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177",
+    "guides/features-and-structural-analysis.html": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028",
+    "guides/filtering-and-transforms.html": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41",
+    "guides/template-matching-and-registration.html": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518",
+    "index.html": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+  },
+  "pristine_native_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "b1ace2e8cbf9821e929afaf9bcad80b5a14b34c05376cfe307a30654180152f4",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "5a3e975118ff3eb4c2a9d407ecff16dcab1208986bf18bb76948583ca9b3134e"
+  },
+  "scope": "Complete actual intermediate and current merged-pin publication inventories; final-head hosted qualification remains mandatory",
+  "shadow_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "1379b13f3d3020421d80c5882938cae71b779a9e8b4b9746f6a0f94ad753cea0",
+    "api/gnatdoc-navigation.js": "b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd",
+    "api/gnatdoc-theme.css": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "3293bed3773bbe034e4f0d2260bdc310614c874c0257a3f03a57900ba578ed68",
+    "api/presentation.json": "791dca480ea57e490540c4c3adb58a620461ae2bee37a4a71eccf91368b89e01",
+    "guides/color-and-image-representation.html": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177",
+    "guides/features-and-structural-analysis.html": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028",
+    "guides/filtering-and-transforms.html": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41",
+    "guides/template-matching-and-registration.html": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518",
+    "index.html": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+  }
+}

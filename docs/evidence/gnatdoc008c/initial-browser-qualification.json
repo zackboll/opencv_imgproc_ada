@@ -1,0 +1,13 @@
+{
+  "additional_history_assertions": 152,
+  "consumer_tested": "9cba287388e1cd7a5e36cbc684ad1d70b7279b64",
+  "executed": 1992,
+  "failures": 0,
+  "full_report_sha256": "ba16f6887724fbfce1989dd8ef58db85321bf7a99c0f25551f48f87b2bca3561",
+  "history_driver": "pre-final synchronization refinements; final run required",
+  "original_assertion_names_retained": true,
+  "original_assertions_retained": 1840,
+  "production_https_verified": false,
+  "scope": "First authentic regenerated site with merged pin; intermediate consumer head; not final readiness evidence",
+  "status": "pass"
+}

@@ -1,0 +1,16 @@
+{
+  "historical_incorrect_labels": 66,
+  "historical_navigation_report_sha256": "903b29ae5e58af710402cbffcd2910819947dc43d0daebe110e47dba73da25b1",
+  "historical_original_docs_ci": {
+    "conclusion": "success",
+    "head": "f2989da6c6a593f6196d1d989be0b2d126743dc6",
+    "id": 39058080048
+  },
+  "historical_readiness_sha256": "423c8f4fe36dd399212c98b67e19b27a6b44f114644b59dd438a9c9c1fb1921d",
+  "historical_shadow_ci": {
+    "conclusion": "failure",
+    "head": "f2989da6c6a593f6196d1d989be0b2d126743dc6",
+    "id": 39058079904
+  },
+  "policy": "Historical evidence retained byte-for-byte; never credited for the new pin."
+}

@@ -1,0 +1,359 @@
+{
+  "byte_idempotent": true,
+  "comparison": {
+    "authored": {
+      "guides/color-and-image-representation.html": {
+        "classification": "Equivalent and verified",
+        "sha256": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177"
+      },
+      "guides/features-and-structural-analysis.html": {
+        "classification": "Equivalent and verified",
+        "sha256": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028"
+      },
+      "guides/filtering-and-transforms.html": {
+        "classification": "Equivalent and verified",
+        "sha256": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7"
+      },
+      "guides/gnatdoc-guides.css": {
+        "classification": "Equivalent and verified",
+        "sha256": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba"
+      },
+      "guides/segmentation-contours-and-morphology.html": {
+        "classification": "Equivalent and verified",
+        "sha256": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41"
+      },
+      "guides/template-matching-and-registration.html": {
+        "classification": "Equivalent and verified",
+        "sha256": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518"
+      },
+      "index.html": {
+        "classification": "Equivalent and verified",
+        "sha256": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+      }
+    },
+    "local_type_links": 326,
+    "missing_native_anchors": 0,
+    "native": {
+      "declarations": 314,
+      "packages": 1,
+      "pages": 2,
+      "signatures": 467,
+      "status": "preserved"
+    },
+    "offline_external_type_links": 549,
+    "presentation": "Intentional shared presentation difference; native identity preserved",
+    "production_https_verified": false,
+    "unexpected_native_declarations": 0
+  },
+  "compiler": "GNAT 16.1.0\nCopyright (C) 1996-2025, Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "consumer_start": "9ce22ae5ab70008e1147475a9e6d7baef82f1df0",
+  "consumer_tested": "a2f20b167bd8938f704d865067055a3f32251647",
+  "core_manifest_types": 203,
+  "deterministic": true,
+  "disposition": "HOSTED_CI_PENDING",
+  "examples": [
+    {
+      "build_exit": 0,
+      "executable": "example",
+      "project": "docs/example.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "filtering_and_transforms",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "color_and_representation",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "features_and_analysis",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "segmentation_and_contours",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    },
+    {
+      "build_exit": 0,
+      "executable": "matching_and_registration",
+      "project": "docs/examples/examples.gpr",
+      "run_exit": 0
+    }
+  ],
+  "gnatdoc": {
+    "binary_sha256": "d256f0ece2f181046dfeb3ce490d7aa5c994992550c78da14e9065d453aa52c5",
+    "version": "GNATdoc 26.0.0 (20260415)"
+  },
+  "gprbuild": "GPRBUILD 26.0.0 (2026-04-15) (x86_64-pc-linux-gnu)\nCopyright (C) 2004-2026, AdaCore\nThis is free software; see the source for copying conditions.\nThere is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "legacy_byte_idempotent": true,
+  "legacy_core": {
+    "actions": [
+      {
+        "command": [
+          "sh",
+          "scripts/configure_opencv.sh"
+        ],
+        "directory": ".",
+        "type": "pre-build"
+      },
+      {
+        "command": [
+          "alr",
+          "-n",
+          "build"
+        ],
+        "directory": ".",
+        "type": "test"
+      },
+      {
+        "command": [
+          "alr",
+          "run"
+        ],
+        "directory": "tests",
+        "type": "test"
+      }
+    ],
+    "authors": [
+      "Zack Boll"
+    ],
+    "depends-on": [
+      {
+        "opencv": "*",
+        "pkg_config": "*"
+      }
+    ],
+    "description": "Thick Ada binding to OpenCV Core Library",
+    "licenses": "Apache-2.0",
+    "maintainers": [
+      "Zack Boll <zackboll@gmail.com>"
+    ],
+    "maintainers-logins": [
+      "zackboll"
+    ],
+    "name": "opencv_core",
+    "origin": {
+      "commit": "386c5360ac51f2b62e522853d94290aec4ee14a0",
+      "url": "git+https://github.com/zackboll/opencv_core_ada.git"
+    },
+    "tags": [
+      "opencv",
+      "computer-vision",
+      "binding",
+      "ada"
+    ],
+    "version": "0.4.1",
+    "website": "https://github.com/zackboll/opencv_core_ada"
+  },
+  "legacy_deterministic": true,
+  "legacy_gates": {
+    "coverage": "Documentation coverage: 1512/1512 items (100.0%); 0 newly undocumented, 0 newly documented",
+    "warnings": "GNATdoc warning delta: 0 added, 0 removed"
+  },
+  "legacy_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "a302c0d082232781bb7f8fd9bf6261ad74761617e0d27a4f383915fc432d24bb",
+    "api/gnatdoc-navigation.js": "2616ce765cceefa194f28a4bc325db287699a73c5193d5d2758bc323db5bf1fa",
+    "api/gnatdoc-theme.css": "af2fb959c2daff0a6399b949ef50e3a91823c16347e2779b93b36def862f9f21",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "6ba9aaa46423bf432637cf8303a6a1979efe1dbc8c70217eb5f4727681952b05",
+    "api/presentation.json": "536fc8425218e0570dd1963c57f8aec26e31104eac7639f16f85f842f86b7f27",
+    "api/type-crossrefs.json": "7e1276dc5bad19994f98ec122a780c008ef6f39fbcf718d212efc72933b95e74",
+    "guides/color-and-image-representation.html": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177",
+    "guides/features-and-structural-analysis.html": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028",
+    "guides/filtering-and-transforms.html": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41",
+    "guides/template-matching-and-registration.html": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518",
+    "index.html": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+  },
+  "legacy_validator": "Validated 1 public package(s), 8 HTML pages and 314 declaration sections (184 subprograms); all local links and anchors resolve.",
+  "logs_sha256": {
+    "command-000.log": "23ada3d4fd77f34bf41502ec1376290c6ab2c5a2efd6deb7cd714621e73aee1f",
+    "command-001.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-002.log": "1d64869ba0c60645f05166ec775da146cd2d6fbef31804880fb742724abde22f",
+    "command-003.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-004.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-005.log": "aacb53185eda23c523067badb603d13e62a2b65c32854e82323e74a9703c4561",
+    "command-006.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-007.log": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+    "command-008.log": "2f49da54079250e1dc6c7988c24598411b59a09185a53ac345a41e12e8e16bd0",
+    "command-009.log": "bc69cbe3b96c2a756c94be2d0a337991bcd628c1cc5601f7cbeeadef8dc16d6d",
+    "command-010.log": "ee7c2cd24288442f3ac1eab6c28871112ccdb6166b516f74b438e7141264c7b6",
+    "command-011.log": "a0d7c4674fcb5be1fd93c6e97e7f0b7be9971042bd2b2063f00f3673e0f7f1f9",
+    "command-012.log": "23ada3d4fd77f34bf41502ec1376290c6ab2c5a2efd6deb7cd714621e73aee1f",
+    "command-013.log": "90ea89c61e93b1d65f4b768e8e9124940a043bd14dc7285d9e5c7d42dd094be7",
+    "command-014.log": "a0d7c4674fcb5be1fd93c6e97e7f0b7be9971042bd2b2063f00f3673e0f7f1f9",
+    "command-015.log": "23ada3d4fd77f34bf41502ec1376290c6ab2c5a2efd6deb7cd714621e73aee1f",
+    "command-016.log": "e3585e84358a2b21619c47ba4e8b1b5a7d8a511364a4897ad5c815afa5b30027",
+    "command-017.log": "e9e433244eba78d723792c9ad292ac4d5cbd8a040b5f038c990be9fbd7274402",
+    "command-018.log": "772c93bf3cd2b5ae8db67008b59db39a3022d21008e19694854167587ce7614d",
+    "command-019.log": "4458aa7737e6a270a401effb6d848933a6f7e1924a3da737b55dd67034b9e6a9",
+    "command-020.log": "3ad4a7438337cb24765ff9a09176cdc5324d5abe727fc40180d5341b01aca411",
+    "command-021.log": "fb703888074d6334a07c61ba3821ebdb4ab2e41f324c5a2280d49b4e7bce9391",
+    "command-022.log": "c493eb118cfe238204e1c0f1761390591d32357ac8a9f874442410bcab9aa865",
+    "command-023.log": "0017b5544d754e87af5e1e3097ecb777c53c6c1fda879f7cd02a77b67b110936",
+    "command-024.log": "1b8e012ae0c0a5ec3979231f67666ff60523da207d7548048a7f276a32feb61f",
+    "command-025.log": "0402fbb9af1a70289e0f8aca8baa77c3f5120532301f4b40f376b49d73fff690",
+    "command-026.log": "6bf45f82862cae34ca448f8951b53f441528ef5825cbd304f2624f9e6abf5c98",
+    "command-027.log": "7b61a7a300dc6491bf2c28e856a5064bd2b715111b4d470f1fb921477200b17a",
+    "command-028.log": "adffe55a6ecbea1599031a6cee4065a7792c8f509c319cc830b8cbd8f566f8d8",
+    "command-029.log": "3addef9a3cf4ede24d1f117740daad88933a88ccdcb20743209a5bc4d23208c8",
+    "command-030.log": "bffdb8c3ef334753e326474ac0799dbfa24c09796fabf4ef549e3161cf30fd32",
+    "command-031.log": "bd42200a57abfbd53de454239eb4c0ae18c8fb46b23e0a188817b39b3536bcdf",
+    "command-032.log": "a2a567c9bdea6308bd38d350ef014ac500a8ee537d518677712df08896b2190a",
+    "command-033.log": "dacad8025269bd69c39d7c18cba03593cd64ede4c9d37bf530f72cecbc53a0a0",
+    "command-034.log": "06ea1a33b6724cc457014d1103519d46cda8e6c1f34231568dbf7e5d026eaf87",
+    "command-035.log": "1c6d2fcc019e63f67693842d556acbf2f101e8479a2ea8f87afba6a141a27863",
+    "command-036.log": "9fb697a59ce0fa407e23ee981eba811d978cc06792958e2917be7ad35c8479ef",
+    "command-037.log": "820cd029e977b6224b66399dc7bffe2fbb0ec2c207380baa03431e5ba7630376",
+    "command-038.log": "c9499c73b162252de94c0795f4ce7df7138a597522c9f9423178f75f9fb7e783",
+    "command-039.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-040.log": "ef258f9976f8b0667e7451a68890f1c4264a3de59d16cad82b6138a8593bf7c0",
+    "command-041.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-042.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-043.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-044.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-045.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-046.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-047.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "command-048.log": "9fb697a59ce0fa407e23ee981eba811d978cc06792958e2917be7ad35c8479ef",
+    "command-049.log": "820cd029e977b6224b66399dc7bffe2fbb0ec2c207380baa03431e5ba7630376",
+    "command-050.log": "35d000cd90f89d0ff0b437d4e59b1ba5563bad0777454e2749069d3b512ea5e7",
+    "command-051.log": "f1a7436f0b2c9e6000a5d6115dba292d84b9f0ec12ad8887a89a592019302f92",
+    "command-052.log": "dc6dc24ad8d83d96830225f83582084e49832d23b8399b5f5a80a4671c414e6f",
+    "command-053.log": "3a9a0e91fae3293fba86c37f5f966222e6abc619c036a8d9083ec7b17cf2d19a",
+    "command-054.log": "e85ee89a5453be53caefaab43cdd4ceb1de5bc94ac8deda2ac12dab30bdd8b5c",
+    "command-055.log": "e85ee89a5453be53caefaab43cdd4ceb1de5bc94ac8deda2ac12dab30bdd8b5c",
+    "command-056.log": "9fb697a59ce0fa407e23ee981eba811d978cc06792958e2917be7ad35c8479ef",
+    "command-057.log": "820cd029e977b6224b66399dc7bffe2fbb0ec2c207380baa03431e5ba7630376",
+    "command-058.log": "f1a7436f0b2c9e6000a5d6115dba292d84b9f0ec12ad8887a89a592019302f92",
+    "command-059.log": "dc6dc24ad8d83d96830225f83582084e49832d23b8399b5f5a80a4671c414e6f",
+    "command-060.log": "3a9a0e91fae3293fba86c37f5f966222e6abc619c036a8d9083ec7b17cf2d19a",
+    "command-061.log": "e85ee89a5453be53caefaab43cdd4ceb1de5bc94ac8deda2ac12dab30bdd8b5c",
+    "command-062.log": "e85ee89a5453be53caefaab43cdd4ceb1de5bc94ac8deda2ac12dab30bdd8b5c",
+    "command-063.log": "9fb697a59ce0fa407e23ee981eba811d978cc06792958e2917be7ad35c8479ef",
+    "command-064.log": "820cd029e977b6224b66399dc7bffe2fbb0ec2c207380baa03431e5ba7630376",
+    "core-native.log": "35d000cd90f89d0ff0b437d4e59b1ba5563bad0777454e2749069d3b512ea5e7",
+    "native-first.log": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "native-second.log": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  "native_gates": {
+    "coverage": "Documentation coverage: 1512/1512 items (100.0%); 0 newly undocumented, 0 newly documented",
+    "warnings": "GNATdoc warning delta: 0 added, 0 removed"
+  },
+  "native_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "b1ace2e8cbf9821e929afaf9bcad80b5a14b34c05376cfe307a30654180152f4",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "5a3e975118ff3eb4c2a9d407ecff16dcab1208986bf18bb76948583ca9b3134e"
+  },
+  "non_deployable": true,
+  "publication": {
+    "declaration_snippets": 314,
+    "files": 13,
+    "html_pages": 8,
+    "linked_external_types": 549,
+    "linked_local_types": 326,
+    "linked_types": 875,
+    "links": 1750,
+    "mode": "verified",
+    "public_packages": 1,
+    "unrendered_renderer_exceptions": 0
+  },
+  "resolved_core": {
+    "actions": [
+      {
+        "command": [
+          "sh",
+          "scripts/configure_opencv.sh"
+        ],
+        "directory": ".",
+        "type": "pre-build"
+      },
+      {
+        "command": [
+          "alr",
+          "-n",
+          "build"
+        ],
+        "directory": ".",
+        "type": "test"
+      },
+      {
+        "command": [
+          "alr",
+          "run"
+        ],
+        "directory": "tests",
+        "type": "test"
+      }
+    ],
+    "authors": [
+      "Zack Boll"
+    ],
+    "depends-on": [
+      {
+        "opencv": "*",
+        "pkg_config": "*"
+      }
+    ],
+    "description": "Thick Ada binding to OpenCV Core Library",
+    "licenses": "Apache-2.0",
+    "maintainers": [
+      "Zack Boll <zackboll@gmail.com>"
+    ],
+    "maintainers-logins": [
+      "zackboll"
+    ],
+    "name": "opencv_core",
+    "origin": {
+      "commit": "386c5360ac51f2b62e522853d94290aec4ee14a0",
+      "url": "git+https://github.com/zackboll/opencv_core_ada.git"
+    },
+    "tags": [
+      "opencv",
+      "computer-vision",
+      "binding",
+      "ada"
+    ],
+    "version": "0.4.1",
+    "website": "https://github.com/zackboll/opencv_core_ada"
+  },
+  "resolved_core_source": "/home/zboll/.local/share/alire/builds/opencv_core_0.4.1_386c5360/59c9d1a9a87e5b0e5373d4b44fa3558506b5db4669aa1b218555afed90327689",
+  "shadow_gates": {
+    "coverage": "Documentation coverage: 1512/1512 items (100.0%); 0 newly undocumented, 0 newly documented",
+    "warnings": "GNATdoc warning delta: 0 added, 0 removed"
+  },
+  "shadow_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "1379b13f3d3020421d80c5882938cae71b779a9e8b4b9746f6a0f94ad753cea0",
+    "api/gnatdoc-navigation.js": "61eac070e65b38ac63242a54ed0546a8f4a27b25d8958c2824557860623f40b2",
+    "api/gnatdoc-theme.css": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "c289ed925e7e5c14bc2bc2d4d8cf553d97639a2adb61c942c780862725ab8a13",
+    "api/presentation.json": "8af4a9c2f9b89e61e11029962ea589c0acd452f2d3c7975163c55f5b3713be3e",
+    "guides/color-and-image-representation.html": "b7b68ba3184e64829e1c0c692d176bdfce5d480e63737aab2a40beed785d5177",
+    "guides/features-and-structural-analysis.html": "7f6e269e893020801802b0031d75f6bca57e3e96ed6b40081ae13bb10743a028",
+    "guides/filtering-and-transforms.html": "72cb9cd1212c65dad57d8a349696afd5035fea6b1ba84bbfbf625159051a09c7",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "fde563c7341270e51907442ffc09c3e70e3d0488da0593d0abcb9c77c90fdb41",
+    "guides/template-matching-and-registration.html": "f9297b503deb7acf1a3754aa7e8b63162f5681791841d7e8d1ac628133e89518",
+    "index.html": "d42a317705fbbfe097b9a71d42887c82f6007b64012bd4eafc163345ac8cc5e3"
+  },
+  "tool": {
+    "origin": {
+      "dir_info": {},
+      "url": "file:///tmp/gnatdoc008/enhancer"
+    },
+    "resolved_python": "ada-gnatdoc-enhancer @ file:///tmp/gnatdoc008/enhancer\ngreenlet==3.5.6\nmarkdown-it-py==3.0.0\nmdurl==0.1.2\npip==25.1.1\nplaywright==1.56.0\npyee==13.0.1\ntyping_extensions==4.16.0",
+    "revision": "f52dcfe37dc2819d86e72e1c38425e5e49d914eb",
+    "version": "0.1.0.dev0"
+  }
+}

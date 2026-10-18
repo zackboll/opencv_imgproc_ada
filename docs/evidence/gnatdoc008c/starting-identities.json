@@ -1,0 +1,151 @@
+{
+  "authority_transition_sha256": "bf399766834fd80fdbf359486abcd504d2e290b59244dda5097e01e16e770bab",
+  "consumer_main": "9ce22ae5ab70008e1147475a9e6d7baef82f1df0",
+  "consumer_pr": {
+    "autoMergeRequest": null,
+    "baseRefName": "main",
+    "headRefName": "docs/008-shared-enhancer-shadow",
+    "headRefOid": "f2989da6c6a593f6196d1d989be0b2d126743dc6",
+    "isDraft": false,
+    "mergedAt": null,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:46:59Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079904/job/117470166344",
+        "name": "shadow",
+        "startedAt": "2026-10-17T18:26:41Z",
+        "status": "COMPLETED",
+        "workflowName": "Shared GNATdoc shadow (non-deployable)"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:34:43Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058080048/job/117470159879",
+        "name": "build",
+        "startedAt": "2026-10-17T18:26:36Z",
+        "status": "COMPLETED",
+        "workflowName": "Ada API Documentation"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:26:28Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079945/job/117470097129",
+        "name": "configuration",
+        "startedAt": "2026-10-17T18:26:18Z",
+        "status": "COMPLETED",
+        "workflowName": "Cross configuration controls"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:30:51Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079900/job/117470097235",
+        "name": "Linux x86_64",
+        "startedAt": "2026-10-17T18:26:18Z",
+        "status": "COMPLETED",
+        "workflowName": "Cross-Platform Bridge CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:27:26Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079907/job/117470096875",
+        "name": "target-dependencies",
+        "startedAt": "2026-10-17T18:26:17Z",
+        "status": "COMPLETED",
+        "workflowName": "Debian 12 AArch64 target dependencies (not production cross-build)"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:30:01Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079955/job/117470097449",
+        "name": "Debian 12 GNAT 16.1 installed Core and Imgproc",
+        "startedAt": "2026-10-17T18:26:34Z",
+        "status": "COMPLETED",
+        "workflowName": "Debian 12 independent installed consumers"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:26:25Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079953/job/117470097232",
+        "name": "configuration",
+        "startedAt": "2026-10-17T18:26:17Z",
+        "status": "COMPLETED",
+        "workflowName": "External AdaCore adapter controls (synthetic, not qualification)"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:27:09Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058080003/job/117470097405",
+        "name": "compiler-units",
+        "startedAt": "2026-10-17T18:26:17Z",
+        "status": "COMPLETED",
+        "workflowName": "GNAT 12 real source-unit controls (not production qualification)"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:34:43Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058080048/job/117471998891",
+        "name": "deploy",
+        "startedAt": "2026-10-17T18:34:43Z",
+        "status": "COMPLETED",
+        "workflowName": "Ada API Documentation"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:32:38Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079900/job/117470097302",
+        "name": "macOS ARM64",
+        "startedAt": "2026-10-17T18:26:38Z",
+        "status": "COMPLETED",
+        "workflowName": "Cross-Platform Bridge CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:33:02Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079900/job/117470097355",
+        "name": "macOS x86_64 (Intel IPP)",
+        "startedAt": "2026-10-17T18:26:32Z",
+        "status": "COMPLETED",
+        "workflowName": "Cross-Platform Bridge CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-17T18:26:15Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39058079900/job/117470098097",
+        "name": "Windows x86_64 (MSYS2)",
+        "startedAt": "2026-10-17T18:26:15Z",
+        "status": "COMPLETED",
+        "workflowName": "Cross-Platform Bridge CI"
+      }
+    ],
+    "url": "https://github.com/zackboll/opencv_imgproc_ada/pull/72"
+  },
+  "consumer_pr_start": "f2989da6c6a593f6196d1d989be0b2d126743dc6",
+  "core": "386c5360ac51f2b62e522853d94290aec4ee14a0",
+  "enhancer_merged_pr": {
+    "headRefOid": "6187976c53cf42783b82a15a587ae458adf17a18",
+    "mergeCommit": {
+      "oid": "53a321915da2c5a02a54581040673b61f8595b25"
+    },
+    "mergedAt": "2026-10-18T03:15:32Z",
+    "state": "MERGED",
+    "url": "https://github.com/zackboll/ada-gnatdoc-enhancer/pull/9"
+  },
+  "new_enhancer": "53a321915da2c5a02a54581040673b61f8595b25",
+  "old_enhancer": "f52dcfe37dc2819d86e72e1c38425e5e49d914eb",
+  "publication": "shadow-only / offline-test / non-deployable",
+  "starting_worktrees": "consumer and enhancer clean before changes; both origins fetched"
+}

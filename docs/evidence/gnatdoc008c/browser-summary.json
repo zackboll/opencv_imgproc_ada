@@ -1,0 +1,50 @@
+{
+  "additional_history_assertions": 152,
+  "assertion_names": [
+    "additional direct native declaration bookmark full profile",
+    "additional source-order keyboard selection full native profile",
+    "all 314 genuine native declaration anchors",
+    "authored page and responsive tables",
+    "declaration deep link reload full profile",
+    "declaration history Filter_2D repeated Back Forward and active selection",
+    "declaration history Get_Gaussian_Kernel source order differs from native order",
+    "declaration history after operation search",
+    "direct authored heading fragment",
+    "guide-to-guide navigation",
+    "invalid duplicate unknown and wrong-owner declaration queries fail closed",
+    "keyboard focus and activation",
+    "native declaration and local type anchors",
+    "no JavaScript errors",
+    "offline Core type click and frame Back Forward",
+    "offline pinned Core destination",
+    "operation browser search and categories",
+    "package-only bookmark compatibility",
+    "responsive API browser viewport",
+    "source-backed API overload and Back Forward"
+  ],
+  "chromium": "141.0.7390.37",
+  "dimensions": {
+    "javascript": [
+      false,
+      true
+    ],
+    "theme": [
+      "dark",
+      "light"
+    ],
+    "width": [
+      390,
+      1280
+    ]
+  },
+  "executed": 1992,
+  "failed_assertions": [],
+  "failures": 0,
+  "full_report": "review-only CI artifact or retained local qualification workspace/browser.json",
+  "full_report_sha256": "923b9097ea433b9821755e902c07e48880bb8bd8b24a6e67d81eb0d3e63d9ba9",
+  "original_assertion_names_retained": true,
+  "original_assertions_retained": 1840,
+  "production_https_verified": false,
+  "qualification_sha256": "be4ed8960ea980600a6604d89774b66240ebb30eb2a4ff79cba6269e5a809548",
+  "status": "pass"
+}
