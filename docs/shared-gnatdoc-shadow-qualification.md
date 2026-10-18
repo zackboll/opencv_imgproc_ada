@@ -2,7 +2,7 @@
 
 ## Current GNATDOC-008C transition
 
-**Qualification in progress; no production migration is authorized.**
+**Current disposition: HOSTED_CI_PENDING. No production migration is authorized.**
 
 The existing PR #72 starts at `f2989da6c6a593f6196d1d989be0b2d126743dc6`.
 Its original main baseline remains `9ce22ae5ab70008e1147475a9e6d7baef82f1df0`.
@@ -54,6 +54,24 @@ after the normal push to the existing branch. No merge or auto-merge is allowed.
 Production blockers remain independent review, version-stable independently
 verified Core HTTPS hosting, explicit migration approval and production release/
 deployment qualification. The reserved Core 0.4.1 mapping remains offline only.
+
+### Executed merged-pin results (not final-head hosted credit)
+
+Two new complete local builds passed unchanged legacy generation, independently
+generated pristine Imgproc/Core native bytes, shared reconstruction, source/anchor
+preservation, two-copy determinism and byte-idempotence. The second build executed
+164 documentation tests and all six compiled landing/guide examples. Coverage is
+1,512/1,512 and warning delta is 0 added/0 removed. Native declarations are 314/314,
+local links 326 and reserved offline Core links 549; landing, five guides and guide
+CSS remain byte-identical. The unchanged navigation oracle reports 314 entries,
+zero incorrect source-order labels, no missing or duplicate destinations.
+
+The first complete Chromium run passed 1,992 checks: all original 1,840 retained
+and 152 added history checks. Both completed adversarial runs rejected 36/36
+observed mutations and restored exact inventories before browser use. These are
+executed intermediate-head results, not proof for a later head. A final fresh
+workspace and exact-head hosted workflows must pass before independent-review
+readiness. Checked-in current reports identify their actual tested consumer SHA.
 
 ## Historical GNATDOC-008 record (unchanged evidence)
 
