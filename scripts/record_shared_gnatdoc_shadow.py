@@ -10,10 +10,12 @@ from qualify_shared_gnatdoc_shadow import ENHANCER, TRANSITION_SHA256, digest, h
 def record(workspace):
     # The unchanged comparator carries no run-identity field. Reexecute it
     # against this workspace, rather than credit a copied passing JSON report.
+    parity_reexecuted = False
     if (workspace / "legacy/_site/api").is_dir() and (workspace / "first/_site/api").is_dir():
         from compare_shared_gnatdoc_navigation import run
         try:
             run(workspace)
+            parity_reexecuted = True
         except ValueError:
             pass  # The written failing report remains an explicit readiness gate.
     reports = {}
@@ -29,7 +31,8 @@ def record(workspace):
                        for n in ("negative", "browser", "navigation-comparison")))
     qualification = reports.get("qualification", {})
     expected = qualification.get("shadow_sha256")
-    complete = (qualification.get("tool", {}).get("revision") == ENHANCER
+    complete = (parity_reexecuted
+                and qualification.get("tool", {}).get("revision") == ENHANCER
                 and qualification.get("authority_transition_sha256") == TRANSITION_SHA256
                 and qualification.get("deterministic") is True
                 and qualification.get("byte_idempotent") is True
@@ -39,6 +42,11 @@ def record(workspace):
                 and len(qualification.get("examples", [])) == 6
                 and all(e["build_exit"] == e["run_exit"] == 0 for e in qualification.get("examples", []))
                 and all(qualification.get(n) for n in ("legacy_gates", "native_gates", "shadow_gates"))
+                and all(qualification.get(n, {}).get("coverage") ==
+                        "Documentation coverage: 1512/1512 items (100.0%); 0 newly undocumented, 0 newly documented"
+                        and qualification.get(n, {}).get("warnings") ==
+                        "GNATdoc warning delta: 0 added, 0 removed"
+                        for n in ("legacy_gates", "native_gates", "shadow_gates"))
                 and qualification.get("comparison", {}).get("local_type_links") == 326
                 and qualification.get("comparison", {}).get("offline_external_type_links") == 549
                 and qualification.get("comparison", {}).get("native", {}).get("declarations") == 314
