@@ -926,6 +926,37 @@ package OpenCV.Image_Processing.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_imgproc_connected_components_with_stats";
 
+   function Connected_Components
+     (Source       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Labels       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Connectivity : Interfaces.Integer_32;
+      Label_Depth  : Interfaces.Integer_32;
+      Algorithm    : Interfaces.Integer_32;
+      Label_Count  : access Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_connected_components";
+
+   function Connected_Components_With_Stats_Options
+     (Source       : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Labels       : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Stats        : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Centroids    : OpenCV.Core.Module_Interop.Output_Mat_Handle;
+      Connectivity : Interfaces.Integer_32;
+      Label_Depth  : Interfaces.Integer_32;
+      Algorithm    : Interfaces.Integer_32;
+      Label_Count  : access Interfaces.Integer_32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_imgproc_connected_components_with_stats_options";
+
+   function Mat_Swap
+     (First, Second : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_mat_swap";
+
    function Mats_Overlap
      (First   : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Second  : OpenCV.Core.Module_Interop.Input_Mat_Handle;

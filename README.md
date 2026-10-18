@@ -726,7 +726,7 @@ The table below summarizes the current public operations.
 | Image fusion | `Blend_Linear` | matching nonempty 2-D UInt8/Float32 sources; Float32 C1 weight maps, finite [0,1] | native normalized blend with 1e-5 denominator; any safe Core channel count; fresh atomic owning result; read-sharing and logical Regions |
 | Histogram | `CLAHE` | nonempty 2-D `UInt8`/`UInt16` C1 | local contrast-limited equalization; default clip 40.0 and grid 8x8; same-object in-place supported; other storage-sharing aliases rejected |
 | Contours | `Find_Contours` | nonempty 2-D `UInt8` C1 | four retrieval modes, four approximation modes, signed offset |
-| Analysis | `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way binary-mask labeling; Int32 C1 labels and Ada-owned foreground statistics |
+| Analysis | `Connected_Components`, `Connected_Components_With_Stats` | nonempty 2-D `UInt8` C1 | 4/8-way labeling; UInt16/Int32 labels, portable algorithm selection and optional Ada-owned foreground statistics |
 | Analysis | `Distance_Transform`, `Manhattan_Distance_Transform_UInt8`, `Distance_Transform_With_Labels` | nonempty 2-D `UInt8` C1 with at least one zero | fresh Float32 distances, saturating UInt8 L1, or Float32 distances plus Int32 Voronoi labels |
 | Analysis | `Integral_Sum`, `Integral_Sum_And_Squares`, `Integral_Images` | nonempty 2-D `UInt8`, `Float32`, `Float64`; arbitrary valid channel count | fresh, independent-channel `(rows+1) x (cols+1)` integral Mats; Float64 accumulator defaults |
 | Drawing | `Draw_Line`, `Draw_Arrow`, `Draw_Marker`, `Draw_Text`, `Measure_Text`, `Font_Scale_For_Height`, rectangles, circles, ellipses, polylines, polygons | shapes: nonempty 2-D `UInt8`, `UInt16`, `Int16`, `Float32`, `Float64` C1..C4; text: nonempty 2-D `UInt8` C1/C3/C4 | in-place annotation; legacy text selectors; shape antialiasing only for `UInt8`; no alpha blending |
@@ -3218,6 +3218,62 @@ end CLAHE_Example;
 
 ## Connected components
 
+`Connected_Components` calls native `cv::connectedComponents` without computing
+statistics. Its `Total_Labels : out Natural` includes background, even for an
+all-foreground image. `Background_Label` is always zero. `Label_Depth` selects
+`UInt16_Labels` (IDs 0 through 65535, up to 65536 total labels) or the default
+`Int32_Labels`. `Algorithm` selects `Native_Default`, `SAUF`, `BBDT`, or
+`Spaghetti`; no arbitrary native integer selectors are exposed.
+
+| OpenCV | Native_Default | SAUF | BBDT | Spaghetti |
+| --- | --- | --- | --- | --- |
+| 4.1.0 | BBDT (8), SAUF (4) | `CCL_WU` | `CCL_GRANA` | explicit rejection |
+| 4.6.0 | Spaghetti | `CCL_SAUF`/`CCL_WU` | `CCL_BBDT`/`CCL_GRANA` | supported |
+| 4.10.0 | Spaghetti | supported | supported | supported |
+| 5.0.0 | Spaghetti | supported | supported | supported |
+
+SAUF guarantees row-major labeling where upstream documents it. BBDT and
+Spaghetti have no ordering promise; BBDT selects SAUF for 4-connectivity.
+Native default is passed through, not normalized across native releases.
+
+The new statistics overload requires `Label_Depth`, followed by optional
+`Connectivity` and `Algorithm`. For example:
+
+```ada
+Connected_Components (Mask, Labels, Total_Labels,
+                      Label_Depth => UInt16_Labels, Algorithm => SAUF);
+Connected_Components_With_Stats
+  (Mask, Labels, Components, Label_Depth => Int32_Labels,
+   Connectivity => Four_Connected, Algorithm => BBDT);
+```
+
+Both new operations compute privately into **Int32 native storage**, validate
+every label and its total count, and only then convert to fresh UInt16 storage
+if requested. They never execute native UInt16 CCL: old native implementations
+can wrap provisional labels before returning, even if final components merge.
+This safety-first choice costs an Int32 temporary and a full validation scan;
+UInt16 conversion temporarily needs another two bytes per pixel. Overflow raises
+`OpenCV_Error` without changing the previous Labels object or its storage.
+
+The new operations always rebind Labels to fresh owning storage. Old destination
+aliases and Region parents remain unchanged. Identical Source/Labels objects,
+shallow source aliases and overlapping Regions are rejected before execution.
+Noncontiguous source Regions work and exclude all outside-parent pixels; bounds
+and Float64 centroid coordinates are Region-local. Source is preserved; Core
+handles are borrowed only for the call and never retained. For statistics,
+Ada-owned foreground records are fully built before label publication. An Ada
+`out` result (Components or Total_Labels) is unspecified after an exception.
+
+The new paths reject signed-native arithmetic overflow (including pixel counts
+above `INT_MAX - 2`) and unsafe strides. OpenCV 4.1 additionally rejects odd-height
+images when the public thread-count gate permits its unsafe parallel chunk
+path, and statistics calls without any background pixels (native absent-row
+bounds overflow). No global thread or optimization setting is changed, no
+algorithm is silently replaced, and no background pixels are fabricated.
+See [source review and qualification](docs/connected-components-source-review.md).
+
+### Legacy statistics contract (unchanged)
+
 `Connected_Components_With_Stats` labels the connected foreground regions of a
 binary `UInt8` C1 mask using OpenCV's `connectedComponentsWithStats`.
 
@@ -4964,9 +5020,16 @@ GNATcov
 
 They are not production dependencies of `opencv_imgproc`.
 
-### Current test distribution
+### Registered test counts and feature distribution
 
-The current **979-test** distribution is:
+The current authoritative AUnit run registers **1156 tests** (1147 before
+IMGPROC-API-002). Connected components registers **15** cases (6 before).
+Assertions inside a case and native harness comparisons are not counted as
+additional registered cases. Run the focused suite with
+`alr -n -C tests run --args=connected-components`.
+
+The following feature inventory is not exhaustive; the runner's registered
+count above, rather than a sum of this older feature table, is authoritative:
 
 | Suite | Tests |
 | --- | ---: |
@@ -5001,7 +5064,7 @@ The current **979-test** distribution is:
 | CLAHE | 9 |
 | Contours | 7 |
 | Contour drawing and filling | 6 |
-| Connected components | 6 |
+| Connected components | 15 |
 | Drawing | 11 |
 | Drawing annotations | 14 |
 | Hough detection | 37 |
@@ -5022,7 +5085,6 @@ The current **979-test** distribution is:
 | Bayer demosaicing | 43 |
 | YUV 4:2:0 frame conversions | 50 |
 | Packed YUV 4:2:2 decode and luma | 32 |
-| **Total** | **979** |
 
 
 The suite covers more than simple success paths. It includes:

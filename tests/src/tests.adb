@@ -123,6 +123,8 @@ procedure Tests is
             return Spatial_Derivative_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "canny" then
             return Canny_Edge_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "connected-components" then
+            return Connected_Component_Tests.Suite;
          else
             raise Constraint_Error with "unknown test suite selector";
          end if;

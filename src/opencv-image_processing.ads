@@ -1800,7 +1800,23 @@ package OpenCV.Image_Processing is
    type Hough_Circle_Center_Array is
      array (Natural range <>) of OpenCV.Float32_Point;
 
-   --  Pixel value of the Labels image of Connected_Components_With_Stats:
+   --  Portable connected-component selector. SAUF uses CCL_WU and BBDT uses
+   --  CCL_GRANA on OpenCV 4.1; Spaghetti requires OpenCV 4.5.2 or later.
+   --  @enum Native_Default Preserve the installed OpenCV default.
+   --  @enum SAUF Row-major label ordering as guaranteed by OpenCV.
+   --  @enum BBDT No spatial ordering; uses SAUF for 4-connectivity.
+   --  @enum Spaghetti No spatial label-order guarantee; unavailable on 4.1.
+   type Connected_Component_Algorithm is
+     (Native_Default, SAUF, BBDT, Spaghetti);
+
+   --  Storage of published labels. Both choices use private Int32 native
+   --  staging, avoiding unsafe native UInt16 provisional-label overflow.
+   --  @enum UInt16_Labels IDs 0 .. 65535; 65536 labels including background.
+   --  @enum Int32_Labels Nonnegative signed 32-bit IDs, subject to native
+   --  geometry and allocation limits.
+   type Connected_Component_Label_Depth is (UInt16_Labels, Int32_Labels);
+
+   --  Pixel value of the Labels image of connected-component operations:
    --  Background_Label for background pixels and 1 .. Component_Count for the
    --  foreground components. Get_Component accepts foreground labels.
    type Component_Label is new Natural;
@@ -4791,6 +4807,60 @@ package OpenCV.Image_Processing is
       Labels       : in out OpenCV.Core.Mat;
       Components   : out Connected_Component_Set;
       Connectivity : Pixel_Connectivity := Eight_Connected);
+
+   --  Labels nonzero pixels with cv::connectedComponents, without statistics.
+   --  Source is preserved. Noncontiguous Regions are supported; only their
+   --  pixels participate and coordinates are Region-local. The operation
+   --  borrows Core handles only for the call and never retains them.
+   --  Labels is always rebound to fresh storage after validation; its old
+   --  aliases and Region parent remain unchanged on success and failure.
+   --  Int32 staging plus a checked UInt16 conversion costs temporary storage
+   --  and an additional scan. No native UInt16 labeling is performed.
+   --  @param Source Nonempty two-dimensional UInt8 C1 mask. Zero is
+   --  background; every nonzero byte, not just 255, is foreground.
+   --  @param Labels Receives a C1 image with Source geometry. The same object,
+   --  shallow aliases and overlapping Regions of Source are rejected before
+   --  native execution; previous storage is unchanged on rejection.
+   --  @param Total_Labels Total including background (always label zero), even
+   --  when no background pixels exist. Undefined when an exception is raised.
+   --  @param Connectivity Four- or eight-neighbor connectivity.
+   --  @param Label_Depth Published UInt16 or Int32 storage.
+   --  @param Algorithm Native selection; only SAUF guarantees row-major IDs.
+   --  @exception OpenCV_Error Invalid source, overlap, unavailable algorithm,
+   --  unsafe native geometry/path, UInt16 overflow or native failure. OpenCV
+   --  4.1 odd-height parallel paths are rejected without changing global
+   --  thread settings. Allocation failures can also raise Storage_Error.
+   procedure Connected_Components
+     (Source       : OpenCV.Core.Mat;
+      Labels       : in out OpenCV.Core.Mat;
+      Total_Labels : out Natural;
+      Connectivity : Pixel_Connectivity := Eight_Connected;
+      Label_Depth  : Connected_Component_Label_Depth := Int32_Labels;
+      Algorithm    : Connected_Component_Algorithm := Native_Default);
+
+   --  Statistics variant with the same staging, Region, alias, label-depth,
+   --  algorithm and failure-publication rules as Connected_Components. The
+   --  legacy overload above retains direct-output/storage-reuse behavior.
+   --  @param Source Nonempty two-dimensional UInt8 C1 mask, preserved.
+   --  @param Labels Fresh C1 output published only after Ada statistics exist.
+   --  @param Components Ada-owned foreground statistics, indexed by the actual
+   --  output labels 1 .. Component_Count. Bounds and centroids are local;
+   --  area counts pixels. As an out parameter it is unspecified on exceptions.
+   --  @param Label_Depth Required to distinguish this overload from legacy.
+   --  @param Connectivity Four- or eight-neighbor connectivity.
+   --  @param Algorithm Native selector; unavailable algorithms fail.
+   --  @exception OpenCV_Error Same failures as Connected_Components, or bad
+   --  statistics shape/numeric representation. Labels is unchanged on failure
+   --  before publication; no preservation is promised for Components on error.
+   --  OpenCV 4.1 statistics with no background pixels are rejected: native
+   --  absent-background bounds finalization has signed arithmetic overflow.
+   procedure Connected_Components_With_Stats
+     (Source       : OpenCV.Core.Mat;
+      Labels       : in out OpenCV.Core.Mat;
+      Components   : out Connected_Component_Set;
+      Label_Depth  : Connected_Component_Label_Depth;
+      Connectivity : Pixel_Connectivity := Eight_Connected;
+      Algorithm    : Connected_Component_Algorithm := Native_Default);
 
    --  Returns the foreground count, excluding Background_Label.
    --  @param Self Statistics set to inspect.

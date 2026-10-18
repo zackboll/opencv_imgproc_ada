@@ -4,6 +4,13 @@
 
 ### Added
 
+* `Connected_Components` labels-only analysis and an unambiguous statistics
+  overload with required `Label_Depth`, portable Native_Default/SAUF/BBDT/
+  Spaghetti selection, UInt16/Int32 output and checked Int32 staging.
+  New calls publish fresh labels after validation, preserving old destination
+  aliases/Region parents on failure; the legacy direct-output API is unchanged.
+  OpenCV 4.1 Spaghetti, unsafe odd-height parallel paths and absent-background
+  statistics fail explicitly. See [IMGPROC-API-002 source review](docs/connected-components-source-review.md).
 * Gradient-input `Canny_Edges` for matching Int16 C1/C3 derivatives, L1/L2
   norms, strided Regions, explicit alias rejection and guarded native signed
   arithmetic. The existing image-input overload is unchanged.
