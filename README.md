@@ -3272,10 +3272,35 @@ bounds overflow). No global thread or optimization setting is changed, no
 algorithm is silently replaced, and no background pixels are fabricated.
 See [source review and qualification](docs/connected-components-source-review.md).
 
-### Legacy statistics contract (unchanged)
+### Legacy statistics contract (storage reuse preserved)
 
 `Connected_Components_With_Stats` labels the connected foreground regions of a
 binary `UInt8` C1 mask using OpenCV's `connectedComponentsWithStats`.
+
+The original overload now uses the same native-arithmetic safety preflight:
+positive 2-D geometry, rows/columns/pixel count at most `INT_MAX - 2`, safe
+allocation/pointer offsets, row strides and addressed storage extents. All raw
+C ABI source/output and output/output header or byte-storage overlaps are
+rejected before native writes. Public Ada input remains UInt8 C1.
+
+On **OpenCV 4.1 only**, legacy statistics reject (1) any image with no zero
+background pixel, because `CCStatsOp::finish` overflows signed background
+bounds, and (2) odd-height images when `getNumThreads() > 1` and
+`rows / getNumThreads() >= 2`, because native Wu/Grana parallel chunk metadata
+can be indexed out of bounds. The thread gate is conservative even if no
+parallel backend is active. **OpenCV 4.6, 4.10 and 5.0 retain all-foreground
+and odd-height support.** No production thread settings, algorithm selection,
+or image pixels are changed to work around either hazard.
+
+Preflight rejection raises `OpenCV_Error` and preserves Source and previous
+Labels storage, including shallow aliases and a destination Region's parent;
+the raw C ABI resets `label_count` to zero. An Ada `out Components` value is
+unspecified after an exception. This is **not** the newer failure-atomic
+publication path: normal legacy calls still reuse compatible Int32 C1 output
+storage and update its aliases/Region parent directly. Later native/allocation
+failures do not gain a general rollback guarantee. See the
+[legacy safety source evidence and qualification](docs/connected-components-source-review.md#imgproc-safe-003--legacy-statistics-hardening)
+for exact restrictions and remaining backend/platform qualification limits.
 
 ```ada
 declare

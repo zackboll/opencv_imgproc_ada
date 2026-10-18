@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fixed
+
+* Harden the original `Connected_Components_With_Stats` entry point before
+  native execution: signed geometry/provisional-label bounds, strides/storage
+  extents, all output/source alias pairs, and proven OpenCV 4.1 odd-height
+  parallel chunk and absent-background statistics hazards. Raw signed-byte
+  sources are also guarded. Rejections reset the raw label count and preserve
+  Source and previous output storage. The public declaration, native-default
+  selection, Int32 labels, direct destination reuse and Region/shallow-alias
+  behavior on success are unchanged. The two 4.1-specific restrictions do not
+  apply to 4.6, 4.10 or 5.0. See the
+  [source review](docs/connected-components-source-review.md#imgproc-safe-003--legacy-statistics-hardening).
+
 ### Added
 
 * `Connected_Components` labels-only analysis and an unambiguous statistics

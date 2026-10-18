@@ -119,8 +119,9 @@ bytes/pixel and conversion cost. No direct UInt16 fast path is claimed.
    New statistics calls reject all-nonzero UInt8 sources on 4.1 before native
    CCL. Labels-only calls remain supported. No synthetic background is added.
 
-The legacy entry point and storage-reuse behavior are unchanged, including its
-existing native-version limitations. No global thread/optimization changes.
+At IMGPROC-API-002 the legacy entry point was left unchanged. IMGPROC-SAFE-003
+below closes those remaining safety gaps while retaining direct storage reuse.
+No global thread/optimization changes.
 
 ## Public API and publication
 
@@ -218,3 +219,160 @@ little-endian AArch64 object with GCC 12 and real OpenCV headers. No SPARK proof
 claim is made: this path uses controlled Mats, foreign callbacks and Ada-owned
 vectors; safety evidence is explicit runtime checks, native source analysis,
 native sanitizers and behavioral tests, not GNATprove.
+
+## IMGPROC-SAFE-003 — legacy statistics hardening
+
+### Baseline and compatibility
+
+Starting `origin/main`: **6a8c0f4c3c9a195a77699f184e9de2554f1d3b5f**,
+the merge commit of PR #74 (merged 2026-10-18T17:42:06Z). Fetched before work;
+clean tree, no duplicate safety branch or open PR. Branch:
+`safety/003-legacy-connected-components`.
+
+The legacy Ada declaration and C symbol/signature are unchanged. The call still
+uses the short native `connectedComponentsWithStats(..., connectivity, CV_32S)`
+overload, hence **native default**, not a selected substitute. It still writes
+directly into the caller's Labels: matching Int32 C1 storage is reused, including
+shallow aliases and a destination Region's parent. It is deliberately NOT routed
+through the newer private staging/publication path. Components still contains
+only foreground records indexed by actual label. No ownership changes, extra
+public declarations, thread-setting changes, synthetic pixels or relabeling.
+
+### Exact upstream evidence
+
+Re-reviewed exact-tag headers and implementations in the authoritative local
+OpenCV Git mirror; SHA-256 of each local `connectedcomponents.cpp` matched
+`git show <tag>:modules/imgproc/src/connectedcomponents.cpp` byte for byte.
+
+| Tag | Upstream commit | Statistics / dispatch / chunks |
+| --- | --- | --- |
+| 4.1.0 | `371bba8f54560b374fbcd47e7e02f015ac4969ad` | [init/finish L101–156](https://github.com/opencv/opencv/blob/4.1.0/modules/imgproc/src/connectedcomponents.cpp#L101-L156), [Wu chunks L594–640](https://github.com/opencv/opencv/blob/4.1.0/modules/imgproc/src/connectedcomponents.cpp#L594-L640), [Grana chunks L2541–2575](https://github.com/opencv/opencv/blob/4.1.0/modules/imgproc/src/connectedcomponents.cpp#L2541-L2575), [dispatch/wrappers L3926–4031](https://github.com/opencv/opencv/blob/4.1.0/modules/imgproc/src/connectedcomponents.cpp#L3926-L4031) |
+| 4.6.0 | `b0dc474160e389b9c9045da5db49d03ae17c6a6b` | [finish L146–164](https://github.com/opencv/opencv/blob/4.6.0/modules/imgproc/src/connectedcomponents.cpp#L146-L164), chunks `roundUp(h,2)` L1143,1772,2302,4243; dispatch L5622–5769 |
+| 4.10.0 | `71d3237a093b60a27601c20e9ee6c3e52154e8b1` | [finish L146–164](https://github.com/opencv/opencv/blob/4.10.0/modules/imgproc/src/connectedcomponents.cpp#L146-L164), chunks/dispatch as 4.6 above |
+| 5.0.0 | `40738fb16ceddb5fb3fea747585f7ce6abb0605b` | [finish L146–164](https://github.com/opencv/opencv/blob/5.0.0/modules/imgproc/src/connectedcomponents.cpp#L146-L164), rounded chunks L1155,1785,2318,4267; dispatch L5652–5799 |
+
+1. **4.1 odd parallel chunks:** short statistics overload L4009–4012 delegates
+   to CCL_DEFAULT; L4023 constructs CCStatsOp. The same dispatch gate L3939
+   selects parallel Wu for 4C and Grana for default 8C. Wu allocates h ints
+   (L598), writes `startR+1` (L367,446), reads `i+1` (L618,629). Grana rounds
+   stripe starts upward (L841–844), allocates h ints (L2545), writes `startR+1`
+   (L1879), reads `i+1` (L2564). A final single-row stripe can address h.
+   Reject **odd rows AND threads > 1 AND rows/threads >= 2**, exactly the newer
+   conservative public thread gate, for BOTH legacy connectivities. No public
+   backend query exists in 4.1; backend-inactive builds may also be rejected.
+2. **4.1 absent background:** init L110–114 leaves zero-area row 0 with INT_MAX
+   minima and INT_MIN maxima. Finish L148–149 unconditionally subtracts them,
+   overflowing signed int before Ada can discard background statistics. Reject
+   **all-nonzero C1 8U OR 8S input**, before native labeling. Native L3936 accepts
+   both depths and instantiates uchar scans; public Ada still permits only 8U.
+   Zero detection uses the source view, not its parent, and honors row stride.
+   Other types/channels are left to safe OpenCV assertions. 4.6/4.10/5.0 finish
+   tests `area > 0` before bounds subtraction and initializes the absent row
+   otherwise; their chunk arrays are rounded up. Neither 4.1-only gate applies
+   to those newer versions.
+3. **Signed native arithmetic:** the Wu `row*width+1` stripe offset L393 and
+   L629, Grana `(h+1)/2,(w+1)/2` parent allocation L2541, stripe round-up,
+   provisional parent/sentinel increments and CCStatsOp signed area L139/179
+   require positive 2-D geometry and rows/cols/pixels <= INT_MAX-2. Product is
+   computed in uint64 before native execution. This bounds provisional indices
+   and coordinate sums; pointer/allocation representability is separately
+   bounded by `pixels <= PTRDIFF_MAX/(5*sizeof(double))`, conservatively covering
+   stats/centroid/integral rows. Allocation exhaustion remains an exception.
+4. **Strides/extent:** native Wu L305–308,407–409 and Grana L853–859 use row
+   pointers and one/two-row byte offsets. Shared preflight verifies row bytes,
+   packed element step, `step[0] >= cols*elemSize`, `rows*step <= PTRDIFF_MAX`
+   and addressed extent `(rows-1)*step+row_bytes <= dataend-data` without pointer
+   arithmetic overflow. These checks precede even the absent-background scan.
+   Valid noncontiguous Regions remain supported. Existing nonempty 2-D outputs
+   are checked too, since native create may reuse them. N-D outputs may safely
+   be rebound; N-D sources cannot reach 2-D scans. Arbitrary forged/dangling
+   handles or lying backing-storage metadata are not supported by Core's ABI.
+5. **Ownership/aliasing:** native labels create precedes CCStatsOp init, whose
+   output create/getMat calls retain shallow headers. Shared output headers or
+   intersecting byte storage can therefore corrupt another result or unread
+   source during direct writes. Check all six source/Labels/Stats/Centroids
+   pairs for identity and exact row-byte overlap, including cross-depth views.
+   This does not reject aliases of Labels that are NOT another argument: they
+   still observe successful writes. OpenCV Core's `Mat::create` early return
+   for matching geometry/type preserves that contract; ROI headers own a
+   reference, not an independent pixel allocation. No borrowed handle is owned,
+   retained or destroyed by Imgproc.
+
+### Error boundary and validation-boundary review
+
+One private native preflight is reused by legacy and newer operations. It
+returns established invalid-argument status/diagnostic; thick Ada raises
+OpenCV_Error. The raw count is initialized to zero before handle resolution.
+All preflight rejections preserve Source, output headers and previous storage;
+Components is an Ada out parameter and is **not** promised preserved on error.
+Later direct native/allocation failures have no new rollback guarantee.
+
+Retained duplicated conditions are specifically ABI safety: empty/2-D/positive
+geometry prevents native row-zero access; signed dimensions/product prevent
+native overflow and invalid parent indexing; stride/extent checks prevent
+out-of-bounds reads/writes; identity/byte-overlap checks prevent destructive
+cross-output/source writes; 4.1 thread/height prevents chunk OOB; absent
+background prevents signed stats overflow. Each is annotated `// ABI safety:`.
+Depth/channel tests in the 4.1 guard select **all native-accepted representations
+of the hazardous operation**, not a duplicate UInt8-only public policy.
+Connectivity checks decode the C selector. No new semantic postconditions.
+
+### Reproduction and qualification
+
+The normal native harness now runs a legacy corpus with independently computed
+short-overload native references, 1/2 threads (restored by RAII), both
+connectivities and native byte depths, thin/even/odd/tall shapes, four masks,
+strided Regions and direct destination ROI/shallow aliases. Malformed checks
+cover null count/handles, all six identical and overlapping argument pairs,
+cross-depth overlap, invalid selectors/types, empty/N-D, signed geometry/product,
+short/overflowing/out-of-allocation strides and output stride rejection/recovery.
+
+Separate opt-in **unsafe native-only** reproductions (never normal regression
+calls) are `tests/bin/connected-components-4.1.0-1 --unsafe-41-background` and
+`--unsafe-41-chunks`, after building with instrumented 4.1 and `SANITIZE=1`.
+The first reproduced UBSan signed overflow at upstream L148; the second (17x32,
+2 threads, default 8C, with background) reproduced ASan heap-buffer-overflow
+at Grana FirstScan L1879, immediately past the 68-byte h-entry allocation.
+A preliminary 513-row 4C schedule did not reproduce an error; no universal
+schedule-dependent crash claim is made. Both public paths reject before CCL.
+
+### Qualification results
+
+Starting registered AUnit was **1156/1156**. After the two legacy cases it is
+**1158/1158**, with zero failed assertions and zero unexpected errors, against
+OpenCV 4.1.0, 4.6.0, 4.10.0 and 5.0.0. The 4.10 run used installed opencv4 in
+`/usr/lib/x86_64-linux-gnu`; 4.1, 4.6 and 5.0 used their exact local prefixes.
+Version switches were clean release rebuilds.
+
+| Version | Comparisons | Counted rejections | Legacy references / rejections | ASan/UBSan |
+| --- | ---: | ---: | ---: | --- |
+| 4.1.0 | 1998 | 1605 | 560 / 374 | clean on guarded calls |
+| 4.6.0 | 3592 | 15 | 896 / 38 | clean |
+| 4.10.0 | 3592 | 15 | 896 / 38 | clean, including the installed library |
+| 5.0.0 | 3592 | 15 | 896 / 38 | clean |
+
+Malformed ABI and recovery checks passed on every version and are not counted
+as registered AUnit tests. The opt-in unsafe 4.1 reproductions still fault
+upstream: UBSan signed overflow at L148, and ASan heap-buffer-overflow at
+Grana FirstScan L1879 for the recorded 17x32 8-connected case.
+
+GNATdoc 26.0.0 regenerated with zero warnings. Coverage remains **1556/1556**
+(100%), **321** declarations and **189** subprograms; both baselines stay
+empty. The added safety text is in the opening description so it renders with
+the declaration. Documentation tests were rerun by module against that site:
+comment-only 6, coverage 26, warning comparison 36, navigation 11, type links 23, validation
+43, guides 14, shared-shadow 10 and applicability 8; all passed. The combined
+discovery command was not retained as one process. Hosted Linux/macOS, Debian
+installed-consumer, Windows and full production cross execution were not rerun
+and are not claimed as passed. Debian 12 GNAT 12 source-unit controls passed
+compile-only: native x86_64 was rerun for this change (4 tests), and AArch64
+passed in the earlier container run (4 tests). The host `gcc-12` lacks
+`gnat1`, so that local rerun is not qualification. The host CI-control attempt
+ran 54 tests with 6 failures caused by that same missing `gnat1` and 2 skips.
+The Debian container CI-control run passed (54 tests, 2 environment-dependent
+skips); the skips are not platform qualification.
+No independent reviewer has approved this correction. Do not merge, enable
+auto-merge, tag or release.
+
+Historical IMGPROC-API-002 counts above remain historical evidence and are not
+reused as evidence for this correction.

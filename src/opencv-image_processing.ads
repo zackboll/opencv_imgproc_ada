@@ -4788,7 +4788,15 @@ package OpenCV.Image_Processing is
    --  Int32 C1 Mat with Source's rows and columns (shallow copies of Labels
    --  and a Region's parent then see the labels) and otherwise rebinds it to
    --  new storage. The operation is not in place: Source and Labels must not
-   --  share storage.
+   --  share storage. Native safety preflight rejects unrepresentable geometry,
+   --  pixel counts above INT_MAX - 2 and unsafe strides before writing Labels.
+   --  On OpenCV 4.1 only, it also rejects masks with no background pixels
+   --  (signed bounds overflow in statistics finalization), and odd heights
+   --  when native getNumThreads() > 1 and rows / getNumThreads() >= 2 (unsafe
+   --  parallel chunk indexing). OpenCV 4.6, 4.10 and 5.0 do not have these two
+   --  version-specific restrictions. No global thread setting or native
+   --  algorithm selection is changed. Preflight rejection preserves Source
+   --  and previous Labels storage, including its shallow aliases/parent.
    --  @param Source Binary mask: a nonempty two-dimensional UInt8 C1 Mat.
    --  @param Labels Receives the Int32 C1 label image with Source's rows and
    --  columns. Must not share storage with Source, including the same Mat, a
@@ -4801,7 +4809,7 @@ package OpenCV.Image_Processing is
    --  @exception OpenCV_Error Raised when Source is empty, not
    --  two-dimensional, not UInt8 or not single-channel, when Labels shares
    --  storage with Source, when OpenCV returns an invalid label count, and
-   --  when OpenCV fails.
+   --  when native safety preflight rejects the call, and when OpenCV fails.
    procedure Connected_Components_With_Stats
      (Source       : OpenCV.Core.Mat;
       Labels       : in out OpenCV.Core.Mat;
