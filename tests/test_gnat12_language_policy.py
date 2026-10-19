@@ -60,6 +60,7 @@ class LanguagePolicyTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("Guil_Parameters", result.stdout)
                 layouts = {
+                    "Lsd_Record": (384, 8),
                     "Corner_Point": (64, 4), "Point_I32": (64, 4),
                     "Point_F32": (64, 4), "Contour_Span": (64, 4),
                     "Hough_Line_Evidence_Record": (192, 8),

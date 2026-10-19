@@ -57,6 +57,42 @@ typedef struct opencv_imgproc_hough_circle_evidence_handle
     opencv_imgproc_hough_circle_evidence_handle;
 typedef struct opencv_imgproc_pyramid_handle opencv_imgproc_pyramid_handle;
 
+typedef struct opencv_imgproc_lsd_handle opencv_imgproc_lsd_handle;
+/* Plain C layout: four binary32 endpoints, three binary64 diagnostics,
+ * int32 availability (0/1), and zero reserved padding. Ada owns copied data. */
+typedef struct {
+    float x1, y1, x2, y2;
+    double width, precision, nfa;
+    int32_t has_nfa, reserved;
+} opencv_imgproc_lsd_segment;
+
+/* Invocation-local detector. On failure *result is null. Unsupported OpenCV
+ * versions return ERROR_OPENCV without constructing the removed detector. */
+int32_t opencv_imgproc_lsd_detect(
+    const opencv_core_mat_handle *source, int32_t refinement,
+    double scale, double sigma_scale, double quantization, double angle,
+    double log_epsilon, double density, int32_t bins,
+    opencv_imgproc_lsd_handle **result);
+void opencv_imgproc_lsd_destroy(opencv_imgproc_lsd_handle *result);
+int32_t opencv_imgproc_lsd_count(
+    const opencv_imgproc_lsd_handle *result, int32_t *count);
+int32_t opencv_imgproc_lsd_copy(
+    const opencv_imgproc_lsd_handle *result,
+    opencv_imgproc_lsd_segment *segments, int32_t capacity);
+/* Borrowed Core handles; output header must differ from input. Output remains
+ * unchanged on error. Empty endpoints are supported on all functional builds. */
+int32_t opencv_imgproc_lsd_render(
+    const opencv_core_mat_handle *image,
+    const opencv_imgproc_lsd_segment *segments, int32_t count,
+    opencv_core_mat_handle *output);
+/* Optional output is fresh black UInt8 C3, not an input canvas. Count is zero
+ * on failure; output Mat unchanged. Both segment buffers may be null if empty. */
+int32_t opencv_imgproc_lsd_compare(
+    int32_t width, int32_t height,
+    const opencv_imgproc_lsd_segment *first, int32_t first_count,
+    const opencv_imgproc_lsd_segment *second, int32_t second_count,
+    int32_t *mismatch_count, opencv_core_mat_handle *output);
+
 typedef struct {
     int32_t x;
     int32_t y;

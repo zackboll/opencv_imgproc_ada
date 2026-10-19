@@ -17,6 +17,16 @@
 
 ### Added
 
+* Complete native LSD detection configuration, Ada-owned oriented Float32
+  segments with width/precision and optional Advanced NFA evidence, native
+  red-BGR rendering, and pixel-mismatch comparison with fresh visualization.
+  ROI input is isolated and source aliases are preserved. OpenCV before 4.5.4
+  explicitly reports unavailable without calling the stub; 5.0's enum argument
+  is handled internally. Added source-level safety review and native oracles.
+  Qualification remains blocked by instrumented upstream exact-resize SIMD
+  alignment and advanced rect_nfa float-cast errors; the provisional geometric
+  guard is insufficient. See `docs/line-segment-detector-source-review.md`.
+
 * `Connected_Components` labels-only analysis and an unambiguous statistics
   overload with required `Label_Depth`, portable Native_Default/SAUF/BBDT/
   Spaghetti selection, UInt16/Int32 output and checked Int32 staging.

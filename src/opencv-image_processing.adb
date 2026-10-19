@@ -28,6 +28,253 @@ package body OpenCV.Image_Processing is
    procedure Raise_On_Error
      (Status : Internal.C_API.Status; Operation : String);
 
+   procedure Validate_LSD_Parameters (P : LSD_Parameters) is
+      use type OpenCV.Float64_Value;
+   begin
+      if not P.Refinement'Valid
+        or else not Is_Finite (P.Scale)
+        or else not Is_Finite (P.Sigma_Scale)
+        or else not Is_Finite (P.Quantization)
+        or else not Is_Finite (P.Angle_Degrees)
+        or else not Is_Finite (P.Log_Epsilon)
+        or else not Is_Finite (P.Density)
+        or else P.Scale <= 0.0
+        or else P.Scale > 1.0
+        or else P.Sigma_Scale <= 0.0
+        or else P.Quantization < 0.0
+        or else P.Angle_Degrees <= 0.0
+        or else P.Angle_Degrees >= 180.0
+        or else P.Density < 0.0
+        or else P.Density >= 1.0
+        or else not P.Bin_Count'Valid
+      then
+         raise OpenCV.OpenCV_Error with "Invalid LSD parameters";
+      end if;
+   end Validate_LSD_Parameters;
+
+   function Detect_Line_Segments
+     (Source : OpenCV.Core.Mat; Parameters : LSD_Parameters := (others => <>))
+      return LSD_Segment_Array
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      use type Interfaces.Integer_32;
+      Handle : aliased Internal.C_API.LSD_Handle :=
+        Internal.C_API.Null_LSD_Handle;
+      Count  : aliased Interfaces.Integer_32 := 0;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Detect (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.LSD_Detect
+             (S,
+              LSD_Refinement'Pos (Parameters.Refinement),
+              Interfaces.C.double (Parameters.Scale),
+              Interfaces.C.double (Parameters.Sigma_Scale),
+              Interfaces.C.double (Parameters.Quantization),
+              Interfaces.C.double (Parameters.Angle_Degrees),
+              Interfaces.C.double (Parameters.Log_Epsilon),
+              Interfaces.C.double (Parameters.Density),
+              Interfaces.Integer_32 (Parameters.Bin_Count),
+              Handle'Access);
+      end Detect;
+   begin
+      if Source.Is_Empty
+        or else Source.Dimension_Count /= 2
+        or else Source.Depth /= OpenCV.Core.UInt8
+        or else Source.Channels /= 1
+      then
+         raise OpenCV.OpenCV_Error with "LSD requires nonempty 2-D UInt8 C1";
+      end if;
+      Validate_LSD_Parameters (Parameters);
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle (Source, Detect'Access);
+         Raise_On_Error (Status, "Detect_Line_Segments");
+         Raise_On_Error
+           (Internal.C_API.LSD_Count (Handle, Count'Access), "LSD count");
+         if Count = 0 then
+            Internal.C_API.LSD_Destroy (Handle);
+            Handle := Internal.C_API.Null_LSD_Handle;
+            return (1 .. 0 => <>);
+         elsif Count < 0 then
+            raise OpenCV.OpenCV_Error with "Invalid LSD count";
+         end if;
+         declare
+            Raw    :
+              Internal.C_API.LSD_Record_Array (0 .. Natural (Count) - 1);
+            Output : LSD_Segment_Array (Raw'Range);
+         begin
+            Raise_On_Error
+              (Internal.C_API.LSD_Copy (Handle, Raw (0)'Access, Count),
+               "LSD copy");
+            for I in Raw'Range loop
+               Output (I) :=
+                 (Start_Point =>
+                    (OpenCV.Float32_Value (Raw (I).X1),
+                     OpenCV.Float32_Value (Raw (I).Y1)),
+                  End_Point   =>
+                    (OpenCV.Float32_Value (Raw (I).X2),
+                     OpenCV.Float32_Value (Raw (I).Y2)),
+                  Width       => OpenCV.Float64_Value (Raw (I).Width),
+                  Precision   => OpenCV.Float64_Value (Raw (I).Precision),
+                  Has_NFA     => Raw (I).Has_NFA = 1,
+                  NFA         => OpenCV.Float64_Value (Raw (I).NFA));
+            end loop;
+            Internal.C_API.LSD_Destroy (Handle);
+            Handle := Internal.C_API.Null_LSD_Handle;
+            return Output;
+         end;
+      exception
+         when others =>
+            Internal.C_API.LSD_Destroy (Handle);
+            raise;
+      end;
+   end Detect_Line_Segments;
+
+   function LSD_Endpoints
+     (Segments : LSD_Segment_Array) return Internal.C_API.LSD_Record_Array
+   is
+      use type OpenCV.Float32_Value;
+      --  Native drawing subtracts rounded endpoints in signed int.
+      Limit : constant OpenCV.Float32_Value := 1_073_741_760.0;
+   begin
+      if Segments'Length > Integer (Interfaces.Integer_32'Last) then
+         raise OpenCV.OpenCV_Error with "LSD segment count overflow";
+      end if;
+      return Raw : Internal.C_API.LSD_Record_Array (Segments'Range) do
+         for I in Segments'Range loop
+            declare
+               S : LSD_Segment renames Segments (I);
+            begin
+               if not Is_Finite_32 (S.Start_Point.X)
+                 or else not Is_Finite_32 (S.Start_Point.Y)
+                 or else not Is_Finite_32 (S.End_Point.X)
+                 or else not Is_Finite_32 (S.End_Point.Y)
+                 or else abs S.Start_Point.X > Limit
+                 or else abs S.Start_Point.Y > Limit
+                 or else abs S.End_Point.X > Limit
+                 or else abs S.End_Point.Y > Limit
+               then
+                  raise OpenCV.OpenCV_Error with "Unsafe LSD endpoint";
+               end if;
+               Raw (I) :=
+                 (X1        => Interfaces.C.C_float (S.Start_Point.X),
+                  Y1        => Interfaces.C.C_float (S.Start_Point.Y),
+                  X2        => Interfaces.C.C_float (S.End_Point.X),
+                  Y2        => Interfaces.C.C_float (S.End_Point.Y),
+                  Width     => 0.0,
+                  Precision => 0.0,
+                  NFA       => 0.0,
+                  Has_NFA   => 0,
+                  Reserved  => 0);
+            end;
+         end loop;
+      end return;
+   end LSD_Endpoints;
+
+   function Render_Line_Segments
+     (Image : OpenCV.Core.Mat; Segments : LSD_Segment_Array)
+      return OpenCV.Core.Mat
+   is
+      use type OpenCV.Core.Depth_Type;
+      use type OpenCV.Core.Channel_Count;
+      Raw    : Internal.C_API.LSD_Record_Array := LSD_Endpoints (Segments);
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Status :=
+              Internal.C_API.LSD_Render
+                (S,
+                 (if Raw'Length = 0 then null else Raw (Raw'First)'Access),
+                 Interfaces.Integer_32 (Raw'Length),
+                 D);
+         end Output;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle (Result, Output'Access);
+      end Input;
+   begin
+      if Image.Is_Empty
+        or else Image.Dimension_Count /= 2
+        or else Image.Depth /= OpenCV.Core.UInt8
+        or else Image.Channels not in 1 | 3
+      then
+         raise OpenCV.OpenCV_Error
+           with "LSD rendering requires 2-D UInt8 C1/C3";
+      end if;
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Input'Access);
+      Raise_On_Error (Status, "Render_Line_Segments");
+      return Result;
+   end Render_Line_Segments;
+
+   procedure Validate_LSD_Canvas (Image_Size : OpenCV.Size) is
+      use type Interfaces.Integer_64;
+   begin
+      if Image_Size.Width = 0
+        or else Image_Size.Height = 0
+        or else Interfaces.Integer_64 (Image_Size.Width)
+                * Interfaces.Integer_64 (Image_Size.Height)
+                > Interfaces.Integer_64 (Interfaces.Integer_32'Last) / 3
+      then
+         raise OpenCV.OpenCV_Error with "Unsafe LSD comparison size";
+      end if;
+   end Validate_LSD_Canvas;
+
+   function Compare_Line_Segments
+     (Image_Size : OpenCV.Size; First, Second : LSD_Segment_Array)
+      return Natural
+   is
+      A     : Internal.C_API.LSD_Record_Array := LSD_Endpoints (First);
+      B     : Internal.C_API.LSD_Record_Array := LSD_Endpoints (Second);
+      Count : aliased Interfaces.Integer_32 := 0;
+   begin
+      Validate_LSD_Canvas (Image_Size);
+      Raise_On_Error
+        (Internal.C_API.LSD_Compare_Only
+           (Interfaces.Integer_32 (Image_Size.Width),
+            Interfaces.Integer_32 (Image_Size.Height),
+            (if A'Length = 0 then null else A (A'First)'Access),
+            Interfaces.Integer_32 (A'Length),
+            (if B'Length = 0 then null else B (B'First)'Access),
+            Interfaces.Integer_32 (B'Length),
+            Count'Access),
+         "Compare_Line_Segments");
+      return Natural (Count);
+   end Compare_Line_Segments;
+
+   procedure Compare_Line_Segments
+     (Image_Size     : OpenCV.Size;
+      First, Second  : LSD_Segment_Array;
+      Mismatch_Count : in out Natural;
+      Visualization  : in out OpenCV.Core.Mat)
+   is
+      A      : Internal.C_API.LSD_Record_Array := LSD_Endpoints (First);
+      B      : Internal.C_API.LSD_Record_Array := LSD_Endpoints (Second);
+      Count  : aliased Interfaces.Integer_32 := 0;
+      Result : OpenCV.Core.Mat;
+      Status : Internal.C_API.Status := Internal.C_API.Success;
+      procedure Output (D : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+      begin
+         Status :=
+           Internal.C_API.LSD_Compare
+             (Interfaces.Integer_32 (Image_Size.Width),
+              Interfaces.Integer_32 (Image_Size.Height),
+              (if A'Length = 0 then null else A (A'First)'Access),
+              Interfaces.Integer_32 (A'Length),
+              (if B'Length = 0 then null else B (B'First)'Access),
+              Interfaces.Integer_32 (B'Length),
+              Count'Access,
+              D);
+      end Output;
+   begin
+      Validate_LSD_Canvas (Image_Size);
+      OpenCV.Core.Module_Interop.With_Output_Handle (Result, Output'Access);
+      Raise_On_Error (Status, "Compare_Line_Segments");
+      Visualization := Result;
+      Mismatch_Count := Natural (Count);
+   end Compare_Line_Segments;
+
    function Find_Ballard_Template_Matches
      (Template       : OpenCV.Core.Mat;
       Scene          : OpenCV.Core.Mat;

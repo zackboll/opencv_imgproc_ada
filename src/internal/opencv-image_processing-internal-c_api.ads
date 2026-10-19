@@ -378,6 +378,80 @@ package OpenCV.Image_Processing.Internal.C_API is
    type Contour_Span_Array is array (Natural range <>) of aliased Contour_Span
    with Convention => C;
 
+   type LSD_Handle is new System.Address;
+   Null_LSD_Handle : constant LSD_Handle := LSD_Handle (System.Null_Address);
+
+   type LSD_Record is record
+      X1, Y1, X2, Y2        : Interfaces.C.C_float;
+      Width, Precision, NFA : Interfaces.C.double;
+      Has_NFA, Reserved     : Interfaces.Integer_32;
+   end record
+   with Convention => C;
+   for LSD_Record use
+     record
+       X1 at 0 range 0 .. 31;
+       Y1 at 4 range 0 .. 31;
+       X2 at 8 range 0 .. 31;
+       Y2 at 12 range 0 .. 31;
+       Width at 16 range 0 .. 63;
+       Precision at 24 range 0 .. 63;
+       NFA at 32 range 0 .. 63;
+       Has_NFA at 40 range 0 .. 31;
+       Reserved at 44 range 0 .. 31;
+     end record;
+   for LSD_Record'Size use 384;
+   for LSD_Record'Alignment use 8;
+   type LSD_Record_Array is array (Natural range <>) of aliased LSD_Record
+   with Convention => C;
+
+   function LSD_Detect
+     (Source                                                        :
+        OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Refinement                                                    :
+        Interfaces.Integer_32;
+      Scale, Sigma_Scale, Quantization, Angle, Log_Epsilon, Density :
+        Interfaces.C.double;
+      Bins                                                          :
+        Interfaces.Integer_32;
+      Result                                                        :
+        access LSD_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_lsd_detect";
+   procedure LSD_Destroy (Result : LSD_Handle)
+   with Import, Convention => C, External_Name => "opencv_imgproc_lsd_destroy";
+   function LSD_Count
+     (Result : LSD_Handle; Count : access Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_lsd_count";
+   function LSD_Copy
+     (Result   : LSD_Handle;
+      Segments : access LSD_Record;
+      Capacity : Interfaces.Integer_32) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_lsd_copy";
+   function LSD_Render
+     (Image    : OpenCV.Core.Module_Interop.Input_Mat_Handle;
+      Segments : access LSD_Record;
+      Count    : Interfaces.Integer_32;
+      Output   : OpenCV.Core.Module_Interop.Output_Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_lsd_render";
+   function LSD_Compare
+     (Width, Height : Interfaces.Integer_32;
+      First         : access LSD_Record;
+      First_Count   : Interfaces.Integer_32;
+      Second        : access LSD_Record;
+      Second_Count  : Interfaces.Integer_32;
+      Count         : access Interfaces.Integer_32;
+      Output        : OpenCV.Core.Module_Interop.Output_Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_lsd_compare";
+   function LSD_Compare_Only
+     (Width, Height : Interfaces.Integer_32;
+      First         : access LSD_Record;
+      First_Count   : Interfaces.Integer_32;
+      Second        : access LSD_Record;
+      Second_Count  : Interfaces.Integer_32;
+      Count         : access Interfaces.Integer_32;
+      Output        : System.Address := System.Null_Address) return Status
+   with Import, Convention => C, External_Name => "opencv_imgproc_lsd_compare";
+
    type Hough_Lines_Handle is new System.Address;
    Null_Hough_Lines_Handle : constant Hough_Lines_Handle :=
      Hough_Lines_Handle (System.Null_Address);
