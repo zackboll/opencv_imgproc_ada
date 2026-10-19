@@ -1685,6 +1685,119 @@ package OpenCV.Image_Processing is
          Scale_Threshold    => 100,
          Position_Threshold => 20)) return Guil_Template_Match_Array;
 
+   --  Native LSD refinement policy.
+   --  @enum No_Refinement Return unrefined regions.
+   --  @enum Standard_Refinement Refine region density (the native default).
+   --  @enum Advanced_Refinement Reserved; rejected due to native rect_nfa UB.
+   type LSD_Refinement is
+     (No_Refinement, Standard_Refinement, Advanced_Refinement);
+
+   --  Portable LSD configuration, not full native parameter coverage. All real
+   --  values must be finite. Source-dependent arithmetic limits are described
+   --  in docs/line-segment-detector-source-review.md.
+   --  @field Refinement Refinement policy; Standard_Refinement by default.
+   --  @field Scale Must be 1.0 (default), unlike OpenCV's unsafe native 0.8.
+   --  @field Sigma_Scale Positive, default 0.6; unused at supported scale 1.
+   --  @field Quantization Nonnegative gradient error bound; default 2.0.
+   --  @field Angle_Degrees Gradient tolerance in (0, 180); default 22.5.
+   --  @field Log_Epsilon Reserved finite threshold, default 0; unused.
+   --  @field Density Minimum aligned density in [0, 1), default 0.7.
+   --  @field Bin_Count Gradient ordering bins, default 1024; signed C range.
+   type LSD_Parameters is record
+      Refinement    : LSD_Refinement := Standard_Refinement;
+      Scale         : OpenCV.Float64_Value := 1.0;
+      Sigma_Scale   : OpenCV.Float64_Value := 0.6;
+      Quantization  : OpenCV.Float64_Value := 2.0;
+      Angle_Degrees : OpenCV.Float64_Value := 22.5;
+      Log_Epsilon   : OpenCV.Float64_Value := 0.0;
+      Density       : OpenCV.Float64_Value := 0.7;
+      Bin_Count     : Positive := 1024;
+   end record;
+
+   --  Ada-owned subpixel segment, preserving native gradient orientation.
+   --  Coordinates are relative to the logical Source origin, including ROIs.
+   --  Precision is the native angular probability p (angle tolerance / Pi),
+   --  not an endpoint error in pixels. NFA is logarithmic evidence: -1, 0,
+   --  and 1 represent approximately 10, 1, and 0.1 mean false alarms.
+   --  @field Start_Point Native binary32 start endpoint, never reordered.
+   --  @field End_Point Native binary32 end endpoint, never reordered.
+   --  @field Width Native region width in Source pixels.
+   --  @field Precision Native angular probability, possibly refined.
+   --  @field Has_NFA Always False under the current portable contract.
+   --  @field NFA Reserved native -log10(NFA) evidence; currently zero.
+   type LSD_Segment is record
+      Start_Point : OpenCV.Float32_Point;
+      End_Point   : OpenCV.Float32_Point;
+      Width       : OpenCV.Float64_Value;
+      Precision   : OpenCV.Float64_Value;
+      Has_NFA     : Boolean := False;
+      NFA         : OpenCV.Float64_Value := 0.0;
+   end record;
+
+   --  Independent value results: zero-based when nonempty, 1 .. 0 when empty.
+   --  Rendering and comparison also accept arrays with any Natural bounds.
+   type LSD_Segment_Array is array (Natural range <>) of LSD_Segment;
+
+   --  Detect native LSD segments in nonempty 2-D UInt8 C1 Source. Logical
+   --  noncontiguous Regions are isolated from their parent before detection.
+   --  Unlike HoughLinesP, LSD provides subpixel endpoints and region evidence
+   --  without requiring an edge-map input. No sorting or orientation changes
+   --  are applied. Source and its aliases are preserved.
+   --  Only Scale=1 with No_Refinement or Standard_Refinement is supported.
+   --  Other scales and Advanced are rejected before detector construction,
+   --  excluding native resize SIMD and rect_nfa undefined-behavior paths.
+   --  OpenCV 4.1 through 4.5.3 are unavailable; restoration starts at 4.5.4.
+   --  @param Source Borrowed grayscale image, unchanged on every path.
+   --  @param Parameters Portable configuration; NFA is unavailable.
+   --  @return Ada-owned segments and corresponding diagnostics.
+   --  @exception OpenCV_Error Invalid input, unsafe native arithmetic,
+   --  unavailable implementation, or translated native failure.
+   function Detect_Line_Segments
+     (Source : OpenCV.Core.Mat; Parameters : LSD_Parameters := (others => <>))
+      return LSD_Segment_Array;
+
+   --  Native drawSegments in red BGR, on independent UInt8 C3 storage.
+   --  Empty segments produce a clone (or grayscale-to-BGR conversion).
+   --  Only endpoints are used; diagnostic fields are ignored. Endpoints must
+   --  be finite and safely roundable by native drawing arithmetic.
+   --  @param Image Nonempty 2-D UInt8 C1 or C3 image; never mutated.
+   --  @param Segments Native-oriented endpoints in Image coordinates.
+   --  @return Fresh owning color visualization, including empty input.
+   --  @exception OpenCV_Error Invalid image/endpoints, unavailable LSD,
+   --  or translated native failure.
+   function Render_Line_Segments
+     (Image : OpenCV.Core.Mat; Segments : LSD_Segment_Array)
+      return OpenCV.Core.Mat;
+
+   --  Native mismatching-pixel count, not endpoint distance. Both sets are
+   --  rasterized with native rounding and clipping. Two empty sets give zero.
+   --  Image area must not exceed Integer'Last / 3, protecting native signed
+   --  counts and unsigned three-channel byte indexing on all supported builds.
+   --  @param Image_Size Positive width and height of the comparison canvas.
+   --  @param First First endpoint set (blue in a visualization).
+   --  @param Second Second endpoint set (red in a visualization).
+   --  @return Number of pixels belonging to exactly one rasterized set.
+   --  @exception OpenCV_Error Invalid size/endpoints, unsafe arithmetic,
+   --  unavailable LSD, or translated native failure.
+   function Compare_Line_Segments
+     (Image_Size : OpenCV.Size; First, Second : LSD_Segment_Array)
+      return Natural;
+
+   --  Compare with a fresh, black-background UInt8 C3 visualization. First
+   --  is blue, Second red, overlap magenta. Caller outputs are unchanged on
+   --  rejection; no source image is borrowed or overwritten.
+   --  @param Image_Size Positive comparison geometry, as in the function.
+   --  @param First First endpoint set.
+   --  @param Second Second endpoint set.
+   --  @param Mismatch_Count Native mismatch count, assigned on success.
+   --  @param Visualization Fresh owning color image, assigned on success.
+   --  @exception OpenCV_Error Same validation/availability as the function.
+   procedure Compare_Line_Segments
+     (Image_Size     : OpenCV.Size;
+      First, Second  : LSD_Segment_Array;
+      Mismatch_Count : in out Natural;
+      Visualization  : in out OpenCV.Core.Mat);
+
    --  Integer Canny and accumulator thresholds for gradient Hough circles,
    --  1 through 2_147_483_647: the upper Canny threshold and the
    --  accumulator vote threshold. They are integers because OpenCV rounds

@@ -191,6 +191,9 @@ jobs:
       - name: Run gradient Canny and generalized box native qualification
         run: sh tests/run_canny_box_native.sh
 
+      - name: LSD native reference and malformed ABI tests
+        run: sh tests/run_lsd_native.sh
+
       - name: Run connected components native reference and malformed ABI tests
         run: sh tests/run_connected_components_native.sh
 

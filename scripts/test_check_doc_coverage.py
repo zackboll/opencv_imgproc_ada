@@ -307,11 +307,11 @@ class GeneratedCoverageTest(unittest.TestCase):
         self.assertEqual(self.errors, [])
         kinds = list(self.items.values())
         self.assertEqual(self.missing, [])
-        self.assertEqual(kinds.count("function") + kinds.count("procedure"), 189)
+        self.assertEqual(kinds.count("function") + kinds.count("procedure"), 193)
         self.assertEqual(len(kinds) - kinds.count("parameter") - kinds.count("return")
                          - kinds.count("literal") - kinds.count("component")
-                         - kinds.count("package"), 321)
-        self.assertEqual(len(kinds), 1556)
+                         - kinds.count("package"), 329)
+        self.assertEqual(len(kinds), 1596)
 
     def test_new_overloads_have_their_own_documented_parameters(self):
         sections = rendered_sections(self.page.read_text(encoding="utf-8"))

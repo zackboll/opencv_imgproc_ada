@@ -32,6 +32,8 @@
 #include <climits>
 #include <exception>
 #include <limits>
+#include <memory>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -47,6 +49,31 @@ struct opencv_imgproc_hough_lines_handle {
 struct opencv_imgproc_hough_segments_handle {
     std::vector<cv::Vec4i> segments;
 };
+
+struct opencv_imgproc_lsd_handle {
+    std::vector<opencv_imgproc_lsd_segment> segments;
+};
+static_assert(std::is_standard_layout<opencv_imgproc_lsd_segment>::value,
+              "LSD C record must be standard layout");
+static_assert(sizeof(opencv_imgproc_lsd_segment) == 48 &&
+              alignof(opencv_imgproc_lsd_segment) == 8 &&
+              offsetof(opencv_imgproc_lsd_segment, x1) == 0 &&
+              offsetof(opencv_imgproc_lsd_segment, y1) == 4 &&
+              offsetof(opencv_imgproc_lsd_segment, x2) == 8 &&
+              offsetof(opencv_imgproc_lsd_segment, y2) == 12 &&
+              offsetof(opencv_imgproc_lsd_segment, width) == 16 &&
+              offsetof(opencv_imgproc_lsd_segment, precision) == 24 &&
+              offsetof(opencv_imgproc_lsd_segment, nfa) == 32 &&
+              offsetof(opencv_imgproc_lsd_segment, has_nfa) == 40 &&
+              offsetof(opencv_imgproc_lsd_segment, reserved) == 44,
+              "LSD C/Ada representation mismatch");
+
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && \
+    (CV_VERSION_MINOR > 5 || (CV_VERSION_MINOR == 5 && CV_VERSION_REVISION >= 4)))
+#define OPENCV_IMGPROC_HAS_LSD 1
+#else
+#define OPENCV_IMGPROC_HAS_LSD 0
+#endif
 
 struct opencv_imgproc_hough_circles_handle {
     std::vector<cv::Vec3f> circles;
@@ -4125,6 +4152,79 @@ const char *distance_preflight(const cv::Mat &src, int border, bool precise)
     return "distance source must contain a zero pixel";
 }
 
+// LSD helpers are local to the shim; no detector or Mat ownership escapes.
+#if OPENCV_IMGPROC_HAS_LSD
+cv::Ptr<cv::LineSegmentDetector> lsd_detector(
+    int32_t refinement = 1, double scale = 1, double sigma = .6,
+    double quant = 2, double angle = 22.5, double epsilon = 0,
+    double density = .7, int32_t bins = 1024)
+{
+    // ABI decoding: reject unknown selectors before conversion to the 5.x enum.
+    if (refinement < 0 || refinement > 2)
+        CV_Error(cv::Error::StsBadArg, "invalid LSD refinement selector");
+    // The unscoped enum also converts to the actual 4.x int signature.
+    // Do not infer the signature from macros overridden by historical tests.
+    const auto mode = static_cast<cv::LineSegmentDetectorModes>(refinement);
+    return cv::createLineSegmentDetector(
+        mode, scale, sigma, quant, angle, epsilon, density, bins);
+}
+
+bool lsd_detection_safe(const cv::Mat &source, double quant,
+                        double angle, int32_t bins)
+{
+    // ABI safety: preserve positive p and finite rho before log10(p) and
+    // size_t(min_reg_size). Advanced refinement and resizing are unreachable.
+    const double p = angle / 180;
+    if (!std::isfinite(quant) ||
+        !std::isfinite(angle) || p < DBL_MIN || p >= 1 ||
+        !std::isfinite(quant / std::sin(CV_PI * angle / 180))) return false;
+    // ABI safety: ll_angle indexes the last row/column; region_grow uses
+    // signed neighbor coordinates and refine counts region points in int.
+    const int w = source.cols, h = source.rows;
+    if (w < 1 || h < 1 || int64_t(w) * h >= INT_MAX ||
+        uint64_t(w) * uint64_t(h) >
+            uint64_t(PTRDIFF_MAX) / (sizeof(double) * 2 + 32)) return false;
+    // ABI safety: ll_angle bins *every* gradient using max_grad from only
+    // above-threshold gradients. UInt8's maximum norm is 255, minimum nonzero
+    // norm sqrt(.5); 512 safely bounds their ratio including rounding.
+    if (bins <= 0 || bins > INT_MAX / 512) return false;
+    const double log_nt = 2.5 * (std::log10(double(w)) +
+                                 std::log10(double(h))) + std::log10(11.0);
+    const double min_region = -log_nt / std::log10(p);
+    return std::isfinite(min_region) && min_region >= 0 &&
+           min_region < double(SIZE_MAX);
+}
+
+bool lsd_buffer_safe(const opencv_imgproc_lsd_segment *segments, int32_t count)
+{
+    // ABI safety: signed counts become vector sizes and native Mat dimensions;
+    // also bound pointer arithmetic and native Point2f-to-Point rounding.
+    if (count < 0 || (count && !segments) ||
+        uint64_t(count) > uint64_t(PTRDIFF_MAX) / sizeof(*segments)) return false;
+    for (int32_t i = 0; i < count; ++i) {
+        const auto &s = segments[i];
+        for (float coordinate : {s.x1, s.y1, s.x2, s.y2}) {
+            // Drawing uses signed endpoint differences before clipping. Half
+            // the signed range leaves room for subtraction and cvRound.
+            if (!std::isfinite(coordinate) ||
+                std::fabs(double(coordinate)) > (INT_MAX - 1) / 2) return false;
+        }
+    }
+    return true;
+}
+
+cv::Mat lsd_lines(const opencv_imgproc_lsd_segment *segments, int32_t count)
+{
+    // Typed empty Mat keeps CV_32F depth for 4.x's empty validation path.
+    cv::Mat result(count, 1, CV_32FC4);
+    for (int32_t i = 0; i < count; ++i) {
+        const auto &s = segments[i];
+        result.at<cv::Vec4f>(i) = cv::Vec4f(s.x1, s.y1, s.x2, s.y2);
+    }
+    return result;
+}
+#endif
+
 } // namespace
 
 extern "C" opencv_imgproc_status opencv_imgproc_integral_sum(
@@ -4152,6 +4252,179 @@ extern "C" opencv_imgproc_status opencv_imgproc_integral_complete(
 }
 
 extern "C" {
+
+int32_t opencv_imgproc_lsd_detect(
+    const opencv_core_mat_handle *source, int32_t refinement,
+    double scale, double sigma, double quant, double angle, double epsilon,
+    double density, int32_t bins, opencv_imgproc_lsd_handle **result)
+{
+    clear_error();
+    if (!result) return invalid_argument("null LSD output pointer");
+    *result = nullptr;
+#if !OPENCV_IMGPROC_HAS_LSD
+    (void)source; (void)refinement; (void)scale; (void)sigma; (void)quant;
+    (void)angle; (void)epsilon; (void)density; (void)bins;
+    set_error("LSD unavailable: OpenCV implementation restored in 4.5.4");
+    return OPENCV_IMGPROC_ERROR_OPENCV;
+#else
+    try {
+        // ABI safety: scale != 1 reaches the proven native resize SIMD
+        // misaligned short load; Advanced reaches rect_nfa float-to-int UB.
+        // Reject before even constructing the detector, independently of Ada.
+        if (scale != 1.0 || refinement == 2)
+            return invalid_argument(
+                "portable LSD requires scale 1 and no/standard refinement");
+        const cv::Mat *src = nullptr;
+        if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src)
+            return invalid_argument("invalid LSD source handle");
+        // ABI safety: dimensions must be 2-D before reading rows/cols for
+        // preflight; native detect's type/empty assertions handle raw policy.
+        if (src->dims > 2 || !lsd_detection_safe(*src, quant, angle, bins))
+            return invalid_argument("unsafe LSD native arithmetic");
+        auto detector = lsd_detector(refinement, scale, sigma, quant, angle,
+                                     epsilon, density, bins);
+        // Isolate ROI borders and ensure a compact, correctly aligned input.
+        cv::Mat input = src->clone(), lines, widths, precisions;
+        detector->detect(input, lines, widths, precisions);
+        const size_t count = lines.total();
+        // ABI safety: validate shapes/types before typed native reads and
+        // counts before narrowing to the stable signed C ABI.
+        if (count > INT_MAX || count > size_t(PTRDIFF_MAX) /
+            sizeof(opencv_imgproc_lsd_segment) || (count &&
+            (lines.type() != CV_32FC4 || lines.checkVector(4, CV_32F) < 0 ||
+             widths.type() != CV_64FC1 || widths.total() != count ||
+             widths.checkVector(1, CV_64F) < 0 ||
+             precisions.type() != CV_64FC1 || precisions.total() != count ||
+             precisions.checkVector(1, CV_64F) < 0)) ||
+            (!count && (!widths.empty() || !precisions.empty())))
+            return invalid_argument("invalid native LSD output representation");
+        auto owned = std::make_unique<opencv_imgproc_lsd_handle>();
+        owned->segments.reserve(count);
+        for (size_t i = 0; i < count; ++i) {
+            const auto &v = lines.ptr<cv::Vec4f>()[i];
+            opencv_imgproc_lsd_segment s{v[0], v[1], v[2], v[3],
+                widths.ptr<double>()[i], precisions.ptr<double>()[i],
+                0.0, 0, 0};
+            // ABI safety: Ada scalar conversion must not receive NaN/Inf.
+            if (!std::isfinite(s.x1) || !std::isfinite(s.y1) ||
+                !std::isfinite(s.x2) || !std::isfinite(s.y2) ||
+                !std::isfinite(s.width) || !std::isfinite(s.precision) ||
+                !std::isfinite(s.nfa))
+                return invalid_argument("nonfinite native LSD result");
+            owned->segments.push_back(s);
+        }
+        *result = owned.release();
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+#endif
+}
+
+void opencv_imgproc_lsd_destroy(opencv_imgproc_lsd_handle *result)
+{ delete result; }
+
+int32_t opencv_imgproc_lsd_count(const opencv_imgproc_lsd_handle *result,
+                                int32_t *count)
+{
+    clear_error();
+    if (count) *count = 0;
+    if (!result || !count) return invalid_argument("null LSD count argument");
+    if (result->segments.size() > INT_MAX)
+        return invalid_argument("LSD count overflow");
+    *count = static_cast<int32_t>(result->segments.size());
+    return OPENCV_IMGPROC_OK;
+}
+
+int32_t opencv_imgproc_lsd_copy(const opencv_imgproc_lsd_handle *result,
+    opencv_imgproc_lsd_segment *segments, int32_t capacity)
+{
+    clear_error();
+    if (!result || capacity < 0 ||
+        size_t(capacity) < result->segments.size() ||
+        (!segments && !result->segments.empty()) ||
+        result->segments.size() > size_t(PTRDIFF_MAX) / sizeof(*segments))
+        return invalid_argument("invalid LSD copy buffer");
+    if (!result->segments.empty())
+        std::copy(result->segments.begin(), result->segments.end(), segments);
+    return OPENCV_IMGPROC_OK;
+}
+
+int32_t opencv_imgproc_lsd_render(const opencv_core_mat_handle *image,
+    const opencv_imgproc_lsd_segment *segments, int32_t count,
+    opencv_core_mat_handle *output)
+{
+    clear_error();
+#if !OPENCV_IMGPROC_HAS_LSD
+    (void)image; (void)segments; (void)count; (void)output;
+    set_error("LSD unavailable: OpenCV implementation restored in 4.5.4");
+    return OPENCV_IMGPROC_ERROR_OPENCV;
+#else
+    try {
+        const cv::Mat *src = nullptr;
+        cv::Mat *dst = nullptr;
+        if (image == output ||
+            opencv_core_module_input_mat(image, &src) != OPENCV_CORE_OK || !src ||
+            opencv_core_module_output_mat(output, &dst) != OPENCV_CORE_OK || !dst ||
+            !lsd_buffer_safe(segments, count))
+            return invalid_argument("invalid LSD render ABI arguments");
+        cv::Mat rendered = src->clone();
+        if (rendered.channels() == 1)
+            cv::cvtColor(rendered, rendered, cv::COLOR_GRAY2BGR);
+        // 4.x does not consistently accept an empty InputArray. No drawing
+        // is needed, but grayscale conversion and independent storage remain.
+        if (count) lsd_detector()->drawSegments(rendered, lsd_lines(segments, count));
+        *dst = rendered;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+#endif
+}
+
+int32_t opencv_imgproc_lsd_compare(int32_t width, int32_t height,
+    const opencv_imgproc_lsd_segment *first, int32_t first_count,
+    const opencv_imgproc_lsd_segment *second, int32_t second_count,
+    int32_t *count, opencv_core_mat_handle *output)
+{
+    clear_error();
+    if (count) *count = 0;
+#if !OPENCV_IMGPROC_HAS_LSD
+    (void)width; (void)height; (void)first; (void)first_count;
+    (void)second; (void)second_count; (void)output;
+    set_error("LSD unavailable: OpenCV implementation restored in 4.5.4");
+    return OPENCV_IMGPROC_ERROR_OPENCV;
+#else
+    try {
+        cv::Mat *dst = nullptr;
+        if (!count || (output &&
+            (opencv_core_module_output_mat(output, &dst) != OPENCV_CORE_OK || !dst)) ||
+            !lsd_buffer_safe(first, first_count) ||
+            !lsd_buffer_safe(second, second_count))
+            return invalid_argument("invalid LSD comparison ABI arguments");
+        // ABI safety: signed countNonZero/area, and 4.x's unsigned i*3+2
+        // visualization offsets must fit before native allocation or loops.
+        if (width <= 0 || height <= 0 ||
+            int64_t(width) * height > INT_MAX / 3 ||
+            uint64_t(width) * uint64_t(height) > uint64_t(PTRDIFF_MAX) / 3)
+            return invalid_argument("unsafe LSD comparison canvas");
+        cv::Mat visualization;
+        if (dst) visualization = cv::Mat::zeros(height, width, CV_8UC3);
+        int mismatch = 0;
+        if (first_count || second_count) {
+            const auto a = lsd_lines(first, first_count);
+            const auto b = lsd_lines(second, second_count);
+            mismatch = dst ? lsd_detector()->compareSegments(
+                cv::Size(width, height), a, b, visualization) :
+                lsd_detector()->compareSegments(cv::Size(width, height), a, b);
+        }
+        // ABI safety: validate before publishing caller-visible count/image.
+        if (mismatch < 0 || (dst &&
+            (visualization.type() != CV_8UC3 || visualization.rows != height ||
+             visualization.cols != width)))
+            return invalid_argument("invalid LSD comparison output");
+        if (dst) *dst = visualization;
+        *count = mismatch;
+        return OPENCV_IMGPROC_OK;
+    } catch (...) { return translate_current_exception(); }
+#endif
+}
 
 opencv_imgproc_status opencv_imgproc_phase_correlate(
     const opencv_core_mat_handle *source1,

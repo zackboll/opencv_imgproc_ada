@@ -24,6 +24,7 @@ with Filter_2D_Tests;
 with Histogram_Analysis_Tests;
 with Histogram_Equalization_Tests;
 with Hough_Detection_Tests;
+with Line_Segment_Detector_Tests;
 with Sep_Filter_2D_Tests;
 with Gaussian_Blur_Tests;
 with Gaussian_Kernel_Tests;
@@ -94,6 +95,8 @@ procedure Tests is
             return Guil_Template_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "ballard" then
             return Ballard_Template_Tests.Suite;
+         elsif Ada.Command_Line.Argument (1) = "lsd" then
+            return Line_Segment_Detector_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "hough" then
             return Hough_Detection_Tests.Suite;
          elsif Ada.Command_Line.Argument (1) = "squared-box" then
@@ -150,6 +153,7 @@ begin
       return;
    end if;
    Suite.Add_Test (Packed_Color_Tests.Suite);
+   Suite.Add_Test (Line_Segment_Detector_Tests.Suite);
    Suite.Add_Test (Colormap_Tests.Suite);
    Suite.Add_Test (Extended_Color_Tests.Suite);
    Suite.Add_Test (Bayer_Demosaicing_Tests.Suite);

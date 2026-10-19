@@ -1,3 +1,42 @@
+# Portable native Line Segment Detector (LSD)
+
+`Detect_Line_Segments (Source, Parameters)` returns Ada-owned subpixel Float32
+endpoints with double region width and precision. Detection supports **Scale=1.0
+only**, with **No_Refinement or Standard_Refinement**. The portable default is
+Standard at scale **1.0**, intentionally different from OpenCV's native 0.8.
+Other scales and Advanced_Refinement are explicitly rejected before detector
+construction in both Ada and C++. This is not full native parameter coverage.
+Remaining defaults are sigma scale 0.6, quantization 2.0, angle 22.5 degrees,
+log epsilon 0, density 0.7 and 1024 bins. All real values must be finite; sigma
+scale and log epsilon are retained but unused in supported detection.
+NFA is unavailable: `Has_NFA=False, NFA=0`. Precision is native angular
+probability. Native segment order and gradient orientation are preserved.
+
+Source must be nonempty 2-D UInt8 C1 grayscale, not an edge map. Noncontiguous
+Regions are supported, isolated from parent pixels, with ROI-local coordinates.
+Use HoughLinesP (`Find_Hough_Line_Segments`) for integer segments voted from an
+edge map; it is not a fallback for LSD. `Render_Line_Segments` uses native
+drawSegments and returns a fresh UInt8 C3 image (red BGR), preserving source and
+aliases. `Compare_Line_Segments` returns the native mismatching-pixel count and
+optionally a fresh black-background blue/red/magenta visualization. Empty sets
+are portable: empty render clones/converts, empty comparison is zero/black.
+
+LSD is explicitly unavailable on OpenCV 4.1 through 4.5.3: operations raise
+`OpenCV_Error` without invoking the removed detector constructor. Restoration
+starts at **4.5.4**; 5.0's enum constructor argument is handled internally.
+Numeric preflights protect image area/storage, gradient-bin conversion,
+endpoint-rounding and comparison area arithmetic; comparison area <= INT_MAX/3.
+See the [complete source audit, parameter definitions and safety limits](docs/line-segment-detector-source-review.md).
+
+The restrictions exclude two demonstrated upstream defects without privately
+patching OpenCV: resize SIMD misaligned-short loads (also reported in
+[OpenCV #29238](https://github.com/opencv/opencv/issues/29238)) and Advanced
+`rect_nfa` float-to-int overflow. The disproved rectangle-size guard is removed,
+not presented as protection. Supported detection never calls resize or
+rect_improve/rect_nfa. Four-version functional and instrumented native campaigns
+are recorded in the source review; exact-head hosted qualification is tracked
+in [PR status](docs/line-segment-detector-pr-status.md).
+
 # Gradient-input Canny and generalized box filtering
 
 `Canny_Edges (Derivative_X, Derivative_Y, Destination, Lower_Threshold,
