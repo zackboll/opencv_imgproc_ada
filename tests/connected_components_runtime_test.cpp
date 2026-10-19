@@ -61,6 +61,146 @@ int native_selector(int algorithm) {
     }
 }
 int reference_cases = 0, rejection_cases = 0;
+int legacy_references = 0, legacy_rejections = 0;
+struct Threads {
+    const int previous = cv::getNumThreads();
+    explicit Threads(int count) { cv::setNumThreads(count); }
+    ~Threads() { cv::setNumThreads(previous); }
+};
+void legacy_corpus() {
+    for (int threads : {1, 2}) {
+        Threads selection(threads);
+        for (int rows : {1, 2, 3, 8, 17, 512, 513})
+        for (int cols : {1, 2, 9, 32})
+        for (int pattern : {0, 1, 2, 3})
+        for (int connectivity : {4, 8})
+        for (int depth : {CV_8U, CV_8S}) {
+            cv::Mat parent(rows + 2, cols + 4, depth, cv::Scalar(127));
+            cv::Mat input = parent(cv::Rect(1, 1, cols, rows));
+            for (int r = 0; r < rows; ++r) for (int c = 0; c < cols; ++c)
+                input.ptr<uchar>(r)[c] = pattern == 0 ? 0 : pattern == 1 ? 255 :
+                    pattern == 2 ? ((r + c) % 2 ? 0 : 128) :
+                    ((r * 37 + c * 19) % 5 ? 0 : 1);
+            const cv::Mat source_before = parent.clone();
+            cv::Mat label_parent(rows + 2, cols + 4, CV_32S, cv::Scalar(73));
+            Mat src(input), dst(label_parent(cv::Rect(1, 1, cols, rows))), stats, centers;
+            const cv::Mat alias = *dst.value;
+            const cv::Mat labels_before = label_parent.clone();
+            int32_t count = -1;
+            const auto status = opencv_imgproc_connected_components_with_stats(
+                src.handle, dst.handle, stats.handle, centers.handle, connectivity, &count);
+            if (unsafe_parallel(rows) || unsafe_statistics(input)) {
+                require(status == 4 && count == 0, "legacy unsafe native path rejected");
+                equal(label_parent, labels_before);
+                require(dst.value->data == alias.data, "legacy rejected header preserved");
+                ++legacy_rejections;
+            } else {
+                require(status == 0, opencv_imgproc_last_error_message());
+                cv::Mat labels, statistics, centroids;
+                const int expected = cv::connectedComponentsWithStats(input, labels,
+                    statistics, centroids, connectivity, CV_32S);
+                require(count == expected, "legacy native-default count");
+                require(dst.value->data == alias.data, "legacy direct storage reuse");
+                equal(*dst.value, labels); equal(alias, labels);
+                equal(*stats.value, statistics);
+                for (int l = 0; l < expected; ++l)
+                    if (statistics.at<int>(l, cv::CC_STAT_AREA))
+                        equal(centers.value->row(l), centroids.row(l));
+                cv::Mat expected_parent = labels_before.clone();
+                labels.copyTo(expected_parent(cv::Rect(1, 1, cols, rows)));
+                equal(label_parent, expected_parent);
+                ++legacy_references;
+            }
+            equal(parent, source_before);
+        }
+    }
+}
+
+void legacy_malformed() {
+    Threads selection(1);
+    Mat src(cv::Mat(4, 6, CV_8U, cv::Scalar(0))),
+        dst(cv::Mat(4, 6, CV_32S, cv::Scalar(31))),
+        stats(cv::Mat(2, 5, CV_32S, cv::Scalar(37))),
+        centers(cv::Mat(2, 2, CV_64F, cv::Scalar(41)));
+    src.value->at<uchar>(1, 1) = 1;
+    const cv::Mat source_before = src.value->clone(), before = dst.value->clone();
+    const cv::Mat stats_before = stats.value->clone(), centers_before = centers.value->clone();
+    int32_t count = -1;
+    const auto call = [&](const opencv_core_mat_handle *s, opencv_core_mat_handle *d,
+                          opencv_core_mat_handle *st, opencv_core_mat_handle *ce,
+                          int connectivity, int32_t *n) {
+        return opencv_imgproc_connected_components_with_stats(s,d,st,ce,connectivity,n);
+    };
+    const auto rejected = [&](opencv_imgproc_status status) {
+        require(status != 0 && count == 0, "legacy malformed count reset");
+        equal(*dst.value,before); equal(*stats.value,stats_before);
+        equal(*centers.value,centers_before); ++legacy_rejections;
+    };
+    require(call(src.handle,dst.handle,stats.handle,centers.handle,8,nullptr)==4,
+            "legacy null count");
+    for (int i = 0; i < 4; ++i) {
+        count = -1;
+        rejected(call(i==0?nullptr:src.handle, i==1?nullptr:dst.handle,
+                      i==2?nullptr:stats.handle, i==3?nullptr:centers.handle,8,&count));
+    }
+    for (int connectivity : {0,7,INT_MAX}) {
+        count = -1;
+        rejected(call(src.handle,dst.handle,stats.handle,centers.handle,connectivity,&count));
+    }
+    opencv_core_mat_handle *handles[] = {src.handle,dst.handle,stats.handle,centers.handle};
+    for (int i = 0; i < 4; ++i) for (int j = i+1; j < 4; ++j) {
+        auto *saved = handles[j]; handles[j] = handles[i]; count = -1;
+        rejected(call(handles[0],handles[1],handles[2],handles[3],8,&count));
+        handles[j] = saved;
+    }
+    // Distinct headers, every pair overlapping (including reinterpreted bytes).
+    Mat *objects[] = {&src,&dst,&stats,&centers};
+    for (int i = 0; i < 4; ++i) for (int j = i+1; j < 4; ++j) {
+        const cv::Mat saved = *objects[j]->value;
+        *objects[j]->value = *objects[i]->value;
+        count = -1;
+        require(call(src.handle,dst.handle,stats.handle,centers.handle,8,&count)==4 && count==0,
+                "legacy overlapping storage");
+        *objects[j]->value = saved; ++legacy_rejections;
+    }
+    Mat byte_alias(cv::Mat(2,2,CV_64F,dst.value->data,dst.value->step[0]));
+    count = -1;
+    rejected(call(src.handle,dst.handle,stats.handle,byte_alias.handle,8,&count));
+    const int sizes[] = {2,3,4};
+    for (const cv::Mat &bad : {cv::Mat(), cv::Mat(3,sizes,CV_8U),
+                              cv::Mat(4,6,CV_32F), cv::Mat(4,6,CV_8UC3)}) {
+        Mat input(bad); count = -1;
+        rejected(call(input.handle,dst.handle,stats.handle,centers.handle,8,&count));
+    }
+    const cv::Mat saved = *src.value;
+    for (int rows : {-1,0,INT_MAX,INT_MAX-1}) {
+        src.value->rows = rows; count = -1;
+        rejected(call(src.handle,dst.handle,stats.handle,centers.handle,8,&count));
+    }
+    src.value->rows = 50000; src.value->cols = 50000; count = -1;
+    rejected(call(src.handle,dst.handle,stats.handle,centers.handle,8,&count));
+    *src.value = saved;
+    for (size_t stride : {size_t(0),size_t(5),size_t(100),size_t(PTRDIFF_MAX),SIZE_MAX}) {
+        src.value->step[0] = stride; count = -1;
+        rejected(call(src.handle,dst.handle,stats.handle,centers.handle,8,&count));
+    }
+    *src.value = saved;
+    src.value->step[1] = 2; count = -1;
+    rejected(call(src.handle,dst.handle,stats.handle,centers.handle,8,&count));
+    *src.value = saved;
+    // Direct-output destinations must also be safe if native create reuses them.
+    for (Mat *output : {&dst,&stats,&centers}) {
+        const size_t step = output->value->step[0];
+        output->value->step[0] = SIZE_MAX; count = -1;
+        require(call(src.handle,dst.handle,stats.handle,centers.handle,8,&count)==4 && count==0,
+                "legacy malformed output stride");
+        output->value->step[0] = step; ++legacy_rejections;
+    }
+    equal(*src.value,source_before); equal(*dst.value,before);
+    require(call(src.handle,dst.handle,stats.handle,centers.handle,8,&count)==0 && count==2,
+            "legacy recovery after malformed calls");
+}
+
 void references() {
     // Include both serial and parallel paths, odd/even edges, thin images,
     // parent foreground outside a noncontiguous source ROI and both depths.
@@ -229,12 +369,29 @@ void malformed() {
             count==2, "recovery after malformed ABI calls");
 }
 }
-int main() {
+int main(int argc, char **argv) {
     try {
-        references(); capacity(); malformed();
+        // Isolated, deliberately UNSAFE upstream reproductions. Never used by
+        // the normal regression suite; run separately under instrumented 4.1.
+        if (argc == 2) {
+            Threads selection(2);
+            cv::Mat input(17,32,CV_8U,cv::Scalar(1)), labels, stats, centers;
+            const std::string mode(argv[1]);
+            if (mode == "--unsafe-41-chunks") {
+                input.at<uchar>(0,0)=0;
+                cv::connectedComponentsWithStats(input,labels,stats,centers,8,CV_32S);
+            } else if (mode == "--unsafe-41-background") {
+                cv::setNumThreads(1);
+                cv::connectedComponentsWithStats(input,labels,stats,centers,8,CV_32S);
+            } else throw std::runtime_error("unknown reproduction mode");
+            return 0;
+        }
+        legacy_corpus(); legacy_malformed(); references(); capacity(); malformed();
         std::cout << "OpenCV " << CV_VERSION << ": " << reference_cases
                   << " native reference cases; " << rejection_cases
-                  << " counted safety rejections; malformed ABI and recovery passed\n";
+                  << " counted safety rejections; legacy " << legacy_references
+                  << " references / " << legacy_rejections
+                  << " rejections; malformed ABI and recovery passed\n";
         return 0;
     } catch (const std::exception &e) {
         std::cerr << "FAIL: " << e.what() << '\n'; return 1;

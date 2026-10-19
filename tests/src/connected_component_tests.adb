@@ -31,6 +31,10 @@ package body Connected_Component_Tests is
    package Caller is new AUnit.Test_Caller (Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
+   function Native_Threads
+     (Requested : Interfaces.Integer_32) return Interfaces.Integer_32
+   with Import, Convention => C, External_Name => "imgproc_test_threads";
+
    function Raw_Connected_Components
      (Source, Labels, Stats, Centroids : System.Address;
       Connectivity                     : Interfaces.Integer_32;
@@ -213,6 +217,11 @@ package body Connected_Component_Tests is
         OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
       Labels     : OpenCV.Core.Mat;
       Components : OpenCV.Image_Processing.Connected_Component_Set;
+      procedure Foreground is
+      begin
+         OpenCV.Image_Processing.Connected_Components_With_Stats
+           (Source, Labels, Components);
+      end Foreground;
    begin
       Clear (Source);
       OpenCV.Image_Processing.Connected_Components_With_Stats
@@ -229,13 +238,25 @@ package body Connected_Component_Tests is
          end loop;
       end loop;
       OpenCV.Core.Set_To (Source, (others => 255.0));
-      OpenCV.Image_Processing.Connected_Components_With_Stats
-        (Source, Labels, Components);
-      AUnit.Assertions.Assert
-        (OpenCV.Image_Processing.Component_Count (Components) = 1,
-         "all foreground must be one component");
-      Assert_Component
-        (Components, 1, 0, 0, 4, 3, 12, 1.5, 1.0, "all foreground");
+      if Native_Reference.Version / 100 = 401 then
+         Assert_Raises (Foreground'Access, "legacy 4.1 absent background");
+         for Row in 0 .. 2 loop
+            for Column in 0 .. 3 loop
+               AUnit.Assertions.Assert
+                 (Label_At (Labels, Row, Column) = 0
+                  and then OpenCV.Core.UInt8_Access.Get (Source, Row, Column)
+                           = 255,
+                  "legacy rejection preserves Source and prior Labels");
+            end loop;
+         end loop;
+      else
+         Foreground;
+         AUnit.Assertions.Assert
+           (OpenCV.Image_Processing.Component_Count (Components) = 1,
+            "all foreground must be one component");
+         Assert_Component
+           (Components, 1, 0, 0, 4, 3, 12, 1.5, 1.0, "all foreground");
+      end if;
       Clear (Source);
       --  One 8-connected foreground shape. Coordinates are (column, row):
       --  (1, 0), (2, 0), (2, 1), (2, 2). Area is 4. The bounding rectangle is
@@ -576,6 +597,7 @@ package body Connected_Component_Tests is
       AUnit.Assertions.Assert
         (Status = C_API.Error_Invalid_Argument,
          "null label count must be rejected");
+      Clear (Source);
       Set (Source, 0, 0);
       OpenCV.Core.Module_Interop.With_Input_Handle (Source, Input'Access);
       AUnit.Assertions.Assert
@@ -984,6 +1006,134 @@ package body Connected_Component_Tests is
          "statistics recovery after rejection");
    end Portable_Uniform_Statistics;
 
+   procedure Legacy_Storage_Reuse (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Source        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 6, (OpenCV.Core.UInt8, 1));
+      Parent        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 8, (OpenCV.Core.Int32, 1));
+      Labels, Alias : OpenCV.Core.Mat;
+      Components    : Connected_Component_Set;
+   begin
+      Clear (Source);
+      Set (Source, 1, 2);
+      OpenCV.Core.Set_To (Parent, (others => 73.0));
+      Labels := Parent.Region ((X => 1, Y => 1, Width => 6, Height => 4));
+      Alias := Labels;
+      --  Named Connectivity and no Label_Depth unambiguously select legacy.
+      Connected_Components_With_Stats
+        (Source       => Source,
+         Labels       => Labels,
+         Components   => Components,
+         Connectivity => Four_Connected);
+      AUnit.Assertions.Assert
+        (Component_Count (Components) = 1, "legacy direct-output component");
+      for R in 0 .. 5 loop
+         for C in 0 .. 7 loop
+            if R in 1 .. 4 and then C in 1 .. 6 then
+               AUnit.Assertions.Assert
+                 (Label_At (Parent, R, C) = Label_At (Labels, R - 1, C - 1)
+                  and then Label_At (Alias, R - 1, C - 1)
+                           = Label_At (Labels, R - 1, C - 1),
+                  "legacy writes reach shallow alias and Region parent");
+            else
+               AUnit.Assertions.Assert
+                 (OpenCV.Core.Int32_Access.Get (Parent, R, C) = 73,
+                  "legacy output leaves parent exterior unchanged");
+            end if;
+         end loop;
+      end loop;
+      OpenCV.Core.Int32_Access.Set (Labels, 1, 2, 59);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int32_Access.Get (Alias, 1, 2) = 59
+         and then OpenCV.Core.Int32_Access.Get (Parent, 2, 3) = 59,
+         "legacy retained the original destination storage");
+   end Legacy_Storage_Reuse;
+
+   procedure Legacy_Parallel_Safety (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Image_Processing;
+      Previous      : constant Interfaces.Integer_32 := Native_Threads (-1);
+      Selected      : Interfaces.Integer_32;
+      Source        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (17, 6, (OpenCV.Core.UInt8, 1));
+      Parent        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (19, 8, (OpenCV.Core.Int32, 1));
+      Labels, Alias : OpenCV.Core.Mat;
+      Components    : Connected_Component_Set;
+      procedure Attempt is
+      begin
+         Connected_Components_With_Stats (Source, Labels, Components);
+      end Attempt;
+   begin
+      Clear (Source);
+      Set (Source, 8, 3);
+      OpenCV.Core.Set_To (Parent, (others => 37.0));
+      Labels := Parent.Region ((X => 1, Y => 1, Width => 6, Height => 17));
+      Alias := Labels;
+      Selected := Native_Threads (2);
+      AUnit.Assertions.Assert
+        (Selected = 2, "controlled parallel thread gate");
+      for Connectivity in Pixel_Connectivity loop
+         if Native_Reference.Version / 100 = 401 then
+            declare
+               procedure Connected is
+               begin
+                  Connected_Components_With_Stats
+                    (Source, Labels, Components, Connectivity);
+               end Connected;
+            begin
+               Assert_Raises
+                 (Connected'Access, "legacy odd parallel 4.1 gate");
+            end;
+            for R in 0 .. 18 loop
+               for C in 0 .. 7 loop
+                  AUnit.Assertions.Assert
+                    (OpenCV.Core.Int32_Access.Get (Parent, R, C) = 37,
+                     "rejection preserves previous Region parent storage");
+               end loop;
+            end loop;
+            AUnit.Assertions.Assert
+              (Label_At (Labels, 8, 3) = 37
+               and then Label_At (Alias, 8, 3) = 37,
+               "rejection preserves Labels and shallow alias");
+         else
+            Connected_Components_With_Stats
+              (Source, Labels, Components, Connectivity);
+            AUnit.Assertions.Assert
+              (Component_Count (Components) = 1, "newer odd parallel works");
+         end if;
+      end loop;
+      for R in 0 .. 16 loop
+         for C in 0 .. 5 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Source, R, C)
+               = (if R = 8 and then C = 3 then 255 else 0),
+               "parallel preflight preserves source");
+         end loop;
+      end loop;
+      Selected := Native_Threads (1);
+      Attempt;
+      AUnit.Assertions.Assert
+        (Component_Count (Components) = 1, "odd serial recovery");
+      Source := OpenCV.Core.Create (16, 6, (OpenCV.Core.UInt8, 1));
+      Clear (Source);
+      Set (Source, 8, 3);
+      Selected := Native_Threads (2);
+      for Connectivity in Pixel_Connectivity loop
+         Connected_Components_With_Stats
+           (Source, Labels, Components, Connectivity);
+         AUnit.Assertions.Assert
+           (Component_Count (Components) = 1, "even parallel recovery");
+      end loop;
+      Selected := Native_Threads (Previous);
+   exception
+      when others =>
+         Selected := Native_Threads (Previous);
+         raise;
+   end Legacy_Parallel_Safety;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
       Result.Add_Test
@@ -1008,6 +1158,14 @@ package body Connected_Component_Tests is
             Aliases_Invalid_Source_And_Statistics_Access'Access));
       Result.Add_Test
         (Caller.Create ("Connected components raw C ABI", Raw_C_ABI'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components legacy direct storage reuse",
+            Legacy_Storage_Reuse'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Connected components legacy parallel safety and recovery",
+            Legacy_Parallel_Safety'Access));
       Result.Add_Test
         (Caller.Create
            ("Connected components portable masks", Portable_Masks'Access));

@@ -42,6 +42,16 @@ extern "C" int32_t imgproc_test_select_ipp(int32_t requested) noexcept
     } catch (...) { return -1; }
 }
 
+// Test-only global setting. Isolated AUnit cases restore the previous count,
+// including exception paths; no production imgproc code changes this setting.
+extern "C" int32_t imgproc_test_threads(int32_t requested) noexcept
+{
+    try {
+        if (requested >= 0) cv::setNumThreads(requested);
+        return cv::getNumThreads();
+    } catch (...) { return -1; }
+}
+
 // Independent numeric native selectors, never production bayer_code().
 // Compare every pixel including borders against the same native operation.
 extern "C" int32_t imgproc_test_bayer_reference(

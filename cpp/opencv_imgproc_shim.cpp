@@ -6326,6 +6326,76 @@ opencv_imgproc_clahe(
 }
 
 namespace {
+// ABI safety: native CCL and the overlap scan address individual rows. Reject
+// unrepresentable offsets, short strides and extents outside the borrowed Mat
+// before either scan. This also protects direct, already allocated outputs.
+bool connected_components_storage_safe(const cv::Mat &image)
+{
+    if (image.empty()) return true;
+    if (image.dims != 2) return true; // Native create rebinds N-D outputs.
+    if (image.rows <= 0 || image.cols <= 0) return false;
+    const uint64_t rows = static_cast<uint64_t>(image.rows);
+    const uint64_t row_bytes = static_cast<uint64_t>(image.cols) * image.elemSize();
+    if (row_bytes > static_cast<uint64_t>(PTRDIFF_MAX) ||
+        image.step[0] < row_bytes ||
+        image.step[0] > static_cast<uint64_t>(PTRDIFF_MAX) / rows ||
+        image.step[1] != image.elemSize()) return false;
+    const uint64_t extent = (rows - 1) * image.step[0] + row_bytes;
+    const uintptr_t begin = reinterpret_cast<uintptr_t>(image.data);
+    const uintptr_t end = reinterpret_cast<uintptr_t>(image.dataend);
+    return end >= begin && extent <= end - begin;
+}
+
+opencv_imgproc_status connected_components_preflight(
+    const cv::Mat &src, cv::Mat &dst, cv::Mat *statistics,
+    cv::Mat *centroid_image, uint64_t &pixels)
+{
+    // ABI safety: native scans access row zero and use signed rows/cols
+    // even for empty/N-D Mats, before any useful dimensional validation.
+    if (src.dims != 2 || src.empty() || src.rows <= 0 || src.cols <= 0)
+        return invalid_argument("unsafe empty or non-2-D connected-components source");
+    // Depth/channel policy belongs to Ada; OpenCV safely asserts raw types.
+    const uint64_t rows = static_cast<uint64_t>(src.rows);
+    const uint64_t cols = static_cast<uint64_t>(src.cols);
+    pixels = rows * cols;
+    // ABI safety: Wu stripe offsets multiply row*width in signed int;
+    // block scans use h+1/w+1, roundUp(h,2), and sentinel label increments.
+    // CCStatsOp areas are signed int. Bounding pixels also bounds provisional
+    // labels, uint64 centroid sums and statistics indices. Bound allocation
+    // and pointer sizes independently for the largest per-label working rows.
+    if (rows > INT_MAX - 2U || cols > INT_MAX - 2U || pixels > INT_MAX - 2U ||
+        pixels > static_cast<uint64_t>(PTRDIFF_MAX) / (5U * sizeof(double)))
+        return invalid_argument("connected-components native arithmetic limit exceeded");
+    const cv::Mat *objects[] = {&src, &dst, statistics, centroid_image};
+    const size_t object_count = statistics ? 4 : 2;
+    for (size_t i = 0; i < object_count; ++i)
+        if (!connected_components_storage_safe(*objects[i]))
+            return invalid_argument("unsafe connected-components storage extent or stride");
+    // ABI safety: create may reuse storage. Aliased headers or overlapping
+    // byte ranges let Labels/CCStatsOp overwrite unread source or another
+    // output (including int/double views of one allocation).
+    for (size_t i = 0; i < object_count; ++i)
+        for (size_t j = i + 1; j < object_count; ++j)
+            if (objects[i] == objects[j] || mat_storage_overlaps(*objects[i], *objects[j]))
+                return invalid_argument("connected-components objects overlap");
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 1
+    // ABI safety: both Wu and Grana allocate h chunk entries then access
+    // startR+1/i+1. An odd final parallel stripe can address element h.
+    // The backend query is not public in 4.1; fail closed at its thread gate.
+    const int threads = cv::getNumThreads();
+    if ((src.rows & 1) && threads > 1 && src.rows / threads >= 2)
+        return invalid_argument("OpenCV 4.1 odd-height parallel CCL is unsafe");
+    // ABI safety: CCStatsOp::finish computes INT_MIN - INT_MAX + 1 for
+    // absent background. Cover BOTH byte depths accepted by native dispatch;
+    // raw CV_8S callers must not bypass the guard. Invalid types are left to
+    // native assertions. No synthetic background or algorithm substitution.
+    if (statistics && (src.depth() == CV_8U || src.depth() == CV_8S) &&
+        src.channels() == 1 && cv::countNonZero(src) == static_cast<int>(pixels))
+        return invalid_argument("OpenCV 4.1 statistics without background are unsafe");
+#endif
+    return OPENCV_IMGPROC_OK;
+}
+
 opencv_imgproc_status connected_components_options(
     const opencv_core_mat_handle *source, opencv_core_mat_handle *labels,
     opencv_core_mat_handle *stats, opencv_core_mat_handle *centroids,
@@ -6380,48 +6450,10 @@ opencv_imgproc_status connected_components_options(
         default: return invalid_argument("invalid algorithm selector");
         }
 
-        // ABI safety: native scans access row zero and use signed rows/cols
-        // even for empty/N-D Mats, before any useful dimensional validation.
-        if (src->dims != 2 || src->empty() || src->rows <= 0 || src->cols <= 0)
-            return invalid_argument("unsafe empty or non-2-D connected-components source");
-        // Depth/channel validation belongs to Ada; OpenCV safely asserts them.
-        const uint64_t rows = static_cast<uint64_t>(src->rows);
-        const uint64_t cols = static_cast<uint64_t>(src->cols);
-        const uint64_t pixels = rows * cols;
-        // ABI safety: Wu stripe offsets multiply row*width in signed int;
-        // block scans use h+1/w+1, roundUp(h,2), and sentinel label increments.
-        // CCStatsOp areas are signed int. Bounding pixels also bounds all
-        // provisional labels, 64-bit centroid sums and statistics row indices.
-        // Check native allocation and pointer-offset sizes independently.
-        if (rows > INT_MAX - 2U || cols > INT_MAX - 2U || pixels > INT_MAX - 2U ||
-            pixels > static_cast<uint64_t>(PTRDIFF_MAX) / (5U * sizeof(double)) ||
-            src->step[0] > static_cast<size_t>(PTRDIFF_MAX) / rows ||
-            src->step[0] < cols * src->elemSize())
-            return invalid_argument("connected-components native arithmetic limit exceeded");
-        // ABI safety: reject header/storage aliases before publishing several
-        // outputs; rebinding an input/output header would corrupt another result
-        // or the borrowed source. No writes to old output storage are permitted.
-        const cv::Mat *objects[] = {src, dst, statistics, centroid_image};
-        const size_t object_count = with_stats ? 4 : 2;
-        for (size_t i = 0; i < object_count; ++i)
-            for (size_t j = i + 1; j < object_count; ++j)
-                if (objects[i] == objects[j] || mat_storage_overlaps(*objects[i], *objects[j]))
-                    return invalid_argument("connected-components objects overlap");
-#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 1
-        // ABI safety: 4.1 allocates h chunk entries then writes/reads startR+1.
-        // An odd final parallel stripe can access element h out of bounds.
-        // currentParallelFramework is not public in 4.1. Conservatively reject
-        // when its public thread-count gate permits the unsafe parallel path.
-        if ((src->rows & 1) && cv::getNumThreads() > 1 &&
-            src->rows / cv::getNumThreads() >= 2)
-            return invalid_argument("OpenCV 4.1 odd-height parallel CCL is unsafe");
-        // ABI safety: 4.1 CCStatsOp::finish unconditionally subtracts INT_MAX
-        // from INT_MIN for absent background bounds, causing signed overflow.
-        // Do not fabricate a background pixel or substitute an algorithm.
-        if (with_stats && src->type() == CV_8UC1 &&
-            cv::countNonZero(*src) == static_cast<int>(pixels))
-            return invalid_argument("OpenCV 4.1 statistics without background are unsafe");
-#endif
+        uint64_t pixels = 0;
+        const auto preflight = connected_components_preflight(
+            *src, *dst, statistics, centroid_image, pixels);
+        if (preflight != OPENCV_IMGPROC_OK) return preflight;
         cv::Mat result, native_stats, native_centroids;
         const int count = with_stats
             ? cv::connectedComponentsWithStats(*src, result, native_stats,
@@ -6523,20 +6555,13 @@ opencv_imgproc_connected_components_with_stats(
             return invalid_argument("connectivity must be 4 or 8");
         }
 
-        // ABI safety: passing one cv::Mat header as multiple OutputArrays lets
-        // their create calls rebind a previously published output header.
-        if (src == label_image || src == statistics || src == centroid_image
-            || label_image == statistics || label_image == centroid_image
-            || statistics == centroid_image) {
-            return invalid_argument("connected-components outputs must be distinct");
-        }
+        uint64_t pixels = 0;
+        const auto preflight = connected_components_preflight(
+            *src, *label_image, statistics, centroid_image, pixels);
+        if (preflight != OPENCV_IMGPROC_OK) return preflight;
 
-        // ABI safety: connected-components reads Source while it writes Labels;
-        // overlapping storage can overwrite unread source pixels.
-        if (equalize_hist_views_overlap(*src, *label_image)) {
-            return invalid_argument("labels must not share storage with source");
-        }
-
+        // Preserve the legacy direct-output contract: native create reuses
+        // compatible storage, including shallow aliases and Region parents.
         *label_count = cv::connectedComponentsWithStats(
             *src, *label_image, *statistics, *centroid_image, connectivity,
             CV_32S);

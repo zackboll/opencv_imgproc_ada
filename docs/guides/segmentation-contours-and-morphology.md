@@ -72,6 +72,11 @@ writes an Int32 label image and returns per-component area, bounds and
 centroid. Label zero is [Background_Label](api:Background_Label); foreground
 labels run from 1 to [Component_Count](api:Component_Count) but have **no
 spatial-order guarantee**, so identify components by their statistics.
+Compatible Int32 storage is reused directly. OpenCV 4.1 rejects an
+all-foreground mask and an odd height when `getNumThreads() > 1` and
+`rows / getNumThreads() >= 2`, even without an active parallel backend;
+later qualified versions do not. Preflight rejection leaves the previous
+label storage unchanged.
 
 ## Drawing results
 
