@@ -1688,24 +1688,24 @@ package OpenCV.Image_Processing is
    --  Native LSD refinement policy.
    --  @enum No_Refinement Return unrefined regions.
    --  @enum Standard_Refinement Refine region density (the native default).
-   --  @enum Advanced_Refinement Also refine precision and evaluate NFA.
+   --  @enum Advanced_Refinement Reserved; rejected due to native rect_nfa UB.
    type LSD_Refinement is
      (No_Refinement, Standard_Refinement, Advanced_Refinement);
 
-   --  Complete native createLineSegmentDetector configuration. All real
+   --  Portable LSD configuration, not full native parameter coverage. All real
    --  values must be finite. Source-dependent arithmetic limits are described
    --  in docs/line-segment-detector-source-review.md.
    --  @field Refinement Refinement policy; Standard_Refinement by default.
-   --  @field Scale Image sampling scale in (0, 1], default 0.8.
-   --  @field Sigma_Scale Gaussian sigma numerator, positive; default 0.6.
+   --  @field Scale Must be 1.0 (default), unlike OpenCV's unsafe native 0.8.
+   --  @field Sigma_Scale Positive, default 0.6; unused at supported scale 1.
    --  @field Quantization Nonnegative gradient error bound; default 2.0.
    --  @field Angle_Degrees Gradient tolerance in (0, 180); default 22.5.
-   --  @field Log_Epsilon Advanced acceptance threshold for -log10(NFA), 0.
+   --  @field Log_Epsilon Reserved finite threshold, default 0; unused.
    --  @field Density Minimum aligned density in [0, 1), default 0.7.
    --  @field Bin_Count Gradient ordering bins, default 1024; signed C range.
    type LSD_Parameters is record
       Refinement    : LSD_Refinement := Standard_Refinement;
-      Scale         : OpenCV.Float64_Value := 0.8;
+      Scale         : OpenCV.Float64_Value := 1.0;
       Sigma_Scale   : OpenCV.Float64_Value := 0.6;
       Quantization  : OpenCV.Float64_Value := 2.0;
       Angle_Degrees : OpenCV.Float64_Value := 22.5;
@@ -1723,8 +1723,8 @@ package OpenCV.Image_Processing is
    --  @field End_Point Native binary32 end endpoint, never reordered.
    --  @field Width Native region width in Source pixels.
    --  @field Precision Native angular probability, possibly refined.
-   --  @field Has_NFA True only for Advanced_Refinement detections.
-   --  @field NFA Native -log10(NFA) evidence; zero when unavailable.
+   --  @field Has_NFA Always False under the current portable contract.
+   --  @field NFA Reserved native -log10(NFA) evidence; currently zero.
    type LSD_Segment is record
       Start_Point : OpenCV.Float32_Point;
       End_Point   : OpenCV.Float32_Point;
@@ -1743,9 +1743,12 @@ package OpenCV.Image_Processing is
    --  Unlike HoughLinesP, LSD provides subpixel endpoints and region evidence
    --  without requiring an edge-map input. No sorting or orientation changes
    --  are applied. Source and its aliases are preserved.
+   --  Only Scale=1 with No_Refinement or Standard_Refinement is supported.
+   --  Other scales and Advanced are rejected before detector construction,
+   --  excluding native resize SIMD and rect_nfa undefined-behavior paths.
    --  OpenCV 4.1 through 4.5.3 are unavailable; restoration starts at 4.5.4.
    --  @param Source Borrowed grayscale image, unchanged on every path.
-   --  @param Parameters Complete native configuration and refinement mode.
+   --  @param Parameters Portable configuration; NFA is unavailable.
    --  @return Ada-owned segments and corresponding diagnostics.
    --  @exception OpenCV_Error Invalid input, unsafe native arithmetic,
    --  unavailable implementation, or translated native failure.

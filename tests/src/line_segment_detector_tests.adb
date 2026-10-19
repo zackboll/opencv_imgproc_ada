@@ -3,6 +3,7 @@ with AUnit.Assertions; use AUnit.Assertions;
 with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
 with Interfaces;
+with OpenCV.Core.Module_Interop;
 with Native_Reference;
 with OpenCV;
 with OpenCV.Core;
@@ -22,6 +23,7 @@ package body Line_Segment_Detector_Tests is
    use type Interfaces.Unsigned_8;
    use type Interfaces.Integer_32;
    use type C.Status;
+   use type C.LSD_Handle;
    use type IP.LSD_Segment_Array;
    use type IP.LSD_Refinement;
 
@@ -84,7 +86,7 @@ package body Line_Segment_Detector_Tests is
       Image  : constant OpenCV.Core.Mat := Pattern (Kind);
       Before : constant OpenCV.Core.Mat := Image.Clone;
    begin
-      if not Available then
+      if not Available or else Mode = IP.Advanced_Refinement then
          declare
             procedure Attempt is
                Lines : constant IP.LSD_Segment_Array :=
@@ -107,9 +109,7 @@ package body Line_Segment_Detector_Tests is
            (Lines'Length > 0 and then Lines'First = 0, "real LSD detections");
          for S of Lines loop
             Assert (S.Width > 0.0 and then S.Precision > 0.0, "diagnostics");
-            Assert
-              (S.Has_NFA = (Mode = IP.Advanced_Refinement),
-               "NFA availability");
+            Assert (not S.Has_NFA, "NFA unavailable under portable contract");
             if not S.Has_NFA then
                Assert (S.NFA = 0.0, "no fabricated NFA");
             end if;
@@ -230,7 +230,7 @@ package body Line_Segment_Detector_Tests is
                P.Scale := 1.0E-20;
 
             when 10     =>
-               P.Sigma_Scale := 1.0E30;
+               P.Sigma_Scale := -1.0;
 
             when others =>
                P.Bin_Count := Positive'Last;
@@ -511,8 +511,83 @@ package body Line_Segment_Detector_Tests is
       C.LSD_Destroy (Handle);
    end Raw_Test;
 
+   procedure Portable_Scale_Test (F : in out Fixture) is
+      pragma Unreferenced (F);
+      P : IP.LSD_Parameters;
+      procedure Attempt is
+         Lines : constant IP.LSD_Segment_Array :=
+           IP.Detect_Line_Segments (Pattern (1), P);
+      begin
+         Assert (Lines'Length = 0, "restricted scale must not escape");
+      end Attempt;
+   begin
+      for I in 1 .. 3 loop
+         P.Scale :=
+           (case I is
+              when 1      => 0.8,
+              when 2      => 0.5,
+              when others => 1.000001);
+         Expect_Error (Attempt'Access);
+      end loop;
+   end Portable_Scale_Test;
+
+   procedure Portable_Default_Test (F : in out Fixture) is
+      pragma Unreferenced (F);
+      P : constant IP.LSD_Parameters := (others => <>);
+   begin
+      Assert
+        (P.Scale = 1.0 and then P.Refinement = IP.Standard_Refinement,
+         "portable default differs from native scale 0.8");
+      Detection (1, P.Refinement);
+   end Portable_Default_Test;
+
+   procedure Raw_Envelope_Test (F : in out Fixture) is
+      pragma Unreferenced (F);
+      Image : constant OpenCV.Core.Mat := Pattern (4);
+      procedure Input (S : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         Handle : aliased C.LSD_Handle := C.Null_LSD_Handle;
+         Status : C.Status;
+      begin
+         for I in 1 .. 3 loop
+            Status :=
+              C.LSD_Detect
+                (S,
+                 (if I = 3 then 2 else 1),
+                 (case I is
+                    when 1      => 0.8,
+                    when 2      => 0.5,
+                    when others => 1.0),
+                 0.6,
+                 2.0,
+                 22.5,
+                 0.0,
+                 0.7,
+                 1024,
+                 Handle'Access);
+            Assert (Status /= C.Success, "raw envelope rejection");
+            Assert (Handle = C.Null_LSD_Handle, "raw rejection null result");
+            if Available then
+               Assert
+                 (C.Last_Error_Message
+                  = "portable LSD requires scale 1 and no/standard refinement",
+                  "explicit pre-construction rejection");
+            end if;
+         end loop;
+      end Input;
+   begin
+      OpenCV.Core.Module_Interop.With_Input_Handle (Image, Input'Access);
+   end Raw_Envelope_Test;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("LSD portable scale rejections", Portable_Scale_Test'Access));
+      Result.Add_Test
+        (Caller.Create ("LSD portable default", Portable_Default_Test'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("LSD raw pre-construction envelope", Raw_Envelope_Test'Access));
       Result.Add_Test
         (Caller.Create ("LSD blank/default/unsupported", Blank_Test'Access));
       Result.Add_Test
@@ -526,7 +601,8 @@ package body Line_Segment_Detector_Tests is
       Result.Add_Test
         (Caller.Create ("LSD no refinement", No_Refinement_Test'Access));
       Result.Add_Test
-        (Caller.Create ("LSD advanced NFA", Advanced_Test'Access));
+        (Caller.Create
+           ("LSD advanced explicitly unavailable", Advanced_Test'Access));
       Result.Add_Test
         (Caller.Create
            ("LSD parameter ranges/recovery", Parameters_Test'Access));

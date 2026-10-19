@@ -37,20 +37,18 @@ void rejected(int32_t status) {
     ++rejections;
 }
 int32_t detect(Mat &source, Result &result, int mode = 1,
-               double scale = .8, double sigma = .6, double quant = 2,
+               double scale = 1, double sigma = .6, double quant = 2,
                double angle = 22.5, int bins = 1024) {
     return opencv_imgproc_lsd_detect(source.handle, mode, scale, sigma,
         quant, angle, 0, .7, bins, &result.handle);
 }
-#if OPENCV_IMGPROC_HAS_LSD
-cv::Ptr<cv::LineSegmentDetector> direct(int mode, double scale) {
-#if CV_VERSION_MAJOR >= 5
+// Compile the enum-to-actual-signature call even on 4.1, but never execute its
+// removed implementation there. This also verifies 4.x enum-to-int conversion.
+[[maybe_unused]] cv::Ptr<cv::LineSegmentDetector> direct(int mode, double scale) {
     return cv::createLineSegmentDetector(
         static_cast<cv::LineSegmentDetectorModes>(mode), scale);
-#else
-    return cv::createLineSegmentDetector(mode, scale);
-#endif
 }
+#if OPENCV_IMGPROC_HAS_LSD
 void reference(Mat &source, int mode, double scale) {
     const cv::Mat before = source.value->clone();
     Result result;
@@ -63,11 +61,11 @@ void reference(Mat &source, int mode, double scale) {
     require(opencv_imgproc_lsd_copy(result.handle, records.data(), count) ==
             OPENCV_IMGPROC_OK, "copy");
     std::vector<cv::Vec4f> lines;
-    std::vector<double> widths, precision, nfa;
+    std::vector<double> widths, precision;
     auto detector = direct(mode, scale);
     cv::Mat logical = source.value->clone();
-    if (mode == 2) detector->detect(logical, lines, widths, precision, nfa);
-    else detector->detect(logical, lines, widths, precision);
+    require(mode < 2 && scale == 1, "normal oracle must use portable contract");
+    detector->detect(logical, lines, widths, precision);
     require(lines.size() == records.size() && widths.size() == records.size() &&
             precision.size() == records.size(), "oracle counts");
     for (size_t i = 0; i < records.size(); ++i) {
@@ -76,8 +74,7 @@ void reference(Mat &source, int mode, double scale) {
                 r.x2 == lines[i][2] && r.y2 == lines[i][3], "oracle endpoints");
         require(r.width == widths[i] && r.precision == precision[i],
                 "oracle diagnostics");
-        require(r.has_nfa == (mode == 2) && r.reserved == 0 &&
-                r.nfa == (mode == 2 ? nfa[i] : 0.0), "oracle NFA");
+        require(r.has_nfa == 0 && r.reserved == 0 && r.nfa == 0, "NFA unavailable");
         ++references;
     }
     equal(*source.value, before);
@@ -113,7 +110,7 @@ void comparison(const std::vector<opencv_imgproc_lsd_segment> &a,
     // Explicit typed empty Mats avoid std::vector empty InputArray differences.
     cv::Mat am(int(av.size()), 1, CV_32FC4, av.data());
     cv::Mat bm(int(bv.size()), 1, CV_32FC4, bv.data());
-    const int native = direct(1, .8)->compareSegments(cv::Size(128, 128), am, bm, expected);
+    const int native = direct(1, 1)->compareSegments(cv::Size(128, 128), am, bm, expected);
     require(native == mismatch, "oracle mismatch count");
     ++references;
     equal(*output.value, expected);
@@ -145,11 +142,21 @@ int main(int argc, char **argv) {
         require(count == 0 && output.value->rows == 3, "unsupported atomicity");
         references += 3;
 #else
-        const bool scale_one_only = argc == 2 &&
-            std::strcmp(argv[1], "--scale-one") == 0;
-        for (int mode = 0; mode < 3; ++mode) {
-            for (double scale : {1.0, .8, .5}) {
-                if (scale_one_only && scale != 1) continue;
+        // Historical unsafe upstream reproductions are opt-in direct native
+        // calls only. They cannot be reached by normal production-shim tests.
+        if (argc == 2 && (std::strcmp(argv[1], "--unsafe-upstream-resize") == 0 ||
+                         std::strcmp(argv[1], "--unsafe-upstream-advanced") == 0)) {
+            cv::rectangle(*source.value, {20,20,80,80}, 255, 2);
+            std::vector<cv::Vec4f> lines;
+            std::vector<double> widths, precision, nfa;
+            const bool advanced = std::strcmp(argv[1], "--unsafe-upstream-advanced") == 0;
+            direct(advanced ? 2 : 1, advanced ? 1 : .8)->detect(
+                *source.value, lines, widths, precision, nfa);
+            std::cout << "Opt-in unsafe upstream reproduction returned\n";
+            return 0;
+        }
+        require(argc == 1, "unknown campaign selector");
+        for (int mode = 0; mode < 2; ++mode) {
                 for (int pattern = 0; pattern < 6; ++pattern) {
                     source.value->setTo(0);
                     if (pattern == 1) cv::line(*source.value, {10,40}, {115,40}, 255, 2);
@@ -160,17 +167,32 @@ int main(int argc, char **argv) {
                         cv::line(*source.value, {10,30}, {115,30}, 255, 2);
                         cv::line(*source.value, {10,90}, {115,90}, 255, 2);
                     }
-                    reference(source, mode, scale);
+                    reference(source, mode, 1);
                 }
-            }
         }
+        // Independent references on small/adversarial geometry, varied
+        // contrast and near-axis gradients. No global backend flags change.
+        for (int mode = 0; mode < 2; ++mode)
+            for (int size : {1, 2, 3, 7, 16, 31, 64, 129, 257})
+                for (int contrast : {1, 17, 127, 255})
+                    for (int pattern = 0; pattern < 5; ++pattern) {
+                        Mat image(cv::Mat::zeros(size, size + 3, CV_8UC1));
+                        if (pattern == 0) cv::line(*image.value, {0,size/2}, {size+2,size/2+1}, contrast);
+                        if (pattern == 1) cv::line(*image.value, {size/2,0}, {size/2+1,size-1}, contrast);
+                        if (pattern == 2) cv::rectangle(*image.value, {0,0,size+3,size}, contrast);
+                        if (pattern == 3)
+                            for (int y = 0; y < size; ++y)
+                                for (int x = 0; x < size + 3; ++x)
+                                    image.value->at<uchar>(y,x) = uchar(((x*17+y*31) % 5) * contrast / 4);
+                        reference(image, mode, 1);
+                    }
         cv::Mat parent = cv::Mat::zeros(170, 170, CV_8UC1);
         cv::rectangle(parent, {2,2,165,165}, 255, 2);
         Mat roi(parent(cv::Rect(20, 20, 128, 128)));
         require(!roi.value->isContinuous(), "ROI fixture");
-        reference(roi, 1, scale_one_only ? 1 : .8);
+        reference(roi, 1, 1);
         cv::line(*roi.value, {5,50}, {120,50}, 255, 2);
-        reference(roi, 2, scale_one_only ? 1 : .8);
+        reference(roi, 0, 1);
         const opencv_imgproc_lsd_segment horizontal{10.25f,30,90.5f,30,2,.125,0,0,0};
         const opencv_imgproc_lsd_segment vertical{50,10,50,90,2,.125,0,0,0};
         comparison({}, {});
@@ -179,17 +201,39 @@ int main(int argc, char **argv) {
         comparison({horizontal}, {horizontal});
         comparison({horizontal}, {vertical});
         comparison({horizontal,vertical}, {vertical,horizontal});
-        for (int bins : {0, -1, INT_MAX}) rejected(detect(source, result, 1, .8, .6, 2, 22.5, bins));
-        for (double scale : {0.0, -1.0, 1e-100, DBL_MAX,
+        for (int bins : {0, -1, INT_MAX}) rejected(detect(source, result, 1, 1, .6, 2, 22.5, bins));
+        for (double scale : {.8, .5, 1.000001, 0.0, -1.0, 1e-100, DBL_MAX,
                               std::numeric_limits<double>::quiet_NaN()})
             rejected(detect(source, result, 1, scale));
-        for (double sigma : {DBL_MAX, std::numeric_limits<double>::infinity()})
-            rejected(detect(source, result, 1, .8, sigma));
-        rejected(detect(source, result, 1, .8, .6, DBL_MAX, DBL_MIN));
+        rejected(detect(source, result, 2));
+        // Null handle proves the envelope gate fires before bridge access,
+        // detector construction or any potential rect_improve/rect_nfa call.
+        rejected(opencv_imgproc_lsd_detect(nullptr, 2, 1, .6, 2, 22.5, 0, .7,
+                                          1024, &result.handle));
+        require(std::strstr(opencv_imgproc_last_error_message(), "portable LSD"),
+                "Advanced must be rejected by pre-construction envelope");
+        for (double sigma : {0.0, -1.0})
+            rejected(detect(source, result, 1, 1, sigma));
+        rejected(detect(source, result, 1, 1, .6, DBL_MAX, DBL_MIN));
+        for (double angle : {0.0, 180.0, std::numeric_limits<double>::quiet_NaN()})
+            rejected(detect(source, result, 1, 1, .6, 2, angle));
+        for (double quant : {-1.0, std::numeric_limits<double>::infinity()})
+            rejected(detect(source, result, 1, 1, .6, quant));
         rejected(detect(source, result, 3));
-        rejected(opencv_imgproc_lsd_detect(nullptr, 1, .8, .6, 2, 22.5, 0, .7,
+        rejected(opencv_imgproc_lsd_detect(nullptr, 1, 1, .6, 2, 22.5, 0, .7,
                                           1024, &result.handle));
         require(!result.handle, "failure null result");
+        Mat empty;
+        rejected(detect(empty, result));
+        int sizes[] = {2,3,4};
+        Mat volume(cv::Mat(3, sizes, CV_8UC1));
+        rejected(detect(volume, result));
+        // A real Core wrapper with an oversized header: reject before clone
+        // or pixel access, without allocating a huge image.
+        Mat large(cv::Mat(1, 1, CV_8UC1, cv::Scalar(0)));
+        large.value->rows = INT_MAX;
+        large.value->cols = 2;
+        rejected(detect(large, result));
         auto unsafe = horizontal;
         for (float coordinate : {FLT_MAX, std::numeric_limits<float>::infinity(),
                                   std::numeric_limits<float>::quiet_NaN()}) {
@@ -205,7 +249,7 @@ int main(int argc, char **argv) {
         rejected(opencv_imgproc_lsd_compare(128, 128, nullptr, 1, nullptr, 0, &count, nullptr));
         rejected(opencv_imgproc_lsd_compare(128, 128, nullptr, 0, nullptr, -1, &count, nullptr));
         rejected(opencv_imgproc_lsd_compare(128, 128, nullptr, 0, nullptr, 0, nullptr, nullptr));
-        reference(source, 1, scale_one_only ? 1 : .8); // recovery
+        reference(source, 1, 1); // recovery
 #endif
         (void)argc; (void)argv;
         std::cout << "OpenCV " << CV_VERSION << ": " << references

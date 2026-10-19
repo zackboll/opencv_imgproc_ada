@@ -1,58 +1,63 @@
-# IMGPROC-API-003 — BLOCKED: native LSD safety qualification
+# IMGPROC-API-003-R1 — Portable native LSD baseline
 
-This PR is an implementation and reproducible blocker report, **not ready for
-approval or merge**. Auto-merge must remain disabled. Independent review has
-not been requested as a readiness disposition.
+Existing PR #76; no replacement PR. Reviewed starting HEAD:
+`85dd67dcd29dc321cb10c7d298d1c09e7492320a`.
+Starting origin/main remains `47418ab0a3d31e783a97ba585d9a8112ac5fec7d`.
 
-Starting origin/main: `47418ab0a3d31e783a97ba585d9a8112ac5fec7d` (merged PR #75).
-No duplicate branch/PR was found; the working tree was clean before work.
+## Implemented contract
 
-## Implemented
+* Detection: **Scale=1.0 only**, **No_Refinement/Standard_Refinement**.
+* Portable default: Standard, scale **1.0**, not OpenCV native 0.8.
+* All non-unit scales and Advanced explicitly rejected in Ada and independently
+  at the C ABI before detector construction. NFA unavailable (`False`, zero).
+* Existing public types, fields, ownership architecture and package retained.
+* Native subpixel gradient-oriented endpoints, width/precision, independent
+  Ada results and source-preserving logical/strided Regions.
+* Native red-BGR rendering and pixel-mismatch comparison/visualization remain
+  available, including portable empty sets and fresh Core-owned output storage.
+* OpenCV <4.5.4 explicitly unavailable without invoking removed constructor.
+* Constructor always receives the validated unscoped refinement enum, compatible
+  with actual 4.x int and 5.x enum declarations despite historical Bayer macros.
 
-* Public `LSD_Refinement`, `LSD_Parameters`, `LSD_Segment`, `LSD_Segment_Array`.
-* `Detect_Line_Segments`, `Render_Line_Segments`, and count-only / visualized
-  `Compare_Line_Segments`, in the existing public package.
-* Invocation-local native detector; subpixel gradient-oriented Vec4f endpoints;
-  width/precision and optional Advanced NFA; Ada-owned copied results.
-* Native red-BGR rendering and native raster mismatch count/visualization,
-  fresh output ownership, empty-set behavior and isolated noncontiguous ROI input.
-* Pre-4.5.4 compile-time unsupported errors without stub constructor calls;
-  explicit OpenCV 5 enum conversion.
-* 17 focused AUnit cases, native-reference/malformed-ABI harness, C/Ada layout
-  controls, GNATdoc and source-audit documentation.
+## Unsafe paths excluded, not repaired or hidden
 
-## Validation
+Scale=1 excludes flsd's Gaussian/resize branch and its SIMD misaligned-short
+load (independently reported in OpenCV #29238). Modes 0/1 cannot enter flsd's
+`doRefine >= LSD_REFINE_ADV` block, so rect_improve/rect_nfa cannot execute.
+The disproved rectangle bound was removed. No private OpenCV patches, global
+optimization changes, sanitizer suppression, or replacement algorithm.
 
-* Full AUnit on 4.1.0, 4.6.0, 4.10.0, 5.0.0: **1,175/1,175 each**.
-  Baseline: 1,158. These counts are registered AUnit cases.
-* Four-version independent native reference harness: pass. Reference assertion /
-  ABI rejection counts: 4.1 3/4; 4.6 319/129; 4.10 348/132; 5.0 348/132.
-* Instrumented OpenCV: 4.1 unsupported paths pass. Functional versions fail at
-  native exact-resize SIMD misaligned short loads for scale .8.
-* Scale-one sanitizer campaign: 4.6 passes (157 references/65 rejections);
-  **4.10 and 5.0 fail in advanced rect_nfa with float-to-int overflow**.
-* GNAT 12 native and AArch64 compile-only: four tests pass each, including actual
-  Ada record representation. C11 shim-header and native/AArch64 C++ layout pass.
-* GNATdoc: zero warnings, 329 declarations, 193 subprograms, 1,596/1,596 covered
-  documentation items. Frozen shared-shadow authority unchanged.
-* Cross configuration: 41 tests, two genuine-SDK tests skipped; adapter: 9 pass.
-* Hosted platform and installed-consumer results: **HOSTED_CI_PENDING** at PR
-  creation. Windows MSYS2 unqualified/manual, never reported as passed.
+## Local qualification
 
-## Blocking decision
+* Full AUnit: **1,178/1,178** on each of 4.1.0, 4.6.0, 4.10.0, 5.0.0.
+  Reviewed baseline 1,175; three new focused regression cases; 20 LSD cases.
+* Native references / expected ABI rejections: 4.1 **3/4**, each functional
+  version **4,566/560**. Counts are native assertions, not AUnit cases.
+* ASan/UBSan/float-cast-overflow with instrumented exact-tag OpenCV itself:
+  **PASS on all four versions** for the reduced contract. Broad small-image,
+  contrast, near-axis, texture and strided-ROI corpus; failure-on-diagnostic.
+* Installed and historical Bayer paths pass 4.6/4.10/5.0. Installed 4.1 passes;
+  legacy simulation on actual 4.1 is unavailable because unrelated CCL aliases
+  are absent. The historical simulation is unchanged.
+* GNAT 12 native/AArch64 source-unit controls: four tests each passed.
+  C11 header and native/AArch64 C++ layout controls passed.
+* Cross configuration: 41 tests (two genuine-SDK controls explicitly skipped);
+  external AdaCore adapter: nine tests passed.
+* Existing 329-declaration/193-subprogram/1,596-item documentation inventory
+  retained. Frozen GNATdoc historical authority unchanged.
 
-The small-image Advanced failure disproves the provisional geometric scan bound.
-Output checks cannot repair UB that already happened in native code. Completing
-the requested safety contract needs dependency-level native fixes, or an
-explicitly approved reduced support contract. Neither native algorithm replacement,
-sanitizer disabling nor global optimization disabling was introduced.
+## Hosted qualification and review
 
-Retained duplicated safety checks cover finite native casts, Gaussian sizing,
-scaled layout/buffer arithmetic, bin conversion, provisional rectangle scan
-bounds, endpoint rounding/differences, and comparison area/byte indexing; their
-specific reasons and limitations are in the source-review document. Public
-depth/channel/refinement semantics are owned by Ada, not reimplemented as a
-second C++ public contract.
+**HOSTED_CI_PENDING** until exact corrective HEAD passes Linux, macOS ARM64
+(including historical Bayer), macOS Intel IPP, GNAT 12, API documentation,
+Debian installed consumers, cross configuration, AArch64 target dependencies,
+shared GNATdoc applicability and external AdaCore adapter controls.
+Windows remains skipped/manual, not qualified.
 
-See [full source review and blockers](line-segment-detector-source-review.md).
-Do not merge, tag, release, submit to Alire, or start another feature.
+Retained duplicated C++ guards protect scale/mode path exclusion, finite native
+casts, positive p/rho/min-region conversions, image/buffer geometry, bin casts,
+endpoint differences/rounding and comparison area/byte indexing. Each has a
+specific ABI-safety reason; there is no second public depth/channel contract.
+
+See [source review, historical evidence and R1 results](line-segment-detector-source-review.md).
+Do not merge, enable auto-merge, tag, release, submit to Alire or start another feature.

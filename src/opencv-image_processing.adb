@@ -32,14 +32,14 @@ package body OpenCV.Image_Processing is
       use type OpenCV.Float64_Value;
    begin
       if not P.Refinement'Valid
+        or else P.Refinement = Advanced_Refinement
         or else not Is_Finite (P.Scale)
         or else not Is_Finite (P.Sigma_Scale)
         or else not Is_Finite (P.Quantization)
         or else not Is_Finite (P.Angle_Degrees)
         or else not Is_Finite (P.Log_Epsilon)
         or else not Is_Finite (P.Density)
-        or else P.Scale <= 0.0
-        or else P.Scale > 1.0
+        or else P.Scale /= 1.0
         or else P.Sigma_Scale <= 0.0
         or else P.Quantization < 0.0
         or else P.Angle_Degrees <= 0.0

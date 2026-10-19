@@ -66,7 +66,10 @@ typedef struct {
     int32_t has_nfa, reserved;
 } opencv_imgproc_lsd_segment;
 
-/* Invocation-local detector. On failure *result is null. Unsupported OpenCV
+/* Portable detection: scale == 1, refinement 0 or 1 only. Other scales and
+ * Advanced (2) are rejected before construction to exclude native UB paths.
+ * NFA is unavailable (has_nfa=0, nfa=0). Invocation-local detector.
+ * On failure *result is null. Unsupported OpenCV
  * versions return ERROR_OPENCV without constructing the removed detector. */
 int32_t opencv_imgproc_lsd_detect(
     const opencv_core_mat_handle *source, int32_t refinement,

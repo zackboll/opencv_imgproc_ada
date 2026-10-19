@@ -17,15 +17,18 @@
 
 ### Added
 
-* Complete native LSD detection configuration, Ada-owned oriented Float32
-  segments with width/precision and optional Advanced NFA evidence, native
+* Portable native LSD detection (scale 1.0, No/Standard refinement), Ada-owned
+  oriented Float32 segments with width/precision, native
   red-BGR rendering, and pixel-mismatch comparison with fresh visualization.
   ROI input is isolated and source aliases are preserved. OpenCV before 4.5.4
   explicitly reports unavailable without calling the stub; 5.0's enum argument
   is handled internally. Added source-level safety review and native oracles.
-  Qualification remains blocked by instrumented upstream exact-resize SIMD
-  alignment and advanced rect_nfa float-cast errors; the provisional geometric
-  guard is insufficient. See `docs/line-segment-detector-source-review.md`.
+  Non-unit scales and Advanced refinement are rejected before construction in
+  Ada and C++ to exclude native resize SIMD alignment and rect_nfa float-cast
+  errors. Scale defaults to 1.0, not native 0.8; NFA is unavailable. Removed the
+  disproved provisional rectangle bound. The enum conversion also fixes the
+  OpenCV 5 historical-Bayer harness compilation without altering its simulation.
+  See `docs/line-segment-detector-source-review.md`.
 
 * `Connected_Components` labels-only analysis and an unambiguous statistics
   overload with required `Label_Depth`, portable Native_Default/SAUF/BBDT/

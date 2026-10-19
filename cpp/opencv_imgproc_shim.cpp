@@ -4155,67 +4155,39 @@ const char *distance_preflight(const cv::Mat &src, int border, bool precise)
 // LSD helpers are local to the shim; no detector or Mat ownership escapes.
 #if OPENCV_IMGPROC_HAS_LSD
 cv::Ptr<cv::LineSegmentDetector> lsd_detector(
-    int32_t refinement = 1, double scale = .8, double sigma = .6,
+    int32_t refinement = 1, double scale = 1, double sigma = .6,
     double quant = 2, double angle = 22.5, double epsilon = 0,
     double density = .7, int32_t bins = 1024)
 {
     // ABI decoding: reject unknown selectors before conversion to the 5.x enum.
     if (refinement < 0 || refinement > 2)
         CV_Error(cv::Error::StsBadArg, "invalid LSD refinement selector");
-#if CV_VERSION_MAJOR >= 5
+    // The unscoped enum also converts to the actual 4.x int signature.
+    // Do not infer the signature from macros overridden by historical tests.
     const auto mode = static_cast<cv::LineSegmentDetectorModes>(refinement);
-#else
-    const int mode = static_cast<int>(refinement);
-#endif
     return cv::createLineSegmentDetector(
         mode, scale, sigma, quant, angle, epsilon, density, bins);
 }
 
-bool lsd_detection_safe(const cv::Mat &source, double scale, double sigma,
-                        double quant, double angle, int32_t bins)
+bool lsd_detection_safe(const cv::Mat &source, double quant,
+                        double angle, int32_t bins)
 {
-    // ABI safety: flsd converts ceil(sigma/scale*sqrt(6*ln(10))) to unsigned,
-    // then 1+2*h to signed kernel dimensions. NaN/infinity cannot reach casts.
-    // p is halved up to ten times in rect_improve; preserve normal positive p
-    // before log10(p), size_t(min_reg_size), and NFA calculations.
+    // ABI safety: preserve positive p and finite rho before log10(p) and
+    // size_t(min_reg_size). Advanced refinement and resizing are unreachable.
     const double p = angle / 180;
-    if (!std::isfinite(scale) || scale <= 0 ||
-        !std::isfinite(sigma) || sigma <= 0 ||
-        !std::isfinite(quant) ||
-        !std::isfinite(angle) || p < DBL_MIN * 1024 || p >= 1 ||
+    if (!std::isfinite(quant) ||
+        !std::isfinite(angle) || p < DBL_MIN || p >= 1 ||
         !std::isfinite(quant / std::sin(CV_PI * angle / 180))) return false;
-    if (scale != 1) {
-        const double h = std::ceil((scale < 1 ? sigma / scale : sigma) *
-                                   std::sqrt(6 * std::log(10.0)));
-        // GaussianBlur's padded row and kernel arithmetic uses signed int.
-        if (!std::isfinite(h) || h > (INT_MAX - 1) / 2 ||
-            2 * h + source.cols > INT_MAX ||
-            2 * h + source.rows > INT_MAX) return false;
-    }
-    // ABI safety: resize rounds dimensions before ll_angle uses the last
-    // row/column; zero dimensions cannot be indexed. Signed area is also used
-    // by resize, count loops, and nfa's inclusive int loop.
-    const double wd = source.cols * scale, hd = source.rows * scale;
-    if (!std::isfinite(wd) || !std::isfinite(hd) || wd < .5 || hd < .5 ||
-        wd > INT_MAX / 2 || hd > INT_MAX / 2) return false;
-    const int w = cvRound(wd), h = cvRound(hd);
+    // ABI safety: ll_angle indexes the last row/column; region_grow uses
+    // signed neighbor coordinates and refine counts region points in int.
+    const int w = source.cols, h = source.rows;
     if (w < 1 || h < 1 || int64_t(w) * h >= INT_MAX ||
         uint64_t(w) * uint64_t(h) >
             uint64_t(PTRDIFF_MAX) / (sizeof(double) * 2 + 32)) return false;
-    if (scale != 1 && !opencv_imgproc_detail::resize_exact_layout_fits(
-        w, h, source.cols, source.rows, 1, 1, 2, source.cols)) return false;
     // ABI safety: ll_angle bins *every* gradient using max_grad from only
     // above-threshold gradients. UInt8's maximum norm is 255, minimum nonzero
     // norm sqrt(.5); 512 safely bounds their ratio including rounding.
     if (bins <= 0 || bins > INT_MAX / 512) return false;
-    // ABI safety: old rect_nfa accumulates integer-divided edge slopes for h
-    // rows before float-to-int casts. A fitted rectangle lies within 4*(w+h)
-    // of the origin; slope <= 8*(w+h), so 16*(w+h)^2 bounds accumulated x.
-    // This is only a provisional legacy bound: instrumented 4.10/5.0 rect_nfa
-    // still overflows on slope extrapolation for small images. See the source
-    // review's blocking findings; this feature is not qualified for merge.
-    const double span = double(w) + h;
-    if (16 * span * span >= INT_MAX) return false;
     const double log_nt = 2.5 * (std::log10(double(w)) +
                                  std::log10(double(h))) + std::log10(11.0);
     const double min_region = -log_nt / std::log10(p);
@@ -4296,22 +4268,24 @@ int32_t opencv_imgproc_lsd_detect(
     return OPENCV_IMGPROC_ERROR_OPENCV;
 #else
     try {
+        // ABI safety: scale != 1 reaches the proven native resize SIMD
+        // misaligned short load; Advanced reaches rect_nfa float-to-int UB.
+        // Reject before even constructing the detector, independently of Ada.
+        if (scale != 1.0 || refinement == 2)
+            return invalid_argument(
+                "portable LSD requires scale 1 and no/standard refinement");
         const cv::Mat *src = nullptr;
         if (opencv_core_module_input_mat(source, &src) != OPENCV_CORE_OK || !src)
             return invalid_argument("invalid LSD source handle");
         // ABI safety: dimensions must be 2-D before reading rows/cols for
         // preflight; native detect's type/empty assertions handle raw policy.
-        if (src->dims > 2 || !lsd_detection_safe(*src, scale, sigma, quant,
-                                               angle, bins))
+        if (src->dims > 2 || !lsd_detection_safe(*src, quant, angle, bins))
             return invalid_argument("unsafe LSD native arithmetic");
         auto detector = lsd_detector(refinement, scale, sigma, quant, angle,
                                      epsilon, density, bins);
         // Isolate ROI borders and ensure a compact, correctly aligned input.
-        cv::Mat input = src->clone(), lines, widths, precisions, nfas;
-        if (refinement == 2)
-            detector->detect(input, lines, widths, precisions, nfas);
-        else
-            detector->detect(input, lines, widths, precisions);
+        cv::Mat input = src->clone(), lines, widths, precisions;
+        detector->detect(input, lines, widths, precisions);
         const size_t count = lines.total();
         // ABI safety: validate shapes/types before typed native reads and
         // counts before narrowing to the stable signed C ABI.
@@ -4321,10 +4295,8 @@ int32_t opencv_imgproc_lsd_detect(
              widths.type() != CV_64FC1 || widths.total() != count ||
              widths.checkVector(1, CV_64F) < 0 ||
              precisions.type() != CV_64FC1 || precisions.total() != count ||
-             precisions.checkVector(1, CV_64F) < 0 ||
-             (refinement == 2 && (nfas.type() != CV_64FC1 ||
-              nfas.total() != count || nfas.checkVector(1, CV_64F) < 0)))) ||
-            (!count && (!widths.empty() || !precisions.empty() || !nfas.empty())))
+             precisions.checkVector(1, CV_64F) < 0)) ||
+            (!count && (!widths.empty() || !precisions.empty())))
             return invalid_argument("invalid native LSD output representation");
         auto owned = std::make_unique<opencv_imgproc_lsd_handle>();
         owned->segments.reserve(count);
@@ -4332,8 +4304,7 @@ int32_t opencv_imgproc_lsd_detect(
             const auto &v = lines.ptr<cv::Vec4f>()[i];
             opencv_imgproc_lsd_segment s{v[0], v[1], v[2], v[3],
                 widths.ptr<double>()[i], precisions.ptr<double>()[i],
-                refinement == 2 ? nfas.ptr<double>()[i] : 0.0,
-                refinement == 2 ? 1 : 0, 0};
+                0.0, 0, 0};
             // ABI safety: Ada scalar conversion must not receive NaN/Inf.
             if (!std::isfinite(s.x1) || !std::isfinite(s.y1) ||
                 !std::isfinite(s.x2) || !std::isfinite(s.y2) ||

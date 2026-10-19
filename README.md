@@ -1,13 +1,16 @@
-# Native Line Segment Detector (LSD)
+# Portable native Line Segment Detector (LSD)
 
 `Detect_Line_Segments (Source, Parameters)` returns Ada-owned subpixel Float32
-endpoints with double region width and precision. `LSD_Parameters` exposes the
-complete native configuration: refinement Standard (None/Advanced also available),
-scale 0.8, sigma scale 0.6, quantization 2.0, angle 22.5 degrees, log epsilon 0,
-density 0.7 and 1024 bins. All real values must be finite. Advanced refinement
-alone supplies NFA evidence with `Has_NFA=True`; NFA is native -log10(number of
-false alarms), not an endpoint distance or probability. Precision is native
-angular probability. Native segment order and gradient orientation are preserved.
+endpoints with double region width and precision. Detection supports **Scale=1.0
+only**, with **No_Refinement or Standard_Refinement**. The portable default is
+Standard at scale **1.0**, intentionally different from OpenCV's native 0.8.
+Other scales and Advanced_Refinement are explicitly rejected before detector
+construction in both Ada and C++. This is not full native parameter coverage.
+Remaining defaults are sigma scale 0.6, quantization 2.0, angle 22.5 degrees,
+log epsilon 0, density 0.7 and 1024 bins. All real values must be finite; sigma
+scale and log epsilon are retained but unused in supported detection.
+NFA is unavailable: `Has_NFA=False, NFA=0`. Precision is native angular
+probability. Native segment order and gradient orientation are preserved.
 
 Source must be nonempty 2-D UInt8 C1 grayscale, not an edge map. Noncontiguous
 Regions are supported, isolated from parent pixels, with ROI-local coordinates.
@@ -21,16 +24,18 @@ are portable: empty render clones/converts, empty comparison is zero/black.
 LSD is explicitly unavailable on OpenCV 4.1 through 4.5.3: operations raise
 `OpenCV_Error` without invoking the removed detector constructor. Restoration
 starts at **4.5.4**; 5.0's enum constructor argument is handled internally.
-Numeric preflights protect kernel, scaled geometry, gradient-bin, NFA-scan,
+Numeric preflights protect image area/storage, gradient-bin conversion,
 endpoint-rounding and comparison area arithmetic; comparison area <= INT_MAX/3.
 See the [complete source audit, parameter definitions and safety limits](docs/line-segment-detector-source-review.md).
 
-**Qualification blocker:** instrumented OpenCV 4.6/4.10/5.0 reports an upstream
-SIMD misaligned-short load in LSD's default-scale exact resize. Scale-one tests
-also expose advanced `rect_nfa` float-to-int overflow on 4.10/5.0, disproving
-the provisional geometry-only safety bound. Functional four-version tests pass,
-but full sanitizer qualification does not. This feature
-must not be represented as ready for independent review until that gate is resolved.
+The restrictions exclude two demonstrated upstream defects without privately
+patching OpenCV: resize SIMD misaligned-short loads (also reported in
+[OpenCV #29238](https://github.com/opencv/opencv/issues/29238)) and Advanced
+`rect_nfa` float-to-int overflow. The disproved rectangle-size guard is removed,
+not presented as protection. Supported detection never calls resize or
+rect_improve/rect_nfa. Four-version functional and instrumented native campaigns
+are recorded in the source review; exact-head hosted qualification is tracked
+in [PR status](docs/line-segment-detector-pr-status.md).
 
 # Gradient-input Canny and generalized box filtering
 
