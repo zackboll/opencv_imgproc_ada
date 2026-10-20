@@ -204,7 +204,9 @@ def link_inputs(log, settings, work, archives=()):
     """
     cross = api()
     trusted = {Path(path).resolve() for path in archives}
-    for name in ["libgnat.so", "libgnarl.so"]:
+    # Trust only these exact files from the explicitly authenticated runtime,
+    # not other archives in its directory or the enclosing compiler prefix.
+    for name in ["libgnat.so", "libgnarl.so", "libgnat.a", "libgnarl.a"]:
         runtime_library = Path(settings["runtime"]) / "adalib" / name
         if runtime_library.is_file():
             trusted.add(cross.resolved(runtime_library))

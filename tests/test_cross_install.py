@@ -46,6 +46,72 @@ class CrossInstallTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
 
+    def runtime_link_fixture(self):
+        runtime = self.root / "selected-runtime"
+        (runtime / "adalib").mkdir(parents=True)
+        settings = dict(cxx="/tools/target-g++", runtime=str(runtime),
+                        sysroot=str(self.root / "sysroot"), readelf="readelf")
+        return runtime, settings, self.root / "link.log", self.root / "work"
+
+    def test_selected_static_runtime_archives_are_validated_and_hashed(self):
+        runtime, settings, log, work = self.runtime_link_fixture()
+        archives = [runtime / "adalib" / name for name in ["libgnat.a", "libgnarl.a"]]
+        for archive in archives:
+            archive.write_bytes(b"synthetic archive; ELF reader mocked")
+        log.write_text("\n".join(map(str, archives)) + "\n")
+        with patch.object(cross, "run", return_value="unresolved"), patch.object(cross, "elf") as elf:
+            inputs = support.link_inputs(log, settings, work)
+        self.assertEqual(inputs, {str(path.resolve()): cross.digest(path) for path in archives})
+        self.assertEqual(elf.call_args_list, [unittest.mock.call(path.resolve(), "readelf") for path in archives])
+
+    def test_selected_shared_runtime_symlinks_remain_validated_and_hashed(self):
+        runtime, settings, log, work = self.runtime_link_fixture()
+        targets = []
+        for name in ["libgnat", "libgnarl"]:
+            target = self.root / (name + "-selected.so.12")
+            target.write_bytes(b"\x7fELFsynthetic shared object")
+            (runtime / "adalib" / (name + ".so")).symlink_to(target)
+            targets.append(target)
+        log.write_text("\n".join(map(str, targets)) + "\n")
+        with patch.object(cross, "run", return_value="unresolved"), patch.object(cross, "elf") as elf:
+            inputs = support.link_inputs(log, settings, work)
+        self.assertEqual(inputs, {str(path): cross.digest(path) for path in targets})
+        self.assertEqual(elf.call_count, 2)
+
+    def test_runtime_archive_names_do_not_authorize_foreign_or_sibling_files(self):
+        runtime, settings, log, work = self.runtime_link_fixture()
+        for directory in [self.root / "foreign", self.root / "unselected-runtime/adalib",
+                          runtime.parent / "compiler", runtime / "adalib/nested"]:
+            directory.mkdir(parents=True)
+            for name in ["libgnat.a", "libgnarl.a"]:
+                with self.subTest(directory=directory, name=name):
+                    path = directory / name
+                    path.write_bytes(b"synthetic foreign archive")
+                    log.write_text(str(path) + "\n")
+                    with patch.object(cross, "run", return_value="unresolved"), patch.object(cross, "elf") as elf:
+                        with self.assertRaisesRegex(cross.ConfigurationError, "unapproved actual linker input"):
+                            support.link_inputs(log, settings, work)
+                    elf.assert_not_called()
+        unrelated = runtime / "adalib/libunrelated.a"
+        unrelated.touch()
+        log.write_text(str(unrelated) + "\n")
+        with patch.object(cross, "run", return_value="unresolved"):
+            with self.assertRaisesRegex(cross.ConfigurationError, "unapproved actual linker input"):
+                support.link_inputs(log, settings, work)
+
+    def test_selected_runtime_archive_cannot_bypass_elf_failure(self):
+        runtime, settings, log, work = self.runtime_link_fixture()
+        for name in ["libgnat.a", "libgnarl.a"]:
+            with self.subTest(name=name):
+                archive = runtime / "adalib" / name
+                archive.write_bytes(b"not an AArch64 archive")
+                log.write_text(str(archive) + "\n")
+                with patch.object(cross, "run", return_value="unresolved"), patch.object(
+                        cross, "elf", side_effect=cross.ConfigurationError("not ELF64 AArch64")) as elf:
+                    with self.assertRaisesRegex(cross.ConfigurationError, "not ELF64 AArch64"):
+                        support.link_inputs(log, settings, work)
+                elf.assert_called_once_with(archive.resolve(), "readelf")
+
     def test_debian_alternatives_parse_literal_metadata_not_shell(self):
         metadata = ('update-alternatives --install /usr/lib/aarch64-linux-gnu/liblapack.so.3 lapack '
                     '/usr/lib/aarch64-linux-gnu/lapack/liblapack.so.3 10\n'

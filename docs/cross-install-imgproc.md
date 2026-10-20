@@ -182,6 +182,13 @@ Core is never moved. Only the exact four validated `PREFIX/lib/PROJECT`
 directories get the consumer-specific `-L` allowance, including under
 `/usr/local/lib`; production/probe validation is not weakened.
 
+Actual linker inputs may use the selected Ada runtime's exact resolved
+`adalib/libgnat.a`, `libgnarl.a`, `libgnat.so` and `libgnarl.so`; this does not
+authorize other libraries in that directory or identically named libraries in
+an unselected runtime. ELF architecture validation and hashing still apply.
+The Debian reference CI runs a separate real static-Ada-runtime link control;
+its binder `-static` choice is local to that control, not production policy.
+
 Manual ordinary GPRbuild example, from a fresh directory containing copied
 `tests/installed_consumers` sources (no Alire):
 

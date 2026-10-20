@@ -1,5 +1,47 @@
 # IMGPROC-CROSS-UX-001 qualification record
 
+## R1 — selected static Ada runtime linker inputs
+
+Reviewed starting head: `6279f2842984a90e0c845f56da38d9b5840504d5`.
+The actual linker-input trust list now includes exactly the resolved
+`adalib/libgnat.a` and `adalib/libgnarl.a` of the explicitly authenticated
+runtime, alongside its existing two shared libraries. No runtime/compiler
+directory is whitelisted. Every accepted archive still passes the existing
+ELF64/little-endian/AArch64 archive-member check and SHA256 hashing. Identically
+named archives in foreign/unselected/nested directories remain rejected.
+
+Four focused synthetic controls cover both static archives, shared symlink
+preservation, foreign/sibling/unrelated rejection, hashes and mandatory ELF
+validation (including failure propagation). The combined cross/install suite
+has **68 tests: 66 successful, two explicit genuine-SDK skips**. These synthetic
+controls are not compiler evidence.
+
+The separate real Debian GNAT/GCC **12.2.0 AArch64** Text_IO link control uses
+local binder `-static`, retains the full `-Wl,-t` trace, requires the selected
+runtime's `libgnat.a` as an actual input, and passes the trace through the same
+validator. It checks target ELF/dependency/symbol-version evidence and records
+hashes. It is not executed. Production builds retain their normal runtime
+selection; no global/static switch was added. Both archive names have focused
+synthetic coverage; the small real non-tasking program exercises `libgnat.a`.
+An initial tasking control additionally linked both archives, but encountered
+Debian's empty compatibility `librt.a` stub at the existing ELF gate; that
+diagnostic is retained and the production gate was not relaxed.
+
+The real control is part of the fresh hosted Debian production qualification
+driver, with distinct static-control logs/JSON in its uploaded artifact. Local
+evidence is under `/home/zboll/work/imgproc-cross-ux-001-r1`. Final source SHA,
+tree, installed/relocated results and required final-head hosted conclusions
+are recorded in the PR #78 R1 handoff. No earlier-head result qualifies R1.
+
+No production Ada/C++ shim semantics, API/ABI, representation checks, manifests,
+dependency constraints, versions, SDK correction or isolated thread test changed.
+No public semantic validation is duplicated in the C++ shim by this correction.
+The intended vendor inputs remain unavailable locally:
+**VENDOR_QUALIFICATION_REQUIRED**, independently **TARGET_RUNTIME_PENDING**.
+The revised user command explicitly selects `--source-root`, generates a new
+CGPR, retains diagnostics and verifies the installed evidence's `source_identity`
+against its pinned full commit before reporting qualification success.
+
 ## Source reconciliation and scope
 
 Fetched origin before starting. Main was exactly

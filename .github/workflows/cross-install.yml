@@ -46,6 +46,8 @@ jobs:
             /tmp/imgproc-debian-reference/*.log
             /tmp/imgproc-debian-reference/*.cgpr
             /tmp/imgproc-debian-reference/packages/*.txt
+            /tmp/imgproc-debian-reference/static-runtime-control/*.log
+            /tmp/imgproc-debian-reference/static-runtime-control/*.json
             /tmp/opencv-imgproc-evidence-*/*.json
             /tmp/opencv-imgproc-evidence-*/*.txt
             /tmp/opencv-imgproc-evidence-*/*.log

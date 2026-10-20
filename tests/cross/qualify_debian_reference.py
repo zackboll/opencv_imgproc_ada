@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import cross_configuration as cross
 import cross_install_imgproc as installer
+import qualify_static_runtime
 
 
 def main():
@@ -39,6 +40,11 @@ def main():
     env["OPENCV_CROSS_GPR_CONFIG"] = str(selected)
     env["OPENCV_CROSS_GPRBUILD"] = installer.executable("OPENCV_CROSS_GPRBUILD", "gprbuild")
     env["OPENCV_CROSS_GPRINSTALL"] = installer.executable("OPENCV_CROSS_GPRINSTALL", "gprinstall")
+    qualify_static_runtime.qualify(dict(
+        target=target, sysroot=str(sysroot), runtime=str(runtime), config=str(selected),
+        ada=env["OPENCV_CROSS_ADA"], cxx=env["OPENCV_CROSS_CXX"],
+        gprbuild=env["OPENCV_CROSS_GPRBUILD"], readelf="/usr/bin/readelf"),
+        work / "static-runtime-control")
     cross.logged(["sh", core / "scripts/cross_build_core.sh", "--build", work / "core-build"],
                  work / "core-production.log", env)
     # Imgproc qualification must generate its own config, not reuse Core's.
