@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   qualify:
-    name: Standalone ${{ matrix.provider }} ARM64 / indexed Core 0.4.1
+    name: Standalone ${{ matrix.provider }} ARM64 / candidate Core 0.5.0 (historical 0.4.1)
     runs-on: macos-latest
     timeout-minutes: 90
     strategy:
@@ -85,6 +85,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: standalone-sdk-${{ matrix.provider }}-core-0.4.1-${{ github.event.pull_request.head.sha || github.sha }}
+          name: standalone-sdk-${{ matrix.provider }}-core-0.5.0-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/imgproc-standalone-sdk/
           if-no-files-found: error

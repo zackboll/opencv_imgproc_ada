@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
-          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
+          ref: f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
           path: core
       - name: Record checkout identities
         run: |

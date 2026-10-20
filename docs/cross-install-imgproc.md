@@ -59,16 +59,16 @@ if present, is checked as supplementary evidence. Different CGPR hashes do not
 make equivalent tool/runtime selections incompatible. Real Ada compile/bind/link,
 C++/OpenCV and installed Core/Imgproc consumer links remain mandatory.
 
-Native Imgproc's existing **Core `~0.4.1`** dependency remains unchanged and is
-tested through normal Alire resolution. Complete GNAT 12 production Core needs
-the layout/language/warning fixes first released in **Core 0.5.0** (merged Core
-PRs #77–81), not the 0.5.2 convenience installer. The external installed-Core
-workflow deliberately does not use Alire's `~0.4.1` resolution. Do not claim
-that indexed 0.4.1 supplies those later cross-production fixes. Before an Alire
-release promises this profile through ordinary dependency resolution, its Core
-constraint must be separately reconciled and native-matrix qualified. This task
-does not add a production development pin, change the version, or remove Arch's
-availability exclusion.
+Imgproc **0.3.0** selects **Core `~0.5.0`** through ordinary Alire resolution,
+without production pins. Core 0.5.0 contains the layout/language/warning fixes
+needed for complete GNAT 12 production builds (merged Core PRs #77–81). Core
+0.5.2's convenience installer is not required. The external installed-Core
+workflow still consumes an independently built, compiler/runtime-compatible
+Core prefix, not an Alire source override. The existing Debian full-cross
+reference uses Core 0.5.2 source and is not lower-bound evidence; separate
+actual-0.5.0 controls and pin-free consumers are tracked in the
+[0.3.0 release qualification](imgproc-rel-005-qualification.md).
+The Arch availability exclusion remains unchanged.
 
 ## Automatic configuration and advanced inputs
 

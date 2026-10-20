@@ -3,13 +3,13 @@
 set -eu
 engine=${CONTAINER_ENGINE:-docker}
 image=${IMGPROC_CONSUMER_IMAGE:-imgproc-debian12-qualification}
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 core=${IMGPROC_CORE_SOURCE:-"$root/../core"}
 evidence=${IMGPROC_CONSUMER_EVIDENCE:-$(mktemp -d /tmp/imgproc-ext-001.XXXXXXXX)}
 artifacts=${IMGPROC_CONSUMER_ARTIFACTS:-"$evidence-artifacts"}
 mkdir -p "$evidence" "$artifacts"
-evidence=$(CDPATH= cd -- "$evidence" && pwd)
-artifacts=$(CDPATH= cd -- "$artifacts" && pwd)
+evidence=$(CDPATH='' cd -- "$evidence" && pwd)
+artifacts=$(CDPATH='' cd -- "$artifacts" && pwd)
 case "$artifacts/" in "$evidence/"*) echo 'artifacts must be outside private evidence' >&2; exit 1;; esac
 test -z "$(ls -A "$evidence")"
 test -z "$(ls -A "$artifacts")"
@@ -18,10 +18,11 @@ stage() {
     trap - EXIT
     printf 'Qualification exit status: %s\n' "$status" > "$evidence/status.log"
     staging=0
+    # shellcheck disable=SC2016
     "$engine" run --rm -v "$evidence:/evidence:ro" -v "$artifacts:/artifacts" "$image" sh -c '
         set -eu
         cp /evidence/status.log /artifacts/
-        for file in /evidence/prepare.log /evidence/consume.log /evidence/logs/*.log /evidence/logs/*.gpr; do
+        for file in /evidence/prepare.log /evidence/consume.log /evidence/logs/*.log /evidence/logs/*.gpr /evidence/logs/*.lock; do
             [ ! -f "$file" ] || cp "$file" /artifacts/
         done
         for dir in /evidence/logs/*-manifests; do
@@ -44,6 +45,7 @@ mkdir -p "$evidence/logs"
 } > "$evidence/logs/source-revisions.log"
 prepare=0
 "$engine" run --rm -v "$root:/sources/imgproc" -v "$core:/sources/core" \
+    -e "IMGPROC_QUALIFICATION_GNAT=${IMGPROC_QUALIFICATION_GNAT:-gnat_native=16.1.0}" \
     -v "$evidence:/evidence" "$image" sh /sources/imgproc/scripts/prepare_debian12_consumers.sh \
     > "$evidence/prepare.log" 2>&1 || prepare=$?
 cat "$evidence/prepare.log"

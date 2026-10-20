@@ -72,5 +72,17 @@ begin
    Masked_Scores := Gray;
    pragma Assert (Survivor.Depth = Float32 and then Survivor.Rows = 5);
    pragma Assert (abs OpenCV.Core.Float32_Access.Get (Survivor, 1, 2) < 0.01);
+   --  These operations were added after 0.2.1. An old deployed library cannot
+   --  satisfy this consumer merely by passing the historical pixel assertions.
+   declare
+      DX, DY       : constant Mat :=
+        Create (6, 8, (Depth => Int16, Channels => 1));
+      Edges, Boxed : Mat;
+   begin
+      Canny_Edges (DX, DY, Edges, 10.0, 20.0);
+      pragma Assert (Edges.Rows = 6 and then Edges.Depth = UInt8);
+      Box_Filter (Gray, Boxed, (Width => 2, Height => 2));
+      pragma Assert (Boxed.Rows = Gray.Rows and then Boxed.Depth = UInt8);
+   end;
    Ada.Text_IO.Put_Line ("Pin-free indexed Imgproc release consumer PASS");
 end Release_Consumer;

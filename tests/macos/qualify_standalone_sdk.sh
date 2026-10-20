@@ -14,11 +14,13 @@ test "${SDKROOT+x}" != x
 test "${LIBRARY_PATH+x}" != x
 echo 'SDKROOT=UNSET; LIBRARY_PATH=UNSET'
 test "$(git rev-parse HEAD)" = "${EXPECTED_IMGPROC_HEAD:?}"
-core_commit=386c5360ac51f2b62e522853d94290aec4ee14a0
+baseline_core_commit=386c5360ac51f2b62e522853d94290aec4ee14a0
+candidate_core_commit=f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
 baseline_commit=5f56b40f9cfe76ae0c4f829f9d1eae0861002768
 
-echo "Imgproc SHA / tree: $(git rev-parse HEAD HEAD^{tree})"
-echo "Core: indexed 0.4.1 / $core_commit"
+echo "Imgproc SHA / tree: $(git rev-parse HEAD 'HEAD^{tree}')"
+echo "Historical Core: indexed 0.4.1 / $baseline_core_commit"
+echo "Candidate Core: indexed 0.5.0 / $candidate_core_commit"
 echo "Provider: ${QUALIFY_PROVIDER:?}"
 echo "Runner image: ${ImageOS:?} / ${ImageVersion:?}"
 uname -a
@@ -44,14 +46,17 @@ ada_tool() {
     # Alire's deployed compiler manifest can reintroduce LIBRARY_PATH even
     # when the invoking shell has it unset. Remove both variables after
     # Alire sets up PATH/project resolution, immediately before each tool.
+    # shellcheck disable=SC2016
     alr -n exec -- env -u SDKROOT -u LIBRARY_PATH \
         sh -c 'test "${SDKROOT+x}" != x; test "${LIBRARY_PATH+x}" != x; exec "$@"' sh "$@"
 }
 
 select_core() {
-    # Version-only selection from the accepted index; never source/path pin
-    # Core or silently use 0.5.1. These manifest changes exist only on runner.
-    alr -n pin opencv_core=0.4.1
+    local version=$1 core_commit=$2
+    # Controlled version pin, NOT pin-free publication-consumer evidence.
+    # Both selections come from the official index, never source/path pins.
+    # Manifest changes exist only in the disposable runner checkouts.
+    alr -n pin "opencv_core=$version"
     alr -n with --solve
     alr -n -C tests with --solve
     grep -F "$core_commit" alire/alire.lock
@@ -69,6 +74,7 @@ select_core() {
     "$gnat_ld" -v || true
     # Record the distinction between the invoking shell and Alire's injected
     # toolchain environment. Never let that injection reach an Ada link.
+    # shellcheck disable=SC2016
     alr -n exec -- sh -c 'printf "Alire SDKROOT=%s; LIBRARY_PATH=%s\n" "${SDKROOT-UNSET}" "${LIBRARY_PATH-UNSET}"'
     ada_tool sh -c 'echo "Ada tool boundary: SDKROOT=UNSET; LIBRARY_PATH=UNSET"'
 }
@@ -77,8 +83,8 @@ select_core() {
 # classify an unrelated compilation or installation failure as GNAT-FSF #112.
 cd "$root/../baseline"
 test "$(git rev-parse HEAD)" = "$baseline_commit"
-echo "Baseline SHA / tree: $(git rev-parse HEAD HEAD^{tree})"
-select_core
+echo "Baseline SHA / tree: $(git rev-parse HEAD 'HEAD^{tree}')"
+select_core 0.4.1 "$baseline_core_commit"
 # Build the library closure first: the test-only native oracle links the Core
 # shim and cannot run on a fresh deployment before that shim exists.
 alr -n action -r pre-build > "$evidence/baseline-library-configure.log" 2>&1
@@ -104,14 +110,14 @@ fi
 cp alire/alire.lock "$evidence/baseline-library-alire.lock"
 cp tests/alire/alire.lock "$evidence/baseline-tests-alire.lock"
 cd "$root"
-select_core
+select_core 0.5.0 "$candidate_core_commit"
 cp alire/alire.lock "$evidence/library-alire.lock"
 cp tests/alire/alire.lock "$evidence/tests-alire.lock"
 core=$(alr -n exec -- printenv OPENCV_CORE_ALIRE_PREFIX)
 # Alire deploys Git origins without .git. The verified lockfile records the
 # immutable origin; its authoritative tree was refreshed before this change.
-echo "Core accepted origin SHA: $core_commit"
-echo 'Core accepted origin tree: e5a10928b232b85d841ec9a7b174cd7825206fa1'
+echo "Core accepted origin SHA: $candidate_core_commit"
+echo 'Core accepted origin tree: bc9396053cde0eaabae513dddf64ad45084a64ca'
 echo "Core deployed source: $core"
 
 alr -n action -r pre-build 2>&1 | tee "$evidence/configure.log"

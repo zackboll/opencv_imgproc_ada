@@ -1,5 +1,18 @@
 # IMGPROC-CROSS-UX-001 qualification record
 
+## Current disposition — 2026-10-20
+
+The user-run R2 terminal evidence at `3914528dcd2721f86228fa7eea2f27b558ead921`
+was accepted for vendor build/install and installed/relocated consumers (exit 0).
+The user explicitly waived attaching and independently inspecting the reported
+archive. This supersedes the historical pending vendor gate below; it does not
+rewrite those earlier results or claim archive verification or target execution.
+**TARGET_RUNTIME_PENDING** remains open. See the precise environment, provenance,
+archive caveat and implementation-input carry-forward checks in
+[IMGPROC-REL-005](imgproc-rel-005-qualification.md#accepted-vendor-result-carried-forward-not-rerun).
+Release 0.3.0 selects Core `~0.5.0`; historical dependency statements below describe
+the earlier task, not the current production manifest.
+
 ## R2 — verified empty glibc compatibility archives
 
 Reviewed starting head: `2efc7cbf7f5361509fc77ed27939c73dba243a02`.

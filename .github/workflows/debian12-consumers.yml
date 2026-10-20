@@ -8,9 +8,13 @@ permissions:
   contents: read
 jobs:
   installed-consumers:
-    name: Debian 12 GNAT 16.1 installed Core and Imgproc
+    name: Debian 12 ${{ matrix.compiler }} / Core 0.5.0 installed consumers
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gnat_native=16.1.0, gnat_external=12.2.0]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -19,12 +23,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
-          ref: 386c5360ac51f2b62e522853d94290aec4ee14a0
+          ref: f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
           path: core
       - name: Verify exact qualification source identities
         env:
           EXPECTED_IMGPROC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          EXPECTED_CORE_SHA: 386c5360ac51f2b62e522853d94290aec4ee14a0
+          EXPECTED_CORE_SHA: f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
         run: |
           set -eu
           actual_imgproc_sha=$(git -C imgproc rev-parse HEAD)
@@ -36,15 +40,16 @@ jobs:
           test "$actual_core_sha" = "$EXPECTED_CORE_SHA"
       - name: Build Debian 12 qualification image
         run: docker build -t imgproc-debian12-qualification imgproc/containers/debian12-consumers
-      - name: Qualify install, full AUnit, isolated consumers and relocation
+      - name: Qualify production install, compiler-scoped AUnit, consumers and relocation
         env:
           IMGPROC_CONSUMER_EVIDENCE: ${{ runner.temp }}/imgproc-consumer-private
           IMGPROC_CONSUMER_ARTIFACTS: ${{ runner.temp }}/imgproc-consumer-artifacts
+          IMGPROC_QUALIFICATION_GNAT: ${{ matrix.compiler }}
         run: sh imgproc/scripts/qualify_debian12_consumers.sh
       - name: Publish logs, installation metadata and ELF evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: debian12-installed-consumer-evidence
+          name: debian12-installed-consumer-${{ matrix.compiler }}-evidence
           path: ${{ runner.temp }}/imgproc-consumer-artifacts/
           if-no-files-found: error
