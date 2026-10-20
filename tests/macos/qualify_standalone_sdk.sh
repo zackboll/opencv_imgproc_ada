@@ -40,6 +40,14 @@ if test -f "$clt_sdk/SDKSettings.json"; then
 fi
 alr -n toolchain
 
+ada_tool() {
+    # Alire's deployed compiler manifest can reintroduce LIBRARY_PATH even
+    # when the invoking shell has it unset. Remove both variables after
+    # Alire sets up PATH/project resolution, immediately before each tool.
+    alr -n exec -- env -u SDKROOT -u LIBRARY_PATH \
+        sh -c 'test "${SDKROOT+x}" != x; test "${LIBRARY_PATH+x}" != x; exec "$@"' sh "$@"
+}
+
 select_core() {
     # Version-only selection from the accepted index; never source/path pin
     # Core or silently use 0.5.1. These manifest changes exist only on runner.
@@ -59,8 +67,10 @@ select_core() {
     gnat_ld=$(alr -n exec -- gcc -print-prog-name=ld)
     echo "GNAT bundled linker: $gnat_ld"
     "$gnat_ld" -v || true
-    # Alire must not reintroduce either workaround into the build environment.
-    alr -n exec -- sh -c 'test "${SDKROOT+x}" != x; test "${LIBRARY_PATH+x}" != x'
+    # Record the distinction between the invoking shell and Alire's injected
+    # toolchain environment. Never let that injection reach an Ada link.
+    alr -n exec -- sh -c 'printf "Alire SDKROOT=%s; LIBRARY_PATH=%s\n" "${SDKROOT-UNSET}" "${LIBRARY_PATH-UNSET}"'
+    ada_tool sh -c 'echo "Ada tool boundary: SDKROOT=UNSET; LIBRARY_PATH=UNSET"'
 }
 
 # Real old/new source, same provider/toolchain/runner/environment. Never
@@ -69,7 +79,10 @@ cd "$root/../baseline"
 test "$(git rev-parse HEAD)" = "$baseline_commit"
 echo "Baseline SHA / tree: $(git rev-parse HEAD HEAD^{tree})"
 select_core
-if alr -n -C tests build -- -v -largs -Wl,-t \
+# Generate the normal dependency/test configuration and native oracle using
+# the crate's own actions; invoke GPRbuild directly to control its environment.
+alr -n -C tests action -r pre-build > "$evidence/baseline-configure.log" 2>&1
+if (cd tests; ada_tool gprbuild -P tests.gpr -p -v -largs -Wl,-t) \
     > "$evidence/baseline-link.log" 2>&1; then
     echo NOT_REPRODUCED | tee "$evidence/control-result.txt"
     echo '::warning::Old Imgproc links on this image; regression not reproduced'
@@ -97,7 +110,9 @@ echo "Core accepted origin SHA: $core_commit"
 echo 'Core accepted origin tree: e5a10928b232b85d841ec9a7b174cd7825206fa1'
 echo "Core deployed source: $core"
 
-alr -n build --release -- -v 2>&1 | tee "$evidence/production-build.log"
+alr -n action -r pre-build 2>&1 | tee "$evidence/configure.log"
+ada_tool gprbuild -P opencv_imgproc.gpr -p -v \
+    2>&1 | tee "$evidence/production-build.log"
 config=config/opencv_imgproc_install.gpr
 cp "$config" "$evidence/"
 grep -F "Cxx_Sysroot := \"$sdk\";" "$config"
@@ -133,7 +148,8 @@ check_dependencies lib/libopencv_imgproc_shim.dylib
 otool -L lib/libopencv_imgproc_shim.dylib | grep -F /usr/lib/libc++
 
 # No test command supplies a sysroot: production GPR alone must propagate it.
-alr -n -C tests build -- -v -largs -Wl,-t \
+alr -n -C tests action -r pre-build 2>&1 | tee "$evidence/tests-configure.log"
+(cd tests; ada_tool gprbuild -P tests.gpr -p -v -largs -Wl,-t) \
     2>&1 | tee "$evidence/corrected-tests-link.log"
 check_trace "$evidence/corrected-tests-link.log"
 check_dependencies tests/bin/tests
@@ -148,17 +164,17 @@ grep -F libopencv_imgproc_shim "$evidence/aunit-dyld.log"
 grep -F -e "$library/libopencv_imgproc." \
     -e "$physical_library/libopencv_imgproc." "$evidence/aunit-dyld.log"
 
-OPENCV_IMGPROC_LIBRARY_TYPE=relocatable alr -n exec -- \
-    gprbuild -P opencv_imgproc.gpr -p -f -v -largs -Wl,-t \
+ada_tool gprbuild -P opencv_imgproc.gpr -p -f -v \
+    -XOPENCV_IMGPROC_LIBRARY_TYPE=relocatable -largs -Wl,-t \
     2>&1 | tee "$evidence/relocatable-library-link.log"
 check_trace "$evidence/relocatable-library-link.log"
 check_dependencies lib/libopencv_imgproc_ada.dylib
 
 # Install the normal static-PIC Ada library and its GPR-built macOS shim.
 # Unlike Geometry's external shim, Imgproc's shim is installed by GPRinstall.
-alr -n exec -- gprbuild -P opencv_imgproc.gpr -p -f
+ada_tool gprbuild -P opencv_imgproc.gpr -p -f
 prefix="$evidence/installed"
-alr -n exec -- gprinstall -P opencv_imgproc.gpr -p -r --prefix="$prefix" \
+ada_tool gprinstall -P opencv_imgproc.gpr -p -r --prefix="$prefix" \
     2>&1 | tee "$evidence/install.log"
 cp -R "$prefix/share/gpr" "$evidence/installed-projects"
 grep -R -F -- "--sysroot=$sdk" "$prefix/share/gpr"
@@ -188,7 +204,7 @@ for mode in installed relocated; do
     fi
     # Leave the checkout too: GPRbuild searches CWD before GPR_PROJECT_PATH.
     # shellcheck disable=SC2016
-    alr -n exec -- env -u ADA_PROJECT_PATH -u ADA_INCLUDE_PATH -u ADA_OBJECTS_PATH \
+    ada_tool env -u ADA_PROJECT_PATH -u ADA_INCLUDE_PATH -u ADA_OBJECTS_PATH \
         GPR_PROJECT_PATH="$prefix/share/gpr" \
         sh -c 'cd "$1"; shift; exec "$@"' sh "$consumer" \
         gprbuild -P ada_consumer.gpr -p -v -largs -Wl,-t \

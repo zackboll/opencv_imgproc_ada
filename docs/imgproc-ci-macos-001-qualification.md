@@ -49,7 +49,13 @@ checked in both library and test lockfiles. No Core 0.5.1 substitution or
 committed test dependency change is permitted.
 
 `tests/macos/qualify_standalone_sdk.sh` requires SDKROOT and LIBRARY_PATH unset,
-including inside Alire's execution environment. It supplies **no** external
+including at the actual Ada tool boundary after Alire environment injection.
+The initial Homebrew job on commit `9791d55` exposed a deployed compiler
+manifest reintroducing LIBRARY_PATH through `alr exec`; the guard stopped before
+either old or new link. The harness therefore runs normal recursive Alire
+pre-build actions, then GPRbuild/GPRinstall via `alr exec -- env -u SDKROOT -u
+LIBRARY_PATH`. This removes variables, never adds an SDK workaround. It
+supplies **no** external
 sysroot switch. It retains source/tree, image, Xcode, CLT, compiler, bundled
 linker and generated configuration identities, verbose GPRbuild/GCC commands,
 linker input traces, Mach-O dependencies and dyld runtime logs. Corrected
