@@ -408,15 +408,15 @@ fixtures, not a universal numerical guarantee. See
 [`docs/generalized-hough-guil-source-review.md`](docs/generalized-hough-guil-source-review.md).
 Estimating rotation and scale does not by itself produce a navigation solution.
 
-> **Version:** `0.1.0-dev`
+> **Version:** **0.3.0 release candidate**
 >
 > **Ada package:** `OpenCV.Image_Processing`
 >
-> **Production dependency:** `opencv_core ~0.1.0`
+> **Production dependency:** `opencv_core ~0.5.0`
 >
 > **Development status:** active, pre-1.0 API
 >
-> **Current registered test baseline:** **979 AUnit tests**
+> **Current registered test baseline:** **1,178 parent AUnit registrations**
 
 >
 > **Current CI:** Linux x86_64 and macOS ARM64 on pull requests; Linux,
@@ -5088,11 +5088,18 @@ They are not production dependencies of `opencv_imgproc`.
 
 ### Registered test counts and feature distribution
 
-The current authoritative AUnit run registers **1156 tests** (1147 before
-IMGPROC-API-002). Connected components registers **15** cases (6 before).
+The current authoritative full parent AUnit suite has **1,178 registrations**.
+Connected components has **17 parent registrations**. The isolated native-thread
+child does not add another parent registration. Historically, the suite had
+1,147 registrations before IMGPROC-API-002 and 1,156 immediately after it;
+connected components grew from 6 to 15 at that stage.
 Assertions inside a case and native harness comparisons are not counted as
 additional registered cases. Run the focused suite with
 `alr -n -C tests run --args=connected-components`.
+
+Full AUnit qualification uses GNAT 16.1. GNAT 12 qualification covers production
+builds, installation and independent installed/relocated consumers, not the full
+strict-development AUnit suite; its documented compilation limitation remains.
 
 The following feature inventory is not exhaustive; the runner's registered
 count above, rather than a sum of this older feature table, is authoritative:
@@ -5130,7 +5137,7 @@ count above, rather than a sum of this older feature table, is authoritative:
 | CLAHE | 9 |
 | Contours | 7 |
 | Contour drawing and filling | 6 |
-| Connected components | 15 |
+| Connected components (current parent registrations) | 17 |
 | Drawing | 11 |
 | Drawing annotations | 14 |
 | Hough detection | 37 |
@@ -5945,7 +5952,7 @@ Voronoi : constant Labeled_Distance_Transform_Result :=
 
 
 The current implementation has a mature safety/build architecture but is still
-a **focused subset** of OpenCV Imgproc. Version `0.1.0-dev` should be treated as
+a **focused subset** of OpenCV Imgproc. The **0.3.0 release candidate** remains
 pre-1.0.
 
 Notable Imgproc families that are not yet broadly bound include:
