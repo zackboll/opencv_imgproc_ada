@@ -42,7 +42,7 @@ def qualify(settings, core, imgproc, work, logs, forbidden=()):
                       *["-L" + str(directory) for directory in
                         support.loader_directories(Path(settings["sysroot"]), settings["target"])],
                       *["-Wl,-rpath-link," + str(directory) for directory in
-                        support.loader_directories(Path(settings["sysroot"]), settings["target"])]], log, env)
+                        support.loader_directories(Path(settings["sysroot"]), settings["target"])]], log, env, cwd=work)
         trace = log.read_text()
         tools = support.check_trace(log, dict(settings, core=str(core), work=str(work)), libraries)
         for archive in archives:

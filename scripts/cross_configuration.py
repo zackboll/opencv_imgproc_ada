@@ -353,9 +353,9 @@ def generate(settings, work):
     output.write_text("\n".join(lines) + "\n")
 
 
-def logged(args, log, env):
+def logged(args, log, env, cwd=None):
     with log.open("w") as output:
-        result = subprocess.run([str(arg) for arg in args], stdout=output, stderr=subprocess.STDOUT, env=env)
+        result = subprocess.run([str(arg) for arg in args], stdout=output, stderr=subprocess.STDOUT, env=env, cwd=cwd)
     if result.returncode:
         raise ConfigurationError(f"build/probe failed; original diagnostics: {log}\n{log.read_text()}", result.returncode)
 
