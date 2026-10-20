@@ -109,7 +109,7 @@ def identity_probe(ada, runtime, readelf):
 
 def check_configuration(config, target, ada, cxx, runtime):
     cross = api()
-    text = re.sub(r"--[^\n]*", "", Path(config).read_text())
+    text = re.sub(r"(?m)^\s*--[^\n]*", "", Path(config).read_text())
     selected = re.search(r'for\s+Target\s+use\s+"([^"]+)"', text, re.I)
     canonical = re.sub(r"-gnu$", "", target)
     cross.require(selected and selected[1] in {target, canonical}, "GPR target mismatch")
@@ -122,6 +122,8 @@ def check_configuration(config, target, ada, cxx, runtime):
     match = re.search(r'for\s+Runtime(?:_Dir)?\s*\(\s*"Ada"\s*\)\s+use\s+"([^"]+)"', text, re.I)
     cross.require(match and Path(match[1]).resolve() == Path(runtime).resolve(),
                   "GPR Ada runtime mismatch")
+    for selected_runtime in re.findall(r'--RTS=([^"\s]+)', text, re.I):
+        cross.require(Path(selected_runtime).resolve() == Path(runtime).resolve(), "GPR Ada runtime switch mismatch")
     # Binder/linker selection is additionally authenticated in verbose real links.
     cross.require(re.search(r"package\s+Binder\s+is", text, re.I)
                   and re.search(r"package\s+Linker\s+is", text, re.I),
@@ -263,6 +265,13 @@ def check_trace(log, settings, installed_library_dirs=()):
         tools.append(str(executable))
         for word in words[1:]:
             cross.require("x86_64" not in word, f"host architecture in trace: {word}")
+            if word.startswith("--RTS="):
+                cross.require(Path(word.split("=", 1)[1]).resolve() == Path(settings["runtime"]),
+                              f"runtime mismatch in actual trace: {word}")
+            if word.startswith("-Wl,-rpath-link,"):
+                path = Path(word.split(",", 2)[2]).resolve()
+                cross.require(any(cross.inside(path, Path(settings[name])) for name in ["sysroot", "runtime"]),
+                              f"unapproved link-time dependency directory: {word}")
             if word.startswith(("-I/", "-L/")):
                 path = Path(word[2:])
                 installed = word.startswith("-L") and path in libraries and path.resolve() == path and ".." not in path.parts

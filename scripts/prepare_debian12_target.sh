@@ -20,5 +20,7 @@ for package in /var/cache/apt/archives/*.deb; do
         dpkg-deb -x "$package" "$sysroot"
         ;; esac
 done
+python3 "$(dirname -- "$0")/../tests/cross/stage_debian_alternatives.py" \
+    "$sysroot" "$evidence/packages" "$evidence/alternatives.txt"
 dpkg-query -W > "$evidence/compiler-packages.txt"
 test -f "$sysroot/usr/lib/aarch64-linux-gnu/pkgconfig/opencv4.pc"

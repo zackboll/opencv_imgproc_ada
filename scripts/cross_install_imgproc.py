@@ -186,6 +186,9 @@ def install(arguments):
     toolchain, runtime, sysroot, core = map(cross.resolved, [options.toolchain_bin, options.runtime, options.sysroot, options.core_prefix])
     prefix = prefix_safety(Path(options.prefix), source, sysroot, core)
     cross.require(not options.qualify or not prefix.exists(), "qualification requires a fresh nonexistent Imgproc prefix")
+    for name, path in [("source-root", source), ("toolchain-bin", toolchain), ("runtime", runtime),
+                       ("sysroot", sysroot), ("core-prefix", core)]:
+        cross.require(not cross.re.search(r'[\s"\\]', str(path)), f"unsafe {name} path")
     for protected in [source, sysroot]:
         cross.require(not cross.inside(core, protected) and not cross.inside(protected, core), "Core overlaps source/sysroot")
     os.environ.update(OPENCV_CROSS_TARGET=options.target, OPENCV_CROSS_RUNTIME=str(runtime),
@@ -223,6 +226,8 @@ def install(arguments):
             for path in directory.iterdir():
                 if path.is_file() and path.suffix in {".log", ".json", ".txt", ".cgpr"}:
                     shutil.copyfile(path, evidence / path.name)
+        if (work / "gprconfig-db").exists():
+            shutil.copytree(work / "gprconfig-db", evidence / "gprconfig-db")
         (evidence / "installation.json").write_text(json.dumps(settings, indent=2) + "\n")
         # Qualify the staged closure before any external file is published.
         staged_settings = dict(settings, config=str(staged / relative))

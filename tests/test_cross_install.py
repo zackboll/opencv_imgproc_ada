@@ -14,6 +14,8 @@ import cross_configuration as cross
 import cross_install_imgproc as installer
 import cross_support as support
 import test_cross_configuration as fixtures
+sys.path.insert(0, str(Path(__file__).resolve().parent / "cross"))
+import stage_debian_alternatives
 
 
 class InstalledCoreTests(unittest.TestCase):
@@ -43,6 +45,14 @@ class CrossInstallTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="imgproc-install-controls-")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
+
+    def test_debian_alternatives_parse_literal_metadata_not_shell(self):
+        metadata = ('update-alternatives --install /usr/lib/aarch64-linux-gnu/liblapack.so.3 lapack '
+                    '/usr/lib/aarch64-linux-gnu/lapack/liblapack.so.3 10\n'
+                    'update-alternatives --install /tmp/escape.so.3 escape /tmp/source 50\n')
+        self.assertEqual(stage_debian_alternatives.alternatives(metadata), [
+            ('/usr/lib/aarch64-linux-gnu/liblapack.so.3',
+             '/usr/lib/aarch64-linux-gnu/lapack/liblapack.so.3', '10')])
 
     def test_conflict_preflight_does_not_publish_or_replace_core(self):
         staged, prefix = self.root / "stage", self.root / "prefix"

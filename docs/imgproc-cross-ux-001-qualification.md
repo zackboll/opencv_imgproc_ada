@@ -45,11 +45,12 @@ development pin.
   or unexpected errors**.
 * GNATdoc 26.0.0 generation: **zero warnings**, complete links/anchors,
   compiled guide examples, **1,596/1,596 coverage items**.
-* Cross/configuration/install synthetic controls: **61 tests, 59 pass, two
+* Cross/configuration/install synthetic controls: **64 tests, 62 pass, two
   explicitly skipped genuine-SDK controls**. These are not compiler evidence.
 * Actual Debian AArch64 source-unit/language-policy controls: **4/4 PASS**.
-  The direct host GCC-12 attempt is unavailable (`gnat1` absent); it is not
-  reported as a GNAT 12 native pass.
+  Native Debian GNAT 12 controls also pass **4/4**, after installing the real
+  frontend in a task-owned disposable container; ShellCheck passes there.
+  The direct host GCC-12 attempt was unavailable (`gnat1` absent), not a pass.
 
 No production Ada/SPARK source changed, so a proof campaign is not applicable.
 The only GPR consumer change adds external C++ driver/include inputs with the
@@ -91,10 +92,26 @@ Private local evidence root:
 production/probe/install logs, three consumer evidence sets, `dispositions.txt`).
 The installed target CGPR is beneath the task's separate `imgproc` prefix.
 Subsequent final-head reruns and shared-prefix/Git-free controls are recorded
-in the PR handoff; an earlier implementation run alone is not final-head
+in the PR handoff. At `e7464b4d480e7804dc7cc06447ca5f4fcb12d8d2`, the hardened
+full run (`debian-attempt12.log`, `opencv-imgproc-evidence-qecf9xi2`) passes
+with actual CPU/ABI flags `-mcpu=cortex-a53 -mabi=lp64`, strict actual linker
+input checks and target-first runtime search. A second real build/install
+from a Git-free export (`shared-archive.log`, `opencv-imgproc-evidence-z1lxmdj0`)
+passes against a task-owned **shared** Core/Imgproc prefix, preserving all
+existing bytes. Its source identity is
+`staged-sha256:5794d6cf7a98e915123f912b615a993be268a19257334ce8121b42c5a3ee3984`.
+Genuine Debian sysroot integration controls pass **41/41**, separately from
+synthetic results. An earlier implementation run alone is not final-head
 qualification. All failed-attempt diagnostics were retained, including the
 GPRconfig database discovery gap and the overly broad staged-prefix rejection;
 neither was bypassed by editing installed projects.
+
+Fresh hosted sysroot construction also exposed a real missing-input issue:
+`dpkg-deb -x` does not run BLAS/LAPACK postinst alternatives, so the SONAME links
+were missing. The Debian test builder now derives contained literal library
+alternatives from downloaded package metadata without executing maintainer
+scripts; production dependency validation remains strict. This is test-fixture
+construction, not a whitelist or a change to user SDKs.
 
 ## Hosted and vendor gates
 
