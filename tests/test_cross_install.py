@@ -1,0 +1,480 @@
+"""Focused installation/isolation controls; synthetic, not vendor evidence."""
+import json
+import os
+from pathlib import Path
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import cross_configuration as cross
+import cross_install_imgproc as installer
+import cross_support as support
+import test_cross_configuration as fixtures
+sys.path.insert(0, str(Path(__file__).resolve().parent / "cross"))
+import stage_debian_alternatives
+
+
+class EmptyCompatibilityArchiveTests(unittest.TestCase):
+    """Synthetic input bytes with real readelf; not target compiler evidence."""
+
+    def setUp(self):
+        self.fixture = fixtures.CrossConfigurationTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.sysroot = self.fixture.sysroot
+        self.library = self.fixture.library
+        self.log = self.fixture.base / "link.log"
+        self.settings = dict(cxx=self.fixture.env["OPENCV_CROSS_CXX"],
+                             runtime=str(self.fixture.runtime), sysroot=str(self.sysroot), readelf="readelf")
+        self.work = self.fixture.base / "work"
+
+    def archive(self, name="libdl.a", contents=b"!<arch>\n", directory=None):
+        path = (directory or self.library) / name
+        path.write_bytes(contents)
+        return path
+
+    def link(self, path):
+        self.log.write_text(str(path) + "\n")
+        empty = {}
+        inputs = support.link_inputs(self.log, self.settings, self.work, empty_archives=empty)
+        self.assertEqual(json.loads(Path(str(self.log) + ".empty-compatibility-archives.json").read_text()), empty)
+        return inputs, empty
+
+    def advertise(self, paths):
+        pkg = Path(self.fixture.env["OPENCV_CROSS_PKG_CONFIG"])
+        pkg.write_text(pkg.read_text().replace('--exists)',
+            '--cflags) if test "$2" = --libs; then echo ' + " ".join(map(str, paths)) + '; fi ;; --exists)'))
+
+    def test_each_approved_name_is_recorded_at_both_boundaries(self):
+        paths = [self.archive(name) for name in sorted(support.GLIBC_COMPATIBILITY_ARCHIVES)]
+        self.advertise(paths)
+        with patch.object(cross, "elf", wraps=cross.elf) as elf:
+            result = self.fixture.check()
+        self.assertFalse(set(paths) & {Path(call.args[0]) for call in elf.call_args_list})
+        expected = {}
+        for path in paths:
+            with self.subTest(name=path.name):
+                evidence = dict(path=str(path.resolve()), size=8, sha256=cross.digest(path))
+                self.assertEqual(evidence["sha256"], "f0a17a43c74d2fe5474fa2fd29c8f14799e777d7d75a2cc4d11c20a6e7b161c5")
+                inputs, empty = self.link(path)
+                self.assertEqual(empty, {str(path): evidence})
+                self.assertEqual(inputs, {str(path): evidence["sha256"]})
+                self.assertNotIn(str(path), result["dependency_closure"])
+                expected[str(path)] = evidence
+                # General ELF validation is deliberately unchanged.
+                with self.assertRaises(cross.ConfigurationError):
+                    cross.elf(path, "readelf")
+        self.assertEqual(result["empty_compatibility_archives"], expected)
+
+    def test_optional_archives_need_not_exist(self):
+        self.assertEqual(self.fixture.check()["empty_compatibility_archives"], {})
+
+    def test_outside_and_escaping_symlink_rejected_at_both_boundaries(self):
+        outside = self.archive(directory=self.fixture.base)
+        escaping = self.library / "libdl.a"
+        escaping.symlink_to(outside)
+        for path in [outside, escaping]:
+            with self.subTest(path=path):
+                self.assertIsNone(support.empty_compatibility_archive(path, self.sysroot))
+                with self.assertRaises(cross.ConfigurationError):
+                    self.link(path)
+                with patch.dict(os.environ, self.fixture.env, clear=True):
+                    with self.assertRaises(cross.ConfigurationError):
+                        cross.dependency_closure([path], self.sysroot, "readelf")
+        self.advertise([escaping])
+        self.fixture.reject("escapes sysroot")
+
+    def test_regular_canonical_file_and_approved_identity_required(self):
+        required = self.archive("libopencv_core_ada.a")
+        alias = self.library / "libdl.a"
+        alias.symlink_to(required)
+        self.assertIsNone(support.empty_compatibility_archive(alias, self.sysroot))
+        with self.assertRaises(cross.ConfigurationError):
+            self.link(alias)
+        alias.unlink()
+        alias.mkdir()
+        self.assertIsNone(support.empty_compatibility_archive(alias, self.sysroot))
+        with self.assertRaises(cross.ConfigurationError):
+            support.empty_compatibility_archive(self.library / "missing.a", self.sysroot)
+
+    def test_unrelated_and_required_empty_libraries_are_not_exempt(self):
+        names = ["libunrelated.a", "libgnat.a", "libgnarl.a", "libopencv_core.a",
+                 "libopencv_imgproc.a", "libopencv_core_ada.a", "libopencv_core_shim.a",
+                 "libopencv_imgproc_ada.a", "libopencv_imgproc_shim.a"]
+        for name in names:
+            with self.subTest(name=name):
+                path = self.archive(name)
+                self.assertIsNone(support.empty_compatibility_archive(path, self.sysroot))
+                with self.assertRaises(cross.ConfigurationError):
+                    self.link(path)
+        self.advertise([self.library / name for name in names])
+        original = cross.elf
+        def reader(path, readelf):
+            return original(path, "readelf" if Path(path).read_bytes() == b"!<arch>\n" else readelf)
+        with patch.object(cross, "elf", side_effect=reader):
+            self.fixture.reject("ELF64")
+
+    def test_required_runtime_core_and_opencv_preflight_remains_strict(self):
+        paths = [self.fixture.runtime / "adalib/libgnat.a",
+                 self.fixture.core / "lib/opencv_core/libopencv_core_ada.a",
+                 self.fixture.core / "lib/opencv_core_shim/libopencv_core_shim.a",
+                 self.library / "libopencv_core.so", self.library / "libopencv_imgproc.so"]
+        original = cross.elf
+        def reader(path, readelf):
+            return original(path, "readelf" if Path(path).read_bytes() == b"!<arch>\n" else readelf)
+        for path in paths:
+            with self.subTest(path=path):
+                before = path.read_bytes()
+                path.write_bytes(b"!<arch>\n")
+                with patch.object(cross, "elf", side_effect=reader):
+                    self.fixture.reject("ELF64")
+                path.write_bytes(before)
+
+    def test_bad_complete_contents_rejected(self):
+        path = self.library / "libdl.a"
+        self.advertise([path])
+        original = cross.elf
+        def reader(candidate, readelf):
+            return original(candidate, "readelf" if Path(candidate) == path else readelf)
+        for contents in [b"", b"!<arch>", b"!<arch>\r", b"!<thin>\n", b"!<arch>\ngarbage", b"12345678"]:
+            with self.subTest(contents=contents):
+                path = self.archive(contents=contents)
+                self.assertIsNone(support.empty_compatibility_archive(path, self.sysroot))
+                with self.assertRaises(cross.ConfigurationError):
+                    self.link(path)
+                with patch.object(cross, "elf", side_effect=reader):
+                    self.fixture.reject("command failed|ELF64")
+
+    def test_nonempty_archives_use_ordinary_member_validation(self):
+        # Minimal relocatable ELF headers are synthetic, but ar/readelf are real.
+        objects = []
+        for machine in [183, 62]:
+            path = self.library / f"machine-{machine}.o"
+            path.write_bytes(struct.pack("<16sHHIQQQIHHHHHH", b"\x7fELF\x02\x01\x01" + b"\0" * 9,
+                                         1, machine, 1, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0))
+            objects.append(path)
+        archive = self.library / "libpthread.a"
+        self.advertise([archive])
+        original = cross.elf
+        def reader(path, readelf):
+            return original(path, "readelf" if Path(path) == archive else readelf)
+        for members, accepted in [(objects[:1], True), (objects[1:], False), (objects, False)]:
+            with self.subTest(members=members):
+                archive.unlink(missing_ok=True)
+                subprocess.run(["ar", "rcs", str(archive), *map(str, members)], check=True, capture_output=True)
+                self.assertIsNone(support.empty_compatibility_archive(archive, self.sysroot))
+                if accepted:
+                    inputs, empty = self.link(archive)
+                    self.assertEqual(inputs, {str(archive): cross.digest(archive)})
+                    self.assertEqual(empty, {})
+                    with patch.object(cross, "elf", side_effect=reader) as elf:
+                        result = self.fixture.check()
+                    self.assertIn(unittest.mock.call(archive, self.fixture.env["OPENCV_CROSS_READELF"]),
+                                  elf.call_args_list)
+                    self.assertIn(str(archive), result["dependency_closure"])
+                    self.assertEqual(result["empty_compatibility_archives"], {})
+                else:
+                    with self.assertRaisesRegex(cross.ConfigurationError, "AArch64"):
+                        self.link(archive)
+                    with patch.object(cross, "elf", side_effect=reader):
+                        self.fixture.reject("AArch64")
+
+    def test_empty_stub_never_satisfies_needed_even_if_initial_or_visited(self):
+        stub = self.archive()
+        root = self.library / "libopencv_core.so"
+        # Real empty stub; only the referring object's dynamic table is mocked.
+        def reader(command, **kwargs):
+            if command[1] == "-d":
+                return "(NEEDED) [libdl.a]"
+            return "Class: ELF64\nMachine: AArch64\nData: 2's complement, little endian"
+        with patch.dict(os.environ, self.fixture.env, clear=True), patch.object(cross, "run", side_effect=reader):
+            evidence = {}
+            self.assertEqual(cross.dependency_closure([stub], self.sysroot, "readelf", empty_archives=evidence), {})
+            self.assertEqual(set(evidence), {str(stub)})
+            for paths in [[root], [root, stub], [stub, root]]:
+                with self.subTest(paths=paths), self.assertRaisesRegex(cross.ConfigurationError, "cannot satisfy DT_NEEDED"):
+                    cross.dependency_closure(paths, self.sysroot, "readelf", empty_archives=evidence)
+
+    def test_symbol_version_checks_remain_strict_with_initial_empty_stub(self):
+        stub = self.archive()
+        root = self.library / "libopencv_core.so"
+        provider = self.library / "libc.so.6"
+        def reader(command, **kwargs):
+            if command[1] == "-d":
+                return "(NEEDED) [libc.so.6]" if Path(command[2]) == root else ""
+            if command[1] == "-V":
+                if Path(command[2]) == root:
+                    return "File: libc.so.6\nName: GLIBC_999.0 Flags: none"
+                return "Version definition section\nName: GLIBC_2.17\nVersion needs section"
+            return "Class: ELF64\nMachine: AArch64\nData: 2's complement, little endian"
+        with patch.dict(os.environ, self.fixture.env, clear=True), patch.object(cross, "run", side_effect=reader):
+            closure = cross.dependency_closure([stub, root], self.sysroot, "readelf")
+            self.assertEqual(closure[str(root)]["needed"], {"libc.so.6": str(provider)})
+            self.assertNotIn(str(stub), closure)
+            with self.assertRaisesRegex(cross.ConfigurationError, "GLIBC_999.0 absent"):
+                support.check_versions(closure, "readelf")
+
+
+class InstalledCoreTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture = fixtures.CrossConfigurationTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+
+    def test_core_outside_sysroot_without_invented_attestation(self):
+        fixture = self.fixture
+        outside = fixture.base / "external-core"
+        shutil.move(fixture.core, outside)
+        fixture.env["OPENCV_CROSS_CORE_PREFIX"] = str(outside)
+        (outside / "share/opencv_core/cross-identity.json").unlink()
+        result = fixture.check()
+        self.assertEqual(result["core"], str(outside))
+        self.assertEqual(result["core_provenance"], {})
+
+    def test_equivalent_config_does_not_require_raw_hash_equality(self):
+        self.fixture.config.write_text(self.fixture.config.read_text().replace(
+            'Target use "aarch64-linux-gnu"', 'Target use "aarch64-linux"') + "-- equivalent\n")
+        self.fixture.check()
+
+
+class CrossInstallTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="imgproc-install-controls-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+
+    def runtime_link_fixture(self):
+        runtime = self.root / "selected-runtime"
+        (runtime / "adalib").mkdir(parents=True)
+        settings = dict(cxx="/tools/target-g++", runtime=str(runtime),
+                        sysroot=str(self.root / "sysroot"), readelf="readelf")
+        return runtime, settings, self.root / "link.log", self.root / "work"
+
+    def test_selected_static_runtime_archives_are_validated_and_hashed(self):
+        runtime, settings, log, work = self.runtime_link_fixture()
+        archives = [runtime / "adalib" / name for name in ["libgnat.a", "libgnarl.a"]]
+        for archive in archives:
+            archive.write_bytes(b"synthetic archive; ELF reader mocked")
+        log.write_text("\n".join(map(str, archives)) + "\n")
+        with patch.object(cross, "run", return_value="unresolved"), patch.object(cross, "elf") as elf:
+            inputs = support.link_inputs(log, settings, work)
+        self.assertEqual(inputs, {str(path.resolve()): cross.digest(path) for path in archives})
+        self.assertEqual(elf.call_args_list, [unittest.mock.call(path.resolve(), "readelf") for path in archives])
+
+    def test_selected_shared_runtime_symlinks_remain_validated_and_hashed(self):
+        runtime, settings, log, work = self.runtime_link_fixture()
+        targets = []
+        for name in ["libgnat", "libgnarl"]:
+            target = self.root / (name + "-selected.so.12")
+            target.write_bytes(b"\x7fELFsynthetic shared object")
+            (runtime / "adalib" / (name + ".so")).symlink_to(target)
+            targets.append(target)
+        log.write_text("\n".join(map(str, targets)) + "\n")
+        with patch.object(cross, "run", return_value="unresolved"), patch.object(cross, "elf") as elf:
+            inputs = support.link_inputs(log, settings, work)
+        self.assertEqual(inputs, {str(path): cross.digest(path) for path in targets})
+        self.assertEqual(elf.call_count, 2)
+
+    def test_runtime_archive_names_do_not_authorize_foreign_or_sibling_files(self):
+        runtime, settings, log, work = self.runtime_link_fixture()
+        for directory in [self.root / "foreign", self.root / "unselected-runtime/adalib",
+                          runtime.parent / "compiler", runtime / "adalib/nested"]:
+            directory.mkdir(parents=True)
+            for name in ["libgnat.a", "libgnarl.a"]:
+                with self.subTest(directory=directory, name=name):
+                    path = directory / name
+                    path.write_bytes(b"synthetic foreign archive")
+                    log.write_text(str(path) + "\n")
+                    with patch.object(cross, "run", return_value="unresolved"), patch.object(cross, "elf") as elf:
+                        with self.assertRaisesRegex(cross.ConfigurationError, "unapproved actual linker input"):
+                            support.link_inputs(log, settings, work)
+                    elf.assert_not_called()
+        unrelated = runtime / "adalib/libunrelated.a"
+        unrelated.touch()
+        log.write_text(str(unrelated) + "\n")
+        with patch.object(cross, "run", return_value="unresolved"):
+            with self.assertRaisesRegex(cross.ConfigurationError, "unapproved actual linker input"):
+                support.link_inputs(log, settings, work)
+
+    def test_selected_runtime_archive_cannot_bypass_elf_failure(self):
+        runtime, settings, log, work = self.runtime_link_fixture()
+        for name in ["libgnat.a", "libgnarl.a"]:
+            with self.subTest(name=name):
+                archive = runtime / "adalib" / name
+                archive.write_bytes(b"not an AArch64 archive")
+                log.write_text(str(archive) + "\n")
+                with patch.object(cross, "run", return_value="unresolved"), patch.object(
+                        cross, "elf", side_effect=cross.ConfigurationError("not ELF64 AArch64")) as elf:
+                    with self.assertRaisesRegex(cross.ConfigurationError, "not ELF64 AArch64"):
+                        support.link_inputs(log, settings, work)
+                elf.assert_called_once_with(archive.resolve(), "readelf")
+
+    def test_debian_alternatives_parse_literal_metadata_not_shell(self):
+        metadata = ('update-alternatives --install /usr/lib/aarch64-linux-gnu/liblapack.so.3 lapack '
+                    '/usr/lib/aarch64-linux-gnu/lapack/liblapack.so.3 10\n'
+                    'update-alternatives --install /tmp/escape.so.3 escape /tmp/source 50\n')
+        self.assertEqual(stage_debian_alternatives.alternatives(metadata), [
+            ('/usr/lib/aarch64-linux-gnu/liblapack.so.3',
+             '/usr/lib/aarch64-linux-gnu/lapack/liblapack.so.3', '10')])
+
+    def test_conflict_preflight_does_not_publish_or_replace_core(self):
+        staged, prefix = self.root / "stage", self.root / "prefix"
+        for root in [staged, prefix]:
+            (root / "share/gpr").mkdir(parents=True)
+        (staged / "a-first.txt").write_text("must not be published")
+        (staged / "share/gpr/opencv_core.gpr").write_text("wrong")
+        core = prefix / "share/gpr/opencv_core.gpr"
+        core.write_text("authentic Core")
+        before = installer.inventory(prefix)
+        with self.assertRaisesRegex(cross.ConfigurationError, "conflict"):
+            installer.publish(staged, prefix)
+        self.assertEqual(before, installer.inventory(prefix))
+        self.assertFalse((prefix / "a-first.txt").exists())
+
+    def test_shared_prefix_preserves_all_existing_core_bytes(self):
+        stage, prefix = self.root / "stage", self.root / "shared"
+        (prefix / "share/gprconfig").mkdir(parents=True)
+        (prefix / "share/gprconfig/core.cgpr").write_bytes(b"core config\x00")
+        before = installer.inventory(prefix)
+        (stage / "share/gprconfig").mkdir(parents=True)
+        (stage / "share/gprconfig/imgproc.cgpr").write_text("durable")
+        installer.publish(stage, prefix)
+        shutil.rmtree(stage)
+        installer.preserve(before, prefix)
+        self.assertEqual((prefix / "share/gprconfig/imgproc.cgpr").read_text(), "durable")
+
+    def test_publication_symlink_escape(self):
+        stage, prefix, outside = self.root / "stage", self.root / "prefix", self.root / "outside"
+        (stage / "share").mkdir(parents=True)
+        (stage / "share/file").touch()
+        prefix.mkdir()
+        outside.mkdir()
+        (prefix / "share").symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(cross.ConfigurationError, "symlink"):
+            installer.publish(stage, prefix)
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_prefixes_separate_or_equal_not_nested(self):
+        source, sysroot, core = [self.root / name for name in ["source", "sysroot", "core"]]
+        for path in [source, sysroot, core]:
+            path.mkdir()
+        for prefix in [core, self.root / "imgproc"]:
+            self.assertEqual(installer.prefix_safety(prefix, source, sysroot, core), prefix)
+        for prefix in [core / "nested", source / "nested", sysroot / "nested", self.root]:
+            with self.assertRaises(cross.ConfigurationError):
+                installer.prefix_safety(prefix, source, sysroot, core)
+
+    def test_logged_original_exit_status_and_retained_diagnostics(self):
+        log = self.root / "failure.log"
+        with self.assertRaises(cross.ConfigurationError) as raised:
+            cross.logged(["sh", "-c", "printf 'specific failure'; exit 37"], log, dict(os.environ))
+        self.assertEqual(raised.exception.returncode, 37)
+        self.assertEqual(log.read_text(), "specific failure")
+        with self.assertRaises(cross.ConfigurationError) as raised:
+            cross.run(["sh", "-c", "exit 42"])
+        self.assertEqual(raised.exception.returncode, 42)
+        self.assertEqual(cross.run(["sh", "-c", "printf 'GNATLS paths' >&2"], merge_output=True), "GNATLS paths")
+
+    def test_complete_vendor_ali_signature_not_gcc_major(self):
+        ali = self.root / "probe.ali"
+        ali.write_text('V "GNAT Lib v25.0w"\n')
+        self.assertEqual(support.ali_signature(ali), 'V "GNAT Lib v25.0w"')
+        support.check_alis(self.root, 'V "GNAT Lib v25.0w"')
+        with self.assertRaisesRegex(cross.ConfigurationError, "mixed GNAT"):
+            support.check_alis(self.root, 'V "GNAT Lib v12"')
+
+    def test_fresh_probe_compares_actual_runtime_signature(self):
+        runtime = self.root / "runtime"
+        (runtime / "adalib").mkdir(parents=True)
+        (runtime / "adalib/system.ali").write_text('V "GNAT Lib v25.0w"\n')
+        (runtime / "adalib/libgnat.a").touch()
+        compiler = self.root / "gcc"
+        compiler.touch()
+        def compile_probe(arguments, log, environment):
+            obj = Path(arguments[-1])
+            obj.touch()
+            obj.with_suffix(".ali").write_text('V "GNAT Lib v25.0w"\n')
+            log.write_text("actual selected compile\n")
+        with patch.object(cross, "logged", side_effect=compile_probe), patch.object(cross, "elf"):
+            result = support.identity_probe(str(compiler), runtime, "readelf")
+        self.assertEqual(result["signature"], 'V "GNAT Lib v25.0w"')
+        self.assertIn("actual selected", result["compile_log"])
+
+    def test_actual_linker_input_rejects_foreign_object(self):
+        foreign = self.root / "foreign.o"
+        foreign.write_bytes(b"\x7fELFfake")
+        log = self.root / "link.log"
+        log.write_text(str(foreign) + "\n")
+        settings = dict(cxx="/tools/target-g++", sysroot=str(self.root / "sysroot"),
+                        runtime=str(self.root / "runtime"), readelf="readelf")
+        with patch.object(cross, "run", return_value="unresolved"):
+            with self.assertRaisesRegex(cross.ConfigurationError, "unapproved actual linker"):
+                support.link_inputs(log, settings, self.root / "work")
+
+    def test_gnatls_unresolved_adalib_checks_complete_search_sections(self):
+        runtime = self.root / "runtime"
+        for name in ["adainclude", "adalib"]:
+            (runtime / name).mkdir(parents=True)
+        gcc, gnatls = self.root / "aarch64-linux-gnu-gcc", self.root / "aarch64-linux-gnu-gnatls"
+        gcc.touch()
+        gnatls.touch()
+        gnatls.chmod(0o755)
+        output = (f"Source Search Path:\n <Current_Directory>\n {runtime}/adainclude\n"
+                  f"Object Search Path:\n <Current_Directory>\n {runtime}/adalib\nProject Search Path:\n /irrelevant\n")
+        with patch.object(cross, "run", side_effect=["adalib", output]):
+            self.assertEqual(support.runtime_identity(str(gcc), runtime)["method"], "gnatls")
+        for bad in [output.replace("Object Search Path:", "Other Search Path:"),
+                    output.replace(" <Current_Directory>", f" {self.root}", 1),
+                    output.replace(f" {runtime}/adalib", " relative/adalib")]:
+            with patch.object(cross, "run", side_effect=["adalib", bad]):
+                with self.assertRaises(cross.ConfigurationError):
+                    support.runtime_identity(str(gcc), runtime)
+
+    def test_git_free_staging_is_explicit_deterministic_and_sanitized(self):
+        source = self.root / "release"
+        source.mkdir()
+        (source / "alire.toml").write_text('name = "opencv_imgproc"\n')
+        (source / "src").mkdir()
+        (source / "src/source.ads").write_text("package Source is end Source;\n")
+        for name in ["config", "obj", "alire"]:
+            (source / name).mkdir()
+            (source / name / "stale").touch()
+        (source / "src/stale.ali").touch()
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(cross.ConfigurationError, "explicit"):
+                support.export_source(source, self.root / "refused")
+        with patch.dict(os.environ, {"OPENCV_CROSS_SOURCE_ROOT": str(source)}):
+            first = support.export_source(source, self.root / "first")
+            second = support.export_source(source, self.root / "second")
+        self.assertEqual(first, second)
+        self.assertTrue(first.startswith("staged-sha256:"))
+        self.assertFalse((self.root / "first/src/stale.ali").exists())
+        self.assertFalse((self.root / "first/obj").exists())
+
+    def test_exact_consumer_library_allowance_recomputed_for_relocation(self):
+        settings = dict(ada="/tools/aarch64-linux-gnu-gcc", cxx="/tools/aarch64-linux-gnu-g++",
+                        target="aarch64-linux-gnu", sysroot=str(self.root / "sysroot"),
+                        runtime=str(self.root / "runtime"), core=str(self.root / "core"))
+        log = self.root / "trace.log"
+        for spelling in ["installed", "relocated"]:
+            library = self.root / spelling / "lib/opencv_imgproc"
+            library.mkdir(parents=True)
+            log.write_text(settings["ada"] + " -c source.adb -L" + str(library) + "\n")
+            self.assertEqual(support.check_trace(log, settings, [library])["compilations"], 1)
+            with self.assertRaisesRegex(cross.ConfigurationError, "unapproved"):
+                support.check_trace(log, settings)
+            for bad in [str(library) + "/nested", str(library) + "-sibling", str(library) + "/../opencv_imgproc",
+                        "/usr/local/lib", "-I" + str(library)]:
+                flag = bad if bad.startswith("-I") else "-L" + bad
+                log.write_text(settings["ada"] + " -c source.adb " + flag + "\n")
+                with self.assertRaisesRegex(cross.ConfigurationError, "unapproved"):
+                    support.check_trace(log, settings, [library])
+
+
+if __name__ == "__main__":
+    unittest.main()

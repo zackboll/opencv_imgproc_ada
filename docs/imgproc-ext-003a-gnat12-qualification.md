@@ -1,5 +1,9 @@
 # IMGPROC-EXT-003A — GNAT 12 native and AArch64 qualification
 
+Historical source-unit qualification. Later Core fixes and the full installed
+workflow are covered by [IMGPROC-CROSS-UX-001](imgproc-cross-ux-001-qualification.md).
+The original blockers and measurements below remain a record of that revision.
+
 ## Dispositions (not an overall PASS)
 
 * **COMPILER_POLICY_QUALIFIED**: retain the native project's default language

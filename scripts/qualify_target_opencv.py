@@ -50,15 +50,20 @@ def qualify(destination):
         if path.suffix != ".so" or path.read_bytes()[:4] == b"\x7fELF":
             cross.elf(path, settings["readelf"])
     resolved_inputs = []
+    empty_archives = {}
     for line in trace.splitlines():
         if line.startswith("/"):
             path = cross.resolved(line)
             cross.require(cross.inside(path, sysroot) or path in runtime or path == object_file,
                           f"unqualified linker input outside sysroot: {path}")
-            if path.read_bytes()[:4] == b"\x7fELF" or path.suffix == ".a":
+            empty = cross.support.empty_compatibility_archive(line, sysroot)
+            if empty:
+                empty_archives[str(path)] = empty
+            elif path.read_bytes()[:4] == b"\x7fELF" or path.suffix == ".a":
                 cross.elf(path, settings["readelf"])
             resolved_inputs.append(str(path))
     (output / "resolved-inputs.json").write_text(json.dumps(resolved_inputs, indent=2) + "\n")
+    (output / "empty-compatibility-archives.json").write_text(json.dumps(empty_archives, indent=2) + "\n")
     executable = output / "opencv-probe"
     (output / "elf.txt").write_text(cross.elf(executable, settings["readelf"]))
     dynamic = cross.run([settings["readelf"], "-d", str(executable)])

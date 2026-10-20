@@ -50,14 +50,7 @@ def preflight():
     cross.require(provenance.get("sysroot") == settings["sysroot"],
                   "Yocto provenance sysroot mismatch")
     config = cross.resolved(cross.value("OPENCV_CROSS_GPR_CONFIG"))
-    text = re.sub(r"--[^\n]*", "", config.read_text())
-    for token, diagnostic in [
-            (f'for Target use "{settings["target"]}";', "GPR target mismatch"),
-            (f'"{settings["ada"]}"', "GPR Ada compiler mismatch"),
-            (f'"{settings["cxx"]}"', "GPR C++ compiler mismatch"),
-            (f'"{settings["runtime"]}/"', "GPR Ada runtime mismatch"),
-            ('for Driver use Compiler\'Driver ("C++");', "GPR linker mismatch")]:
-        cross.require(token in text, diagnostic)
+    cross.support.check_configuration(config, settings["target"], settings["ada"], settings["cxx"], settings["runtime"])
     dispositions = ["EXTERNAL_INPUT_PREFLIGHT_ONLY", "TARGET_RUNTIME_PENDING"]
     if not os.environ.get("OPENCV_CROSS_CORE_PREFIX"):
         dispositions.append("CORE_PREREQUISITE_BLOCKED")

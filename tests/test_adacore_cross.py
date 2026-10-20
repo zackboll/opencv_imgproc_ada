@@ -97,8 +97,8 @@ class ExternalInputTests(unittest.TestCase):
 
     def test_invalid_core_not_ignored(self):
         self.env["OPENCV_CROSS_CORE_PREFIX"] = str(self.fixture.core)
-        self.fixture.identity.unlink()
-        with self.assertRaisesRegex(adapter.cross.ConfigurationError, "Core target build identity"):
+        (self.fixture.core / "include/opencv_core_module_bridge.hpp").unlink()
+        with self.assertRaisesRegex(adapter.cross.ConfigurationError, "missing Core bridge"):
             self.check()
 
 

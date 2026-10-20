@@ -1,5 +1,9 @@
 # IMGPROC-EXT-002A — isolated AArch64 configuration
 
+Historical record. The production installer and installed-Core contract are
+superseded by [IMGPROC-CROSS-UX-001](imgproc-cross-ux-001-qualification.md);
+the original measurements below are preserved, not retroactively upgraded.
+
 ## Scope and disposition
 
 This is opt-in configuration infrastructure, not a Yocto deployment release.

@@ -24,11 +24,12 @@ jobs:
         run: |
           set -o pipefail
           python3 -m unittest discover -s tests -p test_cross_configuration.py -v 2>&1 | tee evidence/configuration.log
+          python3 -m unittest discover -s tests -p test_cross_install.py -v 2>&1 | tee evidence/installation-controls.log
       - name: Shell syntax and static checks
         run: |
-          sh -n scripts/configure_cross_opencv.sh scripts/cross_build_imgproc.sh scripts/validate_cross_target.sh scripts/configure_opencv.sh
-          shellcheck scripts/configure_cross_opencv.sh scripts/cross_build_imgproc.sh scripts/validate_cross_target.sh
-          python3 -m py_compile scripts/cross_configuration.py tests/test_cross_configuration.py
+          sh -n scripts/configure_cross_opencv.sh scripts/cross_build_imgproc.sh scripts/validate_cross_target.sh scripts/configure_opencv.sh scripts/cross_install_imgproc.sh tests/cross/qualify_imgproc_cross_install.sh
+          shellcheck scripts/configure_cross_opencv.sh scripts/cross_build_imgproc.sh scripts/validate_cross_target.sh scripts/cross_install_imgproc.sh tests/cross/qualify_imgproc_cross_install.sh
+          python3 -m py_compile scripts/cross_configuration.py scripts/cross_support.py scripts/cross_install_imgproc.py tests/cross/qualify_consumers.py tests/test_cross_configuration.py tests/test_cross_install.py
           git diff --check
       - name: Separate qualification dispositions
         run: |
