@@ -202,6 +202,10 @@ def link_inputs(log, settings, work, archives=()):
     """
     cross = api()
     trusted = {Path(path).resolve() for path in archives}
+    for name in ["libgnat.so", "libgnarl.so"]:
+        runtime_library = Path(settings["runtime"]) / "adalib" / name
+        if runtime_library.is_file():
+            trusted.add(cross.resolved(runtime_library))
     names = ["Scrt1.o", "crt1.o", "crti.o", "crtn.o", "crtbegin.o", "crtend.o",
              "crtbeginS.o", "crtendS.o", "libgcc.a", "libgcc_s.so", "libgcc_s.so.1", "libstdc++.so"]
     for name in names:

@@ -109,6 +109,34 @@ class CrossInstallTests(unittest.TestCase):
         with self.assertRaisesRegex(cross.ConfigurationError, "mixed GNAT"):
             support.check_alis(self.root, 'V "GNAT Lib v12"')
 
+    def test_fresh_probe_compares_actual_runtime_signature(self):
+        runtime = self.root / "runtime"
+        (runtime / "adalib").mkdir(parents=True)
+        (runtime / "adalib/system.ali").write_text('V "GNAT Lib v25.0w"\n')
+        (runtime / "adalib/libgnat.a").touch()
+        compiler = self.root / "gcc"
+        compiler.touch()
+        def compile_probe(arguments, log, environment):
+            obj = Path(arguments[-1])
+            obj.touch()
+            obj.with_suffix(".ali").write_text('V "GNAT Lib v25.0w"\n')
+            log.write_text("actual selected compile\n")
+        with patch.object(cross, "logged", side_effect=compile_probe), patch.object(cross, "elf"):
+            result = support.identity_probe(str(compiler), runtime, "readelf")
+        self.assertEqual(result["signature"], 'V "GNAT Lib v25.0w"')
+        self.assertIn("actual selected", result["compile_log"])
+
+    def test_actual_linker_input_rejects_foreign_object(self):
+        foreign = self.root / "foreign.o"
+        foreign.write_bytes(b"\x7fELFfake")
+        log = self.root / "link.log"
+        log.write_text(str(foreign) + "\n")
+        settings = dict(cxx="/tools/target-g++", sysroot=str(self.root / "sysroot"),
+                        runtime=str(self.root / "runtime"), readelf="readelf")
+        with patch.object(cross, "run", return_value="unresolved"):
+            with self.assertRaisesRegex(cross.ConfigurationError, "unapproved actual linker"):
+                support.link_inputs(log, settings, self.root / "work")
+
     def test_gnatls_unresolved_adalib_checks_complete_search_sections(self):
         runtime = self.root / "runtime"
         for name in ["adainclude", "adalib"]:
