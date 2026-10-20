@@ -13,6 +13,11 @@ import subprocess
 import sys
 import cross_support as support
 
+# The shell entry executes this file as __main__; helpers must share its
+# exception class and selected source root rather than import a second backend.
+if __name__ == "__main__":
+    sys.modules["cross_configuration"] = sys.modules[__name__]
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -99,18 +104,19 @@ def dependency_closure(paths, sysroot, readelf, generated=None):
             continue
         elf(path, readelf)
         dynamic = run([readelf, "-d", str(path)])
+        run_directories = []
         for search_path in re.findall(r'\((?:RPATH|RUNPATH)\).*\[([^\]]+)\]', dynamic):
             for directory in search_path.split(":"):
                 require(directory.startswith("/") and "x86_64" not in directory,
                         f"unqualified embedded target search path: {path}: {directory}")
                 # Runtime absolute paths refer to the target root, not the build host.
-                resolved(sysroot / directory.lstrip("/"), sysroot)
+                run_directories.append(resolved(sysroot / directory.lstrip("/"), sysroot))
         needed = re.findall(r'\(NEEDED\).*\[([^\]]+)\]', dynamic)
         resolution = {}
         visited[str(path)] = dict(sha256=digest(path), needed=resolution)
         for name in needed:
             require('/' not in name, f"unsafe target dependency: {name}")
-            candidate = next((directory / name for directory in directories
+            candidate = next((directory / name for directory in run_directories + directories
                               if (directory / name).exists() or (directory / name).is_symlink()), None)
             require(candidate, f"unresolved target dependency: {name} from {path}")
             dependency = resolved(candidate, sysroot)
@@ -263,6 +269,7 @@ def validate(sysroot_only=False, independent_toolchains=False):
     config = resolved(value("OPENCV_CROSS_GPR_CONFIG"))
     support.check_configuration(config, target, ada, cxx, runtime)
     probe = support.identity_probe(ada, runtime, readelf)
+    support.check_alis(runtime / "adalib", probe["signature"])
 
     core = resolved(value("OPENCV_CROSS_CORE_PREFIX"))
     require(core != Path("/") and not inside(core, ROOT) and not inside(ROOT, core),
@@ -388,6 +395,7 @@ def workspace(mode, destination, settings):
            work / "toolchain-probe.log", env)
     support.check_trace(work / "toolchain-probe.log", settings)
     support.executable_evidence(probe / "bin/probe", settings)
+    support.link_inputs(work / "toolchain-probe.log", settings, work)
     evidence = elf(probe / "bin/probe", settings["readelf"])
     evidence += elf(probe / "obj/cxx_probe.o", settings["readelf"])
     (work / "toolchain-probe-elf.log").write_text(evidence)
@@ -398,6 +406,7 @@ def workspace(mode, destination, settings):
             *link_switches[1:]], work / "opencv-probe.log", env)
     (work / "opencv-probe-evidence.json").write_text(json.dumps(
         support.executable_evidence(opencv_probe, settings), indent=2) + "\n")
+    support.link_inputs(work / "opencv-probe.log", settings, work)
     print("TARGET_PROBE_QUALIFIED (not production or execution qualification)")
     if mode == "--build":
         logged(command + ["-P", str(work / "opencv_imgproc.gpr"), "-p", "-v",

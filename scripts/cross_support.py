@@ -194,6 +194,40 @@ def executable_evidence(path, settings):
                 symbol_versions=check_versions(closure, readelf))
 
 
+def link_inputs(log, settings, work, archives=()):
+    """Authenticate -Wl,-t inputs, not merely the driver's advertised search.
+
+    Only named compiler support/startup files may live outside the sysroot,
+    installed archives and this consumer's objects. OpenCV never may.
+    """
+    cross = api()
+    trusted = {Path(path).resolve() for path in archives}
+    names = ["Scrt1.o", "crt1.o", "crti.o", "crtn.o", "crtbegin.o", "crtend.o",
+             "crtbeginS.o", "crtendS.o", "libgcc.a", "libgcc_s.so", "libgcc_s.so.1", "libstdc++.so"]
+    for name in names:
+        answer = cross.run([settings["cxx"], "--sysroot=" + settings["sysroot"], "-print-file-name=" + name])
+        if Path(answer).is_absolute() and Path(answer).is_file():
+            trusted.add(cross.resolved(answer))
+    inputs = {}
+    for line in Path(log).read_text().splitlines():
+        item = line.strip()
+        if not item.startswith("/") or any(character.isspace() for character in item):
+            continue
+        path = Path(item)
+        if path.suffix not in {".o", ".a", ".so"} and ".so." not in path.name:
+            continue
+        actual = cross.resolved(path)
+        cross.require(actual in trusted or cross.inside(actual, Path(settings["sysroot"]))
+                      or cross.inside(actual, work), f"unapproved actual linker input: {path}")
+        # GCC/libc link scripts are text, their selected ELF inputs appear in
+        # the same trace and are individually checked below.
+        if actual.read_bytes()[:4] == b"\x7fELF" or actual.suffix in {".o", ".a"}:
+            cross.elf(actual, settings["readelf"])
+        inputs[str(actual)] = cross.digest(actual)
+    cross.require(inputs, f"no actual linker inputs recorded: {log}")
+    return inputs
+
+
 def check_trace(log, settings, installed_library_dirs=()):
     """Consumer-only -L exceptions are exact, never a /usr/local whitelist."""
     cross = api()

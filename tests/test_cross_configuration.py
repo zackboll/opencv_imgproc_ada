@@ -42,6 +42,7 @@ class CrossConfigurationTests(unittest.TestCase):
                      self.core / "lib/opencv_core_shim/libopencv_core_shim.a",
                      self.core / "include/opencv_core_module_bridge.hpp"]:
             path.touch()
+        (self.runtime / "adalib/system.ali").write_text('V "GNAT Lib v12"\n')
         (self.include / "core/version.hpp").write_text(
             "#define CV_VERSION_MAJOR 4\n#define CV_VERSION_MINOR 6\n#define CV_VERSION_REVISION 0\n")
         (self.core / "share/gpr/opencv_core.gpr").write_text(
@@ -280,6 +281,7 @@ class CrossConfigurationTests(unittest.TestCase):
         revision = cross.run(["git", "-C", str(checkout), "rev-parse", "HEAD"])
         import shutil
         with patch.object(cross, "ROOT", checkout), patch.object(cross.support, "check_trace"), \
+                patch.object(cross.support, "link_inputs"), \
                 patch.object(cross.support, "executable_evidence", return_value={}), patch.dict(os.environ, self.env, clear=True):
             for _ in range(2):
                 with contextlib.redirect_stdout(io.StringIO()):

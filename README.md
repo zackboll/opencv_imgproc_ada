@@ -1,3 +1,11 @@
+# Cross build and installation
+
+See [AArch64 GNAT Pro / Yocto Scarthgap build and installation](docs/cross-install-imgproc.md)
+for the production installer, installed Core requirements, durable GPR configuration,
+and one-command independent installed/relocated consumer qualification. See the
+[qualification record](docs/imgproc-cross-ux-001-qualification.md) for measured
+results and the separate vendor and target-execution gates.
+
 # Portable native Line Segment Detector (LSD)
 
 `Detect_Line_Segments (Source, Parameters)` returns Ada-owned subpixel Float32

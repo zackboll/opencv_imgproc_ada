@@ -1,0 +1,49 @@
+name: Debian AArch64 full cross install (not vendor qualification)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production-install:
+    runs-on: ubuntu-24.04
+    container: debian:12
+    timeout-minutes: 40
+    steps:
+      - name: Public reference tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git python3 pkg-config binutils gprbuild gnat-12-aarch64-linux-gnu g++-aarch64-linux-gnu
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: imgproc
+      - uses: actions/checkout@v4
+        with:
+          repository: zackboll/opencv_core_ada
+          ref: aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d
+          path: core
+      - name: Exact source and production workflow
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TMPDIR: /tmp
+        run: |
+          git config --global --add safe.directory "$PWD/imgproc"
+          git config --global --add safe.directory "$PWD/core"
+          test "$(git -C imgproc rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$(git -C core rev-parse HEAD)" = aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d
+          python3 imgproc/tests/cross/qualify_debian_reference.py "$PWD/core" /tmp/imgproc-debian-reference
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debian-aarch64-production-install-evidence
+          path: |
+            /tmp/imgproc-debian-reference/*.log
+            /tmp/imgproc-debian-reference/*.cgpr
+            /tmp/imgproc-debian-reference/packages/*.txt
+            /tmp/opencv-imgproc-evidence-*/*.json
+            /tmp/opencv-imgproc-evidence-*/*.txt
+            /tmp/opencv-imgproc-evidence-*/*.log
+            /tmp/opencv-imgproc-evidence-*/*-logs/**
+            /tmp/opencv-imgproc-cross-*/*.log
+            /tmp/opencv-imgproc-cross-*/build/*.log

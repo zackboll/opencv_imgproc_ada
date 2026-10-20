@@ -1,5 +1,9 @@
 # IMGPROC-EXT-002C — External AdaCore / post-Yocto integration preflight
 
+Historical preflight evidence. For the complete production workflow and current
+vendor gate see [IMGPROC-CROSS-UX-001](imgproc-cross-ux-001-qualification.md).
+The original results below are preserved and do not become vendor qualification.
+
 ## Scope and exact sources
 
 Both origins were fetched on 2026-10-14. Their remote main revisions exactly
