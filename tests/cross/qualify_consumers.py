@@ -39,6 +39,8 @@ def qualify(settings, core, imgproc, work, logs, forbidden=()):
                       "-cargs:Ada", sysroot, *settings.get("ada_flags", []),
                       "-cargs:C++", sysroot, *settings.get("cxx_flags", []),
                       "-largs", sysroot, *settings.get("cxx_flags", []), "-Wl,-t",
+                      *["-L" + str(directory) for directory in
+                        support.loader_directories(Path(settings["sysroot"]), settings["target"])],
                       *["-Wl,-rpath-link," + str(directory) for directory in
                         support.loader_directories(Path(settings["sysroot"]), settings["target"])]], log, env)
         trace = log.read_text()

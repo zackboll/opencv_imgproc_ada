@@ -389,6 +389,8 @@ def workspace(mode, destination, settings):
     compile_switches = ["-cargs:Ada", sysroot_switch, *settings.get("ada_flags", []),
                         "-cargs:C++", sysroot_switch, *settings.get("cxx_flags", [])]
     link_switches = ["-largs", sysroot_switch, *settings.get("cxx_flags", []), "-Wl,-t",
+                     *["-L" + str(directory) for directory in
+                       support.loader_directories(Path(settings["sysroot"]), settings["target"])],
                      *["-Wl,-rpath-link," + str(directory) for directory in
                        support.loader_directories(Path(settings["sysroot"]), settings["target"])]]
     logged(command + ["-P", str(probe / "probe.gpr"), "-p", "-v", "-R"] + compile_switches + link_switches,
