@@ -13,7 +13,12 @@ jobs:
       - name: Public reference tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ca-certificates git python3 pkg-config binutils gprbuild gnat-12-aarch64-linux-gnu g++-aarch64-linux-gnu
+          apt-get install -y --no-install-recommends ca-certificates git python3 pkg-config binutils curl unzip gnat-12-aarch64-linux-gnu g++-aarch64-linux-gnu
+          curl --fail --location --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          unzip /tmp/alire.zip -d /tmp/alire
+          install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr
+          alr -n install --prefix=/opt/gprbuild-26 gprbuild=26.0.1
+          echo /opt/gprbuild-26/bin >> "$GITHUB_PATH"
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}

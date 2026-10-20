@@ -403,8 +403,11 @@ def workspace(mode, destination, settings):
     (work / "toolchain-probe-elf.log").write_text(evidence)
     opencv_probe = work / "opencv-probe"
     logged([settings["cxx"], sysroot_switch, *settings.get("cxx_flags", []),
-            "-I" + settings["include"], str(probe / "opencv_link_probe.cpp"),
-            "-o", str(opencv_probe), settings["libraries"]["imgproc"], settings["libraries"]["core"],
+            "-I" + settings["include"], "-c", str(probe / "opencv_link_probe.cpp"),
+            "-o", str(work / "opencv-probe.o")], work / "opencv-probe-compile.log", env)
+    logged([settings["cxx"], sysroot_switch, *settings.get("cxx_flags", []),
+            str(work / "opencv-probe.o"), "-o", str(opencv_probe),
+            settings["libraries"]["imgproc"], settings["libraries"]["core"],
             *link_switches[1:]], work / "opencv-probe.log", env)
     (work / "opencv-probe-evidence.json").write_text(json.dumps(
         support.executable_evidence(opencv_probe, settings), indent=2) + "\n")
