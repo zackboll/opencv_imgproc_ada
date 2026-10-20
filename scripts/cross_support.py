@@ -229,6 +229,8 @@ def check_trace(log, settings, installed_library_dirs=()):
                 path = Path(word[2:])
                 installed = word.startswith("-L") and path in libraries and path.resolve() == path and ".." not in path.parts
                 roots = [Path(settings["sysroot"]), Path(settings["runtime"])]
+                if settings.get("work"):
+                    roots.append(Path(settings["work"]))
                 if word.startswith("-I"):
                     roots += [Path(settings["core"]), Path(settings.get("work", settings["core"]))]
                 cross.require(installed or any(cross.inside(path.resolve(), root) for root in roots),
