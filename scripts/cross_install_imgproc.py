@@ -226,6 +226,7 @@ def install(arguments):
         (evidence / "installation.json").write_text(json.dumps(settings, indent=2) + "\n")
         # Qualify the staged closure before any external file is published.
         staged_settings = dict(settings, config=str(staged / relative))
+        staged_settings.pop("build_workspace")
         consumers().qualify(staged_settings, core, staged, evidence / "staged-work", evidence / "staged-logs")
         preserve(before, core)
         publish(staged, prefix)

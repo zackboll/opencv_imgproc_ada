@@ -45,7 +45,7 @@ def qualify(settings, core, imgproc, work, logs, forbidden=()):
         tools = support.check_trace(log, dict(settings, core=str(core), work=str(work)), libraries)
         for archive in archives:
             cross.require(str(archive) in trace, f"consumer did not link {archive}")
-        for prefix in [cross.ROOT, Path(settings.get("build_workspace", "/nonexistent")), *forbidden]:
+        for prefix in [cross.ROOT, *([Path(settings["build_workspace"])] if settings.get("build_workspace") else []), *forbidden]:
             cross.require(str(prefix) + "/" not in trace, f"consumer resolved forbidden source/build/original prefix: {prefix}")
         executable = work / "bin" / ("installed_" + kind)
         result = support.executable_evidence(executable, settings)
