@@ -152,3 +152,38 @@ and warning-free GNAT 16.1 development compilation pass.
 isolated project copies through the tests Alire environment; native loader
 evidence ensures the intended version is used. MacPorts/hosted results require
 the final pushed head and are not inferred from these local results.
+
+### Measured R1 native-provider results
+
+Corrective test commit `0972587f9345e0aafe1b776c05d286413bbaac96`, tree
+`352f87ea7f87303f2602b15e34852be38bb1af0e`, passed the local four-version
+matrix again after commit. Hosted standalone run
+<https://github.com/zackboll/opencv_imgproc_ada/actions/runs/39358337639>
+produced these downloaded and independently inspected artifacts:
+
+- Homebrew `12235854662`: runtime 5.0.0, compiled TBB 2023.1; requests 2/1
+  report 2/1. Full 1178/1178 and all library/install/consumer stages pass.
+- MacPorts `12236293972`: runtime **4.9.0**, compiled framework **GCD**;
+  query(-1), request(2), request(1), request(2) all report **3**. Active backend
+  is explicitly unqueried, not inferred from compiled support. Odd rows=7
+  successfully label under both requests; even rows=16 also succeed. The 4.1
+  rejection path is correctly reported unexercised on this 4.9 runtime, not
+  falsely claimed covered. Positive 4.1 rejection evidence is the separate
+  qualifying 4.1 pthread configuration described above.
+
+MacPorts full AUnit is **1178/1178**, zero failed assertions/errors; its
+explicit relocatable Ada library, recursive GPRinstall, independent installed
+consumer and prefix-relocated consumer all pass. The old immutable main
+reproduces GNAT-FSF #112 for **both** providers. Image macos26 /
+20261013.0424.1 selects Xcode 26.6 / SDK 26.5, while CLT is 27. Both variables
+are removed at each Ada tool boundary. Actual GNAT commands and full traces
+select Xcode's `libSystem.tbd`, not CLT, for corrected executable, relocatable
+Ada library and both consumers. No external sysroot switch or installed-GPR
+rewrite is used; dyld proves installed/relocated prefix shim loading while
+source libraries are hidden. This is now actual MacPorts installation evidence,
+not an inference from successful executable linking.
+
+Exact-head hosted Linux/Windows, Debian 12 consumers, documentation and compiler/
+configuration controls pass at the test commit. Remaining platform results and
+the final documentation-only head's complete CI audit are recorded in PR #77;
+older-head results are not represented as final-head hosted qualification.
