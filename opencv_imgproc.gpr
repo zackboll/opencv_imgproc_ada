@@ -19,8 +19,8 @@ project Opencv_Imgproc is
         external ("LIBRARY_TYPE", "static-pic"));
    for Library_Kind use Library_Type;
 
-   --  When the Windows C++ shim is built externally as a DLL, consumers
-   --  of the Ada library must explicitly link its import library.
+   --  Preserve the Windows import library and select the configured Xcode
+   --  SDK for GNAT's macOS relocatable Ada library link.
    case Library_Type is
       when "relocatable" =>
          case Opencv_Imgproc_Install.Shim_Build is
@@ -28,7 +28,17 @@ project Opencv_Imgproc is
                for Library_Options use
                  ("-L" & Project'Project_Dir & "lib",
                   "-lopencv_imgproc_shim");
-            when "Static_PIC" | "Relocatable" =>
+            when "Relocatable" =>
+               case Opencv_Imgproc_Install.Cxx_Toolchain is
+                  when "Apple_Clang" =>
+                     --  GNAT otherwise uses the independent CLT SDK, which
+                     --  can be newer than its supported TBD format.
+                     for Library_Options use
+                       ("--sysroot=" & Opencv_Imgproc_Install.Cxx_Sysroot);
+                  when "GNU" =>
+                     null;
+               end case;
+            when "Static_PIC" =>
                null;
          end case;
 
@@ -55,7 +65,17 @@ project Opencv_Imgproc is
               ("-L" & Project'Project_Dir & "lib",
                "-lopencv_imgproc_shim");
 
-         when "Static_PIC" | "Relocatable" =>
+         when "Relocatable" =>
+            case Opencv_Imgproc_Install.Cxx_Toolchain is
+               when "Apple_Clang" =>
+                  --  Propagate to Ada executables, including installed and
+                  --  relocated consumers, without SDKROOT or LIBRARY_PATH.
+                  for Linker_Options use
+                    ("--sysroot=" & Opencv_Imgproc_Install.Cxx_Sysroot);
+               when "GNU" =>
+                  null;
+            end case;
+         when "Static_PIC" =>
             null;
       end case;
    end Linker;

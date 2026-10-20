@@ -1,0 +1,90 @@
+name: Standalone macOS Imgproc SDK linking
+
+on:
+  push:
+    branches: ['corrective/**', main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: Standalone ${{ matrix.provider }} ARM64 / indexed Core 0.4.1
+    runs-on: macos-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: [homebrew, macports]
+    defaults:
+      run:
+        shell: bash
+        working-directory: imgproc
+    steps:
+      - name: Checkout exact Imgproc head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: imgproc
+
+      - name: Checkout immutable pre-correction control
+        uses: actions/checkout@v4
+        with:
+          ref: 5f56b40f9cfe76ae0c4f829f9d1eae0861002768
+          path: baseline
+
+      - name: Set up Alire
+        uses: alire-project/setup-alire@latest
+        with:
+          version: '2.1.1'
+
+      - name: Select affected GNAT toolchain
+        run: alr -n --force toolchain --select gnat_native=16.1.0 gprbuild=26.0.1
+
+      - name: Install independent Homebrew OpenCV
+        if: matrix.provider == 'homebrew'
+        run: |
+          brew install opencv pkg-config
+          prefix=$(brew --prefix opencv)
+          {
+            echo "PKG_CONFIG_LIBDIR=$prefix/lib/pkgconfig:$(brew --prefix)/lib/pkgconfig:$(brew --prefix)/share/pkgconfig"
+            echo 'PKG_CONFIG_PATH='
+            echo "EXPECTED_OPENCV_PREFIX=$prefix"
+          } >> "$GITHUB_ENV"
+
+      # Separate fresh runner, matching the index's MacPorts qualification.
+      - name: Disable Homebrew
+        if: matrix.provider == 'macports'
+        run: rm -f "$(command -v brew)"
+
+      - name: Set up MacPorts
+        if: matrix.provider == 'macports'
+        uses: melusina-org/setup-macports@103eded5f10979e927bffcd6d0b86cbbdb2c3bb3
+
+      - name: Install independent MacPorts OpenCV
+        if: matrix.provider == 'macports'
+        run: |
+          echo '-x11 +no_x11 +quartz' | sudo tee -a /opt/local/etc/macports/variants.conf
+          sudo port install opencv4 pkgconfig
+          port installed opencv4 pkgconfig
+          {
+            echo 'PKG_CONFIG_LIBDIR=/opt/local/lib/opencv4/pkgconfig:/opt/local/lib/pkgconfig:/opt/local/share/pkgconfig'
+            echo 'PKG_CONFIG_PATH='
+            echo 'EXPECTED_OPENCV_PREFIX=/opt/local'
+          } >> "$GITHUB_ENV"
+
+      - name: Qualify without SDK environment workarounds
+        env:
+          EXPECTED_IMGPROC_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          QUALIFY_PROVIDER: ${{ matrix.provider }}
+        run: env -u SDKROOT -u LIBRARY_PATH bash tests/macos/qualify_standalone_sdk.sh
+
+      - name: Preserve exact-head SDK, linker, AUnit and consumer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-sdk-${{ matrix.provider }}-core-0.4.1-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/imgproc-standalone-sdk/
+          if-no-files-found: error
