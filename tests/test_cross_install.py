@@ -110,6 +110,7 @@ class CrossInstallTests(unittest.TestCase):
         with self.assertRaises(cross.ConfigurationError) as raised:
             cross.run(["sh", "-c", "exit 42"])
         self.assertEqual(raised.exception.returncode, 42)
+        self.assertEqual(cross.run(["sh", "-c", "printf 'GNATLS paths' >&2"], merge_output=True), "GNATLS paths")
 
     def test_complete_vendor_ali_signature_not_gcc_major(self):
         ali = self.root / "probe.ali"

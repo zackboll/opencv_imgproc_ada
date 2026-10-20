@@ -36,10 +36,11 @@ def require(condition, message):
 
 
 def run(args, **kwargs):
+    merge_output = kwargs.pop("merge_output", False)
     result = subprocess.run(args, text=True, capture_output=True, **kwargs)
     if result.returncode:
         raise ConfigurationError(f"command failed: {args}\n{result.stdout}{result.stderr}", result.returncode)
-    return result.stdout.strip()
+    return (result.stdout + (result.stderr if merge_output else "")).strip()
 
 
 def value(name):
@@ -428,6 +429,11 @@ def workspace(mode, destination, settings):
         notices = work / "install/share/doc/opencv_imgproc"
         notices.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(work / "LICENSE", notices / "LICENSE")
+        headers = work / "install/include/opencv_imgproc_shim"
+        headers.mkdir(parents=True, exist_ok=True)
+        for header in (work / "cpp").glob("*.h*"):
+            if header.suffix in {".h", ".hpp"}:
+                shutil.copyfile(header, headers / header.name)
         print("Imgproc production build/install passed; Core and runtime gates remain independent")
     print(f"Cross workspace: {work}\nSource revision: {revision}")
 

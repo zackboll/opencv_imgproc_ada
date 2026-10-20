@@ -211,8 +211,18 @@ def install(arguments):
         selected = configuration(work, options.target, ada, cxx, runtime, core, options.qualify)
         os.environ["OPENCV_CROSS_GPR_CONFIG"] = str(selected)
         settings = cross.validate(independent_toolchains=True)
+        selected_tools = {}
+        for language in ["ada", "cxx"]:
+            driver = settings[language]
+            for name in ["ld", "ar"]:
+                answer = cross.run([driver, "-print-prog-name=" + name])
+                selected_tool = shutil.which(answer)
+                cross.require(selected_tool, f"compiler-selected {name} unavailable: {answer}")
+                selected_tools[language + "_" + name] = dict(
+                    path=str(Path(selected_tool).absolute()), sha256=cross.digest(selected_tool),
+                    version=cross.run([selected_tool, "--version"]))
         settings.update(tool_versions={name: cross.run([settings[name], "--version"]) for name in ["ada", "cxx", "gprbuild", "gprinstall"]},
-                        core_inventory=before)
+                        core_inventory=before, selected_tools=selected_tools)
         cross.workspace("--build", str(work / "build"), settings)
         staged = work / "build/install"
         installed_closure(staged, settings)

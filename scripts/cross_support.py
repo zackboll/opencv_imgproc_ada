@@ -45,7 +45,7 @@ def runtime_identity(ada, runtime):
     cross.require(gnatls.is_file() and os.access(gnatls, os.X_OK)
                   and gnatls.resolve().parent == compiler.parent,
                   f"matching GNATLS unavailable: {gnatls}")
-    output = cross.run([str(gnatls), "-v"], env=dict(os.environ, LC_ALL="C"))
+    output = cross.run([str(gnatls), "-v"], env=dict(os.environ, LC_ALL="C"), merge_output=True)
     sections, seen, section = {"Source": [], "Object": []}, set(), None
     for line in output.splitlines():
         line = line.strip()

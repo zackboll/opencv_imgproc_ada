@@ -113,6 +113,18 @@ alternatives from downloaded package metadata without executing maintainer
 scripts; production dependency validation remains strict. This is test-fixture
 construction, not a whitelist or a change to user SDKs.
 
+At `360e47175ad9287f3e71c3dd58144e63094b07d8`, local full qualification
+passed again (`debian-final.log`, `opencv-imgproc-evidence-dx4x_y9o`), including
+the effective-runtime-switch and cwd-isolation corrections. Shared-prefix
+Git-free build/install passed (`shared-final.log`,
+`opencv-imgproc-evidence-fqrjz39z`), followed by installed and relocated links
+(`shared-relocation-complete-evidence`). Hosted full cross install
+`39367727598`, target-dependency `39367727580`, GNAT 12 `39367727597`, and
+Debian native installed/relocated consumers `39367727531` passed at that head.
+Later final-head artifacts/results are in the PR handoff. Final hardening also
+retains GNATLS output from either stdout or stderr, inventories compiler-selected
+linker/archiver binaries, and stages the shim's required local header closure.
+
 ## Hosted and vendor gates
 
 The existing Homebrew/MacPorts standalone SDK, cross-platform Windows/MSYS2,
