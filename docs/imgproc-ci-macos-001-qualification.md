@@ -66,6 +66,10 @@ The immutable old main is built on the same runner first. Its result is
 `REPRODUCED_GNAT_FSF_112` only for the observed CLT libSystem / arm64e.x1 /
 unknown-architecture failure; successful old builds are `NOT_REPRODUCED`.
 Unrelated baseline failures block qualification rather than being mislabeled.
+Fresh-runner qualification also requires building the normal library closure
+before the test-native-oracle action: that oracle links Core's dylib. The
+initial direct-action harness exposed this ordering requirement before any
+Ada executable link; it was not an upstream linker reproduction.
 
 The complete AUnit inventory must remain 1178/1178. The script also builds the
 normal library, explicitly links a relocatable Ada library, installs the normal

@@ -79,8 +79,12 @@ cd "$root/../baseline"
 test "$(git rev-parse HEAD)" = "$baseline_commit"
 echo "Baseline SHA / tree: $(git rev-parse HEAD HEAD^{tree})"
 select_core
-# Generate the normal dependency/test configuration and native oracle using
-# the crate's own actions; invoke GPRbuild directly to control its environment.
+# Build the library closure first: the test-only native oracle links the Core
+# shim and cannot run on a fresh deployment before that shim exists.
+alr -n action -r pre-build > "$evidence/baseline-library-configure.log" 2>&1
+ada_tool gprbuild -P opencv_imgproc.gpr -p -v \
+    > "$evidence/baseline-library-build.log" 2>&1
+# Generate the test oracle using its own action, then control the Ada link.
 alr -n -C tests action -r pre-build > "$evidence/baseline-configure.log" 2>&1
 if (cd tests; ada_tool gprbuild -P tests.gpr -p -v -largs -Wl,-t) \
     > "$evidence/baseline-link.log" 2>&1; then
