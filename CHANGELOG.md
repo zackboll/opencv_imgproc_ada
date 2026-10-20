@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — release candidate
+
+Complete delta from immutable published 0.2.1 source
+`9ce22ae5ab70008e1147475a9e6d7baef82f1df0`. Publication awaits independent
+source review and merge; see [IMGPROC-REL-005](docs/imgproc-rel-005-qualification.md).
 
 ### Fixed
 
@@ -47,7 +51,48 @@
 * Public AUnit, native-reference, malformed-ABI and instrumented native
   qualification; see [IMGPROC-API-001](docs/canny-box-source-review.md).
 
+### Integration and compatibility
+
+* Propagate the selected macOS Xcode SDK through production GPR executable,
+  relocatable-library and installed/relocated consumer links. Homebrew and
+  MacPorts standalone controls clear `SDKROOT` and `LIBRARY_PATH` even after
+  Alire toolchain injection; they retain actual SDK/linker evidence. The old
+  failure reproduction remains frozen with its original Core 0.4.1 inputs.
+* Correct the portable connected-components thread regression: test effective
+  native thread behavior in an isolated process rather than assuming the
+  requested thread count is the effective count on every backend.
+* Add a complete AArch64 build/install driver for an independently installed
+  Core, automatic or validated CGPR selection, clean Git/Git-free source
+  exports, staging, disjoint/shared prefixes, independent Ada/mixed consumers
+  and relocation. Strict architecture, complete ALI/runtime, sysroot, actual
+  linker-input, dependency/symbol-version and source-fallback checks remain.
+  R1 admits only the exact selected GNAT runtime archives. R2 recognizes only
+  the five approved glibc compatibility-archive names, physically contained in
+  the validated sysroot with exact eight-byte empty-archive contents; they
+  cannot satisfy recursive runtime dependencies. No SDK repair is performed.
+* Select indexed `opencv_core = "~0.5.0"`, whose minimum includes the GNAT 12
+  production fixes. Core 0.5.2's installer is not required. Preserve native
+  OpenCV/pkg-config, Windows MinGW/MSYS2 settings, Arch Rolling exclusion and
+  build/test actions; neither production nor candidate-index metadata has pins.
+* APIs are additive; rebuild clients and cooperating shims together. Core still
+  owns Mat lifetime and shallow copies. Output reuse/failure atomicity remains
+  operation-specific, not a universal new guarantee. Safety checks can reject
+  inputs previously passed to unsafe native paths. UInt16 connected-component
+  labels require the result to fit; labels use checked Int32 staging. Gradient
+  Canny rejects unsafe direction/L2 arithmetic and L1 thresholds above INT_MAX.
+  Unnormalized integer box kernels have safe area caps of 8,388,608 (UInt8),
+  32,768 (UInt16), and 65,536 (Int16), plus stricter layout bounds where needed;
+  native floating rounding/nonfinite behavior is not normalized across versions.
+* Documentation now covers 1,596 public items. Shared-GNATdoc historical
+  controls retain their frozen inputs/provenance and explicit applicability.
+  Cross-build/install/link qualification is not target execution:
+  `TARGET_RUNTIME_PENDING` remains open.
+
 ## 0.2.1 — corrective release, proposed
+
+Current disposition (2026-10-20): published in the official index through
+alire-project/alire-index#2232. Its tag and origin are immutable; the historical
+preparation narrative below records the evidence available at that time.
 
 Release preparation is tracked in
 [IMGPROC-REL-004 qualification](docs/imgproc-rel-004-qualification.md).

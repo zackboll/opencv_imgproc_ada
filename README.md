@@ -4963,33 +4963,27 @@ with the narrow Apple Clang exception needed for OpenCV headers that use the C11
 
 ## Building from source
 
-The current development manifest pins Core as a sibling directory:
+The 0.3.0 production manifest resolves indexed Core without development pins:
 
 ```toml
-[[pins]]
-opencv_core = { path='../core' }
+[[depends-on]]
+opencv_core = "~0.5.0"
 ```
 
-Use this checkout layout:
-
-```text
-workspace/
-├── core/
-└── imgproc/
-```
-
-For example:
+No sibling Core checkout is required. Core 0.5.0 is the minimum: it includes
+the GNAT 12 production layout, language and warning corrections. Core 0.5.2's
+convenience installer is not a dependency requirement. For example:
 
 ```sh
-mkdir opencv-ada
-cd opencv-ada
-
-git clone https://github.com/zackboll/opencv_core_ada.git core
 git clone https://github.com/zackboll/opencv_imgproc_ada.git imgproc
-
 cd imgproc
 alr -n build
 ```
+
+The separate `tests` crate intentionally pins its parent Imgproc checkout for
+hand-written AUnit testing; that is not a production Core pin. See the
+[0.3.0 qualification record](docs/imgproc-rel-005-qualification.md) for minimum
+Core and ordinary-resolution evidence and the independent review boundary.
 
 The root Alire pre-build action runs:
 

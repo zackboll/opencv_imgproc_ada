@@ -1,6 +1,6 @@
 name = "opencv_imgproc"
 description = "Thick Ada binding to OpenCV ImgProc"
-version = "0.2.1"
+version = "0.3.0"
 
 authors = ["Zack Boll"]
 maintainers = ["Zack Boll <zackboll@gmail.com>"]
@@ -10,7 +10,7 @@ website = "https://github.com/zackboll/opencv_imgproc_ada"
 tags = ["opencv", "computer-vision", "binding", "ada"]
 
 [[depends-on]]
-opencv_core = "~0.4.1"
+opencv_core = "~0.5.0"
 opencv = "*"
 pkg_config = "*"
 

@@ -17,7 +17,11 @@ if grep -F 'Dependencies (missing):' "$logs/resolution.log"; then
     echo 'error: incomplete indexed dependency solution' >&2
     exit 1
 fi
-grep -F 'opencv_core=0.4.1 (origin: git)' "$logs/resolution.log"
+# This is the actual minimum campaign, not merely a compatible solve. Use an
+# isolated official-index snapshot containing 0.5.0 as the latest 0.5 release.
+# A future compatible release must not silently replace this lower-bound test.
+grep -F 'opencv_core=0.5.0 (origin: git)' "$logs/resolution.log"
+python3 scripts/verify_release_selection.py alire/alire.lock --core-version 0.5.0
 if grep -E '\[\[pins\]\]|path[[:space:]]*=' alire.toml; then
     echo 'error: release library must not contain development pins' >&2
     exit 1
@@ -28,8 +32,10 @@ test -f "$core/cpp/opencv_core_module_bridge.hpp"
 alr exec -- sh -c 'gnat --version; gprbuild --version; gcc -print-file-name=adalib' > "$logs/toolchain.log"
 alr -n -C tests settings --set dependencies.shared false
 alr -n -C tests run > "$logs/aunit.log" 2>&1
+python3 scripts/verify_release_selection.py tests/alire/alire.lock \
+    --core-version 0.5.0 --allow-parent-pin
 tail -5 "$logs/aunit.log"
-grep -E '^Successful Tests:[[:space:]]+1140$' "$logs/aunit.log"
+grep -E '^Successful Tests:[[:space:]]+1178$' "$logs/aunit.log"
 grep -E '^Failed Assertions:[[:space:]]+0$' "$logs/aunit.log"
 grep -E '^Unexpected Errors:[[:space:]]+0$' "$logs/aunit.log"
 for name in emd_signature_index bayer_layout morphology_expansion yuv420_layout \
@@ -44,12 +50,15 @@ include=$(pkg-config --variable=includedir "$package")
 if [ -z "$include" ]; then
     include=$(pkg-config --variable=includedir_new "$package")
 fi
+# pkg-config emits a shell word list of linker switches.
+# shellcheck disable=SC2046
 c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
     -fsanitize=address,undefined -fno-omit-frame-pointer -g \
     -isystem "$include" tests/subpixel_patch_guard_test.cpp \
     $(pkg-config --libs-only-L "$package") -lopencv_core \
     -o "$logs/subpixel_patch_guard"
 "$logs/subpixel_patch_guard" > "$logs/subpixel_patch_guard.log" 2>&1
+# shellcheck disable=SC2046
 c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
     -fsanitize=address,undefined -fno-omit-frame-pointer -g \
     -isystem "$include" tests/opencv41_reference.cpp \
@@ -60,7 +69,8 @@ export OPENCV_CORE_TEST_PREFIX="$core"
 for name in subpixel_patch_native spatial_gradient_native squared_box_consistency \
     ballard_consistency guil_consistency masked_template_consistency \
     masked_ncc_consistency masked_ccorr_consistency masked_nsqdiff_consistency \
-    masked_ccoeff_consistency; do
+    masked_ccoeff_consistency canny_box_native connected_components_native \
+    lsd_native; do
     SANITIZE=1 sh "tests/run_$name.sh" > "$logs/$name.log" 2>&1
 done
 sh tests/run_bayer_gray_test.sh > "$logs/bayer_gray.log" 2>&1
