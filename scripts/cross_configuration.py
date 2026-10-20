@@ -93,14 +93,22 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def dependency_closure(paths, sysroot, readelf, generated=None):
+def dependency_closure(paths, sysroot, readelf, generated=None, empty_archives=None):
     """Resolve every DT_NEEDED to a contained, architecture-checked target ELF."""
     directories = support.loader_directories(sysroot, value("OPENCV_CROSS_TARGET"))
     visited = {}
-    pending = list(paths)
+    pending = [(path, False) for path in paths]
     while pending:
-        entry = pending.pop()
+        entry, recursive = pending.pop()
         path = resolved(entry, None if generated and Path(entry) == generated else sysroot)
+        empty = support.empty_compatibility_archive(entry, sysroot)
+        if empty:
+            # Before visited: an initial link-time stub can never become a
+            # dynamic provider, regardless of traversal order or aliases.
+            require(not recursive, f"empty compatibility archive cannot satisfy DT_NEEDED: {path}")
+            if empty_archives is not None:
+                empty_archives[str(path)] = empty
+            continue
         if str(path) in visited:
             continue
         elf(path, readelf)
@@ -122,7 +130,7 @@ def dependency_closure(paths, sysroot, readelf, generated=None):
             require(candidate, f"unresolved target dependency: {name} from {path}")
             dependency = resolved(candidate, sysroot)
             resolution[name] = str(dependency)
-            pending.append(dependency)
+            pending.append((dependency, True))
     return visited
 
 
@@ -185,6 +193,7 @@ def validate(sysroot_only=False, independent_toolchains=False):
             "OpenCV header/pkg-config version mismatch")
     flags = run([pkg, "--cflags", "--libs", package], env=env).split()
     advertised = []
+    empty_archives = {}
     search = [library]
     for flag in flags:
         if flag.startswith("-L"):
@@ -197,8 +206,12 @@ def validate(sysroot_only=False, independent_toolchains=False):
                 tree(directory, sysroot)
         elif flag.startswith("/"):
             path = resolved(flag, sysroot)
-            elf(path, readelf)
-            advertised.append(path)
+            empty = support.empty_compatibility_archive(flag, sysroot)
+            if empty:
+                empty_archives[str(path)] = empty
+            else:
+                elf(path, readelf)
+                advertised.append(path)
         else:
             require(re.fullmatch(r"-l(?:opencv_[a-z0-9_]+|stdc\+\+)|-D[A-Za-z0-9_=]+|-pthread", flag),
                     f"unsupported target pkg-config flag: {flag}")
@@ -238,6 +251,7 @@ def validate(sysroot_only=False, independent_toolchains=False):
                      runtime=str(runtime), readelf=readelf, include=str(include),
                      library=str(library), libraries=libraries, version=version,
                      cflags=cflags, pkgconfig_flags=flags, dependency_closure=closure,
+                     empty_compatibility_archives=empty_archives,
                      qualification="TARGET_SYSROOT_ONLY", production_qualified=False)
     if sysroot_only:
         require(all("-lopencv_" + module in flags for module in ["core", "imgproc"]),
@@ -323,6 +337,7 @@ def validate(sysroot_only=False, independent_toolchains=False):
                 core=str(core), core_provenance=recorded, core_alis=count, version=version,
                 runtime_identity=runtime_evidence, ada_probe=probe, ali_signature=probe["signature"],
                 ada_flags=support.flags("ada"), cxx_flags=support.flags("cxx"),
+                dependency_closure=closure, empty_compatibility_archives=empty_archives,
                 cflags=cflags, gprbuild=tool("OPENCV_CROSS_GPRBUILD"),
                 gprinstall=tool("OPENCV_CROSS_GPRINSTALL"))
 

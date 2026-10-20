@@ -1,5 +1,59 @@
 # IMGPROC-CROSS-UX-001 qualification record
 
+## R2 — verified empty glibc compatibility archives
+
+Reviewed starting head: `2efc7cbf7f5361509fc77ed27939c73dba243a02`.
+The vendor reported exact eight-byte `!<arch>\n` archives for `libdl.a`,
+`libpthread.a`, `libutil.a`, and `libanl.a` in the Scarthgap sysroot, all SHA256
+`f0a17a43c74d2fe5474fa2fd29c8f14799e777d7d75a2cc4d11c20a6e7b161c5`.
+`librt.a` was absent there; absence is not a failure. These are user-provided
+diagnostics from `/tmp/imgproc-cross-ux-001-r1-retry.GUkysrBw`, not local access
+to that container or its retained files.
+
+The reviewed implementation's rejection was reproduced locally using a genuine
+Debian AArch64 sysroot `libdl.a` with those complete contents and hash. The
+general ELF validator remains unchanged. Shared context-specific recognition
+now requires approved supplied/canonical identities, a regular canonical file,
+physical containment in the selected validated sysroot, and exact complete
+contents. The bounded set is `libdl.a`, `libpthread.a`, `libutil.a`, `libanl.a`,
+and `librt.a`; none is required to exist. Accepted files have separate path,
+size and hash evidence in preflight, actual-link sidecars and consumer evidence.
+They are not architecture-validated ELF objects. Recursive `DT_NEEDED` checks
+reject empty compatibility archives before consulting visited state, even when
+the same file is an initial input. Symbol-version checks remain strict.
+
+Focused controls exercise all five names, both processing boundaries, escaping
+symlinks, unrelated/required libraries, incorrect/truncated/thin/trailing-garbage
+archives, nonempty AArch64/wrong/mixed archives, recursive dependencies in both
+root orders, and missing symbol versions. R1's exact selected-runtime allowance
+and regression tests remain intact. Synthetic ELF-header controls use real
+`ar`/`readelf`, but are explicitly not compiler evidence.
+
+The separate genuine Debian GNAT/GCC 12.2.0 AArch64 controls link actual glibc
+archives, verify each actual trace entry/hash, and exercise real pkg-config and
+full sysroot preflight with temporary control-only metadata. No SDK archive is
+modified. The formerly blocked static tasking control now requires both
+`libgnat.a` and `libgnarl.a` in the real trace and records accepted `librt.a`
+and `libpthread.a`. Binder `-static` remains local to the two controls.
+The fresh hosted Debian driver runs both controls before genuine production
+Core/Imgproc build/install and independent installed/relocated Ada/mixed links.
+
+Local R2 evidence is retained under
+`/home/zboll/work/imgproc-cross-ux-001-r2`. Final commit/tree, local/remote/PR
+identity agreement and final-head hosted results are recorded in the PR #78 R2
+handoff (not as a self-referential hash here). Earlier-head results do not
+qualify the final R2 source. Native AUnit remains 1,178/1,178 successful.
+
+Production Ada/C++ semantics, API/ABI, representation checks, manifests,
+dependency constraints, versions, the macOS SDK correction and isolated thread
+test are unchanged. No public semantic validation is duplicated in the C++ shim.
+**VENDOR_QUALIFICATION_REQUIRED** remains open until successful actual
+GNAT Pro 25.0w/GCC 12.3.1 + Scarthgap qualification is inspected.
+**TARGET_RUNTIME_PENDING** remains independent: no target/emulator execution
+is claimed. The final pinned vendor command clears inherited search paths in a
+subshell while preserving `PATH`, explicitly selects `--source-root`, forces
+automatic CGPR generation, retains diagnostics, and verifies source identity.
+
 ## R1 — selected static Ada runtime linker inputs
 
 Reviewed starting head: `6279f2842984a90e0c845f56da38d9b5840504d5`.

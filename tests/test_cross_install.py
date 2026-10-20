@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,207 @@ import cross_support as support
 import test_cross_configuration as fixtures
 sys.path.insert(0, str(Path(__file__).resolve().parent / "cross"))
 import stage_debian_alternatives
+
+
+class EmptyCompatibilityArchiveTests(unittest.TestCase):
+    """Synthetic input bytes with real readelf; not target compiler evidence."""
+
+    def setUp(self):
+        self.fixture = fixtures.CrossConfigurationTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.sysroot = self.fixture.sysroot
+        self.library = self.fixture.library
+        self.log = self.fixture.base / "link.log"
+        self.settings = dict(cxx=self.fixture.env["OPENCV_CROSS_CXX"],
+                             runtime=str(self.fixture.runtime), sysroot=str(self.sysroot), readelf="readelf")
+        self.work = self.fixture.base / "work"
+
+    def archive(self, name="libdl.a", contents=b"!<arch>\n", directory=None):
+        path = (directory or self.library) / name
+        path.write_bytes(contents)
+        return path
+
+    def link(self, path):
+        self.log.write_text(str(path) + "\n")
+        empty = {}
+        inputs = support.link_inputs(self.log, self.settings, self.work, empty_archives=empty)
+        self.assertEqual(json.loads(Path(str(self.log) + ".empty-compatibility-archives.json").read_text()), empty)
+        return inputs, empty
+
+    def advertise(self, paths):
+        pkg = Path(self.fixture.env["OPENCV_CROSS_PKG_CONFIG"])
+        pkg.write_text(pkg.read_text().replace('--exists)',
+            '--cflags) if test "$2" = --libs; then echo ' + " ".join(map(str, paths)) + '; fi ;; --exists)'))
+
+    def test_each_approved_name_is_recorded_at_both_boundaries(self):
+        paths = [self.archive(name) for name in sorted(support.GLIBC_COMPATIBILITY_ARCHIVES)]
+        self.advertise(paths)
+        with patch.object(cross, "elf", wraps=cross.elf) as elf:
+            result = self.fixture.check()
+        self.assertFalse(set(paths) & {Path(call.args[0]) for call in elf.call_args_list})
+        expected = {}
+        for path in paths:
+            with self.subTest(name=path.name):
+                evidence = dict(path=str(path.resolve()), size=8, sha256=cross.digest(path))
+                self.assertEqual(evidence["sha256"], "f0a17a43c74d2fe5474fa2fd29c8f14799e777d7d75a2cc4d11c20a6e7b161c5")
+                inputs, empty = self.link(path)
+                self.assertEqual(empty, {str(path): evidence})
+                self.assertEqual(inputs, {str(path): evidence["sha256"]})
+                self.assertNotIn(str(path), result["dependency_closure"])
+                expected[str(path)] = evidence
+                # General ELF validation is deliberately unchanged.
+                with self.assertRaises(cross.ConfigurationError):
+                    cross.elf(path, "readelf")
+        self.assertEqual(result["empty_compatibility_archives"], expected)
+
+    def test_optional_archives_need_not_exist(self):
+        self.assertEqual(self.fixture.check()["empty_compatibility_archives"], {})
+
+    def test_outside_and_escaping_symlink_rejected_at_both_boundaries(self):
+        outside = self.archive(directory=self.fixture.base)
+        escaping = self.library / "libdl.a"
+        escaping.symlink_to(outside)
+        for path in [outside, escaping]:
+            with self.subTest(path=path):
+                self.assertIsNone(support.empty_compatibility_archive(path, self.sysroot))
+                with self.assertRaises(cross.ConfigurationError):
+                    self.link(path)
+                with patch.dict(os.environ, self.fixture.env, clear=True):
+                    with self.assertRaises(cross.ConfigurationError):
+                        cross.dependency_closure([path], self.sysroot, "readelf")
+        self.advertise([escaping])
+        self.fixture.reject("escapes sysroot")
+
+    def test_regular_canonical_file_and_approved_identity_required(self):
+        required = self.archive("libopencv_core_ada.a")
+        alias = self.library / "libdl.a"
+        alias.symlink_to(required)
+        self.assertIsNone(support.empty_compatibility_archive(alias, self.sysroot))
+        with self.assertRaises(cross.ConfigurationError):
+            self.link(alias)
+        alias.unlink()
+        alias.mkdir()
+        self.assertIsNone(support.empty_compatibility_archive(alias, self.sysroot))
+        with self.assertRaises(cross.ConfigurationError):
+            support.empty_compatibility_archive(self.library / "missing.a", self.sysroot)
+
+    def test_unrelated_and_required_empty_libraries_are_not_exempt(self):
+        names = ["libunrelated.a", "libgnat.a", "libgnarl.a", "libopencv_core.a",
+                 "libopencv_imgproc.a", "libopencv_core_ada.a", "libopencv_core_shim.a",
+                 "libopencv_imgproc_ada.a", "libopencv_imgproc_shim.a"]
+        for name in names:
+            with self.subTest(name=name):
+                path = self.archive(name)
+                self.assertIsNone(support.empty_compatibility_archive(path, self.sysroot))
+                with self.assertRaises(cross.ConfigurationError):
+                    self.link(path)
+        self.advertise([self.library / name for name in names])
+        original = cross.elf
+        def reader(path, readelf):
+            return original(path, "readelf" if Path(path).read_bytes() == b"!<arch>\n" else readelf)
+        with patch.object(cross, "elf", side_effect=reader):
+            self.fixture.reject("ELF64")
+
+    def test_required_runtime_core_and_opencv_preflight_remains_strict(self):
+        paths = [self.fixture.runtime / "adalib/libgnat.a",
+                 self.fixture.core / "lib/opencv_core/libopencv_core_ada.a",
+                 self.fixture.core / "lib/opencv_core_shim/libopencv_core_shim.a",
+                 self.library / "libopencv_core.so", self.library / "libopencv_imgproc.so"]
+        original = cross.elf
+        def reader(path, readelf):
+            return original(path, "readelf" if Path(path).read_bytes() == b"!<arch>\n" else readelf)
+        for path in paths:
+            with self.subTest(path=path):
+                before = path.read_bytes()
+                path.write_bytes(b"!<arch>\n")
+                with patch.object(cross, "elf", side_effect=reader):
+                    self.fixture.reject("ELF64")
+                path.write_bytes(before)
+
+    def test_bad_complete_contents_rejected(self):
+        path = self.library / "libdl.a"
+        self.advertise([path])
+        original = cross.elf
+        def reader(candidate, readelf):
+            return original(candidate, "readelf" if Path(candidate) == path else readelf)
+        for contents in [b"", b"!<arch>", b"!<arch>\r", b"!<thin>\n", b"!<arch>\ngarbage", b"12345678"]:
+            with self.subTest(contents=contents):
+                path = self.archive(contents=contents)
+                self.assertIsNone(support.empty_compatibility_archive(path, self.sysroot))
+                with self.assertRaises(cross.ConfigurationError):
+                    self.link(path)
+                with patch.object(cross, "elf", side_effect=reader):
+                    self.fixture.reject("command failed|ELF64")
+
+    def test_nonempty_archives_use_ordinary_member_validation(self):
+        # Minimal relocatable ELF headers are synthetic, but ar/readelf are real.
+        objects = []
+        for machine in [183, 62]:
+            path = self.library / f"machine-{machine}.o"
+            path.write_bytes(struct.pack("<16sHHIQQQIHHHHHH", b"\x7fELF\x02\x01\x01" + b"\0" * 9,
+                                         1, machine, 1, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0))
+            objects.append(path)
+        archive = self.library / "libpthread.a"
+        self.advertise([archive])
+        original = cross.elf
+        def reader(path, readelf):
+            return original(path, "readelf" if Path(path) == archive else readelf)
+        for members, accepted in [(objects[:1], True), (objects[1:], False), (objects, False)]:
+            with self.subTest(members=members):
+                archive.unlink(missing_ok=True)
+                subprocess.run(["ar", "rcs", str(archive), *map(str, members)], check=True, capture_output=True)
+                self.assertIsNone(support.empty_compatibility_archive(archive, self.sysroot))
+                if accepted:
+                    inputs, empty = self.link(archive)
+                    self.assertEqual(inputs, {str(archive): cross.digest(archive)})
+                    self.assertEqual(empty, {})
+                    with patch.object(cross, "elf", side_effect=reader) as elf:
+                        result = self.fixture.check()
+                    self.assertIn(unittest.mock.call(archive, self.fixture.env["OPENCV_CROSS_READELF"]),
+                                  elf.call_args_list)
+                    self.assertIn(str(archive), result["dependency_closure"])
+                    self.assertEqual(result["empty_compatibility_archives"], {})
+                else:
+                    with self.assertRaisesRegex(cross.ConfigurationError, "AArch64"):
+                        self.link(archive)
+                    with patch.object(cross, "elf", side_effect=reader):
+                        self.fixture.reject("AArch64")
+
+    def test_empty_stub_never_satisfies_needed_even_if_initial_or_visited(self):
+        stub = self.archive()
+        root = self.library / "libopencv_core.so"
+        # Real empty stub; only the referring object's dynamic table is mocked.
+        def reader(command, **kwargs):
+            if command[1] == "-d":
+                return "(NEEDED) [libdl.a]"
+            return "Class: ELF64\nMachine: AArch64\nData: 2's complement, little endian"
+        with patch.dict(os.environ, self.fixture.env, clear=True), patch.object(cross, "run", side_effect=reader):
+            evidence = {}
+            self.assertEqual(cross.dependency_closure([stub], self.sysroot, "readelf", empty_archives=evidence), {})
+            self.assertEqual(set(evidence), {str(stub)})
+            for paths in [[root], [root, stub], [stub, root]]:
+                with self.subTest(paths=paths), self.assertRaisesRegex(cross.ConfigurationError, "cannot satisfy DT_NEEDED"):
+                    cross.dependency_closure(paths, self.sysroot, "readelf", empty_archives=evidence)
+
+    def test_symbol_version_checks_remain_strict_with_initial_empty_stub(self):
+        stub = self.archive()
+        root = self.library / "libopencv_core.so"
+        provider = self.library / "libc.so.6"
+        def reader(command, **kwargs):
+            if command[1] == "-d":
+                return "(NEEDED) [libc.so.6]" if Path(command[2]) == root else ""
+            if command[1] == "-V":
+                if Path(command[2]) == root:
+                    return "File: libc.so.6\nName: GLIBC_999.0 Flags: none"
+                return "Version definition section\nName: GLIBC_2.17\nVersion needs section"
+            return "Class: ELF64\nMachine: AArch64\nData: 2's complement, little endian"
+        with patch.dict(os.environ, self.fixture.env, clear=True), patch.object(cross, "run", side_effect=reader):
+            closure = cross.dependency_closure([stub, root], self.sysroot, "readelf")
+            self.assertEqual(closure[str(root)]["needed"], {"libc.so.6": str(provider)})
+            self.assertNotIn(str(stub), closure)
+            with self.assertRaisesRegex(cross.ConfigurationError, "GLIBC_999.0 absent"):
+                support.check_versions(closure, "readelf")
 
 
 class InstalledCoreTests(unittest.TestCase):

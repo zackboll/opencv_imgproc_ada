@@ -189,6 +189,21 @@ an unselected runtime. ELF architecture validation and hashing still apply.
 The Debian reference CI runs a separate real static-Ada-runtime link control;
 its binder `-static` choice is local to that control, not production policy.
 
+glibc 2.34 and later can supply empty link-time compatibility archives. Only
+`libdl.a`, `libpthread.a`, `libutil.a`, `libanl.a`, and `librt.a` are eligible:
+the supplied and canonical names must be approved, the canonical target must
+be an existing regular file physically within the validated target sysroot,
+and its complete contents must be exactly the eight bytes `!<arch>\n`.
+These archives are optional. Accepted paths, sizes and SHA256 hashes are
+recorded separately as `empty_compatibility_archives`, not architecture-checked
+ELF objects. Traced inputs also have an adjacent
+`.empty-compatibility-archives.json` evidence file. They are excluded from
+initial ELF dependency roots and can **never** provide a recursive `DT_NEEDED`
+dependency. Nonempty compatibility archives still undergo ordinary archive-member
+architecture checks. Required GNAT, OpenCV, Core and Imgproc libraries are not
+exempt. The SDK archives and installed Core are never repaired or rewritten.
+See the [glibc 2.34 announcement](https://sourceware.org/pipermail/libc-announce/2021/000032.html).
+
 Manual ordinary GPRbuild example, from a fresh directory containing copied
 `tests/installed_consumers` sources (no Alire):
 

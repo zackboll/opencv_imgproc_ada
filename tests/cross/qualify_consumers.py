@@ -51,7 +51,9 @@ def qualify(settings, core, imgproc, work, logs, forbidden=()):
             cross.require(str(prefix) + "/" not in trace, f"consumer resolved forbidden source/build/original prefix: {prefix}")
         executable = work / "bin" / ("installed_" + kind)
         result = support.executable_evidence(executable, settings)
-        result["link_inputs"] = support.link_inputs(log, settings, work, archives)
+        result["empty_compatibility_archives"] = {}
+        result["link_inputs"] = support.link_inputs(
+            log, settings, work, archives, result["empty_compatibility_archives"])
         for name in ["libopencv_core.so.", "libopencv_imgproc.so."]:
             cross.require(name in result["elf"], f"consumer missing native dependency {name}")
         support.check_alis(work, settings["ali_signature"])

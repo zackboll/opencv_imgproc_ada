@@ -20,6 +20,36 @@ def api():
     return cross_configuration
 
 
+GLIBC_COMPATIBILITY_ARCHIVES = frozenset({
+    "libdl.a", "libpthread.a", "libutil.a", "libanl.a", "librt.a",
+})
+
+
+def empty_compatibility_archive(path, sysroot):
+    """Classify link-time glibc stubs, never architecture-validate them.
+
+    Both the supplied and canonical identities must be approved. In particular,
+    an approved symlink name cannot disguise an unrelated or required library.
+    Inputs must remain stable during validation, as for the other SDK evidence.
+    """
+    cross = api()
+    actual = cross.resolved(path)
+    if (Path(path).name not in GLIBC_COMPATIBILITY_ARCHIVES
+            or actual.name not in GLIBC_COMPATIBILITY_ARCHIVES
+            or not actual.is_file()):
+        return None
+    root = cross.resolved(sysroot)
+    if not cross.inside(actual, root):
+        return None
+    # Reading nine bytes distinguishes the complete header from any suffix,
+    # without reading a potentially large nonempty archive into memory.
+    with actual.open("rb") as archive:
+        contents = archive.read(9)
+    if contents != b"!<arch>\n":
+        return None
+    return dict(path=str(actual), size=len(contents), sha256=hashlib.sha256(contents).hexdigest())
+
+
 def flags(language):
     cross = api()
     items = json.loads(os.environ.get(f"OPENCV_CROSS_{language.upper()}_FLAGS", "[]"))
@@ -196,7 +226,7 @@ def executable_evidence(path, settings):
                 symbol_versions=check_versions(closure, readelf))
 
 
-def link_inputs(log, settings, work, archives=()):
+def link_inputs(log, settings, work, archives=(), empty_archives=None):
     """Authenticate -Wl,-t inputs, not merely the driver's advertised search.
 
     Only named compiler support/startup files may live outside the sysroot,
@@ -217,6 +247,7 @@ def link_inputs(log, settings, work, archives=()):
         if Path(answer).is_absolute() and Path(answer).is_file():
             trusted.add(cross.resolved(answer))
     inputs = {}
+    compatibility = {} if empty_archives is None else empty_archives
     for line in Path(log).read_text().splitlines():
         item = line.strip()
         if not item.startswith("/") or any(character.isspace() for character in item):
@@ -227,12 +258,19 @@ def link_inputs(log, settings, work, archives=()):
         actual = cross.resolved(path)
         cross.require(actual in trusted or cross.inside(actual, Path(settings["sysroot"]))
                       or cross.inside(actual, work), f"unapproved actual linker input: {path}")
+        empty = empty_compatibility_archive(path, settings["sysroot"])
+        if empty:
+            compatibility[str(actual)] = empty
+            inputs[str(actual)] = empty["sha256"]
+            continue
         # GCC/libc link scripts are text, their selected ELF inputs appear in
         # the same trace and are individually checked below.
         if actual.read_bytes()[:4] == b"\x7fELF" or actual.suffix in {".o", ".a"}:
             cross.elf(actual, settings["readelf"])
         inputs[str(actual)] = cross.digest(actual)
     cross.require(inputs, f"no actual linker inputs recorded: {log}")
+    Path(str(log) + ".empty-compatibility-archives.json").write_text(
+        json.dumps(compatibility, indent=2) + "\n")
     return inputs
 
 

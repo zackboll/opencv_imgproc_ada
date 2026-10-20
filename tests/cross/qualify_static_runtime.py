@@ -2,7 +2,7 @@
 
 The -static binder choice is local to this control. It does not select a fully
 static executable or alter production/runtime defaults. Text_IO ensures real
-Ada runtime code is linked. Both archive names also have synthetic controls.
+Ada runtime code is linked. A separate tasking control requires both archives.
 """
 import json
 import os
@@ -16,13 +16,16 @@ import cross_configuration as cross
 import cross_support as support
 
 
-def qualify(settings, work):
+def qualify(settings, work, tasking=False):
     cross.require(work.is_absolute() and not work.exists(), "static-runtime control needs a new absolute workspace")
     work.mkdir(parents=True)
     print(f"Static-runtime control evidence retained: {work}", flush=True)
     for suffix in ["adb", "gpr"]:
         name = "static_runtime_probe." + suffix
         shutil.copyfile(ROOT / "tests/fixtures/cross-reference" / name, work / name)
+    if tasking:
+        shutil.copyfile(ROOT / "tests/fixtures/cross-reference/tasking_runtime_probe.adb",
+                        work / "static_runtime_probe.adb")
     sysroot = "--sysroot=" + settings["sysroot"]
     directories = support.loader_directories(Path(settings["sysroot"]), settings["target"])
     log = work / "static-runtime-link.log"
@@ -33,8 +36,10 @@ def qualify(settings, work):
                *["-L" + str(directory) for directory in directories],
                *["-Wl,-rpath-link," + str(directory) for directory in directories]]
     cross.logged(command, log, dict(os.environ), cwd=work)
-    inputs = support.link_inputs(log, settings, work)
-    selected = [cross.resolved(Path(settings["runtime"]) / "adalib/libgnat.a")]
+    empty_archives = {}
+    inputs = support.link_inputs(log, settings, work, empty_archives=empty_archives)
+    selected = [cross.resolved(Path(settings["runtime"]) / "adalib" / name)
+                for name in (["libgnat.a", "libgnarl.a"] if tasking else ["libgnat.a"])]
     for archive in selected:
         cross.require(str(archive) in inputs, f"static runtime archive absent from real trace: {archive}")
     cross.require(not any(Path(path).name.startswith(("libgnat", "libgnarl"))
@@ -44,6 +49,7 @@ def qualify(settings, work):
     evidence = support.executable_evidence(executable, settings)
     evidence.update(command=command, compiler=cross.run([settings["ada"], "--version"]),
                     runtime=settings["runtime"], link_inputs=inputs,
+                    empty_compatibility_archives=empty_archives, tasking=tasking,
                     selected_archives={str(path): cross.digest(path) for path in selected},
                     executable_sha256=cross.digest(executable), execution="NOT RUN")
     (work / "static-runtime-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")

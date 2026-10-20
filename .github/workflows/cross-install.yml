@@ -48,6 +48,11 @@ jobs:
             /tmp/imgproc-debian-reference/packages/*.txt
             /tmp/imgproc-debian-reference/static-runtime-control/*.log
             /tmp/imgproc-debian-reference/static-runtime-control/*.json
+            /tmp/imgproc-debian-reference/tasking-runtime-control/*.log
+            /tmp/imgproc-debian-reference/tasking-runtime-control/*.json
+            /tmp/imgproc-debian-reference/compatibility-archive-control/*.log
+            /tmp/imgproc-debian-reference/compatibility-archive-control/*.json
+            /tmp/imgproc-debian-reference/compatibility-archive-control/*.pc
             /tmp/opencv-imgproc-evidence-*/*.json
             /tmp/opencv-imgproc-evidence-*/*.txt
             /tmp/opencv-imgproc-evidence-*/*.log
