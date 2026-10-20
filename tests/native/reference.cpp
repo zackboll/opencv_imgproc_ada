@@ -2,6 +2,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/utility.hpp>
 #include <cstdint>
+#include <cstdio>
 
 extern "C" int32_t imgproc_test_gradient_canny_reference(
     const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
@@ -42,14 +43,28 @@ extern "C" int32_t imgproc_test_select_ipp(int32_t requested) noexcept
     } catch (...) { return -1; }
 }
 
-// Test-only global setting. Isolated AUnit cases restore the previous count,
-// including exception paths; no production imgproc code changes this setting.
+// Test-only global setting, used exclusively in an isolated test process.
+// A reported count is not necessarily a restorable preference (e.g. GCD).
+// No production imgproc code changes thread settings.
 extern "C" int32_t imgproc_test_threads(int32_t requested) noexcept
 {
     try {
         if (requested >= 0) cv::setNumThreads(requested);
-        return cv::getNumThreads();
-    } catch (...) { return -1; }
+        const int observed = cv::getNumThreads();
+        const auto& info = cv::getBuildInformation();
+        const auto start = info.find("Parallel framework:");
+        const auto line = start == cv::String::npos ? cv::String("unreported")
+            : info.substr(start, info.find('\n', start) - start);
+        std::printf("CCL threads: runtime=%s requested=%d observed=%d "
+                    "compiled=%s; active backend=not queried\n",
+                    cv::getVersionString().c_str(), requested, observed,
+                    line.c_str());
+        std::fflush(stdout);
+        return observed;
+    } catch (...) {
+        std::fputs("CCL thread helper ERROR\n", stderr);
+        return -1;
+    }
 }
 
 // Independent numeric native selectors, never production bayer_code().

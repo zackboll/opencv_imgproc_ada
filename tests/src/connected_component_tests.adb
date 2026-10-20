@@ -1,3 +1,5 @@
+with Ada.Command_Line;
+with Ada.Text_IO;
 with Ada.Unchecked_Conversion;
 with AUnit.Assertions;
 with AUnit.Test_Caller;
@@ -13,6 +15,7 @@ with OpenCV.Image_Processing;
 with OpenCV.Image_Processing.Internal.C_API;
 with System;
 with Native_Reference;
+with GNAT.OS_Lib;
 
 package body Connected_Component_Tests is
 
@@ -1054,88 +1057,228 @@ package body Connected_Component_Tests is
    procedure Legacy_Parallel_Safety (Test : in out Fixture) is
       pragma Unreferenced (Test);
       use OpenCV.Image_Processing;
-      Previous      : constant Interfaces.Integer_32 := Native_Threads (-1);
-      Selected      : Interfaces.Integer_32;
-      Source        : OpenCV.Core.Mat :=
-        OpenCV.Core.Create (17, 6, (OpenCV.Core.UInt8, 1));
-      Parent        : OpenCV.Core.Mat :=
-        OpenCV.Core.Create (19, 8, (OpenCV.Core.Int32, 1));
-      Labels, Alias : OpenCV.Core.Mat;
-      Components    : Connected_Component_Set;
-      procedure Attempt is
+      Legacy     : constant Boolean := Native_Reference.Version / 100 = 401;
+      Selected   : Interfaces.Integer_32;
+      Odd_Rows   : Positive := 17;
+      Rejections : Natural := 0;
+
+      procedure Check (Rows : Positive; Threads : Interfaces.Integer_32) is
+         Source        : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (Rows, 6, (OpenCV.Core.UInt8, 1));
+         Parent        : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (Rows + 2, 8, (OpenCV.Core.Int32, 1));
+         Labels, Alias : OpenCV.Core.Mat;
+         Components    : Connected_Component_Set;
+         Gate          : constant Boolean :=
+           Legacy
+           and then Rows mod 2 = 1
+           and then Threads > 1
+           and then Rows / Integer (Threads) >= 2;
       begin
-         Connected_Components_With_Stats (Source, Labels, Components);
-      end Attempt;
-   begin
-      Clear (Source);
-      Set (Source, 8, 3);
-      OpenCV.Core.Set_To (Parent, (others => 37.0));
-      Labels := Parent.Region ((X => 1, Y => 1, Width => 6, Height => 17));
-      Alias := Labels;
-      Selected := Native_Threads (2);
-      AUnit.Assertions.Assert
-        (Selected = 2, "controlled parallel thread gate");
-      for Connectivity in Pixel_Connectivity loop
-         if Native_Reference.Version / 100 = 401 then
-            declare
-               procedure Connected is
+         Ada.Text_IO.Put_Line
+           ("CCL preflight: rows="
+            & Rows'Image
+            & " effective="
+            & Threads'Image
+            & " unsafe_4.1="
+            & Gate'Image);
+         Clear (Source);
+         Set (Source, Rows / 2, 3);
+         for Connectivity in Pixel_Connectivity loop
+            OpenCV.Core.Set_To (Parent, (others => 37.0));
+            Labels :=
+              Parent.Region
+                ((X      => 1,
+                  Y      => 1,
+                  Width  => 6,
+                  Height => OpenCV.Size_Coordinate (Rows)));
+            Alias := Labels;
+            if Gate then
+               declare
+                  procedure Connected is
+                  begin
+                     Connected_Components_With_Stats
+                       (Source, Labels, Components, Connectivity);
+                  end Connected;
                begin
-                  Connected_Components_With_Stats
-                    (Source, Labels, Components, Connectivity);
-               end Connected;
-            begin
-               Assert_Raises
-                 (Connected'Access, "legacy odd parallel 4.1 gate");
-            end;
-            for R in 0 .. 18 loop
+                  Assert_Raises
+                    (Connected'Access, "effective odd parallel 4.1 gate");
+               end;
+               Rejections := Rejections + 1;
+            else
+               Connected_Components_With_Stats
+                 (Source, Labels, Components, Connectivity);
+               AUnit.Assertions.Assert
+                 (Component_Count (Components) = 1,
+                  "safe native labeling component count");
+               Assert_Component
+                 (Components,
+                  Label_At (Labels, Rows / 2, 3),
+                  3,
+                  OpenCV.Point_Coordinate (Rows / 2),
+                  1,
+                  1,
+                  1,
+                  3.0,
+                  OpenCV.Float64_Value (Rows / 2),
+                  "safe component");
+            end if;
+            for R in 0 .. Rows + 1 loop
                for C in 0 .. 7 loop
-                  AUnit.Assertions.Assert
-                    (OpenCV.Core.Int32_Access.Get (Parent, R, C) = 37,
-                     "rejection preserves previous Region parent storage");
+                  if Gate
+                    or else R = 0
+                    or else R = Rows + 1
+                    or else C = 0
+                    or else C = 7
+                  then
+                     AUnit.Assertions.Assert
+                       (OpenCV.Core.Int32_Access.Get (Parent, R, C) = 37,
+                        "preserved Region parent or rejected destination");
+                  else
+                     declare
+                        Value : constant Component_Label :=
+                          Label_At (Labels, R - 1, C - 1);
+                     begin
+                        AUnit.Assertions.Assert
+                          (Label_At (Parent, R, C) = Value
+                           and then Label_At (Alias, R - 1, C - 1) = Value
+                           and then (if R - 1 = Rows / 2 and then C = 4
+                                     then Value > 0
+                                     else Value = 0),
+                           "correct labels reuse Region and alias storage");
+                     end;
+                  end if;
                end loop;
             end loop;
+            for R in 0 .. Rows - 1 loop
+               for C in 0 .. 5 loop
+                  AUnit.Assertions.Assert
+                    (OpenCV.Core.UInt8_Access.Get (Source, R, C)
+                     = (if R = Rows / 2 and then C = 3 then 255 else 0),
+                     "native labeling or rejection preserves source");
+                  if Gate then
+                     AUnit.Assertions.Assert
+                       (Label_At (Labels, R, C) = 37
+                        and then Label_At (Alias, R, C) = 37,
+                        "rejection preserves Labels and shallow alias");
+                  end if;
+               end loop;
+            end loop;
+            --  A mutation witnesses retained storage identity, not just
+            --  equality of independently allocated output values.
+            OpenCV.Core.Int32_Access.Set (Labels, Rows / 2, 3, 59);
             AUnit.Assertions.Assert
-              (Label_At (Labels, 8, 3) = 37
-               and then Label_At (Alias, 8, 3) = 37,
-               "rejection preserves Labels and shallow alias");
-         else
-            Connected_Components_With_Stats
-              (Source, Labels, Components, Connectivity);
-            AUnit.Assertions.Assert
-              (Component_Count (Components) = 1, "newer odd parallel works");
-         end if;
-      end loop;
-      for R in 0 .. 16 loop
-         for C in 0 .. 5 loop
-            AUnit.Assertions.Assert
-              (OpenCV.Core.UInt8_Access.Get (Source, R, C)
-               = (if R = 8 and then C = 3 then 255 else 0),
-               "parallel preflight preserves source");
+              (Label_At (Alias, Rows / 2, 3) = 59
+               and then Label_At (Parent, Rows / 2 + 1, 4) = 59,
+               "destination still shares original Region storage");
+            if Gate then
+               --  Recover using the SAME source/destination/alias storage.
+               --  Trim to even height; the foreground remains in the view.
+               declare
+                  Even_Source : constant OpenCV.Core.Mat :=
+                    Source.Region
+                      ((X      => 0,
+                        Y      => 0,
+                        Width  => 6,
+                        Height => OpenCV.Size_Coordinate (Rows - 1)));
+               begin
+                  Labels :=
+                    Parent.Region
+                      ((X      => 1,
+                        Y      => 1,
+                        Width  => 6,
+                        Height => OpenCV.Size_Coordinate (Rows - 1)));
+                  Connected_Components_With_Stats
+                    (Even_Source, Labels, Components, Connectivity);
+                  AUnit.Assertions.Assert
+                    (Component_Count (Components) = 1,
+                     "even recovery after rejected call");
+                  for R in 0 .. Rows - 2 loop
+                     for C in 0 .. 5 loop
+                        AUnit.Assertions.Assert
+                          (Label_At (Labels, R, C) = Label_At (Alias, R, C)
+                           and then Label_At (Parent, R + 1, C + 1)
+                                    = Label_At (Labels, R, C)
+                           and then (if R = Rows / 2 and then C = 3
+                                     then Label_At (Labels, R, C) > 0
+                                     else Label_At (Labels, R, C) = 0),
+                           "recovery labels update original aliases");
+                     end loop;
+                  end loop;
+               end;
+            end if;
          end loop;
-      end loop;
-      Selected := Native_Threads (1);
-      Attempt;
-      AUnit.Assertions.Assert
-        (Component_Count (Components) = 1, "odd serial recovery");
-      Source := OpenCV.Core.Create (16, 6, (OpenCV.Core.UInt8, 1));
-      Clear (Source);
-      Set (Source, 8, 3);
-      Selected := Native_Threads (2);
-      for Connectivity in Pixel_Connectivity loop
-         Connected_Components_With_Stats
-           (Source, Labels, Components, Connectivity);
+      end Check;
+
+      function Observe
+        (Requested : Interfaces.Integer_32) return Interfaces.Integer_32
+      is
+         Count : constant Interfaces.Integer_32 := Native_Threads (Requested);
+      begin
          AUnit.Assertions.Assert
-           (Component_Count (Components) = 1, "even parallel recovery");
-      end loop;
-      Selected := Native_Threads (Previous);
-   exception
-      when others =>
-         Selected := Native_Threads (Previous);
-         raise;
+           (Count >= 0, "native thread helper must not fail");
+         return Count;
+      end Observe;
+
+   begin
+      if Ada.Command_Line.Argument_Count /= 1
+        or else Ada.Command_Line.Argument (1)
+                /= "connected-components-thread-child"
+      then
+         declare
+            Args    : GNAT.OS_Lib.Argument_List :=
+              (1 => new String'("connected-components-thread-child"));
+            Success : Boolean;
+         begin
+            GNAT.OS_Lib.Spawn (Ada.Command_Line.Command_Name, Args, Success);
+            GNAT.OS_Lib.Free (Args (1));
+            AUnit.Assertions.Assert
+              (Success, "isolated native-thread safety case must pass");
+         end;
+         return;
+      end if;
+
+      --  getNumThreads is a reported effective limit, not a saved preference.
+      --  Never attempt to restore it; this process exits after this case.
+      Selected := Observe (-1);
+      Selected := Observe (2);
+      if Selected > 1 then
+         --  Bound BEFORE multiplying/converting. At most 8193 x 6 pixels;
+         --  this covers GCD counts without overflow or excessive allocation.
+         AUnit.Assertions.Assert
+           (Selected <= 4096, "effective thread count exceeds test budget");
+         Odd_Rows := 2 * Integer (Selected) + 1;
+      end if;
+      Check (Odd_Rows, Selected);
+      if Legacy and then Selected > 1 then
+         AUnit.Assertions.Assert
+           (Rejections = 2, "both 4.1 connectivities rejected");
+         Ada.Text_IO.Put_Line ("CCL 4.1 parallel rejection: EXERCISED");
+      else
+         Ada.Text_IO.Put_Line
+           ("CCL 4.1 parallel rejection: NOT EXERCISED on this runtime"
+            & " / effective thread configuration");
+      end if;
+      --  A request for one need not be honored either. Reevaluate the SAME
+      --  odd geometry, then recover on independently safe even geometry.
+      Selected := Observe (1);
+      Check (Odd_Rows, Selected);
+      Check (16, Selected);
+      Selected := Observe (2);
+      Check (16, Selected);
    end Legacy_Parallel_Safety;
 
-   function Suite return AUnit.Test_Suites.Access_Test_Suite is
+   function Suite
+     (Only_Parallel : Boolean := False)
+      return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      if Only_Parallel then
+         Result.Add_Test
+           (Caller.Create
+              ("Connected components legacy parallel safety and recovery",
+               Legacy_Parallel_Safety'Access));
+         return Result'Access;
+      end if;
       Result.Add_Test
         (Caller.Create
            ("Connected components basic statistics",

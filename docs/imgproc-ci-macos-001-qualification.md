@@ -89,3 +89,66 @@ controls require exact-head CI; Linux local results do not prove macOS linking.
 Final tested/pushed/PR SHA, tree, hosted run links and disposition are recorded
 in the corrective PR after CI. Stop at independent review: no merge, release,
 retagging, force-push or index PR is authorized.
+
+## R1: portable native-thread test (reviewed head cfcc517)
+
+The original test assumed `setNumThreads(2)` implies `getNumThreads() == 2`,
+and attempted to restore a preference from a reported count. Neither is a
+portable public contract. Exact-tag `parallel.cpp` and `utility.hpp` were
+inspected for OpenCV 4.1.0, 4.6.0, 4.9.0, 4.10.0 and 5.0.0:
+
+- `utility.hpp` documents backend-dependent counts and GCD support only for
+  nonpositive requests. Its historical GCD “512” text is not the implementation:
+  all five inspected `parallel.cpp` versions return CPU count for GCD, and mark
+  positive-limit setting unsupported. Later versions can delegate to a runtime
+  parallel API. A compiled framework is not proof of active backend selection.
+- OpenCV 4.1.0 `connectedcomponents.cpp:3933-3939` dispatches parallel labeling
+  when a framework exists, reported threads exceed one, and rows/threads >= 2.
+  Imgproc's existing safety preflight conservatively uses the latter two
+  conditions plus odd height, failing closed without the private backend query.
+  The test oracle follows this actual binding guard, not a requested count.
+
+Sources are the exact tags under
+`https://github.com/opencv/opencv/blob/<version>/modules/core/src/parallel.cpp`,
+`modules/core/include/opencv2/core/utility.hpp`, and the 4.1.0
+`modules/imgproc/src/connectedcomponents.cpp` dispatch cited above.
+
+The existing AUnit registration remains in the 1178-case suite. It spawns a
+single-case child of the same executable and asserts successful completion.
+Only that child tunes threads; its exit discards all changed native state.
+The parent never attempts to reconstruct a hidden preference. A test-only suite
+selector and optional Suite parameter support isolation, not skipped coverage.
+
+Diagnostics report runtime version, request, reported count and the compiled
+parallel-framework line from `getBuildInformation()`. Active backend is
+explicitly **not queried**, rather than inferred from the provider. Negative
+helper/error results fail the test. Geometry is bounded before multiplication:
+for a count above one, odd rows = 2 * count + 1 (count <= 4096); otherwise the
+ordinary odd case takes the safe branch and reports rejection unexercised.
+Both connectivities check the real 4.1 gate; newer versions must label the odd
+case successfully. After requesting one, the same geometry is reevaluated using
+the newly reported count, never assumed serial. Even-height execution always
+checks recovery. Rejection checks all source/destination/Region/alias values;
+success checks count, statistics, all labels, parent exterior and retained
+storage through mutation. Rejected storage is reused by an even view to check
+immediate recovery. The registration count is not increased by child execution.
+
+The reviewed MacPorts artifact established runtime 4.9.0 and a failed exact-two
+assumption, but did not measure a backend or effective count. R1 qualification
+must supply those diagnostics and pass full AUnit, relocatable-library linking,
+GPRinstall, installed and relocated consumers before MacPorts is qualified.
+Results and exact corrective SHA/tree are recorded in PR #77 after verification.
+The root GPR SDK correction and all production sources/manifests are unchanged
+by R1. No claim of AdaCore or production AArch64 cross-runtime support follows.
+
+R1 initial local strict-development results: 1178/1178 on each of 4.1.0,
+4.6.0, 4.10.0 and 5.0.0, zero failed assertions or unexpected errors. The 4.1.0
+pthread build reports requested=2/observed=2, rows=5, unsafe_4.1=TRUE; both
+connectivity rejection assertions and immediate even-view recovery pass.
+4.6.0 and 5.0.0 report compiled pthreads; system 4.10.0 reports compiled TBB.
+All explicitly leave active backend unqueried. GNATformat, 79-column checks
+and warning-free GNAT 16.1 development compilation pass.
+`tests/qualify_native_thread_versions.sh` repeats the source-prefix matrix in
+isolated project copies through the tests Alire environment; native loader
+evidence ensures the intended version is used. MacPorts/hosted results require
+the final pushed head and are not inferred from these local results.
