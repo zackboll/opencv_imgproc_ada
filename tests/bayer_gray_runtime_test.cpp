@@ -5,7 +5,12 @@
 #include <opencv2/imgproc.hpp>
 #include "opencv_core_module_bridge.hpp"
 // Load native headers with their real version first; select only shim guards.
-#ifdef OPENCV_IMGPROC_TEST_LEGACY_BAYER_GRAY
+#if defined(OPENCV_IMGPROC_TEST_LEGACY_BAYER_GRAY) && \
+    (CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && \
+     (CV_VERSION_MINOR > 5 || \
+      (CV_VERSION_MINOR == 5 && CV_VERSION_REVISION >= 5))))
+// Already-old headers exercise the real rejection branch without pretending
+// to provide unrelated newer APIs (for example the 4.5.2 CCL enum aliases).
 #undef CV_VERSION_MAJOR
 #undef CV_VERSION_MINOR
 #undef CV_VERSION_REVISION

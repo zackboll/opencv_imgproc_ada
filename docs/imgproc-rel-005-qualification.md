@@ -112,6 +112,15 @@ without introducing a self-referential documentation commit.
 
 ## Qualification evidence and final-head handoff
 
+The initial four-version campaign retained non-system-prefix loader failures;
+the release helper now sets the selected pkg-config library directory explicitly
+for standalone probes. A subsequent 4.1 historical-Bayer control failed because
+it spoofed 4.5.4 even over real 4.1 headers, selecting unrelated unavailable CCL
+enum aliases. The test-only spoof now applies only to newer headers: real old
+headers already execute the rejection branch. Neither correction changes any
+production source or vendor-exercised input. Earlier candidate run identities
+remain evidence of those attempts, not final-head qualification.
+
 Evidence root: `/home/zboll/.cache/imgproc-rel-005`. The source PR handoff and
 retained evidence record final commit/tree, local/fetched-remote/PR-head agreement,
 clean status, exact-head hosted run URLs, attempts, individual job conclusions,

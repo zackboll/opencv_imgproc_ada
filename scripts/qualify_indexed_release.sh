@@ -6,8 +6,14 @@ root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
 mkdir -p obj/release-qualification
 logs="$root/obj/release-qualification"
+package=${OPENCV_TEST_PACKAGE:-opencv4}
+# Non-system compatibility installations need an explicit runtime search path
+# for standalone sanitizer probes as well as the Ada test executable.
+library=$(pkg-config --variable=libdir "$package")
+LD_LIBRARY_PATH="$library${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH
 alr --version
-pkg-config --modversion "${OPENCV_TEST_PACKAGE:-opencv4}"
+pkg-config --modversion "$package"
 alr -n index --update-all
 alr -n settings --set dependencies.shared false
 alr -n update
