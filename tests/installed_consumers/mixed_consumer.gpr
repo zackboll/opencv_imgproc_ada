@@ -12,9 +12,10 @@ project Mixed_Consumer is
    for Create_Missing_Dirs use "True";
    package Compiler is
       for Default_Switches ("Ada") use ("-gnat2022", "-gnatwa", "-gnatwe");
-      for Driver ("C++") use "/usr/bin/g++";
+       for Driver ("C++") use external ("CONSUMER_CXX", "/usr/bin/g++");
       for Default_Switches ("C++") use
-        ("-std=c++17", "-Wall", "-Wextra", "-Werror", "-I/usr/include/opencv4");
+        ("-std=c++17", "-Wall", "-Wextra", "-Werror",
+         external ("CONSUMER_OPENCV_INCLUDE", "-I/usr/include/opencv4"));
    end Compiler;
    package Linker is
       for Linker_Options use ("-lopencv_imgproc", "-lopencv_core", "-lstdc++");

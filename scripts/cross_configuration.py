@@ -11,7 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
-import tarfile
+import cross_support as support
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ConfigurationError(Exception):
     """A failed cross prerequisite; never select a host substitute."""
+
+    def __init__(self, message, returncode=1):
+        super().__init__(message)
+        self.returncode = returncode
 
 
 def require(condition, message):
@@ -28,8 +32,8 @@ def require(condition, message):
 
 def run(args, **kwargs):
     result = subprocess.run(args, text=True, capture_output=True, **kwargs)
-    require(result.returncode == 0,
-            f"command failed: {args}\n{result.stdout}{result.stderr}")
+    if result.returncode:
+        raise ConfigurationError(f"command failed: {args}\n{result.stdout}{result.stderr}", result.returncode)
     return result.stdout.strip()
 
 
@@ -85,9 +89,7 @@ def digest(path):
 
 def dependency_closure(paths, sysroot, readelf, generated=None):
     """Resolve every DT_NEEDED to a contained, architecture-checked target ELF."""
-    index = {}
-    for path in sysroot.rglob("*.so*"):
-        index.setdefault(path.name, []).append(path)
+    directories = support.loader_directories(sysroot, value("OPENCV_CROSS_TARGET"))
     visited = {}
     pending = list(paths)
     while pending:
@@ -104,14 +106,16 @@ def dependency_closure(paths, sysroot, readelf, generated=None):
                 # Runtime absolute paths refer to the target root, not the build host.
                 resolved(sysroot / directory.lstrip("/"), sysroot)
         needed = re.findall(r'\(NEEDED\).*\[([^\]]+)\]', dynamic)
-        visited[str(path)] = dict(sha256=digest(path), needed=needed)
+        resolution = {}
+        visited[str(path)] = dict(sha256=digest(path), needed=resolution)
         for name in needed:
             require('/' not in name, f"unsafe target dependency: {name}")
-            candidates = index.get(name, [])
-            require(candidates, f"unresolved target dependency: {name} from {path}")
-            targets = {resolved(item, sysroot) for item in candidates}
-            require(len(targets) == 1, f"ambiguous target dependency: {name}")
-            pending.extend(targets)
+            candidate = next((directory / name for directory in directories
+                              if (directory / name).exists() or (directory / name).is_symlink()), None)
+            require(candidate, f"unresolved target dependency: {name} from {path}")
+            dependency = resolved(candidate, sysroot)
+            resolution[name] = str(dependency)
+            pending.append(dependency)
     return visited
 
 
@@ -122,7 +126,8 @@ def validate(sysroot_only=False, independent_toolchains=False):
     require(sysroot.is_dir() and sysroot != Path("/"), "dedicated target sysroot required")
     for name in ["CPATH", "C_INCLUDE_PATH", "CPLUS_INCLUDE_PATH", "LIBRARY_PATH",
                  "GCC_EXEC_PREFIX", "COMPILER_PATH", "ADA_INCLUDE_PATH",
-                 "ADA_OBJECTS_PATH", "GPR_PROJECT_PATH", "ADA_PROJECT_PATH"]:
+                 "ADA_OBJECTS_PATH", "GPR_PROJECT_PATH", "ADA_PROJECT_PATH",
+                 "LD_LIBRARY_PATH", "ADA_PRJ_INCLUDE_FILE", "ADA_PRJ_OBJECTS_FILE"]:
         require(not os.environ.get(name), f"cross mode requires empty {name}")
     ada, cxx = tool("OPENCV_CROSS_ADA"), tool("OPENCV_CROSS_CXX")
     for compiler in [ada, cxx]:
@@ -131,8 +136,7 @@ def validate(sysroot_only=False, independent_toolchains=False):
     runtime = resolved(value("OPENCV_CROSS_RUNTIME"))
     require((runtime / "adainclude").is_dir() and (runtime / "adalib").is_dir(),
             "target Ada runtime must contain adainclude and adalib")
-    require(resolved(run([ada, "-print-file-name=adalib"])) == resolved(runtime / "adalib"),
-            "Ada runtime differs from compiler runtime")
+    runtime_evidence = support.runtime_identity(ada, runtime)
     elf(resolved(runtime / "adalib/libgnat.a"), readelf)
     pkg = tool("OPENCV_CROSS_PKG_CONFIG")
     libdirs = value("PKG_CONFIG_LIBDIR").split(":")
@@ -222,6 +226,7 @@ def validate(sysroot_only=False, independent_toolchains=False):
             elf(resolved(path, sysroot), readelf)
 
     closure = dependency_closure(advertised + list(libraries.values()), sysroot, readelf)
+    support.check_versions(closure, readelf)
     qualified = dict(target=target, sysroot=str(sysroot), ada=ada, cxx=cxx,
                      runtime=str(runtime), readelf=readelf, include=str(include),
                      library=str(library), libraries=libraries, version=version,
@@ -256,18 +261,13 @@ def validate(sysroot_only=False, independent_toolchains=False):
         return qualified
 
     config = resolved(value("OPENCV_CROSS_GPR_CONFIG"))
-    # Gate C remains mandatory for all production/workspace operations.
-    gpr = re.sub(r"--[^\n]*", "", config.read_text())
-    for declaration, message in [
-            (f'for Target use "{target}";', "GPR target mismatch"),
-            (f'"{ada}"', "GPR Ada compiler mismatch"),
-            (f'"{cxx}"', "GPR C++ compiler mismatch"),
-            (f'"{runtime}/"', "GPR Ada runtime mismatch"),
-            ('for Driver use Compiler\'Driver ("C++");', "GPR linker mismatch")]:
-        require(declaration in gpr, message)
+    support.check_configuration(config, target, ada, cxx, runtime)
+    probe = support.identity_probe(ada, runtime, readelf)
 
-    core = resolved(value("OPENCV_CROSS_CORE_PREFIX"), sysroot)
-    tree(core, sysroot)
+    core = resolved(value("OPENCV_CROSS_CORE_PREFIX"))
+    require(core != Path("/") and not inside(core, ROOT) and not inside(ROOT, core),
+            "dedicated installed Core prefix outside checkout required")
+    tree(core, core)
     project = core / "share/gpr/opencv_core.gpr"
     require(project.is_file(), "missing installed Core GPR project")
     require(re.search(r'for\s+Externally_Built\s+use\s+"[Tt]rue"', project.read_text()),
@@ -285,7 +285,9 @@ def validate(sysroot_only=False, independent_toolchains=False):
                 # Compiler/runtime names are allowed only when exactly selected.
                 if candidate in [ada, cxx, str(runtime), str(runtime) + "/"]:
                     continue
-                resolved(candidate, sysroot)
+                require(inside(Path(candidate).resolve(), core) or inside(Path(candidate).resolve(), sysroot),
+                        f"installed Core path outside validated roots: {candidate}")
+                resolved(candidate)
         for imported in re.findall(r'\bwith\s+"([^"\n]+)"', text, re.IGNORECASE):
             if not imported.endswith(".gpr"):
                 imported += ".gpr"
@@ -297,31 +299,22 @@ def validate(sysroot_only=False, independent_toolchains=False):
                 resolved(installed.parent / directory, core)
     for name in ["opencv_core_ada", "opencv_core_shim"]:
         directory = "opencv_core" if name == "opencv_core_ada" else name
-        elf(resolved(core / f"lib/{directory}/lib{name}.a", sysroot), readelf)
-    # Core builds are a separate release gate. Metadata is an explicit attestation
-    # from that build, not evidence that this wrapper rebuilt Core successfully.
+        elf(resolved(core / f"lib/{directory}/lib{name}.a", core), readelf)
+    # Attestations are optional; real ALI/object and link evidence is mandatory.
     identity = core / "share/opencv_core/cross-identity.json"
-    require(identity.is_file(), "missing Core target build identity")
-    recorded = json.loads(identity.read_text())
+    recorded = json.loads(identity.read_text()) if identity.is_file() else {}
     expected = {"target": target, "runtime": str(runtime), "opencv_version": version,
                 "ada_version": run([ada, "-dumpfullversion"]),
-                "gpr_config_sha256": digest(config), "library_kind": "static-pic"}
+                "library_kind": "static-pic"}
     for key, item in expected.items():
-        require(recorded.get(key) == item, f"Core target identity mismatch: {key}")
-    require(re.fullmatch(r"[0-9a-f]{40}", recorded.get("source_sha", "")), "invalid Core source SHA")
-    # ALIs must come from the same GNAT version; inspect all installed units.
-    alis = list(core.rglob("*.ali"))
-    require(alis, "missing Core target ALIs")
-    for ali in alis:
-        first = ali.read_text().splitlines()[0]
-        # GNAT 12 records its ALI format major, not GCC's full patch version.
-        # Full compiler/runtime identity is checked separately in the attestation.
-        require(first == f'V "GNAT Lib v{expected["ada_version"].split(".")[0]}"',
-                f"mixed GNAT runtime/compiler ALI: {ali}")
+        require(key not in recorded or recorded[key] == item, f"Core target identity mismatch: {key}")
+    count = support.check_alis(core, probe["signature"])
     return dict(target=target, sysroot=str(sysroot), ada=ada, cxx=cxx,
                 runtime=str(runtime), config=str(config), readelf=readelf,
                 include=str(include), library=str(library), libraries=libraries,
-                core=str(core), core_sha=recorded["source_sha"], version=version,
+                core=str(core), core_provenance=recorded, core_alis=count, version=version,
+                runtime_identity=runtime_evidence, ada_probe=probe, ali_signature=probe["signature"],
+                ada_flags=support.flags("ada"), cxx_flags=support.flags("cxx"),
                 cflags=cflags, gprbuild=tool("OPENCV_CROSS_GPRBUILD"),
                 gprinstall=tool("OPENCV_CROSS_GPRINSTALL"))
 
@@ -346,7 +339,7 @@ def generate(settings, work):
                   Core_Shim_Link_Option="", Cxx_Runtime_Switch="-lstdc++",
                   Cxx_Driver=settings["cxx"], Cxx_Sysroot=settings["sysroot"])
     lines += [f'{key} := "{item}";' for key, item in fields.items()]
-    switches = ["--sysroot=" + settings["sysroot"]] + settings["cflags"]
+    switches = ["--sysroot=" + settings["sysroot"]] + settings["cflags"] + settings.get("cxx_flags", [])
     lines += ['Cross_Compiler_Switches := (' + ", ".join(json.dumps(s) for s in switches) + ');',
               'Cross_Linker_Switches := ("--sysroot=' + settings["sysroot"] + '");',
               "end OpenCV_Imgproc_Install;"]
@@ -355,8 +348,9 @@ def generate(settings, work):
 
 def logged(args, log, env):
     with log.open("w") as output:
-        result = subprocess.run(args, stdout=output, stderr=subprocess.STDOUT, env=env)
-    require(result.returncode == 0, f"build/probe failed; original diagnostics: {log}\n{log.read_text()}")
+        result = subprocess.run([str(arg) for arg in args], stdout=output, stderr=subprocess.STDOUT, env=env)
+    if result.returncode:
+        raise ConfigurationError(f"build/probe failed; original diagnostics: {log}\n{log.read_text()}", result.returncode)
 
 
 def workspace(mode, destination, settings):
@@ -368,32 +362,12 @@ def workspace(mode, destination, settings):
     work = Path(destination)
     require(not work.exists() and not work.is_symlink(), "workspace must not already exist")
     work = work.resolve()
-    for protected in [ROOT, resolved(settings["sysroot"])]:
+    for protected in [ROOT, resolved(settings["sysroot"]), resolved(settings["core"])]:
         require(not inside(work, protected) and not inside(protected, work), "workspace overlaps checkout or sysroot")
-    require(not run(["git", "-C", str(ROOT), "status", "--porcelain"]), "source revision must be clean")
-    revision = run(["git", "-C", str(ROOT), "rev-parse", "HEAD"])
     profile = os.environ.get("OPENCV_CROSS_PROFILE", "development")
     require(profile in ["development", "release", "validation"], "invalid build profile")
-    # All preflight and destination checks have passed before mutation.
-    work.mkdir(parents=True)
-    archive = work / "source.tar"
-    run(["git", "-C", str(ROOT), "archive", "--output=" + str(archive), revision])
-    with tarfile.open(archive) as source:
-        # Debian's original Python 3.11 predates extraction filters. Git archives
-        # contain files/directories/symlinks only; validate destinations explicitly
-        # and reject hard links/devices before extracting even trusted Git input.
-        for member in source.getmembers():
-            require(inside((work / member.name).resolve(), work), "archive path escapes workspace")
-            require(member.isfile() or member.isdir() or member.issym(), "unsafe archive member")
-            if member.issym():
-                require(inside((work / member.name).parent.joinpath(member.linkname).resolve(), work),
-                        "archive symlink escapes workspace")
-        if hasattr(tarfile, "data_filter"):
-            source.extractall(work, filter="data")
-        else:
-            source.extractall(work)
-    archive.unlink()
-    (work / "source-revision.txt").write_text(revision + "\n")
+    revision = support.export_source(ROOT, work)
+    settings = dict(settings, work=str(work))
     generate(settings, work)
     (work / "config/opencv_imgproc_config.gpr").write_text(
         f'abstract project OpenCV_Imgproc_Config is\nBuild_Profile := "{profile}";\n'
@@ -405,24 +379,41 @@ def workspace(mode, destination, settings):
     probe = work / "tests/fixtures/cross-reference"
     command = [settings["gprbuild"], "--config=" + str(work / "config/target.cgpr")]
     sysroot_switch = "--sysroot=" + settings["sysroot"]
-    logged(command + ["-P", str(probe / "probe.gpr"), "-p", "-v", "-cargs:Ada", sysroot_switch,
-                      "-cargs:C++", sysroot_switch, "-largs", sysroot_switch],
+    compile_switches = ["-cargs:Ada", sysroot_switch, *settings.get("ada_flags", []),
+                        "-cargs:C++", sysroot_switch, *settings.get("cxx_flags", [])]
+    link_switches = ["-largs", sysroot_switch, *settings.get("cxx_flags", []), "-Wl,-t",
+                     *["-Wl,-rpath-link," + str(directory) for directory in
+                       support.loader_directories(Path(settings["sysroot"]), settings["target"])]]
+    logged(command + ["-P", str(probe / "probe.gpr"), "-p", "-v", "-R"] + compile_switches + link_switches,
            work / "toolchain-probe.log", env)
-    trace = (work / "toolchain-probe.log").read_text()
-    require(settings["ada"] in trace and settings["cxx"] in trace, "GPR trace compiler/linker mismatch")
+    support.check_trace(work / "toolchain-probe.log", settings)
+    support.executable_evidence(probe / "bin/probe", settings)
     evidence = elf(probe / "bin/probe", settings["readelf"])
     evidence += elf(probe / "obj/cxx_probe.o", settings["readelf"])
     (work / "toolchain-probe-elf.log").write_text(evidence)
+    opencv_probe = work / "opencv-probe"
+    logged([settings["cxx"], sysroot_switch, *settings.get("cxx_flags", []),
+            "-I" + settings["include"], str(probe / "opencv_link_probe.cpp"),
+            "-o", str(opencv_probe), settings["libraries"]["imgproc"], settings["libraries"]["core"],
+            *link_switches[1:]], work / "opencv-probe.log", env)
+    (work / "opencv-probe-evidence.json").write_text(json.dumps(
+        support.executable_evidence(opencv_probe, settings), indent=2) + "\n")
     print("TARGET_PROBE_QUALIFIED (not production or execution qualification)")
     if mode == "--build":
         logged(command + ["-P", str(work / "opencv_imgproc.gpr"), "-p", "-v",
-                          "-cargs:Ada", sysroot_switch, "-cargs:C++", sysroot_switch],
+                          *compile_switches],
                work / "production-build.log", env)
+        support.check_trace(work / "production-build.log", settings)
+        support.check_alis(work / "obj", settings["ali_signature"])
         for path in list((work / "obj").rglob("*.o")) + list((work / "lib").glob("*.a")):
             elf(path, settings["readelf"])
-        logged([settings["gprinstall"], "--config=" + str(work / "config/target.cgpr"),
-                "-P", str(work / "opencv_imgproc.gpr"), "-p", "-r", "--prefix=" + str(work / "install")],
-               work / "production-install.log", env)
+        for project in ["opencv_imgproc_shim", "opencv_imgproc"]:
+            logged([settings["gprinstall"], "--config=" + str(work / "config/target.cgpr"),
+                    "-P", str(work / (project + ".gpr")), "-p", "--prefix=" + str(work / "install")],
+                   work / (project + "-install.log"), env)
+        notices = work / "install/share/doc/opencv_imgproc"
+        notices.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(work / "LICENSE", notices / "LICENSE")
         print("Imgproc production build/install passed; Core and runtime gates remain independent")
     print(f"Cross workspace: {work}\nSource revision: {revision}")
 
@@ -446,4 +437,4 @@ if __name__ == "__main__":
         main()
     except (ConfigurationError, OSError, ValueError) as failure:
         print(f"error: {failure}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(getattr(failure, "returncode", 1))

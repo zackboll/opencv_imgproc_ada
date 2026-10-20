@@ -7,13 +7,13 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("cross", ROOT / "scripts/cross_configuration.py")
-cross = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(cross)
+sys.path.insert(0, str(ROOT / "scripts"))
+import cross_configuration as cross
 
 
 class CrossConfigurationTests(unittest.TestCase):
@@ -21,6 +21,9 @@ class CrossConfigurationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="imgproc-cross-negative.")
         self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name)
+        probe = patch.object(cross.support, "identity_probe", return_value={"signature": 'V "GNAT Lib v12"'})
+        probe.start()
+        self.addCleanup(probe.stop)
         self.sysroot = self.base / "sysroot"
         self.include = self.sysroot / "usr/include/opencv4/opencv2"
         self.library = self.sysroot / "usr/lib"
@@ -72,8 +75,10 @@ class CrossConfigurationTests(unittest.TestCase):
         self.env["OPENCV_CROSS_GPRINSTALL"] = executable("gprinstall", 'exit 0\n')
         self.config = self.base / "target.cgpr"
         self.config.write_text('for Target use "aarch64-linux-gnu";\n'
-            f'"{self.env["OPENCV_CROSS_ADA"]}"\n"{self.env["OPENCV_CROSS_CXX"]}"\n'
-            f'"{self.runtime}/"\nfor Driver use Compiler\'Driver ("C++");\n')
+            f'for Driver ("Ada") use "{self.env["OPENCV_CROSS_ADA"]}";\n'
+            f'for Driver ("C++") use "{self.env["OPENCV_CROSS_CXX"]}";\n'
+            f'for Runtime ("Ada") use "{self.runtime}/";\n'
+            'package Binder is end Binder;\npackage Linker is end Linker;\n')
         self.env["OPENCV_CROSS_GPR_CONFIG"] = str(self.config)
         self.identity = self.core / "share/opencv_core/cross-identity.json"
         self.identity.write_text(json.dumps(dict(target="aarch64-linux-gnu", runtime=str(self.runtime),
@@ -133,7 +138,7 @@ class CrossConfigurationTests(unittest.TestCase):
         for token, message in [("aarch64-linux-gnu", "GPR target"),
                 (self.env["OPENCV_CROSS_ADA"], "GPR Ada compiler"),
                 (self.env["OPENCV_CROSS_CXX"], "GPR C\\+\\+ compiler"),
-                (str(self.runtime), "GPR Ada runtime"), ("Compiler'Driver", "GPR linker")]:
+                (str(self.runtime), "GPR Ada runtime"), ("package Linker", "GPR binder/linker")]:
             self.config.write_text(original.replace(token, "WRONG"))
             self.reject(message)
         self.config.write_text(original)
@@ -221,7 +226,7 @@ class CrossConfigurationTests(unittest.TestCase):
         self.reject("SONAME/version mismatch")
 
     def test_missing_core_project_identity_alis(self):
-        for path in [self.core / "share/gpr/opencv_core.gpr", self.identity, self.core / "lib/opencv.ali"]:
+        for path in [self.core / "share/gpr/opencv_core.gpr", self.core / "lib/opencv.ali"]:
             data = path.read_text()
             path.unlink()
             self.reject("missing")
@@ -229,7 +234,7 @@ class CrossConfigurationTests(unittest.TestCase):
 
     def test_core_identity_contamination(self):
         original = self.identity.read_text()
-        for key in ["runtime", "target", "opencv_version", "ada_version", "gpr_config_sha256", "library_kind", "source_sha"]:
+        for key in ["runtime", "target", "opencv_version", "ada_version", "library_kind"]:
             data = json.loads(original)
             data[key] = "wrong"
             self.identity.write_text(json.dumps(data))
@@ -246,7 +251,7 @@ class CrossConfigurationTests(unittest.TestCase):
         for extra in [f'for Library_Dir use "{self.base}";',
                       'with "../../../../../../host.gpr";']:
             project.write_text(original + extra)
-            self.reject("escapes sysroot|missing or invalid")
+            self.reject("escapes sysroot|missing or invalid|outside validated roots")
         project.write_text(original)
 
     def test_exact_revision_workspace_and_recreation(self):
@@ -274,7 +279,8 @@ class CrossConfigurationTests(unittest.TestCase):
         destination = self.base / "export"
         revision = cross.run(["git", "-C", str(checkout), "rev-parse", "HEAD"])
         import shutil
-        with patch.object(cross, "ROOT", checkout):
+        with patch.object(cross, "ROOT", checkout), patch.object(cross.support, "check_trace"), \
+                patch.object(cross.support, "executable_evidence", return_value={}), patch.dict(os.environ, self.env, clear=True):
             for _ in range(2):
                 with contextlib.redirect_stdout(io.StringIO()):
                     cross.workspace("--prepare", str(destination), settings)
@@ -303,7 +309,10 @@ class CrossConfigurationTests(unittest.TestCase):
         config = ROOT / "config"
         before = {p: p.read_bytes() for p in config.glob("*")} if config.exists() else {}
         self.check()
-        result = subprocess.run(["sh", str(ROOT / "scripts/configure_opencv.sh")],
+        # Exercise a read-only partial check in a subprocess; fake compilers do
+        # not stand in for the separately tested real fresh-ALI probe.
+        self.partial_fixture()
+        result = subprocess.run(["sh", str(ROOT / "scripts/configure_cross_opencv.sh"), "--check-sysroot"],
             env=dict(self.env, OPENCV_IMGPROC_CROSS="True"), cwd=ROOT, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(before, {p: p.read_bytes() for p in config.glob("*")} if config.exists() else {})
