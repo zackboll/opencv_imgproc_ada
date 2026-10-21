@@ -12,6 +12,8 @@ import json
 import os
 from pathlib import Path
 import re
+import selectors
+import signal
 import stat
 import subprocess
 import sys
@@ -48,18 +50,83 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def command(args, cwd=None, limit=TOTAL_LIMIT):
-    with tempfile.TemporaryFile() as errors, subprocess.Popen(
-            args, cwd=cwd, stdout=subprocess.PIPE, stderr=errors) as process:
+class CommandError(ValueError):
+    """Safe external-command diagnostics; never include arguments or raw output."""
+
+    def __init__(self, classification, stdout_bytes, stderr_bytes, status=None):
+        self.classification = classification
+        self.status = status
+        super().__init__(f'external command {classification}: status={status}, '
+                         f'stdout_bytes={stdout_bytes}, stderr_bytes={stderr_bytes}')
+
+
+def command(args, cwd=None, limit=TOTAL_LIMIT, timeout=120):
+    """POSIX bounded capture: one deadline for both pipes AND process exit.
+
+    Stderr is drained but not retained: raw tool diagnostics/arguments can contain
+    credentials. No temporary output file can grow without bound. A new session
+    lets failure cleanup kill descendants that inherited a pipe, even if their
+    immediate parent exited. Only a successful exit with complete EOF is returned.
+    """
+    require(type(limit) is int and 0 <= limit <= TOTAL_LIMIT, 'invalid command output limit')
+    require(isinstance(timeout, (int, float)) and 0 < timeout <= 120,
+            'invalid command deadline')
+    deadline = time.monotonic() + timeout
+    data, stderr_bytes = bytearray(), 0
+    with subprocess.Popen(args, cwd=cwd, stdin=subprocess.DEVNULL,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          start_new_session=True) as process:
+        succeeded = False
+
+        def failure(classification, status=None):
+            return CommandError(classification, len(data), stderr_bytes, status)
+
+        def remaining():
+            seconds = deadline - time.monotonic()
+            if seconds <= 0:
+                raise failure('timeout')
+            return seconds
+
         try:
-            data = process.stdout.read(limit + 1)
-            require(len(data) <= limit, 'command output exceeds limit')
-            status = process.wait(timeout=120)
-            require(status == 0, f'command failed ({status}): {args[:3]}')
-            return data
+            with selectors.DefaultSelector() as selector:
+                for stream in (process.stdout, process.stderr):
+                    os.set_blocking(stream.fileno(), False)
+                    selector.register(stream, selectors.EVENT_READ)
+                while selector.get_map():
+                    for key, _ in selector.select(remaining()):
+                        remaining()
+                        stream = key.fileobj
+                        allowance = limit - len(data) if stream is process.stdout else 65536 - stderr_bytes
+                        try:
+                            chunk = os.read(stream.fileno(), min(65536, allowance + 1))
+                        except BlockingIOError:
+                            continue
+                        if not chunk:
+                            selector.unregister(stream)
+                        elif stream is process.stdout:
+                            data.extend(chunk)
+                            if len(data) > limit:
+                                raise failure('oversized_output')
+                        else:
+                            stderr_bytes += len(chunk)
+                            if stderr_bytes > 65536:
+                                raise failure('oversized_output')
+            try:
+                status = process.wait(timeout=remaining())
+            except subprocess.TimeoutExpired:
+                raise failure('timeout') from None
+            remaining()
+            if status != 0:
+                raise failure('nonzero_status', status)
+            succeeded = True
+            return bytes(data)
         finally:
-            if process.poll() is None:
-                process.kill()
+            if not succeeded:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait()  # Reap after SIGKILL; never wait on a live child.
 
 
 def api(path):
@@ -451,6 +518,8 @@ def main():
     except (ValueError, OSError, subprocess.SubprocessError, http.client.HTTPException,
             KeyError, zipfile.BadZipFile, tarfile.TarError) as error:
         result.update(passed=False, error=str(error))
+        if isinstance(error, CommandError):
+            result['failure_class'] = error.classification
     # A failure must not hide diagnostics; CI also retains the stdout log.
     print(json.dumps(result, indent=2, sort_keys=True))
     if 'destination' in locals() and destination.parent.is_dir() \

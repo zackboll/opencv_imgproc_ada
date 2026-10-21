@@ -123,6 +123,23 @@ have thirty-second socket timeouts and eight-MiB entity limits; artifacts have
 readiness, not an unbounded poll of GitHub deployments. Provenance/source errors
 fail immediately; only complete live HTTP/Core attempts are retried.
 
+External command capture has one 120-second monotonic deadline covering stdout,
+stderr and process exit, not just a final `wait`. Stdout retains its 32-MiB
+maximum (or the caller's smaller limit); stderr is drained with a 64-KiB cap,
+without saving raw diagnostics to memory or disk. Failure kills the process
+group and reaps the child, closing both pipes and the selector. JSON distinguishes
+`timeout`, `oversized_output`, and `nonzero_status`; safe diagnostics include
+exit status and byte counts, never arguments, credentials or child output.
+The main-only job has a 45-minute runner ceiling for tool acquisition, fresh
+generation, Pages readiness attempts and Chromium qualification. This ceiling
+is a fail-closed operational limit, not a promise to exhaust every retry under
+pathologically slow HTTP. Evidence upload retains `if: always()`; GitHub runner
+cancellation can still prevent an upload, so setup/job logs remain important.
+
+R1 corrects reviewed head `2a6dedefe98e06a21a3f3b3031b8fa2e19bd18fc` on the
+same PR. Original publication evidence is preserved; corrective-head test and
+hosted results belong in PR #82, not a replacement publication claim.
+
 ```sh
 # Run from a clean checkout of EXPECTED_SHA with the qualified documentation
 # toolchain and DOC_PYTHON configured as in documentation.md. Evidence is fresh,

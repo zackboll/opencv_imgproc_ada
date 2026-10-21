@@ -4,12 +4,16 @@ import copy
 import gzip
 import http.server
 import io
+import json
+import os
 from pathlib import Path
 import re
 import shutil
+import sys
 import tempfile
 import threading
 import tarfile
+import time
 import unittest
 import zipfile
 from unittest import mock
@@ -17,6 +21,111 @@ from unittest import mock
 import verify_live_docs as live
 from link_gnatdoc_types import CORE_ROOT
 from render_gnatdoc_examples import BLOCK, CORE_SYMBOLS
+
+
+class Commands(unittest.TestCase):
+    """Real local children; no GitHub/network or long timeout dependency."""
+
+    def run_command(self, source, **kwargs):
+        return live.command([sys.executable, '-c', source], **kwargs)
+
+    def test_successful_command_and_exact_output_boundary(self):
+        self.assertEqual(self.run_command('import os; os.write(1, b"qualified")',
+                                          limit=9, timeout=2), b'qualified')
+
+    def test_immediate_exit(self):
+        self.assertEqual(self.run_command('pass', timeout=2), b'')
+
+    def test_nonzero_status_with_incomplete_output_is_not_success(self):
+        with self.assertRaises(live.CommandError) as caught:
+            self.run_command('import os; os.write(1, b"partial"); os._exit(7)', timeout=2)
+        self.assertEqual(caught.exception.classification, 'nonzero_status')
+        self.assertEqual(caught.exception.status, 7)
+        self.assertIn('stdout_bytes=7', str(caught.exception))
+
+    def assert_timeout(self, source):
+        started = time.monotonic()
+        with self.assertRaises(live.CommandError) as caught:
+            self.run_command(source, timeout=0.3)
+        self.assertEqual(caught.exception.classification, 'timeout')
+        self.assertLess(time.monotonic() - started, 3)
+        return caught.exception
+
+    def test_no_output_hang(self):
+        self.assert_timeout('import time; time.sleep(60)')
+
+    def test_partial_output_hang_is_not_success(self):
+        error = self.assert_timeout('import os,time; os.write(1,b"partial"); time.sleep(60)')
+        self.assertIn('stdout_bytes=7', str(error))
+
+    def test_closed_pipes_do_not_bypass_process_exit_deadline(self):
+        self.assert_timeout('import os,time; os.close(1); os.close(2); time.sleep(60)')
+
+    def test_continuous_output_does_not_restart_deadline(self):
+        self.assert_timeout('import os,time\nwhile True: os.write(1,b"x"); time.sleep(0.01)')
+
+    def test_descendant_holding_pipes_does_not_bypass_deadline(self):
+        self.assert_timeout('import os,time\nif os.fork(): os._exit(0)\ntime.sleep(60)')
+
+    def test_oversized_stdout(self):
+        with self.assertRaises(live.CommandError) as caught:
+            self.run_command('import os,time; os.write(1,b"x"*4096); time.sleep(60)',
+                             limit=32, timeout=2)
+        self.assertEqual(caught.exception.classification, 'oversized_output')
+        self.assertIn('stdout_bytes=33', str(caught.exception))
+
+    def test_stderr_is_drained_and_bounded(self):
+        self.assertEqual(self.run_command(
+            'import os; os.write(2,b"x"*32768); os.write(1,b"ok")', timeout=2), b'ok')
+        with self.assertRaises(live.CommandError) as caught:
+            self.run_command('import os\nwhile True: os.write(2,b"x"*4096)', timeout=2)
+        self.assertEqual(caught.exception.classification, 'oversized_output')
+        self.assertIn('stderr_bytes=65537', str(caught.exception))
+
+    def test_failure_diagnostics_do_not_include_arguments_or_output(self):
+        secret = 'fixture-credential-never-publish'
+        with self.assertRaises(live.CommandError) as caught:
+            self.run_command(f'import os; os.write(1,b"{secret}"); '
+                             f'os.write(2,b"{secret}"); os._exit(2)', timeout=2)
+        self.assertNotIn(secret, str(caught.exception))
+        self.assertNotIn('os.write', str(caught.exception))
+        self.assertIn('status=2', str(caught.exception))
+
+    def test_timeout_reaps_child_and_closes_all_resources(self):
+        real_popen = live.subprocess.Popen
+        children = []
+        def spawn(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            children.append(process)
+            return process
+        before = len(os.listdir('/proc/self/fd'))
+        with mock.patch.object(live.subprocess, 'Popen', side_effect=spawn), \
+                mock.patch.object(live.tempfile, 'TemporaryFile',
+                                  side_effect=AssertionError('no output spooling')):
+            for _ in range(3):
+                self.assert_timeout('import time; time.sleep(60)')
+        self.assertEqual(len(os.listdir('/proc/self/fd')), before)
+        for child in children:
+            self.assertEqual(child.returncode, -live.signal.SIGKILL)
+            self.assertTrue(child.stdout.closed)
+            self.assertTrue(child.stderr.closed)
+            with self.assertRaises(ChildProcessError):
+                os.waitpid(child.pid, os.WNOHANG)
+
+    def test_cli_returns_nonzero_and_classified_evidence_for_command_failures(self):
+        for classification in ('timeout', 'oversized_output', 'nonzero_status'):
+            with self.subTest(classification=classification), tempfile.TemporaryDirectory() as directory:
+                evidence = Path(directory) / 'failure.json'
+                argv = ['verify_live_docs.py', '--expected-sha', 'a' * 40,
+                        '--run-id', '42', '--evidence', str(evidence)]
+                with mock.patch.object(sys, 'argv', argv), \
+                        mock.patch.object(live, 'source_identity', side_effect=live.CommandError(
+                            classification, 7, 0, 2 if classification == 'nonzero_status' else None)), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(live.main(), 1)
+                result = json.loads(evidence.read_text())
+                self.assertFalse(result['passed'])
+                self.assertEqual(result['failure_class'], classification)
 
 
 @contextlib.contextmanager
@@ -312,7 +421,8 @@ class Workflow(unittest.TestCase):
     def test_main_only_read_only_job(self):
         text = (live.ROOT / '.github/workflows/documentation.yml').read_text()
         job = text.split('  verify-live:\n')[1]
-        for required in ('needs: deploy', 'contents: read', 'actions: read', 'deployments: read',
+        for required in ('needs: deploy', 'timeout-minutes: 45',
+                         'contents: read', 'actions: read', 'deployments: read',
                          'ref: ${{ github.sha }}', '--expected-sha', '--run-id', 'if: always()'):
             self.assertIn(required, job)
         self.assertNotIn(': write', job)
