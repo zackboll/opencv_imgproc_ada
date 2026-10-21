@@ -89,7 +89,8 @@ redeployment, site mutation, or server-side enumeration in this checker.
 The real Chromium matrix adds desktop/mobile (1280/390), light/dark, JavaScript
 enabled/disabled, every example's highlighting/overflow, keyboard link focus and
 activation, code-region scrolling, local/Core declaration navigation, history,
-reload, and console/page-error checks. Byte checks and browser checks are both
+reload, and console/page-error checks. Horizontal scrolling uses a real wheel
+event; keyboard qualification covers focus and link activation. Byte checks and browser checks are both
 necessary: one does not substitute for the other. Browser evidence is scoped to
 Linux/Chromium, not a universal accessibility or cross-browser certification.
 

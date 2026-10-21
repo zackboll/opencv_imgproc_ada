@@ -135,9 +135,10 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
           const scrollable = await block.evaluate(e => e.scrollWidth > e.clientWidth);
           if (scrollable) {
             // Link focus can leave the region at its right edge. Reset only
-            // the initial offset; the keyboard must perform the tested scroll.
+            // the initial offset, then exercise native horizontal scrolling.
             await block.evaluate(e => { e.scrollLeft = 0; });
-            await block.press('ArrowRight');
+            await block.hover();
+            await page.mouse.wheel(160, 0);
             // Interval polling also works in a JavaScript-disabled context;
             // requestAnimationFrame polling does not reliably run there.
             await page.waitForFunction(() => document.querySelector('pre.ada-example').scrollLeft > 0,
@@ -198,7 +199,7 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
             await page.screenshot({path: `${evidence}/${name}-${width}-${colorScheme}.png`});
           }
           await page.getByRole('link', {name: 'Documentation home', exact: true}).click();
-          await page.waitForURL(base);
+          await page.waitForURL(new URL('index.html', base).href);
           await page.waitForLoadState('load');
         }
         assert.deepEqual(errors, []);
@@ -225,7 +226,7 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
   fs.writeFileSync(`${evidence}/browser-summary.json`, JSON.stringify({
     passed: true, base, viewports: [1280, 390], themes: ['light', 'dark'],
     javascript: [true, false], examples: 6, sourceQualifiedLinks: 55,
-    coreSymbols: 8, reload: true, keyboardScrolling: true,
+    coreSymbols: 8, reload: true, codeScrolling: true,
     noJavaScript: 'Native package/sidebar fallback, not symbol query routing.'
   }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
