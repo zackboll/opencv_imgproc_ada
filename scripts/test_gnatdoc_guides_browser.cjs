@@ -132,11 +132,10 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
           assert.equal(await block.evaluate(e => document.activeElement === e), true);
           const scrollable = await block.evaluate(e => e.scrollWidth > e.clientWidth);
           if (scrollable) {
-            // End can move focus to the document in Chromium's no-JS mode;
-            // exercise the code region's native horizontal arrow scrolling.
-            await page.keyboard.press('Home');
-            await block.focus();
-            await page.keyboard.press('ArrowRight');
+            // Link focus can leave the region at its right edge. Reset only
+            // the initial offset; the keyboard must perform the tested scroll.
+            await block.evaluate(e => { e.scrollLeft = 0; });
+            await block.press('ArrowRight');
             // Interval polling also works in a JavaScript-disabled context;
             // requestAnimationFrame polling does not reliably run there.
             await page.waitForFunction(() => document.querySelector('pre.ada-example').scrollLeft > 0,
