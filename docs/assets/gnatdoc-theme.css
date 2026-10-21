@@ -50,6 +50,8 @@ pre code { font-size: inherit; }
 .type-reference { color: var(--link); text-decoration: underline; text-underline-offset: .22em; }
 /* Core types open the Core package page in the whole window. */
 .type-reference[target="_top"] { text-decoration-style: dashed; }
+.ada-example:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.ada-example .type-reference:hover, .ada-example .type-reference:focus-visible { background: var(--active); text-decoration-thickness: .15em; }
 body.main { display: grid; grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr); height: 100dvh; overflow: hidden; }
 .side-navigation { display: flex; flex-direction: column; padding: 1rem; min-height: 0; min-width: 0; background: var(--nav); border-right: 1px solid var(--border); }
 .side-navigation > .tab-bar { writing-mode: horizontal-tb; display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .75rem; padding: 0; }

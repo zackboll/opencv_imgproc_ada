@@ -439,6 +439,93 @@ declarations or behavior to improve generated output.
 
 ## Testing the documentation tooling
 
+### Linked, syntax-highlighted Ada examples (IMGPROC-DOC-EXAMPLES-001)
+
+`scripts/render_gnatdoc_examples.py` is the reusable example renderer. The
+landing template has one `<!-- compiled Ada example -->` marker, replaced from
+`docs/example.adb`; no manually maintained HTML copy of that program exists.
+The Markdown renderer delegates only `ada` fences to the helper. Shell and text
+fences retain the pinned Markdown renderer's original output. Every guide Ada
+fence must still equal exactly one program in `docs/examples/`, including its
+final newline, and every program must occur in a guide. Neither `.adb` sources
+nor their behavior is changed for presentation.
+
+The helper reuses `highlight_gnatdoc_ada.py`: keywords, comments, strings,
+character literals, numbers, attributes and operators receive the existing
+theme classes. HTML is escaped before coloring. Existing type anchors remain
+atomic, so tag names and attributes cannot be highlighted. Stripping the exact
+approved spans and anchors and decoding entities must recover the full source,
+including indentation, spelling, whitespace and final newline. The native
+declaration highlighter/linker and its integrity manifest are unchanged.
+
+Links are not word replacements. A deliberately bounded resolver recognizes
+object type marks, `use [all] type` references, local subtype bases, conversions
+and qualifications. It reads the actual public specifications and considers
+explicit initial `with`/`use` clauses, case-insensitively. All local defining
+names conservatively shadow throughout an example, even outside a nested block;
+this can omit a safe link but cannot authorize one from a shadowed name.
+Multiple visible declarations, unknown use contexts, unsupported aliases,
+nested packages/subprograms, generic/task/record scopes and malformed tokens
+remain unlinked. Standard types also remain plain. Unsupported examples still
+receive coloring; this is not a complete Ada semantic front end.
+
+Comments and literals are atomic lexical tokens, never type candidates.
+Variables, procedure/function calls, record selectors and named associations
+are not inferred to be types. A conversion-looking name receives a link only
+if its unique visible declaration really is a public type or subtype. Private
+and internal declarations are excluded from the source inventory.
+
+Imgproc destinations are discovered from source-matched native GNATdoc type
+sections in the generated package page: no filename or anchor hash is computed.
+Core identities are independently checked against the resolved build dependency's
+visible specifications. The eight verified stable symbols in `CORE_SYMBOLS`
+use qualified `https://zackboll.github.io/opencv_core_ada/api/index.html?symbol=...`
+bookmarks. Other source-confirmed Core types fall back to the verified package
+bookmark rather than an invented declaration destination. The current examples
+use seven of those symbols; `OpenCV.Size` is additionally exercised synthetically.
+
+Core's public contract was inspected at commit
+`aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d` (`docs/documentation.md`,
+`scripts/enhance_gnatdoc_navigation.py`, and `docs/assets/gnatdoc-navigation.js`)
+and in the published hidden symbol index. Symbol routing needs Core's existing
+JavaScript; with JavaScript disabled its native package/sidebar links remain
+functional, but the query does not automatically select a declaration. Coloring
+and example links themselves never need JavaScript. Browser tests explicitly
+exercise this honest native-navigation fallback rather than claiming no-JS
+symbol routing. They can use the exact successful Core Documentation artifact
+via `CORE_DOC_SITE`, preserving the published URL/origin through Playwright
+request fulfillment; without it they use the real published site, never a stub.
+
+The final validator reconstructs every guide **and the complete landing page**
+from authoritative inputs and compares exact bytes. A generated manifest cannot
+authorize a different link, changed source, extra attribute or missing example.
+All local fragments are independently resolved. Mutation tests in
+`scripts/test_gnatdoc_examples.py` cover wrong existing type/operation anchors,
+Core identity substitution, links in comments/literals, changed/dropped/duplicated
+tokens, missing/duplicated examples, malformed nesting, scripts/handlers and
+unsafe URLs. Existing validation, warning and coverage ratchets remain required.
+Fresh generation and repeated enhancement must be byte-identical.
+
+Code uses the existing light/dark palette and type-reference visual language,
+with underlining, hover/focus feedback and a visible keyboard outline. Labelled,
+focusable code regions scroll horizontally without widening the document.
+The Playwright guide suite covers the landing example and every guide at
+1280px/390px, light/dark, JavaScript enabled/disabled, exact native type targets,
+Core public symbol navigation, keyboard activation and Back/Forward. This is
+Linux/Chromium qualification, not a blanket accessibility or cross-browser claim.
+
+For future guides, add the complete compiled program and its exactly matching
+Ada fence, register/build/run it through the existing guide workflow, and extend
+the browser inventory. No colored HTML belongs in `.adb` files. If a new Core
+type needs a declaration bookmark, independently verify its published symbol
+contract and native identity before extending `CORE_SYMBOLS`; otherwise keep
+the package fallback. The helper's source/context/renderer separation is suitable
+for later reuse in Core, Geometry, Features or the shared enhancer, but this task
+does not modify those repositories or migrate this qualified pipeline. Reviewed
+shared facilities were `syntax.py`, `guides.py` and the stable-bookmark contract
+at enhancer `65c29b3a1154c54f2fbb3e112bec48598c751c8a`; the historical shadow
+authority and qualification evidence remain frozen.
+
 ```sh
 python3 -m venv .doc-tools/markdown
 .doc-tools/markdown/bin/pip install -r docs/requirements.txt

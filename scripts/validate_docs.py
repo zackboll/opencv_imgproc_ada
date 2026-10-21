@@ -38,6 +38,7 @@ from compare_gnatdoc_warnings import (
 )
 from link_gnatdoc_types import CORE_DESTINATIONS, CORE_ROOT, LINK, CrossReferenceError, process
 from render_gnatdoc_guides import GUIDES
+from render_gnatdoc_examples import CORE_EXAMPLE_DESTINATIONS
 
 ROOT = Path(__file__).resolve().parent.parent
 NATIVE_PAGE = re.compile(r"[0-9a-f]{64}\.html")
@@ -268,6 +269,8 @@ def _check_links(site, pages, path, page, errors, enhanced):
             # Package-level Core bookmarks, only as recomputed type links.
             approved |= (enhanced and path.parent == site / "api"
                          and link in CORE_DESTINATIONS.values())
+            approved |= (enhanced and landing and link in CORE_EXAMPLE_DESTINATIONS)
+            approved |= (enhanced and landing and link in CORE_DESTINATIONS.values())
             if not approved:
                 errors.append(f"unapproved link in {path.relative_to(site)}: {link}")
             continue
@@ -302,7 +305,9 @@ def _presentation_errors(api, root, core, packages, type_links):
         return [f"presentation integrity: {error}"]
     try:
         from render_gnatdoc_guides import validate as check_guides
+        from render_gnatdoc_examples import validate_landing
         check_guides(root, api.parent)
+        validate_landing(root, api.parent, core)
     except (ValueError, OSError, ImportError) as error:
         errors.append(f"guide integrity: {error}")
     # Exact entity probes supplement the full recomputation above.
@@ -388,7 +393,9 @@ def validate(site, root=ROOT, declarations=DECLARATIONS, rendered=RENDERED,
                 errors.append(f"landing page does not link to guides/{name}.html")
     example = root / "docs/example.adb"
     if landing is not None and example.is_file():
-        source = example.read_text(encoding="utf-8").rstrip("\n")
+        source = example.read_text(encoding="utf-8")
+        if not enhanced:  # Historical raw fixture predates rendered examples.
+            source = source.rstrip("\n")
         if source not in landing.preformatted:
             errors.append("landing page example differs from docs/example.adb")
     index = api / "index.html"
