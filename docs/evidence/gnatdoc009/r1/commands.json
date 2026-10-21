@@ -1,0 +1,92 @@
+[
+  {
+    "command": [
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/release-venv/bin/gnatdoc-enhancer",
+      "inventory",
+      "--config",
+      "candidate.toml",
+      "--source-root",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/source",
+      "--site",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/clean-first-native"
+    ],
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\n  \"native_declaration_sections\": 329,\n  \"project\": \"opencv_imgproc_ada\",\n  \"public_packages\": [\n    \"OpenCV.Image_Processing\"\n  ]\n}\n"
+  },
+  {
+    "command": [
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/release-venv/bin/gnatdoc-enhancer",
+      "enhance",
+      "--config",
+      "candidate.toml",
+      "--source-root",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/source",
+      "--site",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/first"
+    ],
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\n  \"declaration_snippets\": 329,\n  \"files\": 6,\n  \"html_pages\": 2,\n  \"linked_external_types\": 586,\n  \"linked_local_types\": 350,\n  \"linked_types\": 936,\n  \"links\": 1602,\n  \"mode\": \"enhanced\",\n  \"public_packages\": 1,\n  \"unrendered_renderer_exceptions\": 0\n}\n"
+  },
+  {
+    "command": [
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/release-venv/bin/gnatdoc-enhancer",
+      "verify",
+      "--config",
+      "candidate.toml",
+      "--source-root",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/source",
+      "--site",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/first"
+    ],
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\n  \"declaration_snippets\": 329,\n  \"files\": 6,\n  \"html_pages\": 2,\n  \"linked_external_types\": 586,\n  \"linked_local_types\": 350,\n  \"linked_types\": 936,\n  \"links\": 1602,\n  \"mode\": \"verified\",\n  \"public_packages\": 1,\n  \"unrendered_renderer_exceptions\": 0\n}\n"
+  },
+  {
+    "command": [
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/release-venv/bin/gnatdoc-enhancer",
+      "enhance",
+      "--config",
+      "candidate.toml",
+      "--source-root",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/source",
+      "--site",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/second"
+    ],
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\n  \"declaration_snippets\": 329,\n  \"files\": 6,\n  \"html_pages\": 2,\n  \"linked_external_types\": 586,\n  \"linked_local_types\": 350,\n  \"linked_types\": 936,\n  \"links\": 1602,\n  \"mode\": \"enhanced\",\n  \"public_packages\": 1,\n  \"unrendered_renderer_exceptions\": 0\n}\n"
+  },
+  {
+    "command": [
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/release-venv/bin/gnatdoc-enhancer",
+      "verify",
+      "--config",
+      "candidate.toml",
+      "--source-root",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/source",
+      "--site",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/second"
+    ],
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\n  \"declaration_snippets\": 329,\n  \"files\": 6,\n  \"html_pages\": 2,\n  \"linked_external_types\": 586,\n  \"linked_local_types\": 350,\n  \"linked_types\": 936,\n  \"links\": 1602,\n  \"mode\": \"verified\",\n  \"public_packages\": 1,\n  \"unrendered_renderer_exceptions\": 0\n}\n"
+  },
+  {
+    "command": [
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/release-venv/bin/gnatdoc-enhancer",
+      "enhance",
+      "--config",
+      "candidate.toml",
+      "--source-root",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/source",
+      "--site",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-r1-work/candidate-verified/first"
+    ],
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\n  \"declaration_snippets\": 329,\n  \"files\": 6,\n  \"html_pages\": 2,\n  \"linked_external_types\": 586,\n  \"linked_local_types\": 350,\n  \"linked_types\": 936,\n  \"links\": 1602,\n  \"mode\": \"verified\",\n  \"public_packages\": 1,\n  \"unrendered_renderer_exceptions\": 0\n}\n"
+  }
+]

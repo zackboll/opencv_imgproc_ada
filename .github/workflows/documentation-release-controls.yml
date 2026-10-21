@@ -17,6 +17,8 @@ jobs:
           persist-credentials: false
       - name: Negative acquisition and operation-oracle controls
         run: python3 -m unittest discover -s scripts -p test_released_gnatdoc.py -v
+      - name: R1 Core path, redirect and source-token oracle controls
+        run: python3 -m unittest discover -s scripts -p test_production_core_links.py -v
       - name: Install official archive and independently recheck installed distribution
         run: |
           python3 scripts/install_released_gnatdoc.py --venv "$RUNNER_TEMP/release-tools" --with-guides > "$RUNNER_TEMP/release-install.json"
@@ -33,4 +35,5 @@ jobs:
           path: |
             ${{ runner.temp }}/release-install.json
             ${{ runner.temp }}/release-recheck.json
+            docs/evidence/gnatdoc009/r1
           if-no-files-found: error
