@@ -20,6 +20,7 @@ const names = async page => (await visible(page).evaluateAll(
   links => links.map(a => a.parentElement.dataset.op)));
 
 async function expectDeclaration(page, name, frameName = name) {
+  await page.frameLocator('iframe[name="document-content"]').locator('h1').waitFor();
   const content = page.frame({name: 'document-content'});
   await content.waitForFunction(() => location.hash.length > 1);
   await content.waitForFunction(
@@ -44,7 +45,7 @@ async function expectDeclaration(page, name, frameName = name) {
       // Default: the package page loads; every declaration is listed once.
       await page.goto(base);
       await page.frameLocator('iframe').locator('h1', {hasText: 'OpenCV.Image_Processing'}).waitFor();
-      assert.equal(await page.locator('#api-browser li[data-op]').count(), 314);
+      assert.equal(await page.locator('#api-browser li[data-op]').count(), 329);
       assert.equal(await page.locator('#api-browser details').count(), 8);
       assert.notEqual(await page.evaluate(() => document.activeElement.id), 'api-search');
       const search = page.getByLabel('Search operations and types');
@@ -75,7 +76,7 @@ async function expectDeclaration(page, name, frameName = name) {
       assert.equal(await page.locator('#api-results').textContent(), 'No matching declarations.');
       assert.equal(await visible(page).count(), 0);
       await page.getByRole('button', {name: 'Clear', exact: true}).click();
-      assert.equal(await visible(page).count(), 314);
+      assert.equal(await visible(page).count(), 329);
       assert.equal(await page.evaluate(() => document.activeElement.id), 'api-search');
 
       // Selection navigates the frame to the native anchor and is bookmarkable.

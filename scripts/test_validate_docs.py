@@ -414,9 +414,9 @@ class GeneratedSiteTest(unittest.TestCase):
     def test_changed_landing_example_is_rejected(self):
         landing = self.site / "index.html"
         text = landing.read_text(encoding="utf-8")
-        self.assertIn("Sigma       =&gt; 1.0);", text)
-        landing.write_text(text.replace("Sigma       =&gt; 1.0);",
-                                        "Sigma       =&gt; 2.0);"), encoding="utf-8")
+        self.assertIn('ada-number">1.0</span>', text)
+        landing.write_text(text.replace('ada-number">1.0</span>',
+                                        'ada-number">2.0</span>', 1), encoding="utf-8")
         self.assertRejected("landing page example differs from docs/example.adb")
 
 

@@ -79,6 +79,7 @@ jobs:
           "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_check_doc_coverage.py' -v
           "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_gnatdoc_navigation.py' -v
           "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_gnatdoc_guides.py' -v
+          "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_gnatdoc_examples.py' -v
       - name: Qualify deterministic fresh generation and idempotent enhancement
         run: |
           cp -a _site /tmp/documentation-first
@@ -88,6 +89,7 @@ jobs:
           python3 scripts/link_gnatdoc_types.py _site/api
           python3 scripts/highlight_gnatdoc_ada.py _site/api
           python3 scripts/enhance_gnatdoc_navigation.py _site/api
+          python3 scripts/render_gnatdoc_examples.py _site
           "$DOC_PYTHON" scripts/render_gnatdoc_guides.py _site
           diff -r /tmp/documentation-first _site
       - name: Compile and run the landing-page and guide examples
@@ -99,6 +101,16 @@ jobs:
               features_and_analysis segmentation_and_contours matching_and_registration; do
             "obj/docs-examples/$example"
           done
+      - name: Qualify linked examples in Chromium
+        run: |
+          npm install --prefix "$RUNNER_TEMP/doc-browser" playwright@1.64.1
+          export PLAYWRIGHT_MODULE="$RUNNER_TEMP/doc-browser/node_modules/playwright"
+          "$RUNNER_TEMP/doc-browser/node_modules/.bin/playwright" install --with-deps chromium
+          export CHROME=$(node -e 'console.log(require(process.env.PLAYWRIGHT_MODULE).chromium.executablePath())')
+          python3 -m http.server 18741 --bind 127.0.0.1 --directory _site > "$RUNNER_TEMP/doc-http.log" 2>&1 &
+          export DOC_URL=http://127.0.0.1:18741/
+          export DOC_EVIDENCE="$RUNNER_TEMP/doc-browser-evidence"
+          node scripts/test_gnatdoc_guides_browser.cjs
       - name: Upload review artifact
         uses: actions/upload-artifact@v4
         with:

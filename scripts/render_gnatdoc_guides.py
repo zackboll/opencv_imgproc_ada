@@ -60,7 +60,7 @@ def slug(text):
     return re.sub(r'[^\w\- ]', '', text.lower()).replace(' ', '-')
 
 
-def markdown(source, rewrite=None, fences=None):
+def markdown(source, rewrite=None, fences=None, examples=None):
     # Imported here so the guide inventory is available without the renderer.
     from markdown_it import MarkdownIt
     require(version('markdown-it-py') == '3.0.0' and version('mdurl') == '0.1.2',
@@ -105,6 +105,16 @@ def markdown(source, rewrite=None, fences=None):
                 child.attrSet('href', rewrite(child.attrGet('href')))
     require(headings and tokens[0].type == 'heading_open' and tokens[0].tag == 'h1',
             'guide must begin with one document title')
+    if examples is not None:
+        native_fence = parser.renderer.rules['fence']
+
+        def fence_rule(tokens, index, options, env):
+            token = tokens[index]
+            if token.info.strip() == 'ada':
+                return examples.render(token.content, '../') + '\n'
+            return native_fence(tokens, index, options, env)
+
+        parser.renderer.rules['fence'] = fence_rule
     rendered = parser.renderer.render(tokens, parser.options, {})
     rendered = rendered.replace(
         '<table>', '<div class="table-scroll" tabindex="0" role="region" '
@@ -162,10 +172,12 @@ def resolve_link(link, name, headings, api):
 
 
 def expected(root=ROOT, site=None):
+    from render_gnatdoc_examples import ExampleRenderer
     root, site = Path(root).resolve(), Path(site).resolve()
     texts = sources(root)
     headings = {name: markdown(text)[1] for name, text in texts.items()}
     api = api_destinations(site, root)
+    renderer = ExampleRenderer(site, root)
     examples = {p.name: p.read_text(encoding='utf-8')
                 for p in sorted((root / 'docs/examples').glob('*.adb'))}
     used = set()
@@ -174,7 +186,7 @@ def expected(root=ROOT, site=None):
         fences = []
         content, _ = markdown(texts[name],
                               lambda link: resolve_link(link, name, headings, api),
-                              fences)
+                              fences, renderer)
         for fence in fences:
             owners = [file for file, text in examples.items() if text == fence]
             require(len(owners) == 1, f'{name}: Ada code is not a compiled example')

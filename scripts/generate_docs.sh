@@ -55,7 +55,6 @@ echo "GNATdoc: $warnings documentation warnings (see obj/docs/gnatdoc.log)"
 # Ratchet: new warnings fail, and so does a baseline that still lists fixed ones.
 python3 scripts/compare_gnatdoc_warnings.py --fail-on-removed \
     docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
-cp docs/index.html _site/index.html
 # Presentation: theme metadata, source-backed type links, then Ada coloring.
 # Each step verifies the previous ones and records what it changed.
 python3 scripts/install_gnatdoc_theme.py _site/api
@@ -63,6 +62,7 @@ python3 scripts/link_gnatdoc_types.py _site/api
 python3 scripts/highlight_gnatdoc_ada.py _site/api
 # Operation-level browser in the native index; declaration pages are unchanged.
 python3 scripts/enhance_gnatdoc_navigation.py _site/api
+python3 scripts/render_gnatdoc_examples.py _site
 # Developer guides with compiled examples and verified API anchors.
 "$python" scripts/render_gnatdoc_guides.py _site
 "$python" scripts/validate_docs.py _site

@@ -81,7 +81,7 @@ class Guides(unittest.TestCase):
                              "(filtering-and-transforms.md#no-such-heading)")
 
     def test_code_and_text_mutations_are_rejected(self):
-        self.mutation("Radius =&gt; 8", "Radius =&gt; 9")
+        self.mutation('ada-number">8</span>', 'ada-number">9</span>')
 
     def test_script_and_handler_are_rejected(self):
         self.mutation("</main>", "<script>alert(1)</script></main>")
