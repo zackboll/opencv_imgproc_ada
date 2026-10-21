@@ -149,6 +149,8 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
         for (const name of names) {
           await page.locator(`a[href="guides/${name}.html"]`).click();
           const url = new URL('guides/' + name + '.html', base).href;
+          await page.waitForURL(url);
+          await page.waitForLoadState('load');
           await examples(url);
           assert.equal(await page.locator('main').count(), 1);
           assert.equal(await page.locator('h1').count(), 1);
@@ -179,6 +181,8 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
           for (const destination of cross) {
             await page.goto(url);
             await page.locator(`main a[href="${destination}"]`).first().click();
+            await page.waitForURL(new URL(destination, url).href);
+            await page.waitForLoadState('load');
             assert.equal(new URL(page.url()).pathname.split('/').pop(),
                          destination.split('#')[0]);
           }
@@ -194,6 +198,8 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
             await page.screenshot({path: `${evidence}/${name}-${width}-${colorScheme}.png`});
           }
           await page.getByRole('link', {name: 'Documentation home', exact: true}).click();
+          await page.waitForURL(base);
+          await page.waitForLoadState('load');
         }
         assert.deepEqual(errors, []);
         assert.equal(coreSeen.size, 7);
