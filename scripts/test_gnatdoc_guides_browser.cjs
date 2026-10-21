@@ -76,8 +76,10 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
             assert.equal(await link.evaluate(e => getComputedStyle(e).outlineStyle), 'solid');
             await page.keyboard.press('Enter');
             await page.waitForURL(u => href.startsWith('https:')
-              ? u.origin === 'https://zackboll.github.io'
+              ? u.origin === 'https://zackboll.github.io' &&
+                u.pathname === '/opencv_core_ada/api/index.html'
               : u.pathname === new URL(href, url).pathname);
+            await page.waitForLoadState('load');
             const simple = identity.split('.').pop();
             if (!href.startsWith('https:')) {
               assert.equal((await page.locator('h4:target').textContent()).toLowerCase(), simple);
