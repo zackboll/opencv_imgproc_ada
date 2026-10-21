@@ -115,10 +115,33 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
                 await page.frameLocator('iframe[name="document-content"]').locator('h4:target').waitFor();
               }
             }
+            // Reload must retain the selected native declaration, not merely
+            // leave a correct-looking outer bookmark in the address bar.
+            await page.reload();
+            if (!href.startsWith('https:')) {
+              assert.equal((await page.locator('h4:target').textContent()).toLowerCase(), simple);
+            } else if (javaScriptEnabled) {
+              const frame = page.frameLocator('iframe[name="document-content"]');
+              await frame.locator('h4:target').waitFor();
+              assert.equal((await frame.locator('h4:target').textContent()).toLowerCase(), simple);
+            }
           }
           await page.goto(url);
           await block.focus();
           assert.equal(await block.evaluate(e => getComputedStyle(e).overflowX), 'auto');
+          assert.equal(await block.evaluate(e => document.activeElement === e), true);
+          const scrollable = await block.evaluate(e => e.scrollWidth > e.clientWidth);
+          if (scrollable) {
+            // End can move focus to the document in Chromium's no-JS mode;
+            // exercise the code region's native horizontal arrow scrolling.
+            await page.keyboard.press('Home');
+            await block.focus();
+            await page.keyboard.press('ArrowRight');
+            // Interval polling also works in a JavaScript-disabled context;
+            // requestAnimationFrame polling does not reliably run there.
+            await page.waitForFunction(() => document.querySelector('pre.ada-example').scrollLeft > 0,
+                                       null, {polling: 100});
+          }
         }
         await examples(base);
         await page.screenshot({path: `${evidence}/landing-${width}-${colorScheme}-js${javaScriptEnabled}.png`});
@@ -173,6 +196,18 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
         }
         assert.deepEqual(errors, []);
         assert.equal(coreSeen.size, 7);
+        // Size is an approved public symbol but intentionally has no invented
+        // occurrence in the six authoritative examples. Qualify it separately.
+        await page.goto('https://zackboll.github.io/opencv_core_ada/api/index.html?symbol=OpenCV.Size');
+        const sizeHref = await page.locator('#type-navigation a[data-symbol="OpenCV.Size"]').getAttribute('href');
+        const sizeFrame = page.frameLocator('iframe[name="document-content"]');
+        if (!javaScriptEnabled) {
+          await page.locator('.content-column a').filter({hasText: /^OpenCV$/}).click();
+          await sizeFrame.locator(`a[href="#${sizeHref.split('#')[1]}"]`).first().click();
+        }
+        await sizeFrame.locator('h4:target').waitFor();
+        assert.equal(await sizeFrame.locator('h4:target').textContent(), 'Size');
+        assert.deepEqual(errors, []);
         console.log(`PASS ${width}px ${colorScheme} JS=${javaScriptEnabled}: five guides, ` +
                     'API anchors, cross-links, focus, overflow');
         await context.close();
@@ -180,4 +215,10 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
   } finally {
     await browser.close();
   }
+  fs.writeFileSync(`${evidence}/browser-summary.json`, JSON.stringify({
+    passed: true, base, viewports: [1280, 390], themes: ['light', 'dark'],
+    javascript: [true, false], examples: 6, sourceQualifiedLinks: 55,
+    coreSymbols: 8, reload: true, keyboardScrolling: true,
+    noJavaScript: 'Native package/sidebar fallback, not symbol query routing.'
+  }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });

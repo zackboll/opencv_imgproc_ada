@@ -80,6 +80,7 @@ jobs:
           "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_gnatdoc_navigation.py' -v
           "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_gnatdoc_guides.py' -v
           "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_gnatdoc_examples.py' -v
+          "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_verify_live_docs.py' -v
       - name: Qualify deterministic fresh generation and idempotent enhancement
         run: |
           cp -a _site /tmp/documentation-first
@@ -146,3 +147,64 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify-live:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: deploy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+    steps:
+      - name: Initialize failure evidence
+        run: printf '%s\n' '{"passed":false,"stage":"setup; see job logs"}' > "$RUNNER_TEMP/live-setup.json"
+      - name: Checkout exact deployed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install native reconstruction prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential libopencv-dev pkg-config unzip python3
+      - name: Install qualified Alire and documentation environment
+        run: |
+          curl --fail --location --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          unzip /tmp/alire.zip -d /tmp/alire
+          sudo install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr
+          alr -n --force toolchain --select gnat_native=16.1.0 gprbuild=26.0.1
+          python3 -m venv .doc-tools/markdown
+          .doc-tools/markdown/bin/pip install -r docs/requirements.txt
+          echo "DOC_PYTHON=$GITHUB_WORKSPACE/.doc-tools/markdown/bin/python" >> "$GITHUB_ENV"
+      - name: Reconstruct and verify same-run live publication (read only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.sha }}
+          DEPLOYMENT_RUN: ${{ github.run_id }}
+        run: |
+          "$DOC_PYTHON" scripts/verify_live_docs.py \
+            --expected-sha "$EXPECTED_SHA" --run-id "$DEPLOYMENT_RUN" \
+            --attempts 10 --interval 30 --evidence "$RUNNER_TEMP/live-publication.json" \
+            > "$RUNNER_TEMP/live-publication.log" 2>&1
+      - name: Qualify live browser navigation and examples
+        run: |
+          npm install --prefix "$RUNNER_TEMP/doc-browser" playwright@1.64.1
+          export PLAYWRIGHT_MODULE="$RUNNER_TEMP/doc-browser/node_modules/playwright"
+          "$RUNNER_TEMP/doc-browser/node_modules/.bin/playwright" install --with-deps chromium
+          export CHROME=$(node -e 'console.log(require(process.env.PLAYWRIGHT_MODULE).chromium.executablePath())')
+          export DOC_URL=https://zackboll.github.io/opencv_imgproc_ada/
+          export DOC_EVIDENCE="$RUNNER_TEMP/live-browser"
+          node scripts/test_gnatdoc_guides_browser.cjs
+      - name: Upload live verification evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-publication-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/live-publication.json
+            ${{ runner.temp }}/live-publication.log
+            ${{ runner.temp }}/live-setup.json
+            ${{ runner.temp }}/live-browser/
+          if-no-files-found: warn
