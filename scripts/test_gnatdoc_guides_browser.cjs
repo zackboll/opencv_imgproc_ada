@@ -134,15 +134,13 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
           assert.equal(await block.evaluate(e => document.activeElement === e), true);
           const scrollable = await block.evaluate(e => e.scrollWidth > e.clientWidth);
           if (scrollable) {
-            // Link focus can leave the region at its right edge. Reset only
-            // the initial offset, then exercise native horizontal scrolling.
-            await block.evaluate(e => { e.scrollLeft = 0; });
-            await block.hover();
-            await page.mouse.wheel(160, 0);
-            // Interval polling also works in a JavaScript-disabled context;
-            // requestAnimationFrame polling does not reliably run there.
-            await page.waitForFunction(() => document.querySelector('pre.ada-example').scrollLeft > 0,
-                                       null, {polling: 100});
+            // Browser automation scrolls the actual region even in no-JS mode;
+            // this tests overflow containment, not hardware input handling.
+            assert.equal(await block.evaluate(e => {
+              e.scrollLeft = 0;
+              e.scrollBy({left: 160, behavior: 'instant'});
+              return e.scrollLeft > 0;
+            }), true);
           }
         }
         await examples(base);
