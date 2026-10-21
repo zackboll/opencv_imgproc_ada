@@ -91,9 +91,9 @@ def provenance_fixture():
             for name, identifier, steps in (
                 ('build', 1, ['Upload review artifact', 'Upload Pages artifact']),
                 ('deploy', 2, ['Deploy Pages']))]
-    artifacts = [{'id': 3, 'name': f'ada-api-{sha}', 'expired': False,
+    artifacts = [{'id': 3, 'name': f'ada-api-{sha}', 'expired': False, 'digest': 'sha256:' + 'c' * 64,
                   'workflow_run': {'id': 42, 'head_sha': sha}},
-                 {'id': 5, 'name': 'github-pages', 'expired': False,
+                 {'id': 5, 'name': 'github-pages', 'expired': False, 'digest': 'sha256:' + 'd' * 64,
                   'workflow_run': {'id': 42, 'head_sha': sha}}]
     deployments = [{'id': 4, 'sha': sha, 'environment': 'github-pages', 'statuses': [
         {'state': 'success', 'environment_url': live.SITE,

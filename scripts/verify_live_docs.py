@@ -188,6 +188,7 @@ def provenance(expected, run, jobs, artifacts, deployments):
     return {'sha': expected, 'run_id': run['id'], 'workflow_id': WORKFLOW_ID,
             'artifact_id': artifact['id'], 'deployment_id': deployed[0]['id'],
             'pages_artifact_id': pages[0]['id'],
+            'artifact_digest': artifact['digest'], 'pages_artifact_digest': pages[0]['digest'],
             'deployment_job': job_url, 'url': SITE}
 
 
@@ -427,11 +428,15 @@ def main():
             artifact.mkdir()
             archive = command(['gh', 'api', f'repos/{REPO}/actions/artifacts/'
                                f'{result["provenance"]["artifact_id"]}/zip'])
+            require('sha256:' + digest(archive) == result['provenance']['artifact_digest'],
+                    'review artifact API digest mismatch')
             result['artifact_archive_sha256'] = digest(archive)
             extract_archive(archive, artifact)
             files, qualification = qualify(artifact, root / '_site', root)
             pages = command(['gh', 'api', f'repos/{REPO}/actions/artifacts/'
                              f'{result["provenance"]["pages_artifact_id"]}/zip'])
+            require('sha256:' + digest(pages) == result['provenance']['pages_artifact_digest'],
+                    'Pages artifact API digest mismatch')
             require(pages_inventory(pages) == files, 'Pages artifact differs from qualified reconstruction')
             result['pages_archive_sha256'] = digest(pages)
             result['qualification'] = qualification
