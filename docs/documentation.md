@@ -1,5 +1,14 @@
 # Public Ada API documentation
 
+Live Pages acceptance is documented in
+[IMGPROC-DOC-EXAMPLES-002 qualification](live-publication-qualification.md).
+After successful main deployment, the read-only `verify-live` job independently
+reconstructs the expected source's site, qualifies both same-run artifacts,
+compares every live decoded HTTP entity, checks current Core public bookmarks,
+and runs the real-browser example/navigation matrix. PR runs test the verifier
+against offline HTTP and adversarial fixtures, never deploy or claim to execute
+the main-only job. JSON/log/browser evidence is retained even on failure.
+
 The specification `src/opencv-image_processing.ads` is authoritative. The
 generated site is intended for `https://zackboll.github.io/opencv_imgproc_ada/`;
 its landing page is `_site/index.html` and the native GNATdoc reference is
