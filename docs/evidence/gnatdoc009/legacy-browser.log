@@ -1,0 +1,10 @@
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('iframe').contentFrame().locator('h1').filter({ hasText: 'OpenCV.Image_Processing' }) to be visible
+
+    at /home/zboll/git/opencv/imgproc-gnatdoc009/scripts/test_gnatdoc_navigation_browser.cjs:47:93 {
+  log: [
+    "  - waiting for locator('iframe').contentFrame().locator('h1').filter({ hasText: 'OpenCV.Image_Processing' }) to be visible"
+  ],
+  name: 'TimeoutError'
+}

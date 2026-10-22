@@ -1,0 +1,10 @@
+Navigation browser qualification passed; screenshots in /home/zboll/git/opencv/imgproc-gnatdoc009-evidence/reconciled-browser
+Presentation browser qualification passed; screenshots in /home/zboll/git/opencv/imgproc-gnatdoc009-evidence/reconciled-browser
+PASS 1280px light JS=true: five guides, API anchors, cross-links, focus, overflow
+PASS 1280px light JS=false: five guides, API anchors, cross-links, focus, overflow
+PASS 1280px dark JS=true: five guides, API anchors, cross-links, focus, overflow
+PASS 1280px dark JS=false: five guides, API anchors, cross-links, focus, overflow
+PASS 390px light JS=true: five guides, API anchors, cross-links, focus, overflow
+PASS 390px light JS=false: five guides, API anchors, cross-links, focus, overflow
+PASS 390px dark JS=true: five guides, API anchors, cross-links, focus, overflow
+PASS 390px dark JS=false: five guides, API anchors, cross-links, focus, overflow

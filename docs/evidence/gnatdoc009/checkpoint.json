@@ -1,0 +1,27 @@
+{
+  "baselines_empty": true,
+  "clean_native_equal": true,
+  "compiled_examples_exit": "0",
+  "disposition": "CORRECTIVE_WORK_REQUIRED",
+  "existing_native_phase_equal": true,
+  "final_head_policy": "Final commit/tree and hosted runs recorded in PR; no self-referential commit claim",
+  "historical_controls_unchanged": true,
+  "initial_browser_failure": "Port 8079 belonged to another task's Core site; retained failed log; rerun on verified task-owned port 18099 passed",
+  "legacy_browser_exit": "0",
+  "local_tests_exit": "0",
+  "not_performed": [
+    "complete shared production browser and adversarial matrix",
+    "approved production Core manifest and stable fallback policy",
+    "shared authored guide parity",
+    "production Pages candidate and uploaded artifact equality",
+    "live deployment acceptance (post-merge only)"
+  ],
+  "pr80_overlapping_modified_paths": [],
+  "production_pipeline_changed": false,
+  "ready_for_independent_review": false,
+  "reconciled_main": "3b44846687354f344d078104fe6101bfb7997534",
+  "starting_commit": "496d5d074c9bc987f625d484deb45bcdad174aa0",
+  "starting_tree": "4745352fc3bba1c7bd10a21d0fbcef560aafe7fc",
+  "tested_checkpoint_commit": "3b44846687354f344d078104fe6101bfb7997534",
+  "tested_checkpoint_tree": "d30dc701e2fd7811e3a85a957872f9194f4e4c76"
+}

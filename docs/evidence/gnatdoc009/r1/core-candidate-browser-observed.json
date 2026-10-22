@@ -1,0 +1,119 @@
+{
+  "requestInterception": false,
+  "assertions": [
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.angle_unit",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.border_kind",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat_array",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_point",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float64_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point_array",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.rect",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.scalar",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size_coordinate",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.uint8_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    }
+  ],
+  "failures": [
+    "page.goBack: Timeout 30000ms exceeded.\nCall log:\n  - waiting for navigation until \"load\"\n\n    at /home/zboll/git/opencv/imgproc-gnatdoc009/scripts/test_core_candidate_browser.cjs:100:22"
+  ],
+  "navigationDifferences": [
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.angle_unit",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#de966a6db4e74e15e102452acbe5bc993997dbac4c699aa33af780a80d47ad8d",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    }
+  ],
+  "sourcePolicyApproved": false,
+  "status": "fail"
+}

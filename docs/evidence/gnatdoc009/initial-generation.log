@@ -1,0 +1,19 @@
+GNATdoc 26.0.0 (20260415)
+Note: Synchronizing workspace...
+Dependencies automatically updated as follows:
+
+   +b opencv      4.10.0 (new,system package)
+   +  opencv_core 0.5.0  (new)
+   +b pkg_config  1.8.1  (new,system package)
+
+Note: Running pre-build actions for opencv_core=0.5.0...
+Note: Running pre-build actions for opencv_imgproc=0.3.0...
+OpenCV package: opencv4
+OpenCV include: /usr/include/opencv4
+OpenCV library: /usr/lib/x86_64-linux-gnu
+Note: Building opencv_imgproc=0.3.0/opencv_imgproc.gpr...
+could not create temporary dir /tmp/GPR.44675
+could not create temporary file in /tmp/GPR.44675
+gprbuild: unable to create temporary configuration project file
+ERROR: Command ["gprbuild", "-s", "-j0", "-p", "-P", "/home/zboll/git/opencv/imgproc-gnatdoc009/opencv_imgproc.gpr"] exited with code 4
+ERROR: Compilation failed.
