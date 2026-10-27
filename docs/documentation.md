@@ -31,14 +31,13 @@ Required qualification versions:
 | GNATdoc | Alire `gnatdoc_bin=26.0.0`, executable 26.0.0 (20260415) |
 
 Also install a supported native OpenCV development library, pkg-config, a
-C++17 compiler, a POSIX shell and Python 3.9 or newer, plus the pinned guide
-renderer from `docs/requirements.txt` in a separate environment named by
-`DOC_PYTHON` (see "Testing the documentation tooling").
-`alire.toml` resolves `opencv_core` from the sibling checkout `../core`, so
-use the layout described in the README:
+C++17 compiler, a POSIX shell and Python 3.11 or newer. The generator installs
+the official v0.1.1 enhancer wheel and hash-pinned optional Markdown dependencies
+in an isolated documentation environment, never in Alire.
+`alire.toml` resolves indexed Core 0.5.0 without a pin. No neighboring Core
+checkout is required:
 
 ```sh
-git clone https://github.com/zackboll/opencv_core_ada.git core
 git clone https://github.com/zackboll/opencv_imgproc_ada.git imgproc
 cd imgproc
 alr -n --force toolchain --select gnat_native=16.1.0 gprbuild=26.0.1
@@ -60,7 +59,7 @@ then runs:
 
 ```sh
 alr exec -- "$GNATDOC_PREFIX/bin/gnatdoc" -P docs_api.gpr \
-  --backend html --generate public --style leading --warnings -O "$PWD/_site/api"
+  --backend html --generate public --style leading --warnings -O "$PWD/obj/docs/native/api"
 python3 scripts/compare_gnatdoc_warnings.py --fail-on-removed \
   docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
 python3 scripts/validate_docs.py _site
@@ -167,7 +166,9 @@ leaked paths and changed examples must all be rejected.
 
 ## Presentation: theme, type links and Ada highlighting (IMGPROC-DOC-003)
 
-Adapted from Core's DOC-069/DOC-070 tooling. `generate_docs.sh` runs three
+**Historical implementation, retained only as the explicit review oracle.**
+Production now follows the R2 released pipeline described below; do not run
+these postprocessors on shared-enhanced files. The original pipeline ran three
 deterministic, idempotent steps after the warning check; each verifies the
 previous ones before writing anything:
 
@@ -234,7 +235,7 @@ PLAYWRIGHT_MODULE=/path/to/node_modules/playwright \
 DOC_URL=http://127.0.0.1:8072/ node scripts/test_gnatdoc_presentation_browser.cjs
 ```
 
-## Operation-level API browser (IMGPROC-DOC-004)
+## Operation-level API browser (IMGPROC-DOC-004, historical implementation)
 
 Core's browser searches 195 packages; Imgproc publishes one package with
 314 declarations, so its browser works per declaration.
@@ -388,9 +389,9 @@ cross-guide links, keyboard focus and the skip link.
 
 `.github/workflows/documentation.yml` runs for every pull request
 (including stacked documentation PRs whose base is another branch), pushes
-to `main` and manual dispatch. It checks out Imgproc and Core
-`main` side by side, as the cross-platform workflow does. Pull-request runs
-have only `contents: read`: they test the tooling, generate and validate the
+to `main` and manual dispatch. It checks out exact Imgproc head and the immutable
+indexed Core source witness; production builds use the Alire-resolved dependency.
+Pull-request jobs have read-only contents/artifact/deployment access: they test the tooling, generate and validate the
 site, repeat the validator mutations on the generated site, regenerate to
 prove byte-identical output, compile and run the example, and upload the site
 and `gnatdoc.log` as review artifacts. They never configure or deploy Pages.
@@ -529,17 +530,19 @@ the browser inventory. No colored HTML belongs in `.adb` files. If a new Core
 type needs a declaration bookmark, independently verify its published symbol
 contract and native identity before extending `CORE_SYMBOLS`; otherwise keep
 the package fallback. The helper's source/context/renderer separation is suitable
-for later reuse in Core, Geometry, Features or the shared enhancer, but this task
-does not modify those repositories or migrate this qualified pipeline. Reviewed
+for later reuse in Core, Geometry, Features or the shared enhancer. R2 preserves
+this renderer rather than substituting the toolkit's authored renderer. Reviewed
 shared facilities were `syntax.py`, `guides.py` and the stable-bookmark contract
 at enhancer `65c29b3a1154c54f2fbb3e112bec48598c751c8a`; the historical shadow
 authority and qualification evidence remain frozen.
 
 ```sh
-python3 -m venv .doc-tools/markdown
-.doc-tools/markdown/bin/pip install -r docs/requirements.txt
-export DOC_PYTHON="$PWD/.doc-tools/markdown/bin/python"
 sh scripts/generate_docs.sh
+export DOC_PYTHON="$PWD/.doc-tools/enhancer-0.1.1/bin/python"
+export DOC_CORE_SOURCE=$(alr exec -- printenv OPENCV_CORE_ALIRE_PREFIX)
+"$DOC_PYTHON" scripts/review_legacy_docs.py --native obj/docs/native \
+  --output /tmp/imgproc-legacy-review --core "$DOC_CORE_SOURCE"
+export DOC_LEGACY_ORACLE=/tmp/imgproc-legacy-review
 "$DOC_PYTHON" -m unittest discover -s scripts -p 'test_*.py' -v
 python3 scripts/check_doc_coverage.py --report docs/gnatdoc-coverage-baseline.txt _site
 python3 scripts/check_comment_only.py origin/main   # documentation-only changes
@@ -549,8 +552,91 @@ alr exec -- gprbuild -P docs/examples/examples.gpr   # then run obj/docs-example
 git diff --check
 ```
 
-Apart from the pinned guide renderer (`markdown-it-py==3.0.0` and
-`mdurl==0.1.2`, installed in a separate documentation environment), the
-documentation tools use only the Python standard library. None of them, nor
+The released enhancer, pinned guide renderer (`markdown-it-py==3.0.0` and
+`mdurl==0.1.2`) and independent consumer scripts are documentation-only. None of them, nor
 the optional Playwright harnesses, is a dependency of the library or the
 `tests` crate.
+
+## GNATDOC-009R2: released production candidate
+
+`scripts/install_released_gnatdoc.py` acquires only the official HTTPS v0.1.1
+wheel, checks its complete inventory and SHA-256
+`8b896683a65623a7e7d626701a4cd68c8b89cb65792f9ffd5525bfa8cfa257ab`,
+independently fetches annotated tag `6d3bc1167179ec7cb90c2a6bdf91050b6057f6b4`,
+commit `dd100f026e13cdd9e97b283d50130241d71bdb9d`, tree
+`2873e5f7e0c200ec24a6706610d3bc0527303a7d`, and compares every packaged module
+and asset with tagged source. It checks exact installed bytes, distribution
+metadata, non-editable origin, launcher, CLI version, release provenance and
+checksum receipt before execution. Optional Markdown wheels are independently
+hash-checked. No development checkout, rebuilt wheel or toolkit patch is used.
+
+`generate_docs.sh` builds the indexed library, generates pristine public native
+output under `obj/docs/native`, enforces zero warnings, and source-matches its
+declarations before enhancement. `assemble_shared_docs.py` stages only the API,
+rechecks the installed release, runs `inventory`, `enhance`, and independent
+`verify`, then invokes the consumer source/native oracle. The API-only toolkit
+verification **does not qualify authored pages**. The original PR #80 example
+renderer separately assembles the landing page and all five guides, preserving
+source text, whitespace, final newlines and lexical reconstruction. Consumer
+full-site validation reconstructs those pages and assets, checks their links,
+security and complete inventory, and rechecks actual files before upload.
+
+The explicit opt-in candidate TOML is `docs/gnatdoc-enhancer.toml`:
+
+```toml
+[presentation]
+theme = true
+syntax_highlighting = true
+type_links = true
+external_type_target = "_top"
+```
+
+API Core type links use genuine native declaration fragments and replace the
+top-level browser URL. Local Imgproc links remain local. Authored examples keep
+their separately source-qualified `?symbol=` Core destinations and honest no-JS
+native-package fallback. Generic-instance navigation is not reauthorized by
+this API policy. No JavaScript navigation workaround or arbitrary rewriting is
+permitted.
+
+The indexed Core authority is 0.5.0 source
+`f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f`; it is distinct from the mutable
+Core publication. R2 pins deployment `7348179998`, source
+`33a2a4f3b83606a5c779b8a93abeb6c91fa49a21`, tree
+`454fb0fa3a128e638a1d7d85f345c7904f296877`, run `40433988181`, review artifact
+`12702919800`, and Pages artifact `12703258126`. `qualify_current_core.py`
+compares all 209 hosted files, artifact equality, and all 14 referenced exact
+source/native declarations before and after browser qualification. A changed
+deployment requires renewed comparison; live bytes cannot authorize themselves.
+
+Acceptance remains one package, 329 declarations and source-order operation
+destinations, 1,596/1,596 documented elements, zero warnings, 586 Core occurrences
+across 14 identities, 350 local links, and six compiled/executed examples.
+The two extra local links are `Background_Label` → `Component_Label` and
+`Default_Morphology_Border` → the public `Morphology_Border_Value` view.
+All 348 original local links are retained. Authored code retains 55 links
+(eight Imgproc, 47 Core); no API count substitutes for that separate proof.
+
+`review_legacy_docs.py` is the documented, separately invoked oracle from the
+same pristine input, not a second production generator.
+`compare_production_docs.py` classifies every file. Historical assets and
+postprocessors remain for comparison only. The authored stylesheet restores
+consumer-owned focus/layout rules absent from the toolkit API theme without
+modifying released assets. Browser qualification uses actual project-prefix
+Chromium, 1280px/390px, light/dark and JS on/off, source-order destinations,
+local links, actual live HTTPS top-level Core navigation, reload and history,
+and all authored examples. This is not a claim of other-browser accessibility.
+
+R1 and GNATDOC-008/008C evidence stays frozen. Historical shadow qualification
+runs against its own historical source and enhancer identities, never current
+API hashes. Release-browser compatibility is not production-policy approval.
+R2's additive policy proposal remains **subject to independent merge review**;
+R1's `policy_approved: false` is unchanged. Current evidence and remaining gates
+are in `docs/evidence/gnatdoc009/r2/`.
+
+PRs qualify candidate artifacts but never deploy Pages. Main-only `verify-live`
+reconstructs the exact deployed source using the official wheel, compares both
+same-run artifacts, independently checks public HTTPS, and runs authored browser
+tests. To roll back, normally revert the migration commit(s) and let the normal
+main build/deploy/live-verification chain run; never overwrite artifacts or
+weaken provenance checks. A Core publication mismatch blocks acceptance pending
+an explicit renewed source/native/artifact comparison and independent review.

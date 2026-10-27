@@ -1,0 +1,9 @@
+test_complete_site (test_shared_production.ProductionMutations.test_complete_site) ... ok
+test_guides_assets_and_receipts_cannot_authorize_mutations (test_shared_production.ProductionMutations.test_guides_assets_and_receipts_cannot_authorize_mutations) ... ok
+test_manifest_native_substitution_rejected (test_shared_production.ProductionMutations.test_manifest_native_substitution_rejected) ... ok
+test_wrong_existing_core_local_anchor_profile_marks_targets_and_scripts (test_shared_production.ProductionMutations.test_wrong_existing_core_local_anchor_profile_marks_targets_and_scripts) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 39.146s
+
+OK

@@ -1,0 +1,6 @@
+gprbuild: "example" up to date
+gprbuild: "filtering_and_transforms" up to date
+gprbuild: "color_and_representation" up to date
+gprbuild: "features_and_analysis" up to date
+gprbuild: "segmentation_and_contours" up to date
+gprbuild: "matching_and_registration" up to date

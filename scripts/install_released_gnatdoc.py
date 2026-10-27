@@ -22,13 +22,15 @@ import venv
 import zipfile
 
 REPOSITORY = "https://github.com/zackboll/ada-gnatdoc-enhancer"
-TAG = "14463739818eb4c78b93ad42ecc4a4077cbec2bc"
-COMMIT = "4ee95e8c95b8c7f54397a07e3e1c507783c115aa"
-TREE = "c5cff2cff52e595f71202bf97c513b7e0f46c918"
-WHEEL = "ada_gnatdoc_enhancer-0.1.0-py3-none-any.whl"
-WHEEL_HASH = "b0949aba6736515bf2ebe14fc7cc30c816a176257fc4524564285397b8aaf97d"
-PROVENANCE_HASH = "7d08f56d7566416009bcd0595ecaa186cc7701e1aa1c5e9d8349d6e601c1a269"
-SDIST_HASH = "b5114c9d186dc6d230f1d48c139739b32e83a037d7fe7e7516c46755916e854a"
+VERSION = "0.1.1"
+TAG = "6d3bc1167179ec7cb90c2a6bdf91050b6057f6b4"
+COMMIT = "dd100f026e13cdd9e97b283d50130241d71bdb9d"
+TREE = "2873e5f7e0c200ec24a6706610d3bc0527303a7d"
+WHEEL = "ada_gnatdoc_enhancer-0.1.1-py3-none-any.whl"
+WHEEL_HASH = "8b896683a65623a7e7d626701a4cd68c8b89cb65792f9ffd5525bfa8cfa257ab"
+PROVENANCE_HASH = "fd29acd9660b4eea07b88dba493091894badc5b442eaeef2c8ad90741c6c0baa"
+SDIST_HASH = "5d727b76bb7f667949f04ba2f8bb73183477ae8e3b6d62c061f0e8ebc4750d7f"
+SUMS_HASH = "7b508545299c7c84ac5a95ec5a164b4e43cad8620574e02b0c78055c5460179b"
 MODULES = """__init__.py __main__.py authored.py browser_metadata.py cli.py
 config.py conformance.py coverage.py destinations.py errors.py external_types.py
 generic_instances.py guides.py instance_references.py inventory.py metadata.py
@@ -37,7 +39,7 @@ syntax.py theme.py util.py validation.py warnings.py adapters/__init__.py
 adapters/mel.py adapters/opencv.py assets/gnatdoc-guides.css assets/gnatdoc-instance-navigation.js
 assets/gnatdoc-navigation.js assets/gnatdoc-symbol-navigation.js
 assets/gnatdoc-theme.css""".split()
-DIST = "ada_gnatdoc_enhancer-0.1.0.dist-info/"
+DIST = "ada_gnatdoc_enhancer-0.1.1.dist-info/"
 MEMBERS = {"ada_gnatdoc_enhancer/" + p for p in MODULES} | {
     DIST + p for p in ("METADATA", "WHEEL", "entry_points.txt", "top_level.txt",
                       "RECORD", "licenses/LICENSE")}
@@ -77,7 +79,7 @@ class Redirect(urllib.request.HTTPRedirectHandler):
 
 
 def download(name, path, sha, size):
-    url = f"{REPOSITORY}/releases/download/v0.1.0/{name}"
+    url = f"{REPOSITORY}/releases/download/v{VERSION}/{name}"
     approved_url(url)
     with urllib.request.build_opener(Redirect).open(url, timeout=90) as response:
         approved_url(response.url)
@@ -110,7 +112,7 @@ def archive(path, sha, names=None):
 def tagged_source(directory, members):
     run("git", "init", "--quiet", str(directory))
     run("git", "-c", "http.followRedirects=false", "-C", str(directory),
-        "fetch", "--quiet", "--no-tags", REPOSITORY + ".git", "refs/tags/v0.1.0")
+        "fetch", "--quiet", "--no-tags", REPOSITORY + ".git", f"refs/tags/v{VERSION}")
     identities = run("git", "-C", str(directory), "rev-parse", "FETCH_HEAD",
                      "FETCH_HEAD^{commit}", "FETCH_HEAD^{tree}").decode().split()
     require(identities == [TAG, COMMIT, TREE] and
@@ -136,6 +138,9 @@ def verify(environment):
     retained = environment / "release-provenance.json"
     require(not retained.is_symlink() and digest(retained.read_bytes()) == PROVENANCE_HASH,
             "release provenance mismatch")
+    sums = environment / "SHA256SUMS"
+    require(not sums.is_symlink() and digest(sums.read_bytes()) == SUMS_HASH,
+            "release checksum inventory mismatch")
     site = Path(run(str(environment / "bin/python"), "-I", "-B", "-c",
                     "import sysconfig;print(sysconfig.get_path('purelib'))").decode().strip())
     require(site.resolve().is_relative_to(environment.resolve()), "site-packages escapes environment")
@@ -167,7 +172,9 @@ def verify(environment):
     require(actual == expected, "installed modules, assets or metadata differ from approved wheels")
     origin = json.loads((site / DIST / "direct_url.json").read_text())
     require(not origin.get("dir_info") and not origin.get("vcs_info") and
-            origin.get("archive_info", {}).get("hashes", {}).get("sha256") == WHEEL_HASH,
+            origin == {"url": wheel.as_uri(),
+                       "archive_info": {"hash": "sha256=" + WHEEL_HASH,
+                                        "hashes": {"sha256": WHEEL_HASH}}},
             "non-editable wheel provenance mismatch")
     tool = environment / "bin/gnatdoc-enhancer"
     require(not tool.is_symlink() and tool.read_bytes() == launcher(environment),
@@ -175,13 +182,15 @@ def verify(environment):
     versions = json.loads(run(str(environment / "bin/python"), "-I", "-B", "-c",
         "import importlib.metadata as m,ada_gnatdoc_enhancer as a,json;"
         "print(json.dumps([m.version('ada-gnatdoc-enhancer'),a.__version__]))"))
-    require(versions == ["0.1.0", "0.1.0"] and run(str(tool), "--version") == b"0.1.0\n",
+    require(versions == [VERSION, VERSION] and
+            run(str(tool), "--version") == (VERSION + "\n").encode(),
             "installed CLI/module/distribution version mismatch")
     run(str(environment / "bin/python"), "-I", "-m", "pip", "check")
-    record = {"repository": REPOSITORY, "tag": "v0.1.0", "tag_object": TAG,
-              "source_commit": COMMIT, "source_tree": TREE, "version": "0.1.0",
+    record = {"repository": REPOSITORY, "tag": "v" + VERSION, "tag_object": TAG,
+              "source_commit": COMMIT, "source_tree": TREE, "version": VERSION,
               "wheel_sha256": WHEEL_HASH, "sdist_sha256_not_installed": SDIST_HASH,
               "release_provenance_sha256": PROVENANCE_HASH,
+              "sha256sums_sha256": SUMS_HASH,
               "installed_members": {k: digest(v) for k, v in sorted(expected.items())},
               "launcher_sha256": digest(launcher(environment)), "renderers": renderers}
     return record
@@ -192,10 +201,12 @@ def install(environment, guides=False):
     with tempfile.TemporaryDirectory(prefix="imgproc009-release-") as tmp:
         directory = Path(tmp)
         wheel = directory / WHEEL
-        download(WHEEL, wheel, WHEEL_HASH, 94237)
+        download(WHEEL, wheel, WHEEL_HASH, 94500)
         members = archive(wheel, WHEEL_HASH, MEMBERS)
         provenance = directory / "release-provenance.json"
-        download(provenance.name, provenance, PROVENANCE_HASH, 707651)
+        download(provenance.name, provenance, PROVENANCE_HASH, 24655822)
+        sums = directory / "SHA256SUMS"
+        download(sums.name, sums, SUMS_HASH, 300)
         tagged_source(directory / "git", members)
         if guides:
             run("python3", "-m", "pip", "download", "--no-deps", "--require-hashes",
@@ -210,6 +221,7 @@ def install(environment, guides=False):
         for name in names:
             shutil.copyfile(directory / name, destination / name)
         shutil.copyfile(provenance, environment / provenance.name)
+        shutil.copyfile(sums, environment / sums.name)
         run(str(environment / "bin/python"), "-I", "-m", "pip", "install", "--no-index",
             "--no-deps", *(str(destination / name) for name in names))
     (environment / "bin/gnatdoc-enhancer").write_bytes(launcher(environment))

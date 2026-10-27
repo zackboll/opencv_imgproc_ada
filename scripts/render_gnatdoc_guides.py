@@ -182,6 +182,7 @@ def expected(root=ROOT, site=None):
                 for p in sorted((root / 'docs/examples').glob('*.adb'))}
     used = set()
     outputs = {'gnatdoc-guides.css': (root / 'docs/assets/gnatdoc-guides.css').read_bytes()}
+    outputs['gnatdoc-authored.css'] = (root / 'docs/assets/gnatdoc-authored.css').read_bytes()
     for name, (title, entry_names) in GUIDES.items():
         fences = []
         content, _ = markdown(texts[name],
@@ -207,6 +208,7 @@ def expected(root=ROOT, site=None):
 <title>{html.escape(title)} — OpenCV Imgproc Ada</title>
 <link rel="stylesheet" href="../api/gnatdoc-theme.css">
 <link rel="stylesheet" href="gnatdoc-guides.css">
+<link rel="stylesheet" href="gnatdoc-authored.css">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
@@ -240,7 +242,7 @@ def validate(root=ROOT, site=None):
         require(not (directory / name).is_symlink() and
                 (directory / name).read_bytes() == content,
                 f'authoritative guide/stylesheet mismatch: {name}')
-    return len(outputs) - 1
+    return len(outputs) - 2
 
 
 def generate(root=ROOT, site=None):

@@ -36,4 +36,5 @@ jobs:
             ${{ runner.temp }}/release-install.json
             ${{ runner.temp }}/release-recheck.json
             docs/evidence/gnatdoc009/r1
+            docs/evidence/gnatdoc009/r2
           if-no-files-found: error

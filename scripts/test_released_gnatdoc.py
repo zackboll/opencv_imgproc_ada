@@ -20,7 +20,7 @@ class ReleaseSecurity(unittest.TestCase):
                 install.approved_url(url)
 
     def test_approved_hosts_only(self):
-        install.approved_url("https://github.com/a/b/releases/download/v0.1.0/tool.whl")
+        install.approved_url("https://github.com/a/b/releases/download/v0.1.1/tool.whl")
         install.approved_url("https://release-assets.githubusercontent.com/x")
 
     def test_redirect_is_checked_before_following(self):
@@ -142,7 +142,10 @@ class InstalledMutations(unittest.TestCase):
         paths = [site / "ada_gnatdoc_enhancer/assets/gnatdoc-navigation.js",
                  site / "ada_gnatdoc_enhancer/navigation.py",
                  site / install.DIST / "METADATA", environment / "bin/gnatdoc-enhancer",
-                 environment / "installation-provenance.json"]
+                 environment / "installation-provenance.json",
+                 environment / "release-provenance.json", environment / "SHA256SUMS",
+                 environment / "approved-archives" / install.WHEEL,
+                 site / install.DIST / "direct_url.json"]
         install.checked_tool(environment)
         for path in paths:
             original = path.read_bytes()

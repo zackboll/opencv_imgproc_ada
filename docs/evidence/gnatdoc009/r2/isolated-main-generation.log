@@ -1,0 +1,54 @@
+GNATdoc 26.0.0 (20260415)
+Note: Synchronizing workspace...
+Dependencies automatically updated as follows:
+
+   +b opencv      4.10.0 (new,system package)
+   +  opencv_core 0.5.0  (new)
+   +b pkg_config  1.8.1  (new,system package)
+
+Note: Running pre-build actions for opencv_core=0.5.0...
+Note: Running pre-build actions for opencv_imgproc=0.3.0...
+OpenCV package: opencv4
+OpenCV include: /usr/include/opencv4
+OpenCV library: /usr/lib/x86_64-linux-gnu
+Note: Building opencv_imgproc=0.3.0/opencv_imgproc.gpr...
+Setup
+   [mkdir]        object directory for project OpenCV_Imgproc_Shim
+   [mkdir]        library directory for project OpenCV_Imgproc_Shim
+   [mkdir]        object directory for project Opencv_Imgproc
+Compile
+   [C++]          opencv_imgproc_shim.cpp
+   [Ada]          opencv_imgproc_config.ads
+   [Ada]          opencv-image_processing-internal.ads
+   [Ada]          opencv-image_processing-internal-c_api.adb
+   [Ada]          opencv-image_processing.adb
+Build Libraries
+   [gprlib]       opencv_imgproc_shim.lexch
+   [gprlib]       opencv_imgproc_ada.lexch
+   [archive]      libopencv_imgproc_shim.a
+   [index]        libopencv_imgproc_shim.a
+   [archive]      libopencv_imgproc_ada.a
+   [index]        libopencv_imgproc_ada.a
+Success: Build finished successfully in 9.08 seconds.
+GNATdoc: 0 documentation warnings (see obj/docs/gnatdoc.log)
+GNATdoc warning delta: 0 added, 0 removed
+Theme: 2 API pages verified; asset/metadata errors: 0
+Type cross-references: 329 snippets; 348 Imgproc and 586 Core package links; 0 ambiguous and 76 unsupported names left unlinked
+Theme: 2 API pages verified; asset/metadata errors: 0
+Traceback (most recent call last):
+  File "/home/zboll/.cache/imgproc-gnatdoc009-r2/isolated-main/scripts/highlight_gnatdoc_ada.py", line 79, in <module>
+    main()
+    ~~~~^^
+  File "/home/zboll/.cache/imgproc-gnatdoc009-r2/isolated-main/scripts/highlight_gnatdoc_ada.py", line 74, in main
+    process(args.api, Path(__file__).resolve().parent.parent / 'src', args.core,
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            highlight=True)
+            ^^^^^^^^^^^^^^^
+  File "/home/zboll/.cache/imgproc-gnatdoc009-r2/isolated-main/scripts/link_gnatdoc_types.py", line 322, in process
+    core = core_types(Path(core_root))
+  File "/home/zboll/.cache/imgproc-gnatdoc009-r2/isolated-main/scripts/link_gnatdoc_types.py", line 133, in core_types
+    require(path.is_file(), f"missing Core specification: {path}")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zboll/.cache/imgproc-gnatdoc009-r2/isolated-main/scripts/link_gnatdoc_types.py", line 79, in require
+    raise CrossReferenceError(message)
+link_gnatdoc_types.CrossReferenceError: missing Core specification: /home/zboll/.cache/imgproc-gnatdoc009-r2/core/src/opencv.ads
