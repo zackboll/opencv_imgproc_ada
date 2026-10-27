@@ -54,17 +54,8 @@ class SnippetMarkup(HTMLParser):
 
 
 def indexed_core(root, core):
-    historical = json.loads((root / 'docs/evidence/gnatdoc009/r1/core-destination-proposal.json').read_text())
-    lock = tomllib.loads((root / 'alire/alire.lock').read_text())
-    solved = [s for s in lock['solution']['state'] if s['crate'] == 'opencv_core']
-    require(len(solved) == 1 and not solved[0]['pinned'] and
-            solved[0]['release']['version'] == '0.5.0' and
-            solved[0]['release']['origin']['commit'] == historical['indexed_core_revision'],
-            'documentation requires normal indexed Core 0.5.0 resolution')
-    actual = {p.relative_to(core).as_posix(): digest(p.read_bytes())
-              for p in (core / 'src').rglob('*') if p.is_file()}
-    require(actual == historical['core_source_sha256'], 'resolved Core source differs from approved indexed source')
-    return historical
+    from core_source_authority import checked_resolution
+    return checked_resolution(root, core)
 
 
 def source_workspace(root, destination):
@@ -91,17 +82,24 @@ def api_semantics(native, candidate, root=ROOT):
             'type_links': True, 'external_type_target': '_top'}, 'unreviewed presentation policy')
     require(policy['external_types'] == {k: v['url'] for k, v in ledger['types'].items()},
             'Core destination differs from reviewed source/native proposal')
-    authority_path = root / 'docs/evidence/gnatdoc009/r2/referenced-types.json'
+    authority_path = root / 'docs/evidence/gnatdoc009/r3/referenced-types.json'
     require(digest(authority_path.read_bytes()) ==
-            '01e091b2e672b30be90283f32f05ef335dc40d2ce3244a3e0336f46f392402b3',
+            '47209d10c4b5de1f31ca3f85f00b838d41381c614acfc7930456b1cd66391603',
             'reviewed current Core declaration authority changed')
     authority = json.loads(authority_path.read_text())
-    proposal = json.loads((root / 'docs/evidence/gnatdoc009/r2/policy-proposal.json').read_text())
+    proposal = json.loads((root / 'docs/evidence/gnatdoc009/r3/policy-proposal.json').read_text())
+    from core_source_authority import authority as source_authority
+    indexed = source_authority(root)
+    for identity, proof in authority.items():
+        require(all(proof[k] == indexed['types'][identity][k] for k in indexed['types'][identity]),
+                'hosted type not bound to exact indexed 0.5.2 declaration')
     require(proposal['deployment'] == 7348179998 and proposal['run'] == 40433988181 and
             proposal['source'] == '33a2a4f3b83606a5c779b8a93abeb6c91fa49a21' and
             proposal['tree'] == '454fb0fa3a128e638a1d7d85f345c7904f296877' and
             proposal['review_artifact'] == 12702919800 and
             proposal['pages_artifact'] == 12703258126 and
+            proposal['indexed_version'] == indexed['version'] and
+            proposal['indexed_origin'] == indexed['origin'] and
             proposal['policy_approved'] is False and
             policy['external_types'] == {k: v['url'] for k, v in authority.items()},
             'Core policy not bound to reviewed immutable deployment proposal')
@@ -118,10 +116,15 @@ def api_semantics(native, candidate, root=ROOT):
     original = package_page(native / 'api', source)
     transformed = (candidate / 'api' / original.name).read_text()
     from link_gnatdoc_types import SECTION
+    from probe_core_candidate import SnippetLinks
+    occurrence_inventory = []
     for section in SECTION.finditer(transformed):
         parser = SnippetMarkup()
         parser.feed(section[3])
         parser.close()
+        occurrence_inventory.extend({'declaration_anchor': section[1], **link}
+                                    for link in SnippetLinks(section[3]).links)
+    report['api_occurrences'] = occurrence_inventory
     # Outside snippets only the exact reviewed native-document head changes.
     # This rejects invisible injected attributes, changed bookmarks and hidden
     # active markup even if the visible-text and receipt checks still match.
@@ -221,6 +224,12 @@ def final_semantics(site, native, core, root=ROOT):
     result.update(documented_elements=len(items), authored_examples=6,
                   authored_example_links=55, authored_local_links=8, authored_core_links=47,
                   full_site_sha256=hashes(site))
+    result['authored_occurrences'] = [
+        {'source': path.relative_to(root).as_posix(), 'source_sha256': digest(path.read_bytes()),
+         'references': [{'start': start, 'end': end, 'identity': identity,
+                         'label': path.read_text()[start:end], 'url': renderer.destinations[identity]}
+                        for start, end, identity in renderer.references(path.read_text())]}
+        for path in [root / 'docs/example.adb', *sorted((root / 'docs/examples').glob('*.adb'))]]
     return result
 
 

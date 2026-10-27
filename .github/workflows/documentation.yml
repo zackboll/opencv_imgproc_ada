@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zackboll/opencv_core_ada
-          ref: f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+          ref: aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d
           path: core
       - name: Record checkout identities
         run: |
@@ -72,6 +72,7 @@ jobs:
         run: |
           RELEASE_TEST_VENV="$GNATDOC_ENHANCER_VENV" "$DOC_PYTHON" -m unittest discover -s scripts -p test_released_gnatdoc.py -v
           "$DOC_PYTHON" -m unittest discover -s scripts -p test_current_core.py -v
+          "$DOC_PYTHON" -m unittest discover -s scripts -p test_core_source_authority.py -v
       - name: Test warning comparison
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_compare_gnatdoc_warnings.py'' -v'
       - name: Test documentation validator

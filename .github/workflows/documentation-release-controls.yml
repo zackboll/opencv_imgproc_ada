@@ -21,6 +21,7 @@ jobs:
         run: python3 -m unittest discover -s scripts -p test_production_core_links.py -v
       - name: Install official archive and independently recheck installed distribution
         run: |
+          python3 scripts/verify_official_release_archives.py > "$RUNNER_TEMP/release-archives.json"
           python3 scripts/install_released_gnatdoc.py --venv "$RUNNER_TEMP/release-tools" --with-guides > "$RUNNER_TEMP/release-install.json"
           python3 scripts/install_released_gnatdoc.py --venv "$RUNNER_TEMP/release-tools" --verify > "$RUNNER_TEMP/release-recheck.json"
           diff "$RUNNER_TEMP/release-install.json" "$RUNNER_TEMP/release-recheck.json"
@@ -35,6 +36,8 @@ jobs:
           path: |
             ${{ runner.temp }}/release-install.json
             ${{ runner.temp }}/release-recheck.json
+            ${{ runner.temp }}/release-archives.json
             docs/evidence/gnatdoc009/r1
             docs/evidence/gnatdoc009/r2
+            docs/evidence/gnatdoc009/r3
           if-no-files-found: error

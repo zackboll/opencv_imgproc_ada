@@ -1,0 +1,52 @@
+test_cli_returns_nonzero_and_classified_evidence_for_command_failures (test_verify_live_docs.Commands.test_cli_returns_nonzero_and_classified_evidence_for_command_failures) ... ok
+test_closed_pipes_do_not_bypass_process_exit_deadline (test_verify_live_docs.Commands.test_closed_pipes_do_not_bypass_process_exit_deadline) ... ok
+test_continuous_output_does_not_restart_deadline (test_verify_live_docs.Commands.test_continuous_output_does_not_restart_deadline) ... ok
+test_descendant_holding_pipes_does_not_bypass_deadline (test_verify_live_docs.Commands.test_descendant_holding_pipes_does_not_bypass_deadline) ... ok
+test_failure_diagnostics_do_not_include_arguments_or_output (test_verify_live_docs.Commands.test_failure_diagnostics_do_not_include_arguments_or_output) ... ok
+test_immediate_exit (test_verify_live_docs.Commands.test_immediate_exit) ... ok
+test_no_output_hang (test_verify_live_docs.Commands.test_no_output_hang) ... ok
+test_nonzero_status_with_incomplete_output_is_not_success (test_verify_live_docs.Commands.test_nonzero_status_with_incomplete_output_is_not_success) ... ok
+test_oversized_stdout (test_verify_live_docs.Commands.test_oversized_stdout) ... ok
+test_partial_output_hang_is_not_success (test_verify_live_docs.Commands.test_partial_output_hang_is_not_success) ... ok
+test_stderr_is_drained_and_bounded (test_verify_live_docs.Commands.test_stderr_is_drained_and_bounded) ... ok
+test_successful_command_and_exact_output_boundary (test_verify_live_docs.Commands.test_successful_command_and_exact_output_boundary) ... ok
+test_timeout_reaps_child_and_closes_all_resources (test_verify_live_docs.Commands.test_timeout_reaps_child_and_closes_all_resources) ... ok
+test_current_native_destinations (test_verify_live_docs.Core.test_current_native_destinations) ... ok
+test_wrong_existing_core_type (test_verify_live_docs.Core.test_wrong_existing_core_type) ... ok
+test_archive_traversal_links_and_limits (test_verify_live_docs.Provenance.test_archive_traversal_links_and_limits) ... ok
+test_missing_or_wrong_provenance (test_verify_live_docs.Provenance.test_missing_or_wrong_provenance) ... ok
+test_pages_payload_inventory_and_unsafe_tar (test_verify_live_docs.Provenance.test_pages_payload_inventory_and_unsafe_tar) ... ok
+test_valid_deployment (test_verify_live_docs.Provenance.test_valid_deployment) ... ok
+test_wrong_expected_sha (test_verify_live_docs.Provenance.test_wrong_expected_sha) ... ok
+test_artifact_mutations (test_verify_live_docs.Publication.test_artifact_mutations) ... ok
+test_bounds_and_symlinks (test_verify_live_docs.Publication.test_bounds_and_symlinks) ... ok
+test_corrupt_live_entities_and_missing_files (test_verify_live_docs.Publication.test_corrupt_live_entities_and_missing_files) ... ok
+test_manifest_cannot_authorize_content (test_verify_live_docs.Publication.test_manifest_cannot_authorize_content) ... ok
+test_stale_and_incomplete_attempts (test_verify_live_docs.Publication.test_stale_and_incomplete_attempts) ... ok
+test_unexpected_inventory (test_verify_live_docs.Publication.test_unexpected_inventory) ... ok
+test_valid_publication_over_actual_offline_http (test_verify_live_docs.Publication.test_valid_publication_over_actual_offline_http) ... 127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /api/gnatdoc-navigation.js HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /api/gnatdoc-theme.css HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /api/gnatdoc.css HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /api/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /api/presentation.json HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /guides/color-and-image-representation.html HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /guides/features-and-structural-analysis.html HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /guides/filtering-and-transforms.html HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /guides/gnatdoc-authored.css HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /guides/gnatdoc-guides.css HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /guides/segmentation-contours-and-morphology.html HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /guides/template-matching-and-registration.html HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [26/Oct/2026 23:27:00] "GET / HTTP/1.1" 200 -
+ok
+test_valid_qualified_publication (test_verify_live_docs.Publication.test_valid_qualified_publication) ... ok
+test_decoded_http_entities (test_verify_live_docs.Transport.test_decoded_http_entities) ... ok
+test_http_mutations (test_verify_live_docs.Transport.test_http_mutations) ... ok
+test_origins_and_paths (test_verify_live_docs.Transport.test_origins_and_paths) ... ok
+test_main_only_read_only_job (test_verify_live_docs.Workflow.test_main_only_read_only_job) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 24.134s
+
+OK

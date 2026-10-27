@@ -17,8 +17,9 @@ from highlight_gnatdoc_ada import strip_highlighting
 from install_released_gnatdoc import digest, require
 from link_gnatdoc_types import SECTION, plain
 from qualify_production_core_links import (
-    BASE_URL, CORE, fetch, git, public_model, source_native_types,
+    BASE_URL, fetch, git, public_model, source_native_types,
 )
+from core_source_authority import ORIGIN as CORE, authority, check_source
 from qualify_released_gnatdoc import write
 from verify_live_docs import command, pages_inventory, safe_path
 
@@ -101,10 +102,14 @@ def qualify(args):
             'Core Pages and review artifact bytes differ')
     require(git(args.core, 'rev-parse', 'HEAD').decode().strip() == CORE and
             not git(args.core, 'diff', '--name-only', 'HEAD', '--', 'src'),
-            'indexed Core witness is not clean approved 0.5.0')
+            'indexed Core witness is not clean approved 0.5.2')
+    approved = authority()
+    check_source(args.core, approved)
     historical = json.loads((ROOT / 'docs/evidence/gnatdoc009/r1/core-destination-proposal.json').read_text())
     proofs = source_native_types(args.core, args.native, historical['types'])
     require(len(proofs) == 14, 'Core identity inventory differs')
+    for identity, proof in proofs.items():
+        require(proof == approved['types'][identity], 'Core native/source authority differs: ' + identity)
     changed = []
     for identity, proof in proofs.items():
         model = public_model(args.core / proof['source_file'])
@@ -157,6 +162,7 @@ def qualify(args):
         'external_type_target': '_top',
         'proposal': 'Direct native declaration URLs; top-level Core navigation; independent merge review required',
         'historical_r1_policy_approved': False,
+        'indexed_version': '0.5.2', 'indexed_origin': CORE,
     })
 
 

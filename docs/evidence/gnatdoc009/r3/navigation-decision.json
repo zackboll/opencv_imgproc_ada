@@ -1,0 +1,15 @@
+{
+  "task": "IMGPROC-GNATDOC-009R3",
+  "reviewer_direction": "Option 2: qualify naturally resolved indexed Core 0.5.2; do not force 0.5.0 or change the library ~0.5.0 constraint",
+  "design_approved_by_user": true,
+  "external_type_links": "Direct genuine native Core declaration fragments",
+  "external_type_target": "_top",
+  "local_type_links": "Native local navigation; private and ambiguous types remain unlinked",
+  "javascript_navigation_workaround": false,
+  "consumer_api_html_rewriting": false,
+  "source_authority_version": "0.5.2",
+  "source_authority_origin": "aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d",
+  "future_0_5_x_authorized": false,
+  "historical_r1_r2_records_modified": false,
+  "production_acceptance": "Conditional on complete source/native, publication, browser, artifact and exact-head CI qualification; stop at independent review"
+}

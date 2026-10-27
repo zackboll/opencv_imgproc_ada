@@ -23,6 +23,7 @@ test "$version" = 'GNATdoc 26.0.0 (20260415)' || {
 echo "$version"
 # Resolve the library environment and its supported OpenCV configuration.
 # This builds only the library, not the test crate or unrelated applications.
+python3 scripts/core_source_authority.py
 alr -n build
 # Resolve documentation inputs from the same indexed Core as the build, not
 # an adjacent development checkout. Core is used for resolution, not published.

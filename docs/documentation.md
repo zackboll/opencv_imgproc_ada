@@ -559,12 +559,12 @@ the optional Playwright harnesses, is a dependency of the library or the
 
 ## GNATDOC-009R2: released production candidate
 
-**Qualification blocker:** the fresh hosted community index now selects Core
-0.5.2 for the unchanged `~0.5.0` manifest, whereas this campaign explicitly
-requires source-authorized 0.5.0. The new identity gate rejects this rather than
-silently authorizing a dependency. See `docs/evidence/gnatdoc009/r2/BLOCKER.md`.
-The migration is not ready for merge; local cached-0.5.0 success is not a fresh
-hosted qualification. Do not bypass the gate with a pin or rewrite old evidence.
+**Historical R2 blocker:** the fresh hosted community index selected Core
+0.5.2 while R2 authorized 0.5.0. R3 explicitly selects reviewer option 2 and
+renews source/native qualification against exact naturally resolved 0.5.2.
+R2's failure remains unchanged at `docs/evidence/gnatdoc009/r2/BLOCKER.md`.
+R3's active exact authority and final qualification are separate records under
+`docs/evidence/gnatdoc009/r3/`; no future 0.5.x is implicitly authorized.
 
 `scripts/install_released_gnatdoc.py` acquires only the official HTTPS v0.1.1
 wheel, checks its complete inventory and SHA-256
@@ -605,8 +605,15 @@ native-package fallback. Generic-instance navigation is not reauthorized by
 this API policy. No JavaScript navigation workaround or arbitrary rewriting is
 permitted.
 
-The indexed Core authority is 0.5.0 source
-`f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f`; it is distinct from the mutable
+The active R3 indexed Core authority is 0.5.2 source
+`aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d`, tree
+`3340347a8cd3945c36e9ecde9e4a4798efbd91f7`. Its 392-file source inventory,
+14 full referenced declarations and exact source/native identities are
+independently checked. Every generation refreshes and re-solves the normal
+index under the unchanged library `~0.5.0` constraint, rejecting pins, stale
+solutions, source substitutions and unreviewed versions. Historical 0.5.0
+source `f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f` remains a comparison baseline,
+not active dependency authority. Indexed source is distinct from the mutable
 Core publication. R2 pins deployment `7348179998`, source
 `33a2a4f3b83606a5c779b8a93abeb6c91fa49a21`, tree
 `454fb0fa3a128e638a1d7d85f345c7904f296877`, run `40433988181`, review artifact
