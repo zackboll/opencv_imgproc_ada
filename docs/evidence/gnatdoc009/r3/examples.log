@@ -1,0 +1,37 @@
+Compile
+   [Ada]          example.adb
+Build Libraries
+   [gprlib]       opencv_imgproc_shim.lexch
+   [archive]      libopencv_imgproc_shim.a
+   [index]        libopencv_imgproc_shim.a
+   [gprlib]       opencv_imgproc_ada.lexch
+   [archive]      libopencv_imgproc_ada.a
+   [index]        libopencv_imgproc_ada.a
+Bind
+   [gprbind]      example.bexch
+   [Ada]          example.ali
+Link
+   [link]         example.adb
+Compile
+   [Ada]          filtering_and_transforms.adb
+   [Ada]          color_and_representation.adb
+   [Ada]          features_and_analysis.adb
+   [Ada]          segmentation_and_contours.adb
+   [Ada]          matching_and_registration.adb
+Bind
+   [gprbind]      filtering_and_transforms.bexch
+   [Ada]          filtering_and_transforms.ali
+   [gprbind]      color_and_representation.bexch
+   [Ada]          color_and_representation.ali
+   [gprbind]      features_and_analysis.bexch
+   [Ada]          features_and_analysis.ali
+   [gprbind]      segmentation_and_contours.bexch
+   [Ada]          segmentation_and_contours.ali
+   [gprbind]      matching_and_registration.bexch
+   [Ada]          matching_and_registration.ali
+Link
+   [link]         filtering_and_transforms.adb
+   [link]         color_and_representation.adb
+   [link]         features_and_analysis.adb
+   [link]         segmentation_and_contours.adb
+   [link]         matching_and_registration.adb

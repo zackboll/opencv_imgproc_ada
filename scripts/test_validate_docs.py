@@ -287,7 +287,8 @@ class GeneratedSiteTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.site = Path(self.temporary.name) / "_site"
-        shutil.copytree(ROOT / "_site", self.site)
+        import os
+        shutil.copytree(Path(os.environ.get('DOC_LEGACY_ORACLE', ROOT / '_site')), self.site)
         pages = [p for p in (self.site / "api").glob("*.html") if p.name != "index.html"]
         self.assertEqual(len(pages), 1)
         self.page = pages[0]

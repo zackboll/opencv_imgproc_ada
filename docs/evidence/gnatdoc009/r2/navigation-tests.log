@@ -1,0 +1,16 @@
+test_bad_version_and_empty_category_are_rejected (test_gnatdoc_navigation.CategoryManifestTest.test_bad_version_and_empty_category_are_rejected) ... ok
+test_duplicate_membership_is_rejected (test_gnatdoc_navigation.CategoryManifestTest.test_duplicate_membership_is_rejected) ... ok
+test_repository_manifest_covers_each_public_name_once (test_gnatdoc_navigation.CategoryManifestTest.test_repository_manifest_covers_each_public_name_once) ... ok
+test_changed_frame_target_is_rejected (test_gnatdoc_navigation.GeneratedNavigationTest.test_changed_frame_target_is_rejected) ... ok
+test_enhancement_is_idempotent (test_gnatdoc_navigation.GeneratedNavigationTest.test_enhancement_is_idempotent) ... ok
+test_every_declaration_has_one_verified_entry (test_gnatdoc_navigation.GeneratedNavigationTest.test_every_declaration_has_one_verified_entry) ... ok
+test_inline_handler_and_extra_script_are_rejected (test_gnatdoc_navigation.GeneratedNavigationTest.test_inline_handler_and_extra_script_are_rejected) ... ok
+test_missing_entry_is_rejected (test_gnatdoc_navigation.GeneratedNavigationTest.test_missing_entry_is_rejected) ... ok
+test_second_script_is_rejected (test_gnatdoc_navigation.GeneratedNavigationTest.test_second_script_is_rejected) ... ok
+test_tampered_script_asset_is_rejected (test_gnatdoc_navigation.GeneratedNavigationTest.test_tampered_script_asset_is_rejected) ... ok
+test_wrong_but_existing_destination_is_rejected (test_gnatdoc_navigation.GeneratedNavigationTest.test_wrong_but_existing_destination_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 34.299s
+
+OK

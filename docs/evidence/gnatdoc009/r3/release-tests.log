@@ -1,0 +1,18 @@
+test_asset_module_metadata_launcher_and_receipt_tampering (test_released_gnatdoc.InstalledMutations.test_asset_module_metadata_launcher_and_receipt_tampering) ... ok
+test_order_category_label_and_destination_are_not_interchangeable (test_released_gnatdoc.OperationRegression.test_order_category_label_and_destination_are_not_interchangeable) ... ok
+test_approved_hosts_only (test_released_gnatdoc.ReleaseSecurity.test_approved_hosts_only) ... ok
+test_bad_hash_and_member_inventory (test_released_gnatdoc.ReleaseSecurity.test_bad_hash_and_member_inventory) ... ok
+test_duplicate_and_symlink_members_rejected (test_released_gnatdoc.ReleaseSecurity.test_duplicate_and_symlink_members_rejected) ... ok
+test_exact_release_member_names (test_released_gnatdoc.ReleaseSecurity.test_exact_release_member_names) ... ok
+test_existing_environment_rejected (test_released_gnatdoc.ReleaseSecurity.test_existing_environment_rejected) ... ok
+test_incomplete_oversized_and_bad_downloads_rejected (test_released_gnatdoc.ReleaseSecurity.test_incomplete_oversized_and_bad_downloads_rejected) ... ok
+test_receipt_cannot_authorize_new_bytes (test_released_gnatdoc.ReleaseSecurity.test_receipt_cannot_authorize_new_bytes) ... ok
+test_redirect_is_checked_before_following (test_released_gnatdoc.ReleaseSecurity.test_redirect_is_checked_before_following) ... ok
+test_symlink_wheel_rejected (test_released_gnatdoc.ReleaseSecurity.test_symlink_wheel_rejected) ... ok
+test_unapproved_urls (test_released_gnatdoc.ReleaseSecurity.test_unapproved_urls) ... ok
+test_unsafe_archive_paths (test_released_gnatdoc.ReleaseSecurity.test_unsafe_archive_paths) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.024s
+
+OK

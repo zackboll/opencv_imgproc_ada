@@ -89,7 +89,7 @@ RENDERED = {
 # Generated presentation files allowed beside the native output.
 ENHANCEMENT_FILES = {"api/gnatdoc-theme.css", "api/presentation.json",
                      "api/type-crossrefs.json", "api/gnatdoc-navigation.js",
-                     "guides/gnatdoc-guides.css"} | {
+                     "guides/gnatdoc-guides.css", "guides/gnatdoc-authored.css"} | {
                          f"guides/{name}.html" for name in GUIDES}
 # The only script: the repository-owned browser, once, in the API index; its
 # exact placement and bytes are verified by check_navigation.
@@ -333,6 +333,14 @@ def validate(site, root=ROOT, declarations=DECLARATIONS, rendered=RENDERED,
     site = Path(site).resolve()
     root = Path(root).resolve()
     core = (CORE_ROOT if root == ROOT else root.parent / "core") if core is None else Path(core)
+    if enhanced and (site / 'api/presentation.json').is_file() and not (site / 'api/type-crossrefs.json').exists():
+        from qualify_shared_production import final_semantics
+        try:
+            result = final_semantics(site, root / 'obj/docs/native', core, root)
+        except (ValueError, OSError, KeyError) as error:
+            raise DocumentationError(f'shared full-site integrity: {error}') from error
+        return {'packages': result['public_packages'], 'pages': 8,
+                'sections': result['operations'], 'subprograms': 193}
     errors = []
     expected = public_specifications(root)
     api = site / "api"

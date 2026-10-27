@@ -2,6 +2,7 @@
 """Deterministic Ada lexical coloring; existing type anchors remain atomic."""
 
 import argparse
+import os
 import re
 from pathlib import Path
 
@@ -67,8 +68,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('api', type=Path)
     parser.add_argument('--core', type=Path,
-                        default=Path(__file__).resolve().parent.parent.parent / 'core')
+                        default=Path(os.environ['DOC_CORE_SOURCE'])
+                        if os.environ.get('DOC_CORE_SOURCE') else None)
     args = parser.parse_args()
+    if args.core is None:
+        parser.error('--core or DOC_CORE_SOURCE must identify the resolved indexed dependency')
     from install_gnatdoc_theme import check_theme
     check_theme(args.api)
     process(args.api, Path(__file__).resolve().parent.parent / 'src', args.core,

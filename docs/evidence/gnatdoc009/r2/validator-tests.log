@@ -1,0 +1,48 @@
+test_broken_declaration_anchor_is_rejected (test_validate_docs.GeneratedSiteTest.test_broken_declaration_anchor_is_rejected) ... ok
+test_changed_landing_example_is_rejected (test_validate_docs.GeneratedSiteTest.test_changed_landing_example_is_rejected) ... ok
+test_corrupted_link_manifest_is_rejected (test_validate_docs.GeneratedSiteTest.test_corrupted_link_manifest_is_rejected) ... ok
+test_fabricated_core_fragment_is_rejected (test_validate_docs.GeneratedSiteTest.test_fabricated_core_fragment_is_rejected) ... ok
+test_generated_site_is_accepted (test_validate_docs.GeneratedSiteTest.test_generated_site_is_accepted) ... ok
+test_injected_script_is_rejected (test_validate_docs.GeneratedSiteTest.test_injected_script_is_rejected) ... ok
+test_internal_package_publication_is_rejected (test_validate_docs.GeneratedSiteTest.test_internal_package_publication_is_rejected) ... ok
+test_missing_stylesheet_is_rejected (test_validate_docs.GeneratedSiteTest.test_missing_stylesheet_is_rejected) ... ok
+test_modified_description_outside_snippets_is_rejected (test_validate_docs.GeneratedSiteTest.test_modified_description_outside_snippets_is_rejected) ... ok
+test_modified_native_declaration_text_is_rejected (test_validate_docs.GeneratedSiteTest.test_modified_native_declaration_text_is_rejected) ... ok
+test_removed_highlighting_qualification_is_rejected (test_validate_docs.GeneratedSiteTest.test_removed_highlighting_qualification_is_rejected) ... ok
+test_removed_match_template_overload_is_rejected (test_validate_docs.GeneratedSiteTest.test_removed_match_template_overload_is_rejected) ... ok
+test_removed_type_link_is_rejected (test_validate_docs.GeneratedSiteTest.test_removed_type_link_is_rejected) ... ok
+test_stray_presentation_file_is_rejected (test_validate_docs.GeneratedSiteTest.test_stray_presentation_file_is_rejected) ... ok
+test_tampered_theme_asset_is_rejected (test_validate_docs.GeneratedSiteTest.test_tampered_theme_asset_is_rejected) ... ok
+test_wrong_but_existing_type_destination_is_rejected (test_validate_docs.GeneratedSiteTest.test_wrong_but_existing_type_destination_is_rejected) ... ok
+test_broken_fragment_is_rejected (test_validate_docs.SyntheticSiteTest.test_broken_fragment_is_rejected) ... ok
+test_changed_overload_profile_is_rejected (test_validate_docs.SyntheticSiteTest.test_changed_overload_profile_is_rejected) ... ok
+test_comment_rendered_in_another_overload_is_rejected (test_validate_docs.SyntheticSiteTest.test_comment_rendered_in_another_overload_is_rejected) ... ok
+test_duplicate_id_is_rejected (test_validate_docs.SyntheticSiteTest.test_duplicate_id_is_rejected) ... ok
+test_event_handler_is_rejected (test_validate_docs.SyntheticSiteTest.test_event_handler_is_rejected) ... ok
+test_external_link_in_api_page_is_rejected (test_validate_docs.SyntheticSiteTest.test_external_link_in_api_page_is_rejected) ... ok
+test_index_redirected_to_existing_file_is_rejected (test_validate_docs.SyntheticSiteTest.test_index_redirected_to_existing_file_is_rejected) ... ok
+test_index_target_change_is_rejected (test_validate_docs.SyntheticSiteTest.test_index_target_change_is_rejected) ... ok
+test_internal_package_page_is_rejected (test_validate_docs.SyntheticSiteTest.test_internal_package_page_is_rejected) ... ok
+test_internal_unit_name_is_rejected (test_validate_docs.SyntheticSiteTest.test_internal_unit_name_is_rejected) ... ok
+test_javascript_url_is_rejected (test_validate_docs.SyntheticSiteTest.test_javascript_url_is_rejected) ... ok
+test_landing_example_must_match_compiled_example (test_validate_docs.SyntheticSiteTest.test_landing_example_must_match_compiled_example) ... ok
+test_landing_must_link_to_api_reference (test_validate_docs.SyntheticSiteTest.test_landing_must_link_to_api_reference) ... ok
+test_machine_local_path_is_rejected (test_validate_docs.SyntheticSiteTest.test_machine_local_path_is_rejected) ... ok
+test_missing_package_page_is_rejected (test_validate_docs.SyntheticSiteTest.test_missing_package_page_is_rejected) ... ok
+test_missing_representative_declaration_is_rejected (test_validate_docs.SyntheticSiteTest.test_missing_representative_declaration_is_rejected) ... ok
+test_missing_stylesheet_is_rejected (test_validate_docs.SyntheticSiteTest.test_missing_stylesheet_is_rejected) ... ok
+test_native_fixture_is_accepted (test_validate_docs.SyntheticSiteTest.test_native_fixture_is_accepted) ... ok
+test_path_traversal_is_rejected (test_validate_docs.SyntheticSiteTest.test_path_traversal_is_rejected) ... ok
+test_published_private_declaration_is_rejected (test_validate_docs.SyntheticSiteTest.test_published_private_declaration_is_rejected) ... ok
+test_removed_overload_section_is_rejected (test_validate_docs.SyntheticSiteTest.test_removed_overload_section_is_rejected) ... ok
+test_root_absolute_link_is_rejected (test_validate_docs.SyntheticSiteTest.test_root_absolute_link_is_rejected) ... ok
+test_script_is_rejected (test_validate_docs.SyntheticSiteTest.test_script_is_rejected) ... ok
+test_stray_file_is_rejected (test_validate_docs.SyntheticSiteTest.test_stray_file_is_rejected) ... ok
+test_unapproved_landing_destination_is_rejected (test_validate_docs.SyntheticSiteTest.test_unapproved_landing_destination_is_rejected) ... ok
+test_unmatched_heading_is_rejected (test_validate_docs.SyntheticSiteTest.test_unmatched_heading_is_rejected) ... ok
+test_validation_does_not_modify_the_site (test_validate_docs.SyntheticSiteTest.test_validation_does_not_modify_the_site) ... ok
+
+----------------------------------------------------------------------
+Ran 43 tests in 83.199s
+
+OK

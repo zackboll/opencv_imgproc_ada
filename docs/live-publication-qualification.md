@@ -1,3 +1,12 @@
+# R2 implementation update
+
+The production reconstruction now uses the official GNATdoc Enhancer v0.1.1
+wheel and the independent complete-site validator. API-only toolkit verification
+does not authorize the consumer-assembled guides. See `documentation.md` and
+`docs/evidence/gnatdoc009/r2/` for release identity, pinned Core publication,
+parity and browser gates. The PR #82 source/artifact/HTTP security trust chain
+below remains mandatory; `verify-live` remains main-only and read-only.
+
 # IMGPROC-DOC-EXAMPLES-002: live publication verification
 
 Starting main: `3b44846687354f344d078104fe6101bfb7997534` (PR #80 merged).

@@ -1,0 +1,10 @@
+test_changed_deployment_never_inherits_approval (test_current_core.CoreArchive.test_changed_deployment_never_inherits_approval) ... ok
+test_complete_member_inventory_required (test_current_core.CoreArchive.test_complete_member_inventory_required) ... ok
+test_digest_cannot_be_authorized_by_archive (test_current_core.CoreArchive.test_digest_cannot_be_authorized_by_archive) ... ok
+test_wrong_owner_private_ambiguous_and_modified_complete_declaration (test_current_core.ReferencedDeclarationMutations.test_wrong_owner_private_ambiguous_and_modified_complete_declaration) ... ok
+test_wrong_source_same_deployment_rejected (test_current_core.ReferencedDeclarationMutations.test_wrong_source_same_deployment_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.213s
+
+OK

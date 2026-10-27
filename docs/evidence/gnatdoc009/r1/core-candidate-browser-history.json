@@ -1,0 +1,320 @@
+{
+  "requestInterception": false,
+  "assertions": [
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.angle_unit",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.border_kind",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat_array",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_point",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float64_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point_array",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.rect",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.scalar",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size_coordinate",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.uint8_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.angle_unit",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.border_kind",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat_array",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_point",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_value",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float64_value",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point_array",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.rect",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.scalar",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size_coordinate",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.uint8_value",
+      "generatedKeyboardLink": true,
+      "iframeBackForward": true
+    }
+  ],
+  "failures": [
+    "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Failed to load resource: the server responded with a status of 404 ()'\n+ ]\n- []\n    at /home/zboll/git/opencv/imgproc-gnatdoc009/scripts/test_core_candidate_browser.cjs:113:16"
+  ],
+  "navigationDifferences": [
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.angle_unit",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#de966a6db4e74e15e102452acbe5bc993997dbac4c699aa33af780a80d47ad8d",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.border_kind",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#22674c34048b13f71b8466ef746aa1b680ebdab2d2da7ff1ee9d13eeef4e926a",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat_array",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#077679952c5194ece019cca747a079f2cf6cd332bb3c959f9bb8d8a4c1d5a54b",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_point",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#3d6364074d584f6286e97dac0bb60e1eb9fd2d52ae631e75a7c16779818db534",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_value",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#2a7a1855b17dcb7dc415f3793f59bddac5f5d1ff9d7bf5a6da6a6fcac560fb1e",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float64_value",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#0985f6cd46f42219d78cc5076cd83f338a25b4a40d6f5b77e19423d17fb02f49",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#75ed1323f07b5213b00ee5c3d7d803f61530fc13c398fbe3f4febe309afec4d1",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point_array",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#da696e09a1f1b297516365244e16533e23cca626f26df4bb3f727a64beb697b0",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.rect",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#f30f290ea232c7e470884adf6d6264130071cb9222114c245b16529dbb204786",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.scalar",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#2e5692f79d23524ec3f1c28c4c7d8599fc344ad15b5bf94f41e76529ccde26ed",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#1215ef894b260b92bcbe497fa349340704bef8836a9078a52774af895fd1f278",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size_coordinate",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#4195c55322d0e03ef9c6fb729a7f4c117a344499790aeb0a3076eab2c01cb543",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.uint8_value",
+      "legacyTarget": "_top",
+      "sharedTarget": null,
+      "actualDestination": "https://zackboll.github.io/opencv_core_ada/api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#126c1f5d92cb06b013208cdd3e16f14713f74cc2cf2b63dc4ec9ab2558a5981e",
+      "outerUrlUnchanged": true,
+      "classification": "External Core navigation remains inside Imgproc iframe; legacy exited frame. Independent policy review required."
+    }
+  ],
+  "sourcePolicyApproved": false,
+  "status": "fail"
+}

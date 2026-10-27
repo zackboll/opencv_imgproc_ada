@@ -1,0 +1,89 @@
+{
+  "files": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": {
+      "classification": "unapproved presentation/metadata difference; not production parity",
+      "legacy_sha256": "c9f143b3690ca8188373f66d2a3faf85a7432d6b178a6bd4e25c4a2d7fb8120e",
+      "shared_sha256": "dc4443e418fc4608db397624c8d19f30fb79cb44fe0d1c8363a7ea78d9c23d07"
+    },
+    "api/gnatdoc-navigation.js": {
+      "classification": "unapproved presentation/metadata difference; not production parity",
+      "legacy_sha256": "2616ce765cceefa194f28a4bc325db287699a73c5193d5d2758bc323db5bf1fa",
+      "shared_sha256": "b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd"
+    },
+    "api/gnatdoc-theme.css": {
+      "classification": "unapproved presentation/metadata difference; not production parity",
+      "legacy_sha256": "a0e33d95ce581fa0b3c0b9fbb827d9aa5eef1a8e53f31c9d792fac3bd4e66068",
+      "shared_sha256": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc"
+    },
+    "api/gnatdoc.css": {
+      "classification": "byte-identical",
+      "legacy_sha256": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+      "shared_sha256": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e"
+    },
+    "api/index.html": {
+      "classification": "unapproved presentation/metadata difference; not production parity",
+      "legacy_sha256": "ff5120689dc83263a2c9de033c7d2cd0abc63fa7d1dcfc67aaafaaf0cc6a4bff",
+      "shared_sha256": "6ccce736335a87da898e8258aad4c341775a65b0690522a010783302e834dc04"
+    },
+    "api/presentation.json": {
+      "classification": "unapproved presentation/metadata difference; not production parity",
+      "legacy_sha256": "26a4a2e46a9b4f85d42b7e7c8b29ed0b9c307201f44e9cd967c4d461aecff6be",
+      "shared_sha256": "3a1598509e5d9af249dbd187ee568980f447beb5affe5ddd1a6bb561a6c1636e"
+    },
+    "api/type-crossrefs.json": {
+      "classification": "not qualified: partial site deliberately omits authored pages and Core links",
+      "legacy_sha256": "51812ff7090eee8c072f76a0ed1e971b58c3d17a5fbb35a46e66c7776f0e31a5",
+      "shared_sha256": null
+    },
+    "guides/color-and-image-representation.html": {
+      "classification": "not qualified: partial site deliberately omits authored pages and Core links",
+      "legacy_sha256": "416b851c94b5c6b19c85ae10c48c1cd6990e2cd9635a7ab3c278ffab06c34ac9",
+      "shared_sha256": null
+    },
+    "guides/features-and-structural-analysis.html": {
+      "classification": "not qualified: partial site deliberately omits authored pages and Core links",
+      "legacy_sha256": "131d67ea64ea8dc9af43bd8443793ba69f5a5e2a69de1c69e7ef4d318653baed",
+      "shared_sha256": null
+    },
+    "guides/filtering-and-transforms.html": {
+      "classification": "not qualified: partial site deliberately omits authored pages and Core links",
+      "legacy_sha256": "5ebd051c4d9101194009eb82b117efb9141957485f505f2545318737d818b2ac",
+      "shared_sha256": null
+    },
+    "guides/gnatdoc-guides.css": {
+      "classification": "not qualified: partial site deliberately omits authored pages and Core links",
+      "legacy_sha256": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+      "shared_sha256": null
+    },
+    "guides/segmentation-contours-and-morphology.html": {
+      "classification": "not qualified: partial site deliberately omits authored pages and Core links",
+      "legacy_sha256": "9674ca7601b6412aa02faf5e8fad3986873f95abc08d2a832f88a42ec24b9d16",
+      "shared_sha256": null
+    },
+    "guides/template-matching-and-registration.html": {
+      "classification": "not qualified: partial site deliberately omits authored pages and Core links",
+      "legacy_sha256": "dc87f802613960c2bc2eea4871018201e4b6d3865dd95ed6d71c0523cb7d4e21",
+      "shared_sha256": null
+    },
+    "index.html": {
+      "classification": "not qualified: partial site deliberately omits authored pages and Core links",
+      "legacy_sha256": "488bd9b8ea70b7cf8cfea9f4dbc3e7bff92e7c615bce560accaff00bc13cd8df",
+      "shared_sha256": null
+    }
+  },
+  "known_differences": [
+    "586 API Core package links absent in partial probe",
+    "350 shared local links versus 348 legacy; two constant type marks additionally linked",
+    "Background_Label -> Component_Label; Default_Morphology_Border -> Morphology_Border_Value",
+    "Shared local hrefs include package filename; legacy uses same-page fragment",
+    "Authored output deliberately not passed through shared guide renderer"
+  ],
+  "native": {
+    "ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": {
+      "anchors_signatures_visible_text_equal": true,
+      "sections": 329
+    }
+  },
+  "non_deployable": true,
+  "semantic_parity": false
+}

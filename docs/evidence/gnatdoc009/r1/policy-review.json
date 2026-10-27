@@ -1,0 +1,34 @@
+{
+  "browser_status": "observation-pass-policy-not-approved",
+  "counts_by_type": {
+    "opencv.angle_unit": 2,
+    "opencv.border_kind": 41,
+    "opencv.core.mat": 296,
+    "opencv.core.mat_array": 10,
+    "opencv.float32_point": 11,
+    "opencv.float32_value": 19,
+    "opencv.float64_value": 98,
+    "opencv.point": 30,
+    "opencv.point_array": 3,
+    "opencv.rect": 6,
+    "opencv.scalar": 28,
+    "opencv.size": 29,
+    "opencv.size_coordinate": 9,
+    "opencv.uint8_value": 4
+  },
+  "disposition": "CORE_POLICY_REVIEW_REQUIRED",
+  "future_requalification": "Fail closed on changed indexed source, native type profile, artifact/deployment identity, hosted bytes, URL, occurrence ledger, or link-target behavior",
+  "material_navigation_changes": [
+    "Every package-overview bookmark becomes a specific direct native declaration fragment",
+    "All 586 external links lose legacy target=_top; Core loads inside Imgproc iframe",
+    "Outer Imgproc bookmark continues naming Imgproc after cross-origin iframe navigation"
+  ],
+  "occurrences": 586,
+  "policy_approved": false,
+  "production_enabled": false,
+  "proposal_sha256": "04aeb19845dd50890690ea6ec721f74443f305af5e949ea70195a31a462828f4",
+  "required_decision": "Independent review must explicitly approve changed external navigation semantics, or request a separately reviewed upstream capability preserving target=_top. No HTML rewriting or installed-tool patch is authorized.",
+  "source_native_hosted_identity_qualified": true,
+  "unresolved_types": [],
+  "unversioned_hosting_is_immutable": false
+}
