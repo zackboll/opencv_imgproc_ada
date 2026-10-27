@@ -34,7 +34,8 @@ Also install a supported native OpenCV development library, pkg-config, a
 C++17 compiler, a POSIX shell and Python 3.11 or newer. The generator installs
 the official v0.1.1 enhancer wheel and hash-pinned optional Markdown dependencies
 in an isolated documentation environment, never in Alire.
-`alire.toml` resolves indexed Core 0.5.0 without a pin. No neighboring Core
+`alire.toml` normally resolves indexed Core 0.5.2 without a pin; the active
+documentation gate accepts only its exact qualified source. No neighboring Core
 checkout is required:
 
 ```sh
@@ -557,7 +558,7 @@ The released enhancer, pinned guide renderer (`markdown-it-py==3.0.0` and
 the optional Playwright harnesses, is a dependency of the library or the
 `tests` crate.
 
-## GNATDOC-009R2: released production candidate
+## GNATDOC-009R2/R3: released production candidate
 
 **Historical R2 blocker:** the fresh hosted community index selected Core
 0.5.2 while R2 authorized 0.5.0. R3 explicitly selects reviewer option 2 and
@@ -614,7 +615,7 @@ index under the unchanged library `~0.5.0` constraint, rejecting pins, stale
 solutions, source substitutions and unreviewed versions. Historical 0.5.0
 source `f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f` remains a comparison baseline,
 not active dependency authority. Indexed source is distinct from the mutable
-Core publication. R2 pins deployment `7348179998`, source
+Core publication. R3 freshly reverified deployment `7348179998`, source
 `33a2a4f3b83606a5c779b8a93abeb6c91fa49a21`, tree
 `454fb0fa3a128e638a1d7d85f345c7904f296877`, run `40433988181`, review artifact
 `12702919800`, and Pages artifact `12703258126`. `qualify_current_core.py`
@@ -643,9 +644,10 @@ and all authored examples. This is not a claim of other-browser accessibility.
 R1 and GNATDOC-008/008C evidence stays frozen. Historical shadow qualification
 runs against its own historical source and enhancer identities, never current
 API hashes. Release-browser compatibility is not production-policy approval.
-R2's additive policy proposal remains **subject to independent merge review**;
-R1's `policy_approved: false` is unchanged. Current evidence and remaining gates
-are in `docs/evidence/gnatdoc009/r2/`.
+The user approved the direct-fragment/`_top` design in R3. Production acceptance
+still requires complete technical qualification and independent merge review;
+R1/R2 policy evidence is unchanged. Current authority, full source deltas,
+occurrence inventories and remaining gates are in `docs/evidence/gnatdoc009/r3/`.
 
 PRs qualify candidate artifacts but never deploy Pages. Main-only `verify-live`
 reconstructs the exact deployed source using the official wheel, compares both

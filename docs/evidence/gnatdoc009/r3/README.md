@@ -92,8 +92,15 @@ Source/native/type-owner/ambiguous/profile, source inventory, wrong origin or
 version, pin, forged authority, stale lock, publication, native anchor, target,
 asset, API and authored mutation gates remain fail-closed. Full negative,
 fresh-generation/repeat, browser, hosted exact-head and artifact-equality
-results are additive checkpoint records as completed. Incomplete runs are not
-credited. PR Pages remains skipped; real verify-live is POST_MERGE_CI_PENDING.
+results are additive checkpoint records as completed. Both complete genuine
+Chromium matrices now passed: 1280/390, light/dark, JS on/off, actual project
+prefix; all 329 operation activations and direct reloads, all 350 local links,
+all 586 external occurrence attributes/identities, all 14 actual top-level Core
+destinations with keyboard/mouse and Back/Forward, and all six authored pages
+and examples. No Core requests were intercepted. See api-browser.json/log and
+authored-browser-summary.json/log. Fresh generation is byte-identical and
+repeat enhancement is idempotent. Incomplete hosted runs are not credited.
+PR Pages remains skipped; real verify-live is POST_MERGE_CI_PENDING.
 
 No public semantic validation is duplicated in the C++ shim; public Ada/C++
 sources and library dependency constraints are unchanged. Stop at independent
