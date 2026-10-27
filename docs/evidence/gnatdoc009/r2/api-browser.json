@@ -1,0 +1,111 @@
+{
+  "passed": true,
+  "requestInterception": false,
+  "campaigns": [
+    {
+      "width": 1280,
+      "colorScheme": "light",
+      "javaScriptEnabled": true,
+      "operations": 329,
+      "externalOccurrences": 586,
+      "localOccurrences": 350,
+      "topLevelCoreDestinations": 14,
+      "directReloads": 329,
+      "keyboardAndMouse": true,
+      "coreBackForward": true,
+      "sourceOccurrenceReconciliation": true
+    },
+    {
+      "width": 1280,
+      "colorScheme": "light",
+      "javaScriptEnabled": false,
+      "operations": 329,
+      "externalOccurrences": 586,
+      "localOccurrences": 350,
+      "topLevelCoreDestinations": 14,
+      "directReloads": 329,
+      "keyboardAndMouse": true,
+      "coreBackForward": true,
+      "sourceOccurrenceReconciliation": true
+    },
+    {
+      "width": 1280,
+      "colorScheme": "dark",
+      "javaScriptEnabled": true,
+      "operations": 329,
+      "externalOccurrences": 586,
+      "localOccurrences": 350,
+      "topLevelCoreDestinations": 14,
+      "directReloads": 329,
+      "keyboardAndMouse": true,
+      "coreBackForward": true,
+      "sourceOccurrenceReconciliation": true
+    },
+    {
+      "width": 1280,
+      "colorScheme": "dark",
+      "javaScriptEnabled": false,
+      "operations": 329,
+      "externalOccurrences": 586,
+      "localOccurrences": 350,
+      "topLevelCoreDestinations": 14,
+      "directReloads": 329,
+      "keyboardAndMouse": true,
+      "coreBackForward": true,
+      "sourceOccurrenceReconciliation": true
+    },
+    {
+      "width": 390,
+      "colorScheme": "light",
+      "javaScriptEnabled": true,
+      "operations": 329,
+      "externalOccurrences": 586,
+      "localOccurrences": 350,
+      "topLevelCoreDestinations": 14,
+      "directReloads": 329,
+      "keyboardAndMouse": true,
+      "coreBackForward": true,
+      "sourceOccurrenceReconciliation": true
+    },
+    {
+      "width": 390,
+      "colorScheme": "light",
+      "javaScriptEnabled": false,
+      "operations": 329,
+      "externalOccurrences": 586,
+      "localOccurrences": 350,
+      "topLevelCoreDestinations": 14,
+      "directReloads": 329,
+      "keyboardAndMouse": true,
+      "coreBackForward": true,
+      "sourceOccurrenceReconciliation": true
+    },
+    {
+      "width": 390,
+      "colorScheme": "dark",
+      "javaScriptEnabled": true,
+      "operations": 329,
+      "externalOccurrences": 586,
+      "localOccurrences": 350,
+      "topLevelCoreDestinations": 14,
+      "directReloads": 329,
+      "keyboardAndMouse": true,
+      "coreBackForward": true,
+      "sourceOccurrenceReconciliation": true
+    },
+    {
+      "width": 390,
+      "colorScheme": "dark",
+      "javaScriptEnabled": false,
+      "operations": 329,
+      "externalOccurrences": 586,
+      "localOccurrences": 350,
+      "topLevelCoreDestinations": 14,
+      "directReloads": 329,
+      "keyboardAndMouse": true,
+      "coreBackForward": true,
+      "sourceOccurrenceReconciliation": true
+    }
+  ],
+  "failures": []
+}

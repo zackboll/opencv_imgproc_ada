@@ -61,10 +61,14 @@ page changes are limited to the explicit additional stylesheet link; identical
 authored assembly is required on both legacy and shared sides. Shared palette
 changes are version-bound; focus controls are independently browser-checked.
 
-The complete authored Chromium matrix passed (1280/390, light/dark, JS on/off)
-against genuine live Core HTTPS with no Core interception. Exhaustive API
-browser qualification and exact-head hosted qualification are recorded
-separately as they complete; partial browser runs are not all-matrix passes.
+The complete authored AND exhaustive API Chromium matrices passed (1280/390,
+light/dark, JS on/off) against genuine live Core HTTPS with no Core interception.
+Each API configuration exercised all 329 operation destinations and reloads,
+350 local occurrences, the 586 external link inventory and all 14 genuine
+top-level Core destinations with keyboard/mouse and Back/Forward. The Core
+publication recheck after the campaign again passed. See `api-browser.json`,
+`api-browser.log` and `core-after-browser-policy.json`. Exact-head hosted
+qualification is separate; no local browser result is a hosted artifact pass.
 
 ## Preserved baseline failures
 
@@ -88,8 +92,7 @@ counted as success or corrected by changing library/platform policy here.
 
 ## Remaining exact-head gates
 
-Final local full-site rechecks, complete API browser matrix, current Core
-before/after verification, historical 008C campaign, exact-head hosted docs and
+Final exact-head local rechecks, historical 008C campaign, exact-head hosted docs and
 required CI, immutable final candidate artifact download/equality, remote/PR
 head agreement, final tree, PR description and checkpoint comment. PR-only
 acquisition stays non-deployable; verify-live stays post-merge/main-only.

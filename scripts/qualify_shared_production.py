@@ -91,6 +91,20 @@ def api_semantics(native, candidate, root=ROOT):
             'type_links': True, 'external_type_target': '_top'}, 'unreviewed presentation policy')
     require(policy['external_types'] == {k: v['url'] for k, v in ledger['types'].items()},
             'Core destination differs from reviewed source/native proposal')
+    authority_path = root / 'docs/evidence/gnatdoc009/r2/referenced-types.json'
+    require(digest(authority_path.read_bytes()) ==
+            '01e091b2e672b30be90283f32f05ef335dc40d2ce3244a3e0336f46f392402b3',
+            'reviewed current Core declaration authority changed')
+    authority = json.loads(authority_path.read_text())
+    proposal = json.loads((root / 'docs/evidence/gnatdoc009/r2/policy-proposal.json').read_text())
+    require(proposal['deployment'] == 7348179998 and proposal['run'] == 40433988181 and
+            proposal['source'] == '33a2a4f3b83606a5c779b8a93abeb6c91fa49a21' and
+            proposal['tree'] == '454fb0fa3a128e638a1d7d85f345c7904f296877' and
+            proposal['review_artifact'] == 12702919800 and
+            proposal['pages_artifact'] == 12703258126 and
+            proposal['policy_approved'] is False and
+            policy['external_types'] == {k: v['url'] for k, v in authority.items()},
+            'Core policy not bound to reviewed immutable deployment proposal')
     require(digest((root / 'src/opencv-image_processing.ads').read_bytes()) ==
             ledger['occurrences'][0]['imgproc_source_file_sha256'], 'current source differs from occurrence authority')
     report = reconcile(native, candidate, ledger)

@@ -1,0 +1,17 @@
+{
+  "deployment": 7348179998,
+  "external_type_target": "_top",
+  "historical_r1_policy_approved": false,
+  "pages_archive_sha256": "9c79d54f4db56b841da0f29814c87fec563ff8bb8d8991f4b4ea5e2580581c80",
+  "pages_artifact": 12703258126,
+  "policy_approved": false,
+  "production_enabled": false,
+  "proposal": "Direct native declaration URLs; top-level Core navigation; independent merge review required",
+  "review_archive_sha256": "4995abbfed1ef594f8d1b31e8941cb0edfca3402a7b952f53683b1db524ddec4",
+  "review_artifact": 12702919800,
+  "run": 40433988181,
+  "source": "33a2a4f3b83606a5c779b8a93abeb6c91fa49a21",
+  "tree": "454fb0fa3a128e638a1d7d85f345c7904f296877",
+  "verified_hosted_files": 209,
+  "verified_referenced_identities": 14
+}

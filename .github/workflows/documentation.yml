@@ -83,8 +83,9 @@ jobs:
       - name: Test type links, theme and Ada highlighting
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_link_gnatdoc_types.py'' -v'
       - name: Generate and validate public API and guides
+        run: sh scripts/generate_docs.sh
+      - name: Record resolved indexed Core source for comparison helpers
         run: |
-          sh scripts/generate_docs.sh
           echo "DOC_CORE_SOURCE=$(alr exec -- printenv OPENCV_CORE_ALIRE_PREFIX)" >> "$GITHUB_ENV"
       - name: Independently qualify pinned current Core deployment and all hosted bytes
         env:
