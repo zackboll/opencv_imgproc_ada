@@ -1,0 +1,18 @@
+{
+  "consumer_tested": "4e3d1b9f4da2c800619e78fefddd11a14892f450",
+  "current_run_complete": true,
+  "disposition": "HOSTED_CI_PENDING",
+  "enhancer": "53a321915da2c5a02a54581040673b61f8595b25",
+  "full_shadow_qualification": true,
+  "hosted_exact_head": "consult immutable Actions run; not inferred from local execution",
+  "missing_evidence": [],
+  "non_deployable": true,
+  "production_https_verified": false,
+  "production_migration_complete": false,
+  "reports": {
+    "browser": "a65cbfcfb6afeb03f8bb828c515cc6fc0db03c0b8481c992076c97f59d19cc34",
+    "navigation-comparison": "a697c6a162656c6465cc4c62a5cde575efe6d08d08fe3c6036cf837216b4fd5a",
+    "negative": "4d0827d0aebc5ccbb41057317967f438d57c412e21409e1c30831ccfeb6a7f04",
+    "qualification": "72966fb2655f931cbc647e8aa7fae5982c7fe9c0bf4bf665a7e6bd6455f3c146"
+  }
+}

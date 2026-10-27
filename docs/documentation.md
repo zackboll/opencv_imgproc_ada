@@ -559,6 +559,13 @@ the optional Playwright harnesses, is a dependency of the library or the
 
 ## GNATDOC-009R2: released production candidate
 
+**Qualification blocker:** the fresh hosted community index now selects Core
+0.5.2 for the unchanged `~0.5.0` manifest, whereas this campaign explicitly
+requires source-authorized 0.5.0. The new identity gate rejects this rather than
+silently authorizing a dependency. See `docs/evidence/gnatdoc009/r2/BLOCKER.md`.
+The migration is not ready for merge; local cached-0.5.0 success is not a fresh
+hosted qualification. Do not bypass the gate with a pin or rewrite old evidence.
+
 `scripts/install_released_gnatdoc.py` acquires only the official HTTPS v0.1.1
 wheel, checks its complete inventory and SHA-256
 `8b896683a65623a7e7d626701a4cd68c8b89cb65792f9ffd5525bfa8cfa257ab`,

@@ -1,7 +1,10 @@
 # IMGPROC-GNATDOC-009R2 — production release migration checkpoint
 
-**Disposition at initial implementation checkpoint: `HOSTED_CI_PENDING`.**
-This is not `READY_FOR_INDEPENDENT_REVIEW` or production-policy approval.
+**Current disposition: `CORRECTIVE_WORK_REQUIRED`.** See [BLOCKER.md](BLOCKER.md)
+for the fresh hosted current-index Core 0.5.2 versus required 0.5.0 conflict,
+immutable failed-run evidence and narrowly scoped follow-up choices. This is
+not `READY_FOR_INDEPENDENT_REVIEW` or production-policy approval. The initial
+implementation checkpoint was `HOSTED_CI_PENDING`; it is retained below.
 
 Fresh fetch confirmed starting PR head
 `a4d4a2edbc7cae49cf07a6d1e9f753f8d833d569`, tree
