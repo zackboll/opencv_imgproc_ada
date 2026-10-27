@@ -76,8 +76,10 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
             assert.equal(await link.evaluate(e => getComputedStyle(e).outlineStyle), 'solid');
             await page.keyboard.press('Enter');
             await page.waitForURL(u => href.startsWith('https:')
-              ? u.origin === 'https://zackboll.github.io'
+              ? u.origin === 'https://zackboll.github.io' &&
+                u.pathname === '/opencv_core_ada/api/index.html'
               : u.pathname === new URL(href, url).pathname);
+            await page.waitForLoadState('load');
             const simple = identity.split('.').pop();
             if (!href.startsWith('https:')) {
               assert.equal((await page.locator('h4:target').textContent()).toLowerCase(), simple);
@@ -115,16 +117,39 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
                 await page.frameLocator('iframe[name="document-content"]').locator('h4:target').waitFor();
               }
             }
+            // Reload must retain the selected native declaration, not merely
+            // leave a correct-looking outer bookmark in the address bar.
+            await page.reload();
+            if (!href.startsWith('https:')) {
+              assert.equal((await page.locator('h4:target').textContent()).toLowerCase(), simple);
+            } else if (javaScriptEnabled) {
+              const frame = page.frameLocator('iframe[name="document-content"]');
+              await frame.locator('h4:target').waitFor();
+              assert.equal((await frame.locator('h4:target').textContent()).toLowerCase(), simple);
+            }
           }
           await page.goto(url);
           await block.focus();
           assert.equal(await block.evaluate(e => getComputedStyle(e).overflowX), 'auto');
+          assert.equal(await block.evaluate(e => document.activeElement === e), true);
+          const scrollable = await block.evaluate(e => e.scrollWidth > e.clientWidth);
+          if (scrollable) {
+            // Browser automation scrolls the actual region even in no-JS mode;
+            // this tests overflow containment, not hardware input handling.
+            assert.equal(await block.evaluate(e => {
+              e.scrollLeft = 0;
+              e.scrollBy({left: 160, behavior: 'instant'});
+              return e.scrollLeft > 0;
+            }), true);
+          }
         }
         await examples(base);
         await page.screenshot({path: `${evidence}/landing-${width}-${colorScheme}-js${javaScriptEnabled}.png`});
         for (const name of names) {
           await page.locator(`a[href="guides/${name}.html"]`).click();
           const url = new URL('guides/' + name + '.html', base).href;
+          await page.waitForURL(url);
+          await page.waitForLoadState('load');
           await examples(url);
           assert.equal(await page.locator('main').count(), 1);
           assert.equal(await page.locator('h1').count(), 1);
@@ -155,6 +180,8 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
           for (const destination of cross) {
             await page.goto(url);
             await page.locator(`main a[href="${destination}"]`).first().click();
+            await page.waitForURL(new URL(destination, url).href);
+            await page.waitForLoadState('load');
             assert.equal(new URL(page.url()).pathname.split('/').pop(),
                          destination.split('#')[0]);
           }
@@ -170,9 +197,23 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
             await page.screenshot({path: `${evidence}/${name}-${width}-${colorScheme}.png`});
           }
           await page.getByRole('link', {name: 'Documentation home', exact: true}).click();
+          await page.waitForURL(new URL('index.html', base).href);
+          await page.waitForLoadState('load');
         }
         assert.deepEqual(errors, []);
         assert.equal(coreSeen.size, 7);
+        // Size is an approved public symbol but intentionally has no invented
+        // occurrence in the six authoritative examples. Qualify it separately.
+        await page.goto('https://zackboll.github.io/opencv_core_ada/api/index.html?symbol=OpenCV.Size');
+        const sizeHref = await page.locator('#type-navigation a[data-symbol="OpenCV.Size"]').getAttribute('href');
+        const sizeFrame = page.frameLocator('iframe[name="document-content"]');
+        if (!javaScriptEnabled) {
+          await page.locator('.content-column a').filter({hasText: /^OpenCV$/}).click();
+          await sizeFrame.locator(`a[href="#${sizeHref.split('#')[1]}"]`).first().click();
+        }
+        await sizeFrame.locator('h4:target').waitFor();
+        assert.equal(await sizeFrame.locator('h4:target').textContent(), 'Size');
+        assert.deepEqual(errors, []);
         console.log(`PASS ${width}px ${colorScheme} JS=${javaScriptEnabled}: five guides, ` +
                     'API anchors, cross-links, focus, overflow');
         await context.close();
@@ -180,4 +221,10 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
   } finally {
     await browser.close();
   }
+  fs.writeFileSync(`${evidence}/browser-summary.json`, JSON.stringify({
+    passed: true, base, viewports: [1280, 390], themes: ['light', 'dark'],
+    javascript: [true, false], examples: 6, sourceQualifiedLinks: 55,
+    coreSymbols: 8, reload: true, codeScrolling: true,
+    noJavaScript: 'Native package/sidebar fallback, not symbol query routing.'
+  }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
