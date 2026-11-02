@@ -615,13 +615,42 @@ index under the unchanged library `~0.5.0` constraint, rejecting pins, stale
 solutions, source substitutions and unreviewed versions. Historical 0.5.0
 source `f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f` remains a comparison baseline,
 not active dependency authority. Indexed source is distinct from the mutable
-Core publication. R3 freshly reverified deployment `7348179998`, source
-`33a2a4f3b83606a5c779b8a93abeb6c91fa49a21`, tree
-`454fb0fa3a128e638a1d7d85f345c7904f296877`, run `40433988181`, review artifact
-`12702919800`, and Pages artifact `12703258126`. `qualify_current_core.py`
-compares all 209 hosted files, artifact equality, and all 14 referenced exact
-source/native declarations before and after browser qualification. A changed
-deployment requires renewed comparison; live bytes cannot authorize themselves.
+Core publication.
+
+R4 replaced the R3 gate, which required Core's newest Pages deployment to remain
+`7348179998` (source `33a2a4f3b83606a5c779b8a93abeb6c91fa49a21`, run
+`40433988181`, artifacts `12702919800`/`12703258126`) and all 209 hosted files to
+stay byte-identical. Every unrelated Core documentation deployment, and the
+expiry of the retained Pages artifact, therefore blocked Imgproc publication.
+Those R3 identities remain historical evidence only. `qualify_current_core.py`
+now, on every run:
+
+1. Re-establishes the indexed 0.5.2 authority (clean witness, full source
+   inventory, native GNATdoc census of the 14 approved declarations).
+2. Discovers the newest settled successful Core `github-pages` deployment via
+   the authenticated API (an unsettled newer deployment fails; failed ones never
+   published), and requires its push-to-`main` documentation run, successful
+   `build`/`deploy` jobs, the deploying job, Core-`main` ancestry, and the run's
+   own `ada-api-<sha>` and `github-pages` artifacts.
+3. Verifies downloaded artifact bytes against GitHub's recorded digests, rejects
+   unsafe ZIP/TAR members, and requires both artifact inventories to be identical.
+4. Fetches the deployed commit into a separate witness, checks its tree, and
+   requires all 14 declarations to be the same complete public declarations in
+   the same owner package, unambiguously.
+5. Requires each approved anchor to occur exactly once in the two referenced
+   native pages, on the correct section whose snippet denotes that declaration.
+6. Requires the public HTTPS bytes of those two pages (HTTP 200, exact URL, no
+   redirect) to equal the authenticated artifact.
+7. Requires the deployment to be unchanged at the end; the post-browser recheck
+   also requires the same deployment as the pre-browser run
+   (`CORE_DEPLOYMENT_RACE` otherwise).
+
+No Core file count or whole-site digest is pinned; unrelated Core pages may
+change. A new Core release, changed or private declaration, missing, duplicate
+or substituted anchor, mismatched artifact or stale hosted page still fails
+closed. Live bytes and output manifests never authorize themselves. The 14
+destination URLs and Imgproc output are unchanged. Evidence:
+`docs/evidence/gnatdoc009/r4/`.
 
 Acceptance remains one package, 329 declarations and source-order operation
 destinations, 1,596/1,596 documented elements, zero warnings, 586 Core occurrences
@@ -647,7 +676,8 @@ API hashes. Release-browser compatibility is not production-policy approval.
 The user approved the direct-fragment/`_top` design in R3. Production acceptance
 still requires complete technical qualification and independent merge review;
 R1/R2 policy evidence is unchanged. Current authority, full source deltas,
-occurrence inventories and remaining gates are in `docs/evidence/gnatdoc009/r3/`.
+occurrence inventories and remaining gates are in `docs/evidence/gnatdoc009/r3/`;
+the current-deployment gate is in `docs/evidence/gnatdoc009/r4/`.
 
 PRs qualify candidate artifacts but never deploy Pages. Main-only `verify-live`
 reconstructs the exact deployed source using the official wheel, compares both

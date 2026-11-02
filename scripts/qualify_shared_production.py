@@ -93,16 +93,22 @@ def api_semantics(native, candidate, root=ROOT):
     for identity, proof in authority.items():
         require(all(proof[k] == indexed['types'][identity][k] for k in indexed['types'][identity]),
                 'hosted type not bound to exact indexed 0.5.2 declaration')
-    require(proposal['deployment'] == 7348179998 and proposal['run'] == 40433988181 and
-            proposal['source'] == '33a2a4f3b83606a5c779b8a93abeb6c91fa49a21' and
-            proposal['tree'] == '454fb0fa3a128e638a1d7d85f345c7904f296877' and
-            proposal['review_artifact'] == 12702919800 and
-            proposal['pages_artifact'] == 12703258126 and
+    # The R3 proposal is the historical, hash-pinned record of the reviewed
+    # destination DESIGN (direct native fragments, target=_top, indexed 0.5.2).
+    # Its deployment/run/artifact numbers are evidence labels only; whether the
+    # CURRENT Core publication is acceptable is decided exclusively by
+    # qualify_current_core.py against the authenticated live deployment (R4).
+    proposal_path = root / 'docs/evidence/gnatdoc009/r3/policy-proposal.json'
+    require(digest(proposal_path.read_bytes()) ==
+            '41eb7acc8a026eec939ad50ae6d0ffdac18aca1580d0a13514922eae1e5aed5a',
+            'reviewed historical Core destination policy record changed')
+    require(proposal['external_type_target'] == '_top' and
             proposal['indexed_version'] == indexed['version'] and
             proposal['indexed_origin'] == indexed['origin'] and
+            proposal['verified_referenced_identities'] == len(authority) == 14 and
             proposal['policy_approved'] is False and
             policy['external_types'] == {k: v['url'] for k, v in authority.items()},
-            'Core policy not bound to reviewed immutable deployment proposal')
+            'Core policy not bound to the reviewed source/native destination design')
     require(digest((root / 'src/opencv-image_processing.ads').read_bytes()) ==
             ledger['occurrences'][0]['imgproc_source_file_sha256'], 'current source differs from occurrence authority')
     report = reconcile(native, candidate, ledger)

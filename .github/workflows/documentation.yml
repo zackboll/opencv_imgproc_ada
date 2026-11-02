@@ -88,11 +88,10 @@ jobs:
       - name: Record resolved indexed Core source for comparison helpers
         run: |
           echo "DOC_CORE_SOURCE=$(alr exec -- printenv OPENCV_CORE_ALIRE_PREFIX)" >> "$GITHUB_ENV"
-      - name: Independently qualify pinned current Core deployment and all hosted bytes
+      - name: Independently qualify the authenticated current Core deployment and 14 destinations
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git -C ../core fetch origin 33a2a4f3b83606a5c779b8a93abeb6c91fa49a21
           (cd ../core && alr -n build)
           mkdir -p "$RUNNER_TEMP/core-native/api"
           (cd ../core && alr exec -- "$GITHUB_WORKSPACE/imgproc/.doc-tools/gnatdoc-26.0.0/bin/gnatdoc" -P docs_api.gpr --backend html --generate public --style leading --warnings -O "$RUNNER_TEMP/core-native/api")
@@ -147,11 +146,11 @@ jobs:
           "$DOC_PYTHON" scripts/record_production_operations.py --output "$DOC_OPERATIONS"
           export DOC_BROWSER_REPORT="$RUNNER_TEMP/doc-browser-evidence/api-browser.json"
           node scripts/test_shared_production_browser.cjs
-      - name: Recheck complete actual upload files and Core deployment after browser campaign
+      - name: Recheck complete actual upload files and the same Core deployment after browser campaign
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          "$DOC_PYTHON" scripts/qualify_current_core.py --core "$GITHUB_WORKSPACE/core" --native "$RUNNER_TEMP/core-native" --output "$RUNNER_TEMP/core-qualified-after"
+          "$DOC_PYTHON" scripts/qualify_current_core.py --core "$GITHUB_WORKSPACE/core" --native "$RUNNER_TEMP/core-native" --output "$RUNNER_TEMP/core-qualified-after" --expect "$RUNNER_TEMP/core-qualified/provenance-after.json"
           "$DOC_PYTHON" scripts/validate_docs.py _site
           python3 scripts/install_released_gnatdoc.py --venv "$GNATDOC_ENHANCER_VENV" --verify > obj/docs/enhancer-final.json
       - name: Upload review artifact

@@ -1,0 +1,39 @@
+test_oversized_member_rejected (test_current_core.ArtifactMutations.test_oversized_member_rejected) ... ok
+test_review_and_pages_inventories_must_match (test_current_core.ArtifactMutations.test_review_and_pages_inventories_must_match) ... ok
+test_stale_public_https_content_rejected (test_current_core.ArtifactMutations.test_stale_public_https_content_rejected) ... ok
+test_unsafe_pages_entries_rejected (test_current_core.ArtifactMutations.test_unsafe_pages_entries_rejected) ... ok
+ok
+test_wrong_digest_and_tampered_bytes_rejected (test_current_core.ArtifactMutations.test_wrong_digest_and_tampered_bytes_rejected) ... ok
+test_ambiguous_declaration_rejected (test_current_core.DeployedSourceMutations.test_ambiguous_declaration_rejected) ... ok
+test_changed_profile_rejected (test_current_core.DeployedSourceMutations.test_changed_profile_rejected) ... ok
+test_private_declaration_rejected (test_current_core.DeployedSourceMutations.test_private_declaration_rejected) ... ok
+test_wrong_owner_mapping_rejected (test_current_core.DeployedSourceMutations.test_wrong_owner_mapping_rejected) ... ok
+test_changed_indexed_dependency_rejected (test_current_core.EndToEndQualification.test_changed_indexed_dependency_rejected) ... ok
+test_complete_qualification_and_outputs (test_current_core.EndToEndQualification.test_complete_qualification_and_outputs) ... ok
+test_deployment_change_during_qualification_is_a_race (test_current_core.EndToEndQualification.test_deployment_change_during_qualification_is_a_race) ... ok
+test_forged_expected_provenance_cannot_authorize (test_current_core.EndToEndQualification.test_forged_expected_provenance_cannot_authorize) ... ok
+test_unsettled_redeploy_during_qualification_is_a_race (test_current_core.EndToEndQualification.test_unsettled_redeploy_during_qualification_is_a_race) ... ok
+test_changed_indexed_release_selection_rejected (test_current_core.IndexedAuthorityAndManifestForgery.test_changed_indexed_release_selection_rejected) ... ok
+test_historical_identities_are_not_acceptance_criteria (test_current_core.IndexedAuthorityAndManifestForgery.test_historical_identities_are_not_acceptance_criteria) ... ok
+test_rehashed_destination_manifests_rejected (test_current_core.IndexedAuthorityAndManifestForgery.test_rehashed_destination_manifests_rejected) ... ok
+test_rehashed_source_authority_rejected (test_current_core.IndexedAuthorityAndManifestForgery.test_rehashed_source_authority_rejected) ... ok
+test_accepts_new_deployment_with_unchanged_declarations_and_anchors (test_current_core.LegitimateDeployment.test_accepts_new_deployment_with_unchanged_declarations_and_anchors) ... ok
+test_newer_failed_deployment_is_skipped_but_unsettled_one_is_not (test_current_core.LegitimateDeployment.test_newer_failed_deployment_is_skipped_but_unsettled_one_is_not) ... ok
+test_unrelated_core_documentation_changes_are_accepted (test_current_core.LegitimateDeployment.test_unrelated_core_documentation_changes_are_accepted) ... ok
+test_anchor_on_non_declaration_rejected (test_current_core.NativeDestinationMutations.test_anchor_on_non_declaration_rejected) ... ok
+test_duplicate_declaration_rejected (test_current_core.NativeDestinationMutations.test_duplicate_declaration_rejected) ... ok
+test_incorrect_but_existing_anchor_rejected (test_current_core.NativeDestinationMutations.test_incorrect_but_existing_anchor_rejected) ... ok
+test_missing_declaration_rejected (test_current_core.NativeDestinationMutations.test_missing_declaration_rejected) ... ok
+test_referenced_page_missing_from_publication_rejected (test_current_core.NativeDestinationMutations.test_referenced_page_missing_from_publication_rejected) ... ok
+test_substituted_declaration_rejected (test_current_core.NativeDestinationMutations.test_substituted_declaration_rejected) ... ok
+test_swapped_anchors_rejected (test_current_core.NativeDestinationMutations.test_swapped_anchors_rejected) ... ok
+test_wrong_owner_page_rejected (test_current_core.NativeDestinationMutations.test_wrong_owner_page_rejected) ... ok
+test_artifact_ownership_source_and_workflow_identity (test_current_core.ProvenanceMutations.test_artifact_ownership_source_and_workflow_identity) ... ok
+test_fetched_tree_must_match_api_tree (test_current_core.ProvenanceMutations.test_fetched_tree_must_match_api_tree) ... ok
+test_unsuccessful_or_incomplete_deployments_rejected (test_current_core.ProvenanceMutations.test_unsuccessful_or_incomplete_deployments_rejected) ... ok
+test_wrong_owner_private_ambiguous_and_modified_complete_declaration (test_current_core.ReferencedDeclarationMutations.test_wrong_owner_private_ambiguous_and_modified_complete_declaration) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in <time>
+
+OK
