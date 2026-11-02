@@ -522,6 +522,10 @@ class EndToEndQualification(Fixture):
         self.assertEqual(sorted(json.loads((output / 'hosted-sha256.json').read_text())),
                          sorted(core.REFERENCED_PAGES))
         self.assertEqual(json.loads((output / 'changed-destinations.json').read_text()), [])
+        report = core.summary(output)
+        self.assertEqual(len(report['destinations']), 14)
+        self.assertEqual({d['hosted_revision'] for d in report['destinations'].values()}, {self.source.sha})
+        self.assertNotIn('historical_r3_identities_not_used_for_acceptance', report)
         # Same deployment in a later step of the same build is accepted.
         core.qualify(self.args('second', output / 'provenance-after.json'), self.source)
 

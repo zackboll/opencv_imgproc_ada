@@ -153,6 +153,8 @@ jobs:
           "$DOC_PYTHON" scripts/qualify_current_core.py --core "$GITHUB_WORKSPACE/core" --native "$RUNNER_TEMP/core-native" --output "$RUNNER_TEMP/core-qualified-after" --expect "$RUNNER_TEMP/core-qualified/provenance-after.json"
           "$DOC_PYTHON" scripts/validate_docs.py _site
           python3 scripts/install_released_gnatdoc.py --venv "$GNATDOC_ENHANCER_VENV" --verify > obj/docs/enhancer-final.json
+          echo "Uploaded publication file digests:"
+          (cd _site && find . -type f | LC_ALL=C sort | xargs sha256sum)
       - name: Upload review artifact
         uses: actions/upload-artifact@v4
         with:

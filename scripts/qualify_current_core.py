@@ -398,10 +398,25 @@ def qualify(args, source=None):
     return after
 
 
+def summary(output):
+    """Human-auditable job-log record of what was verified (evidence, not authority)."""
+    record = json.loads((output / 'policy-proposal.json').read_text())
+    record.pop('historical_r3_identities_not_used_for_acceptance', None)
+    proofs = json.loads((output / 'referenced-types.json').read_text())
+    record['destinations'] = {identity: {
+        'result': 'PASS', 'url': proof['url'], 'signature': proof['declaration']['signature'],
+        'native_anchor': proof['native_anchor'], 'hosted_page_sha256': proof['hosted_page_sha256'],
+        'hosted_revision': proof['hosted_revision']} for identity, proof in sorted(proofs.items())}
+    record['live_pages_sha256'] = json.loads((output / 'hosted-sha256.json').read_text())
+    return record
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('core', 'native', 'output'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--expect', type=Path,
                         help='provenance-after.json from an earlier qualification in the same build')
-    qualify(parser.parse_args())
+    arguments = parser.parse_args()
+    qualify(arguments)
+    print('CORE_LINK_COMPATIBILITY_PASSED ' + json.dumps(summary(arguments.output), sort_keys=True, indent=2))
