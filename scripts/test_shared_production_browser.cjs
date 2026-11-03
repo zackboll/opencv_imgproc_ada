@@ -140,13 +140,41 @@ const report = {passed: false, requestInterception: false, campaigns: [], failur
           // reader scrolls the document away must show it again.
           const middle = Math.floor(expected.length / 2);
           const mid = expected[middle].href.split('#')[1];
+          // Native fragment scrolling satisfies revealed() ~1 frame BEFORE the
+          // router handles this selection's hashchange and runs its deferred
+          // reveal. Scrolling away inside that window is undone by the router
+          // (GNATDOC-012R1 hosted failure), so wait for the selection to settle.
+          await page.frame({name: 'document-content'}).evaluate(() => {
+            window.__selectionHash = new Promise((resolve, reject) => {
+              addEventListener('hashchange', () => resolve(), {once: true});
+              setTimeout(() => reject(new Error('selection hashchange not observed')), 10000);
+            });
+          });
           await links.nth(middle).click();
           await revealed(mid);
-          await page.frame({name: 'document-content'}).evaluate(() => window.scrollTo(0, 0));
-          await page.frame({name: 'document-content'}).waitForFunction(
-            id => document.getElementById(id).getBoundingClientRect().top >= innerHeight, mid);
+          const away = await page.frame({name: 'document-content'}).evaluate(async id => {
+            const tick = () => new Promise(resolve => requestAnimationFrame(() => resolve()));
+            await window.__selectionHash;
+            if (document.readyState !== 'complete')
+              await new Promise(resolve => addEventListener('load', () => resolve(), {once: true}));
+            await tick(); await tick(); // the router's single-frame deferred reveal has run
+            const target = document.getElementById(id);
+            const before = target.getBoundingClientRect().top;
+            window.scrollTo(0, 0);
+            const after = [];
+            for (let i = 0; i < 10; i++) { await tick(); after.push(target.getBoundingClientRect().top); }
+            return {before, after, innerHeight, hash: location.hash, target: target.matches(':target')};
+          }, mid);
+          // Independent precondition: genuinely visible first, then off-screen
+          // and STAYING off-screen, still the selected :target, before reselection.
+          assert.ok(away.before >= -1 && away.before < away.innerHeight, 'reselection setup: ' + JSON.stringify(away));
+          assert.ok(away.after.every(top => top >= away.innerHeight), 'reselection setup: ' + JSON.stringify(away));
+          assert.equal(away.hash, '#' + mid);
+          assert.equal(away.target, true);
           await links.nth(middle).click();
           await revealed(mid);
+          assert.equal(new URL(page.url()).searchParams.get('declaration'), mid);
+          assert.equal(new URL(page.frame({name: 'document-content'}).url()).hash, '#' + mid);
           await page.goto(base + 'api/index.html');
           const input = page.locator('#package-search');
           await input.fill('Match_Template');

@@ -1,0 +1,52 @@
+== v0.1.5 corrected test
+  setup {"before":18.828125,"after":34008.828125,"innerHeight":900}
+PASS focused 1280px light JS=true
+PASS focused 1280px light JS=false
+  setup {"before":18.828125,"after":34008.828125,"innerHeight":900}
+PASS focused 1280px dark JS=true
+PASS focused 1280px dark JS=false
+  setup {"before":18.78125,"after":45023.78125,"innerHeight":513}
+PASS focused 390px light JS=true
+PASS focused 390px light JS=false
+  setup {"before":18.78125,"after":45023.78125,"innerHeight":513}
+PASS focused 390px dark JS=true
+PASS focused 390px dark JS=false
+exit=0
+== v0.1.5 corrected test, ADVERSARIAL early scroll injected (hosted race)
+  setup {"before":18.828125,"after":34008.828125,"innerHeight":900}
+PASS focused 1280px light JS=true
+PASS focused 1280px light JS=false
+  setup {"before":18.828125,"after":34008.828125,"innerHeight":900}
+PASS focused 1280px dark JS=true
+PASS focused 1280px dark JS=false
+  setup {"before":18.78125,"after":45023.78125,"innerHeight":513}
+PASS focused 390px light JS=true
+PASS focused 390px light JS=false
+  setup {"before":18.78125,"after":45023.78125,"innerHeight":513}
+PASS focused 390px dark JS=true
+PASS focused 390px dark JS=false
+exit=0
+== v0.1.1 corrected test, label assertion skipped (restoration only)
+  setup {"before":18.828125,"after":34008.828125,"innerHeight":900}
+FAIL focused 1280px light JS=true: frame.waitForFunction: Timeout 10000ms exceeded.
+PASS focused 1280px light JS=false
+  setup {"before":18.828125,"after":34008.828125,"innerHeight":900}
+FAIL focused 1280px dark JS=true: frame.waitForFunction: Timeout 10000ms exceeded.
+PASS focused 1280px dark JS=false
+  setup {"before":18.78125,"after":45023.78125,"innerHeight":513}
+FAIL focused 390px light JS=true: frame.waitForFunction: Timeout 10000ms exceeded.
+PASS focused 390px light JS=false
+  setup {"before":18.78125,"after":45023.78125,"innerHeight":513}
+FAIL focused 390px dark JS=true: frame.waitForFunction: Timeout 10000ms exceeded.
+PASS focused 390px dark JS=false
+exit=1
+== v0.1.1 corrected test (full)
+FAIL focused 1280px light JS=true: Expected values to be strictly equal:
+FAIL focused 1280px light JS=false: Expected values to be strictly equal:
+FAIL focused 1280px dark JS=true: Expected values to be strictly equal:
+FAIL focused 1280px dark JS=false: Expected values to be strictly equal:
+FAIL focused 390px light JS=true: Expected values to be strictly equal:
+FAIL focused 390px light JS=false: Expected values to be strictly equal:
+FAIL focused 390px dark JS=true: Expected values to be strictly equal:
+FAIL focused 390px dark JS=false: Expected values to be strictly equal:
+exit=1
