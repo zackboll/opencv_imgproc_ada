@@ -1,0 +1,86 @@
+== test_released_gnatdoc
+----------------------------------------------------------------------
+Ran 18 tests in 2.285s
+
+OK
+== test_production_core_links
+----------------------------------------------------------------------
+Ran 7 tests in 0.002s
+
+OK (skipped=3)
+== test_current_core
+----------------------------------------------------------------------
+Ran 34 tests in 5.815s
+
+OK (skipped=5)
+== test_core_source_authority
+----------------------------------------------------------------------
+Ran 6 tests in 0.025s
+
+OK
+== test_compare_gnatdoc_warnings
+----------------------------------------------------------------------
+Ran 36 tests in 0.169s
+
+OK
+== test_validate_docs
+----------------------------------------------------------------------
+Ran 43 tests in 47.713s
+
+FAILED (failures=13, errors=2)
+== test_check_doc_coverage
+----------------------------------------------------------------------
+Ran 26 tests in 2.710s
+
+OK
+== test_check_comment_only
+----------------------------------------------------------------------
+Ran 6 tests in 0.192s
+
+OK
+== test_link_gnatdoc_types
+----------------------------------------------------------------------
+Ran 23 tests in 0.339s
+
+OK
+== test_gnatdoc_navigation
+----------------------------------------------------------------------
+Ran 11 tests in 13.829s
+
+FAILED (failures=5, errors=2)
+== test_gnatdoc_guides
+----------------------------------------------------------------------
+Ran 14 tests in 145.566s
+
+OK
+== test_gnatdoc_examples
+----------------------------------------------------------------------
+Ran 16 tests in 271.036s
+
+OK
+== test_verify_live_docs
+----------------------------------------------------------------------
+Ran 32 tests in 38.224s
+
+OK
+== test_shared_production
+----------------------------------------------------------------------
+Ran 4 tests in 73.544s
+
+OK
+== test_enhancer_upgrade
+----------------------------------------------------------------------
+Ran 4 tests in 0.169s
+
+OK
+Guides: 5 pages; exact content, compiled examples, links and stylesheet verified
+Validated 1 public package(s), 8 HTML pages and 329 declaration sections (193 subprograms); all local links and anchors resolve.
+PARITY_OK
+== test_validate_docs
+Ran 43 tests in 146.055s
+
+OK
+== test_gnatdoc_navigation
+Ran 11 tests in 56.296s
+
+OK

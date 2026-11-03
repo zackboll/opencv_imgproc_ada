@@ -32,7 +32,7 @@ Required qualification versions:
 
 Also install a supported native OpenCV development library, pkg-config, a
 C++17 compiler, a POSIX shell and Python 3.11 or newer. The generator installs
-the official v0.1.1 enhancer wheel and hash-pinned optional Markdown dependencies
+the official v0.1.5 enhancer wheel and hash-pinned optional Markdown dependencies
 in an isolated documentation environment, never in Alire.
 `alire.toml` normally resolves indexed Core 0.5.2 without a pin; the active
 documentation gate accepts only its exact qualified source. No neighboring Core
@@ -539,7 +539,7 @@ authority and qualification evidence remain frozen.
 
 ```sh
 sh scripts/generate_docs.sh
-export DOC_PYTHON="$PWD/.doc-tools/enhancer-0.1.1/bin/python"
+export DOC_PYTHON="$PWD/.doc-tools/enhancer-0.1.5/bin/python"
 export DOC_CORE_SOURCE=$(alr exec -- printenv OPENCV_CORE_ALIRE_PREFIX)
 "$DOC_PYTHON" scripts/review_legacy_docs.py --native obj/docs/native \
   --output /tmp/imgproc-legacy-review --core "$DOC_CORE_SOURCE"
@@ -558,6 +558,54 @@ The released enhancer, pinned guide renderer (`markdown-it-py==3.0.0` and
 the optional Playwright harnesses, is a dependency of the library or the
 `tests` crate.
 
+## GNATDOC-012: official enhancer v0.1.5
+
+Production documentation uses the official
+[v0.1.5 release](https://github.com/zackboll/ada-gnatdoc-enhancer/releases/tag/v0.1.5):
+annotated tag `c6ca2b445b089e7f50abc1779d76dd4ff3f0f1eb`, commit
+`0120bee2f2455e4c832d1d5ddae0a4cb03cb9477`, tree
+`01900ddb099c801eeb92fba718f4c528f87d865f`.
+
+| Asset | Bytes | SHA-256 |
+| --- | --- | --- |
+| `ada_gnatdoc_enhancer-0.1.5-py3-none-any.whl` | 117934 | `d712d330f213fc1909a66c47bc2c7e5e15d5ec687222bea3c4922f5243db4247` |
+| `ada_gnatdoc_enhancer-0.1.5.tar.gz` (audited, never installed) | 3521158 | `2bc2cc4160a182a2a9b1a4907f47198daabf88883888fa09d736913bd2931079` |
+| `release-provenance.json` | 1157963 | `6c30b7a4ec987ab4f74a44d04586dcd57308dd592ac13f33c9444ef3acf0a8f3` |
+| `SHA256SUMS` | 300 | `93e061866d52e13b6266c6fa0efb3b9c2e3a1bd1b4c818981a11a802ded74756` |
+
+The allowed wheel inventory (48 members: 42 modules/assets plus six
+`dist-info` files) is derived from the authenticated release and must equal
+every file under `src/ada_gnatdoc_enhancer` in the tagged tree. The installer
+also verifies every wheel `RECORD` hash and size, classifies every installed
+`RECORD` row, requires the exact `METADATA` name/version/entry point and *no*
+mandatory runtime dependency (only the optional `guides` pins
+`markdown-it-py==3.0.0` and `mdurl==0.1.2`), checks that `SHA256SUMS` lists
+exactly the three approved assets, and cross-binds the official provenance to
+the tag commit/tree, archive sizes/hashes and per-member digests.
+`verify_official_release_archives.py` additionally requires every sdist file to
+be a byte-identical tagged blob except the eight setuptools-generated metadata
+files. The enhancer stays in its separate documentation-only environment; the
+Alire dependency graph and `docs/gnatdoc-enhancer.toml` are unchanged, and
+compiler-verified example mappings are **not** enabled.
+
+Compared with v0.1.1, from the same authenticated source and native GNATdoc
+input, 11 of the 14 published files are byte-identical. `compare_enhancer_upgrade.py`
+accepts exactly these three differences, each traced to its upstream cause:
+
+| File | Upstream cause | Change |
+| --- | --- | --- |
+| `api/index.html` | `27341756` (first released in v0.1.3) | Filter control label "Search documentation" becomes "Filter navigation links"; nothing else changes |
+| `api/gnatdoc-navigation.js` | `0eeeadbb` (GNATDOC-019, first released in v0.1.2) | Default router shows the selected declaration again after Back/Forward, reload or `pageshow` |
+| `api/presentation.json` | version-bound metadata | `enhancer_version` and the output hashes of the two files above |
+
+The package API page, theme CSS, native CSS, landing page, guides and all
+declarations, anchors, overload navigation and 14 Core destinations are
+byte-identical. The production browser campaign additionally requires the exact
+label and visible restoration of the selected declaration after history
+traversal and reload. CI reconstructs the v0.1.1 API with the installer retained
+at main `2160fe7a6bf612eb0b8e85b06e5e011e0c253521` and runs the differential and
+its mutation tests on every build. Evidence: `docs/evidence/gnatdoc012/`.
+
 ## GNATDOC-009R2/R3: released production candidate
 
 **Historical R2 blocker:** the fresh hosted community index selected Core
@@ -567,15 +615,16 @@ R2's failure remains unchanged at `docs/evidence/gnatdoc009/r2/BLOCKER.md`.
 R3's active exact authority and final qualification are separate records under
 `docs/evidence/gnatdoc009/r3/`; no future 0.5.x is implicitly authorized.
 
-`scripts/install_released_gnatdoc.py` acquires only the official HTTPS v0.1.1
-wheel, checks its complete inventory and SHA-256
-`8b896683a65623a7e7d626701a4cd68c8b89cb65792f9ffd5525bfa8cfa257ab`,
-independently fetches annotated tag `6d3bc1167179ec7cb90c2a6bdf91050b6057f6b4`,
-commit `dd100f026e13cdd9e97b283d50130241d71bdb9d`, tree
-`2873e5f7e0c200ec24a6706610d3bc0527303a7d`, and compares every packaged module
-and asset with tagged source. It checks exact installed bytes, distribution
-metadata, non-editable origin, launcher, CLI version, release provenance and
-checksum receipt before execution. Optional Markdown wheels are independently
+`scripts/install_released_gnatdoc.py` originally (R2/R3) installed official
+v0.1.1 (tag `6d3bc1167179ec7cb90c2a6bdf91050b6057f6b4`, wheel
+`8b896683a65623a7e7d626701a4cd68c8b89cb65792f9ffd5525bfa8cfa257ab`). Since
+IMGPROC-GNATDOC-012 it acquires only the official HTTPS **v0.1.5** assets; see
+"GNATDOC-012" below for the identities and the audited publication delta. It
+checks the complete wheel inventory and SHA-256, fetches the annotated tag,
+commit and tree independently, and compares every packaged module and asset
+with tagged source. It checks exact installed bytes, distribution metadata,
+non-editable origin, launcher, CLI version, release provenance and checksum
+receipt before execution. Optional Markdown wheels are independently
 hash-checked. No development checkout, rebuilt wheel or toolkit patch is used.
 
 `generate_docs.sh` builds the indexed library, generates pristine public native

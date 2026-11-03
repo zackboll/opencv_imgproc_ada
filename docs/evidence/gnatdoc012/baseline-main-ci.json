@@ -1,0 +1,61 @@
+{
+  "core_deployment_qualified_in_run": {
+    "core_run": 41387613310,
+    "pages_artifact": 13117292259,
+    "review_artifact": 13117735599,
+    "source": "0798900142660fb7ac5b9ab395c808e911242fa7",
+    "verified_referenced_identities": 14
+  },
+  "event": "push",
+  "head_sha": "2160fe7a6bf612eb0b8e85b06e5e011e0c253521",
+  "jobs": {
+    "build": {
+      "conclusion": "success",
+      "id": 125634181057
+    },
+    "deploy": {
+      "conclusion": "success",
+      "id": 125645945329
+    },
+    "verify-live": {
+      "conclusion": "success",
+      "id": 125646068096,
+      "steps": [
+        "Reconstruct and verify same-run live publication (read only): success",
+        "Qualify live browser navigation and examples: success"
+      ]
+    }
+  },
+  "local_independent_v011_publication_equal_to_uploaded_files": true,
+  "note": "Local baseline A was regenerated from a clean worktree of 2160fe7 with official v0.1.1; its 14 file digests equal the digests the main build job printed for the uploaded artifact. Historical R1-R4 evidence is unchanged.",
+  "pages_artifact": {
+    "archived_files": 14,
+    "id": 13193377777,
+    "name": "github-pages",
+    "zip_sha256": "ab97e31474ef5db9db2028654b4d271760bc1a7e73b6adaac96641a29b401374"
+  },
+  "review_artifact": {
+    "files": 14,
+    "id": 13193077761,
+    "name": "ada-api-2160fe7a6bf612eb0b8e85b06e5e011e0c253521",
+    "zip_sha256": "19ff2a7d508ce83bc1d355ad8e4453d0cf32bf5f60a76f27017afab6eeb9c0af"
+  },
+  "run": 41549770007,
+  "uploaded_publication_file_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "3721f88ae70e6ec774af729155ba22c9f7860a48c5b2dd242a9079a5c21bf13a",
+    "api/gnatdoc-navigation.js": "b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd",
+    "api/gnatdoc-theme.css": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "6ccce736335a87da898e8258aad4c341775a65b0690522a010783302e834dc04",
+    "api/presentation.json": "b030ea24c1231d8001ebc46434d0d6be3b10f583ad75ae06b7e91e4b05ed9381",
+    "guides/color-and-image-representation.html": "a5fe3d81ae15e43aadb9ded19cd886b5ef6464b8b8776a0d4bb922ee76ef5101",
+    "guides/features-and-structural-analysis.html": "75072f76ba81ab36d410963a930039badf3f080f77b773dc7712f762f991a40a",
+    "guides/filtering-and-transforms.html": "7d4bc819d5d9614c56efe8ef7648ac89cc6a70ddb3d444a3f5ef501711764fa4",
+    "guides/gnatdoc-authored.css": "38d27fcf1a27be7c525257645d447cc1dec65c004dced006f535577a0b85548a",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "f7d107ed5bcbad40e9a11fe865bffdb838dac0281c7ebdf5698a8f93aff21f49",
+    "guides/template-matching-and-registration.html": "91050632720eea49e894f74d9d67575928cd36232a1154f606229c32453631b2",
+    "index.html": "cc441964a24d936fa956dbb56ce237f4c344c17c90d78ad603e34bc34df5006e"
+  },
+  "url": "https://github.com/zackboll/opencv_imgproc_ada/actions/runs/41549770007"
+}
