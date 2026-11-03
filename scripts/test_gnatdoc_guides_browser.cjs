@@ -57,7 +57,8 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
             actual: getComputedStyle(e).color,
             variable: getComputedStyle(e).getPropertyValue('--keyword').trim()
           }));
-          const shared = process.env.DOC_PRESENTATION === 'shared-0.1.1';
+          // Released theme CSS is byte-identical in v0.1.1 and v0.1.5 (cf06637...).
+          const shared = ['shared-0.1.1', 'shared-0.1.5'].includes(process.env.DOC_PRESENTATION);
           assert.equal(palette.variable, colorScheme === 'dark'
             ? (shared ? '#cfa8ff' : '#d4a8ff') : (shared ? '#7442a7' : '#7040a0'));
           assert.notEqual(palette.actual, await block.evaluate(e => getComputedStyle(e).color));

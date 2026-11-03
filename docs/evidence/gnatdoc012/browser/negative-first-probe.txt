@@ -1,0 +1,4 @@
+v0.1.1: {"390":{"label":"Search documentation","back":"visible","forward":"visible","reload":"visible"},"1280":{"label":"Search documentation","back":"visible","forward":"visible","reload":"visible"}}
+v0.1.5: {"390":{"label":"Filter navigation links","back":"visible","forward":"visible","reload":"visible"},"1280":{"label":"Filter navigation links","back":"visible","forward":"visible","reload":"visible"}}
+v0.1.1 same-URL reselect: {"390":{"selected":19,"scrolledAway":45024,"reselected":45024},"1280":{"selected":19,"scrolledAway":34009,"reselected":34009}}
+v0.1.5 same-URL reselect: {"390":{"selected":19,"scrolledAway":45024,"reselected":19},"1280":{"selected":19,"scrolledAway":34009,"reselected":19}}

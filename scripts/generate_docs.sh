@@ -57,7 +57,7 @@ python3 scripts/compare_gnatdoc_warnings.py --fail-on-removed \
     docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
 # All API presentation belongs to the verified released tool. Legacy steps are
 # available only through scripts/review_legacy_docs.py on a separate native copy.
-enhancer=${GNATDOC_ENHANCER_VENV:-"$root/.doc-tools/enhancer-0.1.1"}
+enhancer=${GNATDOC_ENHANCER_VENV:-"$root/.doc-tools/enhancer-0.1.5"}
 if [ ! -d "$enhancer" ]; then
     python3 scripts/install_released_gnatdoc.py --venv "$enhancer" --with-guides \
         > obj/docs/enhancer-install.json

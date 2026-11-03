@@ -1,0 +1,38 @@
+{
+  "baseline_enhancer": {
+    "source_commit": "dd100f026e13cdd9e97b283d50130241d71bdb9d",
+    "source_tree": "2873e5f7e0c200ec24a6706610d3bc0527303a7d",
+    "tag_object": "6d3bc1167179ec7cb90c2a6bdf91050b6057f6b4",
+    "version": "0.1.1",
+    "wheel_sha256": "8b896683a65623a7e7d626701a4cd68c8b89cb65792f9ffd5525bfa8cfa257ab"
+  },
+  "independently_observed": "annotated tag object/commit/tree via git fetch refs/tags/v0.1.5; all four asset SHA-256 values recomputed from HTTPS downloads",
+  "starting_main": "2160fe7a6bf612eb0b8e85b06e5e011e0c253521",
+  "starting_tree": "613d3552869fcecde7cbf10b18445b9b2acab32b",
+  "target_enhancer": {
+    "assets": {
+      "SHA256SUMS": [
+        "93e061866d52e13b6266c6fa0efb3b9c2e3a1bd1b4c818981a11a802ded74756",
+        300
+      ],
+      "ada_gnatdoc_enhancer-0.1.5-py3-none-any.whl": [
+        "d712d330f213fc1909a66c47bc2c7e5e15d5ec687222bea3c4922f5243db4247",
+        117934
+      ],
+      "ada_gnatdoc_enhancer-0.1.5.tar.gz": [
+        "2bc2cc4160a182a2a9b1a4907f47198daabf88883888fa09d736913bd2931079",
+        3521158
+      ],
+      "release-provenance.json": [
+        "6c30b7a4ec987ab4f74a44d04586dcd57308dd592ac13f33c9444ef3acf0a8f3",
+        1157963
+      ]
+    },
+    "release": "https://github.com/zackboll/ada-gnatdoc-enhancer/releases/tag/v0.1.5",
+    "source_commit": "0120bee2f2455e4c832d1d5ddae0a4cb03cb9477",
+    "source_tree": "01900ddb099c801eeb92fba718f4c528f87d865f",
+    "tag_object": "c6ca2b445b089e7f50abc1779d76dd4ff3f0f1eb",
+    "version": "0.1.5"
+  },
+  "task": "IMGPROC-GNATDOC-012"
+}

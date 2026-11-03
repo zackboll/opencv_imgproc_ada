@@ -1,0 +1,108 @@
+== v0.1.5
+[
+ {
+  "width": 390,
+  "declaration": "Background_Label",
+  "anchor": "49f23914348d447f67af72bc705fe3581cf9f23bd374f364a20c9ab2fd37b9ff",
+  "line146": "frame.waitForFunction: Timeout 5000ms exceeded.",
+  "events": [
+   [
+    703,
+    "native fragment scroll: revealed() precondition already true",
+    19
+   ],
+   [
+    703,
+    "test scrollTo(0,0) (line 145) before router reveal",
+    45024
+   ],
+   [
+    720,
+    "hashchange",
+    45024
+   ],
+   [
+    720,
+    "router scrollIntoView",
+    45024
+   ]
+  ]
+ },
+ {
+  "width": 1280,
+  "declaration": "Background_Label",
+  "anchor": "49f23914348d447f67af72bc705fe3581cf9f23bd374f364a20c9ab2fd37b9ff",
+  "line146": "frame.waitForFunction: Timeout 5000ms exceeded.",
+  "events": [
+   [
+    620,
+    "native fragment scroll: revealed() precondition already true",
+    19
+   ],
+   [
+    620,
+    "test scrollTo(0,0) (line 145) before router reveal",
+    34009
+   ],
+   [
+    637,
+    "hashchange",
+    34009
+   ],
+   [
+    639,
+    "router scrollIntoView",
+    34009
+   ]
+  ]
+ }
+]
+== v0.1.1
+[
+ {
+  "width": 390,
+  "declaration": "Background_Label",
+  "anchor": "49f23914348d447f67af72bc705fe3581cf9f23bd374f364a20c9ab2fd37b9ff",
+  "line146": "passed",
+  "events": [
+   [
+    844,
+    "native fragment scroll: revealed() precondition already true",
+    19
+   ],
+   [
+    844,
+    "test scrollTo(0,0) (line 145) before router reveal",
+    45024
+   ],
+   [
+    861,
+    "hashchange",
+    45024
+   ]
+  ]
+ },
+ {
+  "width": 1280,
+  "declaration": "Background_Label",
+  "anchor": "49f23914348d447f67af72bc705fe3581cf9f23bd374f364a20c9ab2fd37b9ff",
+  "line146": "passed",
+  "events": [
+   [
+    631,
+    "native fragment scroll: revealed() precondition already true",
+    19
+   ],
+   [
+    631,
+    "test scrollTo(0,0) (line 145) before router reveal",
+    34009
+   ],
+   [
+    648,
+    "hashchange",
+    34009
+   ]
+  ]
+ }
+]

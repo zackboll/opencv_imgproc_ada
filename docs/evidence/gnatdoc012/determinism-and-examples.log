@@ -1,0 +1,12 @@
+REGEN_OK
+REGEN_IDENTICAL
+REPEAT_IDEMPOTENT
+Ran 1 test in 67.012s
+
+OK
+EX_OK landing
+EX_OK filtering_and_transforms
+EX_OK color_and_representation
+EX_OK features_and_analysis
+EX_OK segmentation_and_contours
+EX_OK matching_and_registration

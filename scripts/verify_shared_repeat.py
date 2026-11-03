@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix='imgproc-repeat-docs-') as tmp:
     site.mkdir()
     shutil.copytree(ROOT / '_site/api', site / 'api')
     before = hashes(site)
-    environment = Path(os.environ.get('GNATDOC_ENHANCER_VENV', ROOT / '.doc-tools/enhancer-0.1.1'))
+    environment = Path(os.environ.get('GNATDOC_ENHANCER_VENV', ROOT / '.doc-tools/enhancer-0.1.5'))
     execute(environment, source, 'enhance', site)
     execute(environment, source, 'verify', site)
     require(hashes(site) == before, 'repeat enhancement changed API bytes')

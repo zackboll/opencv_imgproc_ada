@@ -9,7 +9,11 @@ enhancer checkout, Alire dependency, or runtime network access is involved.
 from __future__ import annotations
 
 import argparse
+import base64
+import csv
+from email.parser import BytesParser
 import hashlib
+import io
 import json
 from pathlib import Path
 import shutil
@@ -22,27 +26,38 @@ import venv
 import zipfile
 
 REPOSITORY = "https://github.com/zackboll/ada-gnatdoc-enhancer"
-VERSION = "0.1.1"
-TAG = "6d3bc1167179ec7cb90c2a6bdf91050b6057f6b4"
-COMMIT = "dd100f026e13cdd9e97b283d50130241d71bdb9d"
-TREE = "2873e5f7e0c200ec24a6706610d3bc0527303a7d"
-WHEEL = "ada_gnatdoc_enhancer-0.1.1-py3-none-any.whl"
-WHEEL_HASH = "8b896683a65623a7e7d626701a4cd68c8b89cb65792f9ffd5525bfa8cfa257ab"
-PROVENANCE_HASH = "fd29acd9660b4eea07b88dba493091894badc5b442eaeef2c8ad90741c6c0baa"
-SDIST_HASH = "5d727b76bb7f667949f04ba2f8bb73183477ae8e3b6d62c061f0e8ebc4750d7f"
-SUMS_HASH = "7b508545299c7c84ac5a95ec5a164b4e43cad8620574e02b0c78055c5460179b"
+VERSION = "0.1.5"
+TAG = "c6ca2b445b089e7f50abc1779d76dd4ff3f0f1eb"
+COMMIT = "0120bee2f2455e4c832d1d5ddae0a4cb03cb9477"
+TREE = "01900ddb099c801eeb92fba718f4c528f87d865f"
+WHEEL = f"ada_gnatdoc_enhancer-{VERSION}-py3-none-any.whl"
+SDIST = f"ada_gnatdoc_enhancer-{VERSION}.tar.gz"
+WHEEL_HASH = "d712d330f213fc1909a66c47bc2c7e5e15d5ec687222bea3c4922f5243db4247"
+PROVENANCE_HASH = "6c30b7a4ec987ab4f74a44d04586dcd57308dd592ac13f33c9444ef3acf0a8f3"
+SDIST_HASH = "2bc2cc4160a182a2a9b1a4907f47198daabf88883888fa09d736913bd2931079"
+SUMS_HASH = "93e061866d52e13b6266c6fa0efb3b9c2e3a1bd1b4c818981a11a802ded74756"
+# Exact official asset sizes; a download must match before it is hashed.
+SIZES = {WHEEL: 117934, SDIST: 3521158, "release-provenance.json": 1157963,
+         "SHA256SUMS": 300}
+# Derived from the authenticated v0.1.5 wheel and independently equal to every
+# file under src/ada_gnatdoc_enhancer in tagged tree 01900ddb (42 files).
 MODULES = """__init__.py __main__.py authored.py browser_metadata.py cli.py
-config.py conformance.py coverage.py destinations.py errors.py external_types.py
-generic_instances.py guides.py instance_references.py inventory.py metadata.py
-native_html.py navigation.py pipeline.py profiles.py qualification.py symbols.py
-syntax.py theme.py util.py validation.py warnings.py adapters/__init__.py
-adapters/mel.py adapters/opencv.py assets/gnatdoc-guides.css assets/gnatdoc-instance-navigation.js
-assets/gnatdoc-navigation.js assets/gnatdoc-symbol-navigation.js
-assets/gnatdoc-theme.css""".split()
-DIST = "ada_gnatdoc_enhancer-0.1.1.dist-info/"
+config.py conformance.py coverage.py destinations.py errors.py examples.py
+external_symbols.py external_types.py generic_instances.py guides.py
+instance_references.py inventory.py metadata.py native_html.py navigation.py
+pipeline.py profiles.py qualification.py search.py symbols.py syntax.py theme.py
+util.py validation.py verified_examples.py warnings.py adapters/__init__.py
+adapters/mel.py adapters/opencv.py assets/gnatdoc-examples.css
+assets/gnatdoc-guides.css assets/gnatdoc-instance-navigation.js
+assets/gnatdoc-navigation.js assets/gnatdoc-search.css assets/gnatdoc-search.js
+assets/gnatdoc-symbol-navigation.js assets/gnatdoc-theme.css""".split()
+DIST = f"ada_gnatdoc_enhancer-{VERSION}.dist-info/"
 MEMBERS = {"ada_gnatdoc_enhancer/" + p for p in MODULES} | {
     DIST + p for p in ("METADATA", "WHEEL", "entry_points.txt", "top_level.txt",
                       "RECORD", "licenses/LICENSE")}
+# The only dependency declarations allowed: optional, exact, documentation-only.
+OPTIONAL_DEPENDENCIES = ['markdown-it-py==3.0.0; extra == "guides"',
+                         'mdurl==0.1.2; extra == "guides"']
 RENDERERS = {
     "markdown_it_py-3.0.0-py3-none-any.whl":
         "355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1",
@@ -109,6 +124,78 @@ def archive(path, sha, names=None):
         return result
 
 
+def record_hash(data):
+    return "sha256=" + base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+
+
+def wheel_record(members):
+    """Every wheel member, and only those, has its exact RECORD hash and size."""
+    rows = list(csv.reader(io.StringIO(members[DIST + "RECORD"].decode("utf-8"))))
+    require(all(len(row) == 3 for row in rows), "malformed wheel RECORD")
+    paths = [row[0] for row in rows]
+    require(len(paths) == len(set(paths)) and set(paths) == set(members),
+            "wheel RECORD inventory differs from wheel members")
+    for path, hashed, size in rows:
+        if path == DIST + "RECORD":
+            require(hashed == "" and size == "", "wheel RECORD self-entry must be unhashed")
+        else:
+            require(hashed == record_hash(members[path]) and size == str(len(members[path])),
+                    "wheel RECORD hash or size mismatch: " + path)
+    return len(rows)
+
+
+def dependencies(members):
+    """Distribution identity and no mandatory runtime dependency."""
+    metadata = BytesParser().parsebytes(members[DIST + "METADATA"])
+    require(metadata["Name"] == "ada-gnatdoc-enhancer" and metadata["Version"] == VERSION,
+            "wheel METADATA name/version mismatch")
+    require((metadata.get_all("Requires-Dist") or []) == OPTIONAL_DEPENDENCIES and
+            (metadata.get_all("Provides-Extra") or []) == ["guides"],
+            "unapproved or mandatory runtime dependency")
+    require(members[DIST + "entry_points.txt"] ==
+            b"[console_scripts]\ngnatdoc-enhancer = ada_gnatdoc_enhancer.cli:main\n" and
+            members[DIST + "top_level.txt"] == b"ada_gnatdoc_enhancer\n",
+            "unapproved entry point or top-level package")
+    return list(OPTIONAL_DEPENDENCIES)
+
+
+def checksums(data):
+    """SHA256SUMS lists exactly the three approved official assets."""
+    entries = {}
+    for line in data.decode("ascii").splitlines():
+        sha, _, name = line.partition("  ")
+        require(name and name not in entries, "malformed checksum inventory")
+        entries[name] = sha
+    require(entries == {WHEEL: WHEEL_HASH, SDIST: SDIST_HASH,
+                        "release-provenance.json": PROVENANCE_HASH},
+            "release checksum inventory differs from approved assets")
+
+
+def release_provenance(data, members):
+    """Official provenance binds this exact source, archives and package bytes."""
+    record = json.loads(data)
+    archives = record["archives"]
+    audit = record["distribution_content_audit"]
+    require(record["release_version"] == VERSION and audit["version"] == VERSION and
+            record["expected_source_commit"] == COMMIT and
+            record["expected_source_tree"] == TREE, "provenance source identity mismatch")
+    require(archives["wheel"]["name"] == WHEEL and archives["wheel"]["sha256"] == WHEEL_HASH and
+            archives["wheel"]["bytes"] == SIZES[WHEEL] and
+            archives["sdist"]["name"] == SDIST and archives["sdist"]["sha256"] == SDIST_HASH and
+            archives["sdist"]["bytes"] == SIZES[SDIST], "provenance archive identity mismatch")
+    require(archives["wheel"]["members"] == {
+        name: {"bytes": len(content), "sha256": digest(content)}
+        for name, content in members.items()}, "provenance wheel member inventory mismatch")
+    require(audit["module_asset_sha256"] == {
+        name: digest(content) for name, content in members.items()
+        if name.startswith("ada_gnatdoc_enhancer/")}, "provenance module/asset digest mismatch")
+    require(audit["runtime_dependencies"] == [] and
+            audit["optional_guides_dependencies"] == OPTIONAL_DEPENDENCIES and
+            audit["wheel_record_hashes_and_sizes_verified"] is True,
+            "provenance dependency or RECORD audit mismatch")
+    return record
+
+
 def tagged_source(directory, members):
     run("git", "init", "--quiet", str(directory))
     run("git", "-c", "http.followRedirects=false", "-C", str(directory),
@@ -118,10 +205,14 @@ def tagged_source(directory, members):
     require(identities == [TAG, COMMIT, TREE] and
             run("git", "-C", str(directory), "cat-file", "-t", "FETCH_HEAD") == b"tag\n",
             "annotated tag, source commit or tree mismatch")
-    for name in sorted(members):
-        if name.startswith("ada_gnatdoc_enhancer/"):
-            require(run("git", "-C", str(directory), "show", COMMIT + ":src/" + name)
-                    == members[name], "wheel differs from approved tagged source: " + name)
+    tagged = run("git", "-C", str(directory), "ls-tree", "-r", "--name-only", COMMIT,
+                 "src/ada_gnatdoc_enhancer").decode().splitlines()
+    packaged = {name for name in members if name.startswith("ada_gnatdoc_enhancer/")}
+    require({name.removeprefix("src/") for name in tagged} == packaged,
+            "wheel package inventory differs from tagged source inventory")
+    for name in sorted(packaged):
+        require(run("git", "-C", str(directory), "show", COMMIT + ":src/" + name)
+                == members[name], "wheel differs from approved tagged source: " + name)
 
 
 def launcher(environment):
@@ -130,17 +221,50 @@ def launcher(environment):
             "raise SystemExit(main())\n").encode()
 
 
+def installed_record(site, expected):
+    """Classify EVERY installed RECORD row; nothing unapproved may be recorded."""
+    rows = list(csv.reader(io.StringIO((site / DIST / "RECORD").read_text(encoding="utf-8"))))
+    require(all(len(row) == 3 for row in rows) and len({r[0] for r in rows}) == len(rows),
+            "malformed installed RECORD")
+    owned = {k: v for k, v in expected.items()
+             if k.split("/")[0] in {"ada_gnatdoc_enhancer", DIST.rstrip("/")}}
+    seen = set()
+    for path, hashed, size in rows:
+        if path in owned:
+            require([hashed, size] == [record_hash(owned[path]), str(len(owned[path]))],
+                    "installed RECORD differs from approved member: " + path)
+            seen.add(path)
+        elif path == DIST + "RECORD":
+            require(hashed == size == "", "installed RECORD self-entry must be unhashed")
+        elif path in {DIST + "INSTALLER", DIST + "REQUESTED", DIST + "direct_url.json"}:
+            content = (site / path).read_bytes()
+            require([hashed, size] == [record_hash(content), str(len(content))],
+                    "installed metadata differs from RECORD: " + path)
+        elif "/__pycache__/" in path:
+            module = path.split("/__pycache__/")
+            require(hashed == size == "" and path.endswith(".pyc") and
+                    f"{module[0]}/{module[1].split('.')[0]}.py" in owned,
+                    "unapproved installed bytecode RECORD entry: " + path)
+        else:
+            require(path == "../../../bin/gnatdoc-enhancer", "unapproved installed file: " + path)
+    require(seen == set(owned) - {DIST + "RECORD"}, "installed RECORD omits approved members")
+
+
 def verify(environment):
     """Reconstruct identities from approved archives before importing the tool."""
     require(not environment.is_symlink(), "symlink environment")
     wheel = environment / "approved-archives" / WHEEL
     approved = archive(wheel, WHEEL_HASH, MEMBERS)
+    record_entries = wheel_record(approved)
+    optional = dependencies(approved)
     retained = environment / "release-provenance.json"
     require(not retained.is_symlink() and digest(retained.read_bytes()) == PROVENANCE_HASH,
             "release provenance mismatch")
+    release_provenance(retained.read_bytes(), approved)
     sums = environment / "SHA256SUMS"
     require(not sums.is_symlink() and digest(sums.read_bytes()) == SUMS_HASH,
             "release checksum inventory mismatch")
+    checksums(sums.read_bytes())
     site = Path(run(str(environment / "bin/python"), "-I", "-B", "-c",
                     "import sysconfig;print(sysconfig.get_path('purelib'))").decode().strip())
     require(site.resolve().is_relative_to(environment.resolve()), "site-packages escapes environment")
@@ -170,6 +294,7 @@ def verify(environment):
             shutil.rmtree(cache)
     expected = {k: v for k, v in approved.items() if not k.endswith(".dist-info/RECORD")}
     require(actual == expected, "installed modules, assets or metadata differ from approved wheels")
+    installed_record(site, expected)
     origin = json.loads((site / DIST / "direct_url.json").read_text())
     require(not origin.get("dir_info") and not origin.get("vcs_info") and
             origin == {"url": wheel.as_uri(),
@@ -191,6 +316,8 @@ def verify(environment):
               "wheel_sha256": WHEEL_HASH, "sdist_sha256_not_installed": SDIST_HASH,
               "release_provenance_sha256": PROVENANCE_HASH,
               "sha256sums_sha256": SUMS_HASH,
+              "wheel_record_entries_verified": record_entries,
+              "mandatory_runtime_dependencies": [], "optional_dependencies": optional,
               "installed_members": {k: digest(v) for k, v in sorted(expected.items())},
               "launcher_sha256": digest(launcher(environment)), "renderers": renderers}
     return record
@@ -198,15 +325,19 @@ def verify(environment):
 
 def install(environment, guides=False):
     require(not environment.exists(), "installation environment must be new")
-    with tempfile.TemporaryDirectory(prefix="imgproc009-release-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="imgproc012-release-") as tmp:
         directory = Path(tmp)
         wheel = directory / WHEEL
-        download(WHEEL, wheel, WHEEL_HASH, 94500)
+        download(WHEEL, wheel, WHEEL_HASH, SIZES[WHEEL])
         members = archive(wheel, WHEEL_HASH, MEMBERS)
+        wheel_record(members)
+        dependencies(members)
         provenance = directory / "release-provenance.json"
-        download(provenance.name, provenance, PROVENANCE_HASH, 24655822)
+        download(provenance.name, provenance, PROVENANCE_HASH, SIZES[provenance.name])
+        release_provenance(provenance.read_bytes(), members)
         sums = directory / "SHA256SUMS"
-        download(sums.name, sums, SUMS_HASH, 300)
+        download(sums.name, sums, SUMS_HASH, SIZES[sums.name])
+        checksums(sums.read_bytes())
         tagged_source(directory / "git", members)
         if guides:
             run("python3", "-m", "pip", "download", "--no-deps", "--require-hashes",

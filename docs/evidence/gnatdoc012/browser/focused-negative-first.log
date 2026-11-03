@@ -1,0 +1,14 @@
+== v0.1.5 full focused checks
+PASS focused 1280px light JS=true
+PASS focused 1280px light JS=false
+PASS focused 1280px dark JS=true
+PASS focused 1280px dark JS=false
+PASS focused 390px light JS=true
+PASS focused 390px light JS=false
+PASS focused 390px dark JS=true
+PASS focused 390px dark JS=false
+failures: []
+== v0.1.1 full focused checks
+failures: ["Expected values to be strictly equal: + actual - expected"]
+== v0.1.1 with label assertion skipped (restoration only)
+failures: ["frame.waitForFunction: Timeout 10000ms exceeded."]
