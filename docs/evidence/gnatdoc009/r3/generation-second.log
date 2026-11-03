@@ -1,0 +1,59 @@
+GNATdoc 26.0.0 (20260415)
+Already up to date.
+Nothing to update.
+Note: Running pre-build actions for opencv_core=0.5.2...
+Note: Running pre-build actions for opencv_imgproc=0.3.0...
+OpenCV package: opencv4
+OpenCV include: /usr/include/opencv4
+OpenCV library: /usr/lib/x86_64-linux-gnu
+Note: Building opencv_imgproc=0.3.0/opencv_imgproc.gpr...
+Compile
+   [Ada]          opencv_core_config.ads
+   [Ada]          opencv_imgproc_config.ads
+Build Libraries
+   [gprlib]       opencv_core_ada.lexch
+   [archive]      libopencv_core_ada.a
+   [index]        libopencv_core_ada.a
+   [gprlib]       opencv_imgproc_shim.lexch
+   [gprlib]       opencv_imgproc_ada.lexch
+   [archive]      libopencv_imgproc_shim.a
+   [index]        libopencv_imgproc_shim.a
+   [archive]      libopencv_imgproc_ada.a
+   [index]        libopencv_imgproc_ada.a
+Success: Build finished successfully in 0.52 seconds.
+GNATdoc: 0 documentation warnings (see obj/docs/gnatdoc.log)
+GNATdoc warning delta: 0 added, 0 removed
+{
+  "native_declaration_sections": 329,
+  "project": "opencv_imgproc_ada",
+  "public_packages": [
+    "OpenCV.Image_Processing"
+  ]
+}
+{
+  "declaration_snippets": 329,
+  "files": 6,
+  "html_pages": 2,
+  "linked_external_types": 586,
+  "linked_local_types": 350,
+  "linked_types": 936,
+  "links": 1602,
+  "mode": "enhanced",
+  "public_packages": 1,
+  "unrendered_renderer_exceptions": 0
+}
+{
+  "declaration_snippets": 329,
+  "files": 6,
+  "html_pages": 2,
+  "linked_external_types": 586,
+  "linked_local_types": 350,
+  "linked_types": 936,
+  "links": 1602,
+  "mode": "verified",
+  "public_packages": 1,
+  "unrendered_renderer_exceptions": 0
+}
+Guides: 5 pages; exact content, compiled examples, links and stylesheet verified
+Shared API and independent complete-site qualification passed
+Documentation coverage: 1596/1596 items (100.0%); 0 newly undocumented, 0 newly documented

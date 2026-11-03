@@ -1,0 +1,100 @@
+# THIS FILE IS GENERATED. DO NOT EDIT.
+
+[solution]
+[solution.context]
+solved = true
+[[solution.state]]
+crate = "opencv"
+fulfilment = "solved"
+pinned = false
+transitivity = "direct"
+versions = "*"
+[solution.state.release]
+description = "Open Source Computer Vision Library"
+maintainers = [
+"Zack Boll <zackboll@gmail.com>",
+]
+maintainers-logins = [
+"zackboll",
+]
+name = "opencv"
+notes = "Provided by system package: libopencv-dev"
+version = "4.10.0"
+[solution.state.release.origin]
+url = "system:libopencv-dev"
+[[solution.state]]
+crate = "opencv_core"
+fulfilment = "solved"
+pinned = false
+transitivity = "direct"
+versions = "~0.5.0"
+[solution.state.release]
+authors = [
+"Zack Boll",
+]
+description = "Thick Ada binding to OpenCV Core Library"
+licenses = "Apache-2.0"
+maintainers = [
+"Zack Boll <zackboll@gmail.com>",
+]
+maintainers-logins = [
+"zackboll",
+]
+name = "opencv_core"
+tags = [
+"opencv",
+"computer-vision",
+"binding",
+"ada",
+]
+version = "0.5.0"
+website = "https://github.com/zackboll/opencv_core_ada"
+[solution.state.release.origin]
+commit = "f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f"
+url = "git+https://github.com/zackboll/opencv_core_ada.git"
+[[solution.state.release.actions]]
+command = [
+"sh",
+"scripts/configure_opencv.sh",
+]
+directory = "."
+type = "pre-build"
+[[solution.state.release.actions]]
+command = [
+"alr",
+"-n",
+"build",
+]
+directory = "."
+type = "test"
+[[solution.state.release.actions]]
+command = [
+"alr",
+"run",
+]
+directory = "tests"
+type = "test"
+[[solution.state.release.depends-on]]
+opencv = "*"
+pkg_config = "*"
+[[solution.state]]
+crate = "pkg_config"
+fulfilment = "solved"
+pinned = false
+transitivity = "direct"
+versions = "*"
+[solution.state.release]
+description = ""
+licenses = "LGPL-3.0-only"
+maintainers = [
+"chouteau@adacore.com",
+]
+maintainers-logins = [
+"Fabien-Chouteau",
+]
+name = "pkg_config"
+notes = "Provided by system package: pkg-config"
+version = "1.8.1"
+[solution.state.release.origin]
+url = "system:pkg-config"
+

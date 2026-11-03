@@ -1,0 +1,1029 @@
+﻿2026-10-22T00:49:33.2076030Z Current runner version: '2.338.0'
+2026-10-22T00:49:33.2129160Z ##[group]Runner Image Provisioner
+2026-10-22T00:49:33.2131580Z Hosted Compute Agent
+2026-10-22T00:49:33.2132830Z Version: 20260819.586
+2026-10-22T00:49:33.2134470Z Commit: 3cc4a88dfa507ef76119ad1bb3eccc6378bb2b76
+2026-10-22T00:49:33.2135660Z Build Date: 2026-08-18T23:20:18Z
+2026-10-22T00:49:33.2136720Z Worker ID: {e35a8b7e-43a2-4c8d-b108-1ee5820c648f}
+2026-10-22T00:49:33.2137990Z Azure Region: westus
+2026-10-22T00:49:33.2138830Z ##[endgroup]
+2026-10-22T00:49:33.2145650Z ##[group]Operating System
+2026-10-22T00:49:33.2146680Z macOS
+2026-10-22T00:49:33.2147420Z 15.7.9
+2026-10-22T00:49:33.2148140Z 24G830
+2026-10-22T00:49:33.2149030Z ##[endgroup]
+2026-10-22T00:49:33.2149940Z ##[group]Runner Image
+2026-10-22T00:49:33.2150820Z Image: macos-15
+2026-10-22T00:49:33.2151620Z Version: 20260824.0482.1
+2026-10-22T00:49:33.2153810Z Included Software: https://github.com/actions/runner-images/blob/macos-15/20260824.0482/images/macos/macos-15-Readme.md
+2026-10-22T00:49:33.2157150Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-15%2F20260824.0482
+2026-10-22T00:49:33.2159490Z ##[endgroup]
+2026-10-22T00:49:33.2161580Z ##[group]GITHUB_TOKEN Permissions
+2026-10-22T00:49:33.2165860Z Contents: read
+2026-10-22T00:49:33.2168780Z Metadata: read
+2026-10-22T00:49:33.2169680Z Packages: read
+2026-10-22T00:49:33.2170610Z ##[endgroup]
+2026-10-22T00:49:33.2174220Z Secret source: Actions
+2026-10-22T00:49:33.2176310Z Cache mode: write
+2026-10-22T00:49:33.2179260Z Prepare workflow directory
+2026-10-22T00:49:33.3006280Z Prepare all required actions
+2026-10-22T00:49:33.3133990Z Getting action download info
+2026-10-22T00:49:33.8187690Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-22T00:49:34.2054370Z Download action repository 'alire-project/setup-alire@latest' (SHA:1ff7d9224297858cc9ecce29b08bc6109f93e49a)
+2026-10-22T00:49:35.8464960Z Getting action download info
+2026-10-22T00:49:36.0037550Z Download action repository 'actions/cache@v5' (SHA:caa296126883cff596d87d8935842f9db880ef25)
+2026-10-22T00:49:36.7577290Z Download action repository 'actions/setup-node@v6' (SHA:249970729cb0ef3589644e2896645e5dc5ba9c38)
+2026-10-22T00:49:37.2965350Z Download action repository 'mosteo-actions/alr-arch-checker@v1' (SHA:12024fa5eb43b47602bbb56eadb333b09b062459)
+2026-10-22T00:49:37.7483610Z Complete job name: macOS x86_64 (Intel IPP)
+2026-10-22T00:49:37.9681860Z ##[group]Run actions/checkout@v4
+2026-10-22T00:49:37.9684950Z with:
+2026-10-22T00:49:37.9686090Z   ref: 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:49:37.9687430Z   path: imgproc
+2026-10-22T00:49:37.9688550Z   repository: zackboll/opencv_imgproc_ada
+2026-10-22T00:49:37.9699060Z   token: ***
+2026-10-22T00:49:37.9701090Z   ssh-strict: true
+2026-10-22T00:49:37.9704050Z   ssh-user: git
+2026-10-22T00:49:37.9705230Z   persist-credentials: true
+2026-10-22T00:49:37.9706440Z   clean: true
+2026-10-22T00:49:37.9707360Z   sparse-checkout-cone-mode: true
+2026-10-22T00:49:37.9708400Z   fetch-depth: 1
+2026-10-22T00:49:37.9709240Z   fetch-tags: false
+2026-10-22T00:49:37.9710110Z   show-progress: true
+2026-10-22T00:49:37.9711040Z   lfs: false
+2026-10-22T00:49:37.9712010Z   submodules: false
+2026-10-22T00:49:37.9712930Z   set-safe-directory: true
+2026-10-22T00:49:37.9713970Z   allow-unsafe-pr-checkout: false
+2026-10-22T00:49:37.9716930Z ##[endgroup]
+2026-10-22T00:49:38.5182060Z Syncing repository: zackboll/opencv_imgproc_ada
+2026-10-22T00:49:38.5188150Z ##[group]Getting Git version info
+2026-10-22T00:49:38.5190340Z Working directory is '/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc'
+2026-10-22T00:49:38.5194040Z [command]/usr/local/bin/git version
+2026-10-22T00:49:38.5195750Z git version 2.55.0
+2026-10-22T00:49:38.5199910Z ##[endgroup]
+2026-10-22T00:49:38.5209920Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/03048965-0a34-4509-b92c-bbd970f71ee2/.gitconfig'
+2026-10-22T00:49:38.5213610Z Temporarily overriding HOME='/Users/runner/work/_temp/03048965-0a34-4509-b92c-bbd970f71ee2' before making global git config changes
+2026-10-22T00:49:38.5222470Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-22T00:49:38.5226330Z [command]/usr/local/bin/git config --global --add safe.directory /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc
+2026-10-22T00:49:38.5232070Z ##[group]Initializing the repository
+2026-10-22T00:49:38.5235050Z [command]/usr/local/bin/git init /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc
+2026-10-22T00:49:38.5362060Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-22T00:49:38.5386150Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-22T00:49:38.5416800Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-22T00:49:38.5418230Z hint: call:
+2026-10-22T00:49:38.5460810Z hint:
+2026-10-22T00:49:38.5485840Z hint: 	git config --global init.defaultBranch <name>
+2026-10-22T00:49:38.5521690Z hint:
+2026-10-22T00:49:38.5553400Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-22T00:49:38.5609290Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-22T00:49:38.5611790Z hint:
+2026-10-22T00:49:38.5614710Z hint: 	git branch -m <name>
+2026-10-22T00:49:38.6656380Z hint:
+2026-10-22T00:49:38.7193890Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-22T00:49:38.7547710Z Initialized empty Git repository in /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc/.git/
+2026-10-22T00:49:38.7738400Z [command]/usr/local/bin/git remote add origin https://github.com/zackboll/opencv_imgproc_ada
+2026-10-22T00:49:38.7943790Z ##[endgroup]
+2026-10-22T00:49:38.7972800Z ##[group]Disabling automatic garbage collection
+2026-10-22T00:49:38.8017680Z [command]/usr/local/bin/git config --local gc.auto 0
+2026-10-22T00:49:38.8099860Z ##[endgroup]
+2026-10-22T00:49:38.8148170Z ##[group]Setting up auth
+2026-10-22T00:49:38.8191950Z [command]/usr/local/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-22T00:49:38.8247060Z [command]/usr/local/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-22T00:49:38.8610110Z [command]/usr/local/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-22T00:49:38.8794620Z [command]/usr/local/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-22T00:49:39.1194920Z [command]/usr/local/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-22T00:49:39.1393930Z [command]/usr/local/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-22T00:49:39.3870490Z [command]/usr/local/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-22T00:49:39.4099170Z ##[endgroup]
+2026-10-22T00:49:39.4133350Z ##[group]Fetching the repository
+2026-10-22T00:49:39.4154840Z [command]/usr/local/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:49:40.1862790Z From https://github.com/zackboll/opencv_imgproc_ada
+2026-10-22T00:49:40.1911210Z  * branch            40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a -> FETCH_HEAD
+2026-10-22T00:49:40.2034660Z ##[endgroup]
+2026-10-22T00:49:40.2055800Z ##[group]Determining the checkout info
+2026-10-22T00:49:40.2074390Z ##[endgroup]
+2026-10-22T00:49:40.2098130Z [command]/usr/local/bin/git sparse-checkout disable
+2026-10-22T00:49:40.2186860Z [command]/usr/local/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-22T00:49:40.2266150Z ##[group]Checking out the ref
+2026-10-22T00:49:40.2298360Z [command]/usr/local/bin/git checkout --progress --force 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:49:40.4189090Z HEAD is now at 40ab718 Merge pull request #82 from zackboll/docs/live-example-publication-verification
+2026-10-22T00:49:40.4340460Z ##[endgroup]
+2026-10-22T00:49:40.4546320Z [command]/usr/local/bin/git log -1 --format=%H
+2026-10-22T00:49:40.4636990Z 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:49:40.5137710Z ##[group]Run actions/checkout@v4
+2026-10-22T00:49:40.5138470Z with:
+2026-10-22T00:49:40.5139010Z   repository: zackboll/opencv_core_ada
+2026-10-22T00:49:40.5139750Z   ref: f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:49:40.5140470Z   path: core
+2026-10-22T00:49:40.5146960Z   token: ***
+2026-10-22T00:49:40.5147530Z   ssh-strict: true
+2026-10-22T00:49:40.5148050Z   ssh-user: git
+2026-10-22T00:49:40.5148590Z   persist-credentials: true
+2026-10-22T00:49:40.5149190Z   clean: true
+2026-10-22T00:49:40.5149740Z   sparse-checkout-cone-mode: true
+2026-10-22T00:49:40.5150430Z   fetch-depth: 1
+2026-10-22T00:49:40.5150960Z   fetch-tags: false
+2026-10-22T00:49:40.5151500Z   show-progress: true
+2026-10-22T00:49:40.5152190Z   lfs: false
+2026-10-22T00:49:40.5152780Z   submodules: false
+2026-10-22T00:49:40.5153490Z   set-safe-directory: true
+2026-10-22T00:49:40.5154240Z   allow-unsafe-pr-checkout: false
+2026-10-22T00:49:40.5155310Z ##[endgroup]
+2026-10-22T00:49:40.9212940Z Syncing repository: zackboll/opencv_core_ada
+2026-10-22T00:49:40.9249770Z ##[group]Getting Git version info
+2026-10-22T00:49:40.9293970Z Working directory is '/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/core'
+2026-10-22T00:49:40.9391650Z [command]/usr/local/bin/git version
+2026-10-22T00:49:40.9863310Z git version 2.55.0
+2026-10-22T00:49:41.0269300Z ##[endgroup]
+2026-10-22T00:49:41.0400470Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/69c10d03-4d75-4318-9a37-ef3f559857d8/.gitconfig'
+2026-10-22T00:49:41.0486330Z Temporarily overriding HOME='/Users/runner/work/_temp/69c10d03-4d75-4318-9a37-ef3f559857d8' before making global git config changes
+2026-10-22T00:49:41.0528700Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-22T00:49:41.0561300Z [command]/usr/local/bin/git config --global --add safe.directory /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/core
+2026-10-22T00:49:41.1119980Z ##[group]Initializing the repository
+2026-10-22T00:49:41.1327410Z [command]/usr/local/bin/git init /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/core
+2026-10-22T00:49:41.1418760Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-22T00:49:41.1523020Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-22T00:49:41.1592180Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-22T00:49:41.1638090Z hint: call:
+2026-10-22T00:49:41.1676830Z hint:
+2026-10-22T00:49:41.1732650Z hint: 	git config --global init.defaultBranch <name>
+2026-10-22T00:49:41.1770530Z hint:
+2026-10-22T00:49:41.2170220Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-22T00:49:41.2217380Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-22T00:49:41.2234880Z hint:
+2026-10-22T00:49:41.2424190Z hint: 	git branch -m <name>
+2026-10-22T00:49:41.2520640Z hint:
+2026-10-22T00:49:41.2644240Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-22T00:49:41.2699770Z Initialized empty Git repository in /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/core/.git/
+2026-10-22T00:49:41.2888360Z [command]/usr/local/bin/git remote add origin https://github.com/zackboll/opencv_core_ada
+2026-10-22T00:49:41.3023780Z ##[endgroup]
+2026-10-22T00:49:41.3078610Z ##[group]Disabling automatic garbage collection
+2026-10-22T00:49:41.3148520Z [command]/usr/local/bin/git config --local gc.auto 0
+2026-10-22T00:49:41.3595970Z ##[endgroup]
+2026-10-22T00:49:41.3643550Z ##[group]Setting up auth
+2026-10-22T00:49:41.3792970Z [command]/usr/local/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-22T00:49:41.3947720Z [command]/usr/local/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-22T00:49:41.4346470Z [command]/usr/local/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-22T00:49:41.5003970Z [command]/usr/local/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-22T00:49:41.5351740Z [command]/usr/local/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-22T00:49:41.5533820Z [command]/usr/local/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-22T00:49:41.6883220Z [command]/usr/local/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-22T00:49:41.7361510Z ##[endgroup]
+2026-10-22T00:49:41.7419630Z ##[group]Fetching the repository
+2026-10-22T00:49:41.7477980Z [command]/usr/local/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:49:42.5061310Z From https://github.com/zackboll/opencv_core_ada
+2026-10-22T00:49:42.5118310Z  * branch            f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f -> FETCH_HEAD
+2026-10-22T00:49:42.5220680Z ##[endgroup]
+2026-10-22T00:49:42.5256060Z ##[group]Determining the checkout info
+2026-10-22T00:49:42.5290660Z ##[endgroup]
+2026-10-22T00:49:42.5320660Z [command]/usr/local/bin/git sparse-checkout disable
+2026-10-22T00:49:42.5407910Z [command]/usr/local/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-22T00:49:42.5593230Z ##[group]Checking out the ref
+2026-10-22T00:49:42.5626070Z [command]/usr/local/bin/git checkout --progress --force f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:49:42.9871780Z HEAD is now at f8aef00 Merge pull request #82 from zackboll/release/0.5.0
+2026-10-22T00:49:43.0115390Z ##[endgroup]
+2026-10-22T00:49:43.0224220Z [command]/usr/local/bin/git log -1 --format=%H
+2026-10-22T00:49:43.0233870Z f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:49:43.0536830Z ##[group]Run set -eu
+2026-10-22T00:49:43.0537700Z [36;1mset -eu[0m
+2026-10-22T00:49:43.0539300Z [36;1mtest -f ../core/cpp/opencv_core_module_bridge.hpp[0m
+2026-10-22T00:49:43.0540490Z [36;1mecho "Imgproc: $(git rev-parse HEAD)"[0m
+2026-10-22T00:49:43.0541410Z [36;1mecho "Core:    $(git -C ../core rev-parse HEAD)"[0m
+2026-10-22T00:49:43.0542330Z [36;1muname -a[0m
+2026-10-22T00:49:43.0542990Z [36;1msw_vers[0m
+2026-10-22T00:49:43.0641860Z shell: /bin/bash -e {0}
+2026-10-22T00:49:43.0642640Z ##[endgroup]
+2026-10-22T00:49:43.1142290Z Imgproc: 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:49:43.1286330Z Core:    f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:49:43.1357650Z Darwin sjc20-cw761-4e612459-413c-4ebd-8b3c-3c7b39e3cc77-C67CEC81CD51.local 24.6.0 Darwin Kernel Version 24.6.0: Tue Jul 21 20:50:07 PDT 2026; root:xnu-11417.140.69.711.44~1/RELEASE_X86_64 x86_64
+2026-10-22T00:49:43.1589590Z ProductName:		macOS
+2026-10-22T00:49:43.1614040Z ProductVersion:		15.7.9
+2026-10-22T00:49:43.1640560Z BuildVersion:		24G830
+2026-10-22T00:49:43.2336540Z ##[group]Run alire-project/setup-alire@latest
+2026-10-22T00:49:43.2337830Z with:
+2026-10-22T00:49:43.2338640Z   version: 2.1.1
+2026-10-22T00:49:43.2339490Z   toolchain: gnat_native gprbuild
+2026-10-22T00:49:43.2340450Z   msys2: true
+2026-10-22T00:49:43.2341170Z   cache: true
+2026-10-22T00:49:43.2341920Z ##[endgroup]
+2026-10-22T00:49:43.2482780Z ##[start-action display=Identify hash from which alr was built;id=__alire-project_setup-alire.find-hash]
+2026-10-22T00:49:43.2603560Z ##[group]Run if [[ "" != "" ]]; then
+2026-10-22T00:49:43.2604410Z [36;1m[0m
+2026-10-22T00:49:43.2605810Z [36;1mif [[ "" != "" ]]; then[0m
+2026-10-22T00:49:43.2607260Z [36;1m  echo "hash=$(git ls-remote --heads https://github.com/alire-project/alire  | cut -f1)" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.2608970Z [36;1m  echo "version=" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.2609830Z [36;1melif [[ "2.1.1" != "nightly" ]]; then[0m
+2026-10-22T00:49:43.2611700Z [36;1m  echo "hash=$(git ls-remote --tags https://github.com/alire-project/alire v2.1.1 | cut -f1)" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.2613290Z [36;1m  echo "version=2.1.1" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.2614160Z [36;1melse[0m
+2026-10-22T00:49:43.2615440Z [36;1m  echo "hash=$(git ls-remote --tags https://github.com/alire-project/alire 2.1.1 | cut -f1)" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.2617300Z [36;1m  echo "version=2.1.1" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.2618300Z [36;1mfi[0m
+2026-10-22T00:49:43.2726140Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:49:43.2727450Z ##[endgroup]
+2026-10-22T00:49:43.5893300Z ##[end-action id=__alire-project_setup-alire.find-hash;outcome=success;conclusion=success;duration_ms=340]
+2026-10-22T00:49:43.5904740Z ##[start-action display=Override msys2 for non-Windows platforms;id=__alire-project_setup-alire.override]
+2026-10-22T00:49:43.5995500Z ##[group]Run if [[ "macOS" == "Windows" ]]; then
+2026-10-22T00:49:43.5996410Z [36;1mif [[ "macOS" == "Windows" ]]; then[0m
+2026-10-22T00:49:43.5997210Z [36;1m  echo "msys2=true" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.5997940Z [36;1melse[0m
+2026-10-22T00:49:43.5998560Z [36;1m  echo "msys2=false" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.5999280Z [36;1mfi[0m
+2026-10-22T00:49:43.6076520Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:49:43.6077360Z ##[endgroup]
+2026-10-22T00:49:43.6354900Z ##[end-action id=__alire-project_setup-alire.override;outcome=success;conclusion=success;duration_ms=44]
+2026-10-22T00:49:43.6363180Z ##[start-action display=Generate cache key;id=__alire-project_setup-alire.cache-key]
+2026-10-22T00:49:43.6447830Z ##[group]Run echo "key=alr[1][2.1.1][gnat_native gprbuild][msys2=false][macOS][X64][e990c48d06fac433b22fb437958f83fbb5e62875]" >> $GITHUB_OUTPUT
+2026-10-22T00:49:43.6451380Z [36;1mecho "key=alr[1][2.1.1][gnat_native gprbuild][msys2=false][macOS][X64][e990c48d06fac433b22fb437958f83fbb5e62875]" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:49:43.6545620Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:49:43.6546480Z ##[endgroup]
+2026-10-22T00:49:43.6814600Z ##[end-action id=__alire-project_setup-alire.cache-key;outcome=success;conclusion=success;duration_ms=44]
+2026-10-22T00:49:43.6820690Z ##[start-action display=Reuse cached installation;id=__alire-project_setup-alire.cache-alr]
+2026-10-22T00:49:43.6960830Z ##[group]Run actions/cache/restore@v5
+2026-10-22T00:49:43.6961990Z with:
+2026-10-22T00:49:43.6963830Z   path: ~/.cache/alire
+~/.config/alire
+~/.local/share/alire
+./alire_install
+~/AppData/Local/alire
+
+2026-10-22T00:49:43.6966800Z   key: alr[1][2.1.1][gnat_native gprbuild][msys2=false][macOS][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:49:43.6969530Z   enableCrossOsArchive: false
+2026-10-22T00:49:43.6970750Z   fail-on-cache-miss: false
+2026-10-22T00:49:43.6971640Z   lookup-only: false
+2026-10-22T00:49:43.6972410Z ##[endgroup]
+2026-10-22T00:49:44.7848690Z Cache hit for: alr[1][2.1.1][gnat_native gprbuild][msys2=false][macOS][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:49:46.2142700Z Received 0 of 231954380 (0.0%), 0.0 MBs/sec
+2026-10-22T00:49:47.2288860Z Received 20971520 of 231954380 (9.0%), 10.0 MBs/sec
+2026-10-22T00:49:48.2362760Z Received 62914560 of 231954380 (27.1%), 19.9 MBs/sec
+2026-10-22T00:49:50.4797890Z Received 134217728 of 231954380 (57.9%), 24.3 MBs/sec
+2026-10-22T00:49:51.8160490Z Received 197132288 of 231954380 (85.0%), 28.6 MBs/sec
+2026-10-22T00:49:52.7961090Z Received 201326592 of 231954380 (86.8%), 25.3 MBs/sec
+2026-10-22T00:49:53.2351090Z Received 231954380 of 231954380 (100.0%), 27.7 MBs/sec
+2026-10-22T00:49:53.2425880Z Cache Size: ~221 MB (231954380 B)
+2026-10-22T00:49:53.2538150Z [command]/usr/local/bin/gtar -xf /Users/runner/work/_temp/6da05d19-6769-44ac-a959-01cddebcd597/cache.tzst -P -C /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada --delay-directory-restore --use-compress-program unzstd
+2026-10-22T00:50:21.1103940Z Cache restored successfully
+2026-10-22T00:50:21.2773340Z Cache restored from key: alr[1][2.1.1][gnat_native gprbuild][msys2=false][macOS][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:50:21.3036700Z ##[end-action id=__alire-project_setup-alire.cache-alr;outcome=success;conclusion=success;duration_ms=37602]
+2026-10-22T00:50:21.3047080Z ##[start-action display=Check cache output;id=__alire-project_setup-alire.__run]
+2026-10-22T00:50:21.3111450Z ##[group]Run echo Cache hit result: [true] cache-key: alr[1][2.1.1][gnat_native gprbuild][msys2=false][macOS][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:50:21.3114300Z [36;1mecho Cache hit result: [true] cache-key: alr[1][2.1.1][gnat_native gprbuild][msys2=false][macOS][X64][e990c48d06fac433b22fb437958f83fbb5e62875][0m
+2026-10-22T00:50:21.3222500Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:50:21.3223510Z ##[endgroup]
+2026-10-22T00:50:21.3519660Z Cache hit result: [true] cache-key: alr[1][2.1.1][gnat_native gprbuild][msys2=false][macOS][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:50:21.3690840Z ##[end-action id=__alire-project_setup-alire.__run;outcome=success;conclusion=success;duration_ms=64]
+2026-10-22T00:50:21.3698750Z ##[start-action display=Set cache_hit to false if needed;id=__alire-project_setup-alire.cache-output]
+2026-10-22T00:50:21.3756190Z ##[group]Run if [[ "true" == "true" && "true" == "true" ]]; then
+2026-10-22T00:50:21.3757780Z [36;1mif [[ "true" == "true" && "true" == "true" ]]; then[0m
+2026-10-22T00:50:21.3759700Z [36;1m  echo "cache_hit=true" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:50:21.3760900Z [36;1melse[0m
+2026-10-22T00:50:21.3761900Z [36;1m  echo "cache_hit=false" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:50:21.3762730Z [36;1mfi[0m
+2026-10-22T00:50:21.3845390Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:50:21.3846240Z ##[endgroup]
+2026-10-22T00:50:21.4107700Z ##[end-action id=__alire-project_setup-alire.cache-output;outcome=success;conclusion=success;duration_ms=40]
+2026-10-22T00:50:21.4115330Z ##[start-action display=Find GNAT;id=__alire-project_setup-alire.find-gnat]
+2026-10-22T00:50:21.4173090Z ##[group]Run gnat --version && echo "available=true" >> $GITHUB_OUTPUT || echo "available=false" >> $GITHUB_OUTPUT
+2026-10-22T00:50:21.4175580Z [36;1mgnat --version && echo "available=true" >> $GITHUB_OUTPUT || echo "available=false" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:50:21.4258000Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:50:21.4258890Z ##[endgroup]
+2026-10-22T00:50:21.4719110Z /Users/runner/work/_temp/12d22c81-c518-45a2-9c58-889565b9e880.sh: line 1: gnat: command not found
+2026-10-22T00:50:21.5338300Z ##[end-action id=__alire-project_setup-alire.find-gnat;outcome=success;conclusion=success;duration_ms=122]
+2026-10-22T00:50:21.5372680Z ##[start-action display=Identify need for GNAT;id=__alire-project_setup-alire.need-GNAT]
+2026-10-22T00:50:21.5397350Z ##[end-action id=__alire-project_setup-alire.need-GNAT;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:50:21.5403870Z ##[start-action display=Install GNAT (I);id=__alire-project_setup-alire.__run_2]
+2026-10-22T00:50:21.5434320Z ##[end-action id=__alire-project_setup-alire.__run_2;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:50:21.5439520Z ##[start-action display=Install GNAT (II);id=__alire-project_setup-alire.__run_3]
+2026-10-22T00:50:21.5449860Z ##[end-action id=__alire-project_setup-alire.__run_3;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:50:21.5454890Z ##[start-action display=Install GNAT (III) - Add to path;id=__alire-project_setup-alire.__run_4]
+2026-10-22T00:50:21.5466520Z ##[end-action id=__alire-project_setup-alire.__run_4;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:50:21.5471250Z ##[start-action display=Setup Node;id=__alire-project_setup-alire.__actions_setup-node]
+2026-10-22T00:50:21.5591130Z ##[group]Run actions/setup-node@v6
+2026-10-22T00:50:21.5591800Z with:
+2026-10-22T00:50:21.5592270Z   node-version: 24
+2026-10-22T00:50:21.5592830Z   check-latest: false
+2026-10-22T00:50:21.5598940Z   token: ***
+2026-10-22T00:50:21.5599520Z   package-manager-cache: true
+2026-10-22T00:50:21.5600150Z ##[endgroup]
+2026-10-22T00:50:22.0425950Z Found in cache @ /Users/runner/hostedtoolcache/node/24.19.0/x64
+2026-10-22T00:50:22.0479080Z ##[group]Environment details
+2026-10-22T00:50:22.7735100Z node: v24.19.0
+2026-10-22T00:50:22.7844810Z npm: 11.17.0
+2026-10-22T00:50:22.7898920Z yarn: 1.22.22
+2026-10-22T00:50:22.8029630Z ##[endgroup]
+2026-10-22T00:50:22.8127450Z ##[end-action id=__alire-project_setup-alire.__actions_setup-node;outcome=success;conclusion=success;duration_ms=1264]
+2026-10-22T00:50:22.8194630Z ##[start-action display=Run node $(echo "/Users/runner/work/_actions/alire-project/setup-alire/latest/lib/main.js" | sed 's/\\/\//g') '{;id=__alire-project_setup-alire.__run_5]
+2026-10-22T00:50:22.8258290Z ##[group]Run node $(echo "/Users/runner/work/_actions/alire-project/setup-alire/latest/lib/main.js" | sed 's/\\/\//g') '{
+2026-10-22T00:50:22.8260390Z [36;1mnode $(echo "/Users/runner/work/_actions/alire-project/setup-alire/latest/lib/main.js" | sed 's/\\/\//g') '{[0m
+2026-10-22T00:50:22.8261730Z [36;1m  "version": "2.1.1",[0m
+2026-10-22T00:50:22.8262400Z [36;1m  "toolchain": "gnat_native gprbuild",[0m
+2026-10-22T00:50:22.8263120Z [36;1m  "branch": "",[0m
+2026-10-22T00:50:22.8263730Z [36;1m  "msys2": "true",[0m
+2026-10-22T00:50:22.8264480Z [36;1m  "cache": "true"[0m
+2026-10-22T00:50:22.8265050Z [36;1m}'[0m
+2026-10-22T00:50:22.8340440Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:50:22.8341230Z env:
+2026-10-22T00:50:22.8341720Z   SETUP_ALIRE_CACHE_HIT: true
+2026-10-22T00:50:22.8342410Z ##[endgroup]
+2026-10-22T00:50:23.2634400Z Inputs: {
+2026-10-22T00:50:23.2635230Z   "version": "2.1.1",
+2026-10-22T00:50:23.2668970Z   "toolchain": "gnat_native gprbuild",
+2026-10-22T00:50:23.2698080Z   "branch": "",
+2026-10-22T00:50:23.2727500Z   "msys2": "true",
+2026-10-22T00:50:23.2752670Z   "cache": "true"
+2026-10-22T00:50:23.2780510Z }
+2026-10-22T00:50:23.2801660Z Reusing alr installation restored from the GHA cache
+2026-10-22T00:50:23.2814920Z [command]/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/alire_install/bin/alr -n settings --global --set index.auto_update_asked true
+2026-10-22T00:50:23.4502620Z Enabled index auto-refresh without further asking.
+2026-10-22T00:50:23.4517280Z Installed alr version and GNAT toolchain:
+2026-10-22T00:50:23.4551860Z [command]/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/alire_install/bin/alr -n version
+2026-10-22T00:50:23.6744330Z APPLICATION
+2026-10-22T00:50:23.6776350Z alr version:               2.1.1
+2026-10-22T00:50:23.6788490Z libalire version:          2.1.1
+2026-10-22T00:50:23.6809700Z source commit:             fa9a1a9971d159f8cb2b8007dbb73e9e029fc109
+2026-10-22T00:50:23.6844080Z source changes:            clean
+2026-10-22T00:50:23.6875970Z compilation date:          2026-05-25 12:41:00
+2026-10-22T00:50:23.6908990Z compiled with version:     15.2.0
+2026-10-22T00:50:23.6951480Z 
+2026-10-22T00:50:23.7036740Z CONFIGURATION
+2026-10-22T00:50:23.7098360Z home folder:               /Users/runner
+2026-10-22T00:50:23.7144960Z settings folder:           /Users/runner/.config/alire
+2026-10-22T00:50:23.7201800Z cache folder:              /Users/runner/.local/share/alire
+2026-10-22T00:50:23.7239440Z vault folder:              /Users/runner/.local/share/alire/releases
+2026-10-22T00:50:23.7278260Z build folder:              /Users/runner/.local/share/alire/builds
+2026-10-22T00:50:23.7302880Z temp folder:               /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T
+2026-10-22T00:50:23.7312470Z force flag:                FALSE
+2026-10-22T00:50:23.7332540Z non-interactive flag:      TRUE
+2026-10-22T00:50:23.7361290Z community index branch:    stable-1.4.0
+2026-10-22T00:50:23.7396000Z compatible index versions: ^1.1 & <=1.4.0
+2026-10-22T00:50:23.7425620Z indexes folder:            /Users/runner/.config/alire/indexes
+2026-10-22T00:50:23.7426780Z indexes metadata:          OK
+2026-10-22T00:50:23.7454230Z index #1:                  (community) git+https://github.com/alire-project/alire-index#stable-1.4.0
+2026-10-22T00:50:23.7483350Z toolchain folder:          /Users/runner/.local/share/alire/toolchains
+2026-10-22T00:50:23.7491320Z toolchain assistant:       disabled
+2026-10-22T00:50:23.7512570Z tool #1 gnat:              gnat_native=16.1.0
+2026-10-22T00:50:23.7538500Z tool #2 gprbuild:          gprbuild=26.0.1
+2026-10-22T00:50:23.7549880Z system package manager:    /usr/local/bin/brew
+2026-10-22T00:50:23.7571430Z distro detection disabled: FALSE
+2026-10-22T00:50:23.7589840Z 
+2026-10-22T00:50:23.7601260Z WORKSPACE
+2026-10-22T00:50:23.7627980Z root status:               OUTSIDE
+2026-10-22T00:50:23.7655270Z root release:              N/A
+2026-10-22T00:50:23.7656160Z root load error:           N/A
+2026-10-22T00:50:23.7685680Z root folder:               N/A
+2026-10-22T00:50:23.7713850Z current folder:            /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada
+2026-10-22T00:50:23.7737990Z 
+2026-10-22T00:50:23.7747680Z SYSTEM
+2026-10-22T00:50:23.7771480Z distribution:              HOMEBREW
+2026-10-22T00:50:23.7793720Z host-arch:                 X86_64
+2026-10-22T00:50:23.7802040Z os:                        MACOS
+2026-10-22T00:50:23.7821560Z target:                    NATIVE
+2026-10-22T00:50:23.7841880Z toolchain:                 USER
+2026-10-22T00:50:23.7853370Z word-size:                 BITS_64
+2026-10-22T00:50:23.7877290Z [command]/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/alire_install/bin/alr -n toolchain
+2026-10-22T00:50:24.2062820Z CRATE       VERSION STATUS  NOTES
+2026-10-22T00:50:24.2085150Z gprbuild    26.0.1  Default
+2026-10-22T00:50:24.2089930Z gnat_native 16.1.0  Default
+2026-10-22T00:50:24.2093060Z SUCCESS
+2026-10-22T00:50:24.2116440Z ##[end-action id=__alire-project_setup-alire.__run_5;outcome=success;conclusion=success;duration_ms=1391]
+2026-10-22T00:50:24.2125810Z ##[start-action display=Run mosteo-actions/alr-arch-checker@v1;id=__alire-project_setup-alire.__mosteo-actions_alr-arch-checker]
+2026-10-22T00:50:24.2238710Z ##[group]Run mosteo-actions/alr-arch-checker@v1
+2026-10-22T00:50:24.2239840Z ##[endgroup]
+2026-10-22T00:50:24.2249630Z ##[start-action display=Display configuration and verify matching arch;id=__alire-project_setup-alire.__mosteo-actions_alr-arch-checker.__run]
+2026-10-22T00:50:24.2302920Z ##[group]Run echo "Runner architecture: X64"
+2026-10-22T00:50:24.2304080Z [36;1mecho "Runner architecture: X64"[0m
+2026-10-22T00:50:24.2304980Z [36;1mcase X64 in[0m
+2026-10-22T00:50:24.2305550Z [36;1m  X64)   target_arch=X86_64;;[0m
+2026-10-22T00:50:24.2306250Z [36;1m  ARM64) target_arch=AARCH64;;[0m
+2026-10-22T00:50:24.2307080Z [36;1m  *)     echo "Unknown arch" && exit 1;;[0m
+2026-10-22T00:50:24.2307900Z [36;1mesac[0m
+2026-10-22T00:50:24.2308520Z [36;1mecho "alr target architecture: $target_arch"[0m
+2026-10-22T00:50:24.2309290Z [36;1malr version[0m
+2026-10-22T00:50:24.2310250Z [36;1malr version | grep 'host-arch:' | awk '{print $2}' | grep -q $target_arch || exit 1[0m
+2026-10-22T00:50:24.2399830Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:50:24.2400680Z ##[endgroup]
+2026-10-22T00:50:24.2661090Z Runner architecture: X64
+2026-10-22T00:50:24.2667220Z alr target architecture: X86_64
+2026-10-22T00:50:24.5151610Z APPLICATION
+2026-10-22T00:50:24.5518780Z alr version:               2.1.1
+2026-10-22T00:50:24.5575480Z libalire version:          2.1.1
+2026-10-22T00:50:24.5634150Z source commit:             fa9a1a9971d159f8cb2b8007dbb73e9e029fc109
+2026-10-22T00:50:24.5692360Z source changes:            clean
+2026-10-22T00:50:24.5779040Z compilation date:          2026-05-25 12:41:00
+2026-10-22T00:50:24.5813630Z compiled with version:     15.2.0
+2026-10-22T00:50:24.5844760Z 
+2026-10-22T00:50:24.5868580Z CONFIGURATION
+2026-10-22T00:50:24.5896980Z home folder:               /Users/runner
+2026-10-22T00:50:24.5927810Z settings folder:           /Users/runner/.config/alire
+2026-10-22T00:50:24.5956310Z cache folder:              /Users/runner/.local/share/alire
+2026-10-22T00:50:24.5988270Z vault folder:              /Users/runner/.local/share/alire/releases
+2026-10-22T00:50:24.6019730Z build folder:              /Users/runner/.local/share/alire/builds
+2026-10-22T00:50:24.6048020Z temp folder:               /private/var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T
+2026-10-22T00:50:24.6104930Z force flag:                FALSE
+2026-10-22T00:50:24.6110090Z non-interactive flag:      FALSE
+2026-10-22T00:50:24.6157350Z community index branch:    stable-1.4.0
+2026-10-22T00:50:24.6220760Z compatible index versions: ^1.1 & <=1.4.0
+2026-10-22T00:50:24.6273100Z indexes folder:            /Users/runner/.config/alire/indexes
+2026-10-22T00:50:24.6343640Z indexes metadata:          OK
+2026-10-22T00:50:24.6368950Z index #1:                  (community) git+https://github.com/alire-project/alire-index#stable-1.4.0
+2026-10-22T00:50:24.6384900Z toolchain folder:          /Users/runner/.local/share/alire/toolchains
+2026-10-22T00:50:24.6402090Z toolchain assistant:       disabled
+2026-10-22T00:50:24.7406450Z tool #1 gnat:              gnat_native=16.1.0
+2026-10-22T00:50:24.7717340Z tool #2 gprbuild:          gprbuild=26.0.1
+2026-10-22T00:50:24.7749550Z system package manager:    /usr/local/bin/brew
+2026-10-22T00:50:24.7773620Z distro detection disabled: FALSE
+2026-10-22T00:50:24.7811160Z 
+2026-10-22T00:50:24.7825510Z WORKSPACE
+2026-10-22T00:50:24.7837560Z root status:               OUTSIDE
+2026-10-22T00:50:24.7844190Z root release:              N/A
+2026-10-22T00:50:24.7848390Z root load error:           N/A
+2026-10-22T00:50:24.7858100Z root folder:               N/A
+2026-10-22T00:50:24.7866820Z current folder:            /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada
+2026-10-22T00:50:24.7874390Z 
+2026-10-22T00:50:24.7879450Z SYSTEM
+2026-10-22T00:50:24.7886670Z distribution:              HOMEBREW
+2026-10-22T00:50:24.7916380Z host-arch:                 X86_64
+2026-10-22T00:50:24.7921690Z os:                        MACOS
+2026-10-22T00:50:24.7924600Z target:                    NATIVE
+2026-10-22T00:50:24.7944410Z toolchain:                 USER
+2026-10-22T00:50:24.7947770Z word-size:                 BITS_64
+2026-10-22T00:50:24.7968010Z ##[end-action id=__alire-project_setup-alire.__mosteo-actions_alr-arch-checker.__run;outcome=success;conclusion=success;duration_ms=571]
+2026-10-22T00:50:24.7999590Z ##[end-action id=__alire-project_setup-alire.__mosteo-actions_alr-arch-checker;outcome=success;conclusion=success;duration_ms=586]
+2026-10-22T00:50:24.8006520Z ##[start-action display=Remove GNAT (IV);id=__alire-project_setup-alire.__run_6]
+2026-10-22T00:50:24.8023880Z ##[end-action id=__alire-project_setup-alire.__run_6;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:50:24.8031620Z ##[start-action display=Run which alr;id=__alire-project_setup-alire.__run_7]
+2026-10-22T00:50:24.8088850Z ##[group]Run which alr
+2026-10-22T00:50:24.8089480Z [36;1mwhich alr[0m
+2026-10-22T00:50:24.8090010Z [36;1malr --version[0m
+2026-10-22T00:50:24.8091480Z [36;1m{ alr index --update-all >/dev/null && echo "Index refreshed"; } || echo "Index refresh failed"[0m
+2026-10-22T00:50:24.8163410Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:50:24.8164710Z ##[endgroup]
+2026-10-22T00:50:24.8527120Z /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/alire_install/bin/alr
+2026-10-22T00:50:25.0601110Z alr 2.1.1
+2026-10-22T00:50:26.1502330Z From https://github.com/alire-project/alire-index
+2026-10-22T00:50:26.2254130Z    e88e083e..4635347c  stable-1.4.0 -> origin/stable-1.4.0
+2026-10-22T00:50:26.4598770Z Index refreshed
+2026-10-22T00:50:26.4722370Z ##[end-action id=__alire-project_setup-alire.__run_7;outcome=success;conclusion=success;duration_ms=1668]
+2026-10-22T00:50:26.4730760Z ##[start-action display=Run alr -n -q init --bin find_gnat >/dev/null && cd find_gnat;id=__alire-project_setup-alire.__run_8]
+2026-10-22T00:50:26.4786920Z ##[group]Run alr -n -q init --bin find_gnat >/dev/null && cd find_gnat
+2026-10-22T00:50:26.4788140Z [36;1malr -n -q init --bin find_gnat >/dev/null && cd find_gnat[0m
+2026-10-22T00:50:26.4789530Z [36;1mecho "Using gnat: $(alr exec -- which gnat)" || true[0m
+2026-10-22T00:50:26.4790590Z [36;1mecho "$(alr exec -- gnat --version)" || true[0m
+2026-10-22T00:50:26.4791420Z [36;1mcd ../find_gnat/.. && rm -rf find_gnat[0m
+2026-10-22T00:50:26.4878240Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:50:26.4879150Z ##[endgroup]
+2026-10-22T00:50:33.1316610Z Using gnat: /Users/runner/.local/share/alire/toolchains/gnat_native_16.1.0_bb6d1434/bin/gnat
+2026-10-22T00:50:33.8193810Z GNAT 16.1.0
+2026-10-22T00:50:33.8223930Z Copyright (C) 1996-2025, Free Software Foundation, Inc.
+2026-10-22T00:50:33.8269710Z This is free software; see the source for copying conditions.  There is NO
+2026-10-22T00:50:33.8299870Z warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+2026-10-22T00:50:33.8355120Z ##[end-action id=__alire-project_setup-alire.__run_8;outcome=success;conclusion=success;duration_ms=7358]
+2026-10-22T00:50:33.8360910Z ##[start-action display=Cache install;id=__alire-project_setup-alire.__actions_cache]
+2026-10-22T00:50:33.8373730Z ##[end-action id=__alire-project_setup-alire.__actions_cache;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:50:33.8378520Z ##[start-action display=Cache verify;id=__alire-project_setup-alire.__actions_cache_2]
+2026-10-22T00:50:33.8391110Z ##[end-action id=__alire-project_setup-alire.__actions_cache_2;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:50:33.8477140Z ##[group]Run set -eu
+2026-10-22T00:50:33.8477770Z [36;1mset -eu[0m
+2026-10-22T00:50:33.8478310Z [36;1malr -n --force toolchain --select \[0m
+2026-10-22T00:50:33.8479040Z [36;1m  gnat_native=16.1.0 \[0m
+2026-10-22T00:50:33.8479690Z [36;1m  gprbuild=26.0.1[0m
+2026-10-22T00:50:33.8480250Z [36;1malr toolchain[0m
+2026-10-22T00:50:33.8549670Z shell: /bin/bash -e {0}
+2026-10-22T00:50:33.8550260Z ##[endgroup]
+2026-10-22T00:50:34.4734550Z Note: gnat_native=16.1.0 set as default in global configuration.
+2026-10-22T00:50:34.4775990Z Note: gprbuild=26.0.1 set as default in global configuration.
+2026-10-22T00:50:34.9807840Z CRATE       VERSION STATUS  NOTES
+2026-10-22T00:50:34.9850710Z gprbuild    26.0.1  Default
+2026-10-22T00:50:34.9882220Z gnat_native 16.1.0  Default
+2026-10-22T00:50:34.9966110Z ##[group]Run echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
+2026-10-22T00:50:34.9967910Z [36;1mecho "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"[0m
+2026-10-22T00:50:35.0047130Z shell: /bin/bash -e {0}
+2026-10-22T00:50:35.0047740Z ##[endgroup]
+2026-10-22T00:50:37.4730740Z ##[group]Run brew install opencv
+2026-10-22T00:50:37.4731630Z [36;1mbrew install opencv[0m
+2026-10-22T00:50:37.4808720Z shell: /bin/bash -e {0}
+2026-10-22T00:50:37.4809330Z env:
+2026-10-22T00:50:37.4810550Z   SDKROOT: /Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk
+2026-10-22T00:50:37.4811920Z ##[endgroup]
+2026-10-22T00:50:43.8432050Z [32m==>[0m [1mDownloading bottle manifests[0m
+2026-10-22T00:50:43.8433460Z [34m==>[0m [1mWould install 1 formula:[0m
+2026-10-22T00:50:43.9206200Z ✔︎ Bottle Manifest opencv (5.0.0_5)
+2026-10-22T00:50:43.9207060Z opencv
+2026-10-22T00:50:45.8855720Z [34m==>[0m [1mWould install 62 dependencies for opencv:[0m
+2026-10-22T00:50:45.8870680Z abseil
+2026-10-22T00:50:45.8893070Z gflags
+2026-10-22T00:50:45.8925030Z glog
+2026-10-22T00:50:45.8957630Z eigen
+2026-10-22T00:50:45.8993860Z metis
+2026-10-22T00:50:45.9021430Z gcc
+2026-10-22T00:50:45.9050260Z libomp
+2026-10-22T00:50:45.9085170Z openblas
+2026-10-22T00:50:45.9111190Z suite-sparse
+2026-10-22T00:50:45.9134380Z hwloc
+2026-10-22T00:50:45.9168240Z tbb
+2026-10-22T00:50:45.9241150Z ceres-solver
+2026-10-22T00:50:45.9287570Z mpg123
+2026-10-22T00:50:45.9328880Z lame
+2026-10-22T00:50:45.9403640Z libvpx
+2026-10-22T00:50:45.9446870Z opus
+2026-10-22T00:50:45.9476630Z sdl3
+2026-10-22T00:50:45.9509640Z sdl2-compat
+2026-10-22T00:50:45.9533720Z svt-av1
+2026-10-22T00:50:45.9565000Z x264
+2026-10-22T00:50:45.9618010Z x265
+2026-10-22T00:50:45.9657900Z ffmpeg
+2026-10-22T00:50:45.9713650Z jsoncpp
+2026-10-22T00:50:45.9770630Z numpy
+2026-10-22T00:50:45.9798580Z imath
+2026-10-22T00:50:45.9825310Z libdeflate
+2026-10-22T00:50:45.9828970Z openjph
+2026-10-22T00:50:45.9857860Z openexr
+2026-10-22T00:50:45.9889690Z openjpeg
+2026-10-22T00:50:45.9903070Z nlohmann-json
+2026-10-22T00:50:45.9922990Z protobuf
+2026-10-22T00:50:45.9960640Z onnx
+2026-10-22T00:50:45.9999530Z pugixml
+2026-10-22T00:50:46.0034850Z snappy
+2026-10-22T00:50:46.0055410Z openvino
+2026-10-22T00:50:46.0077700Z leptonica
+2026-10-22T00:50:46.0083580Z libb2
+2026-10-22T00:50:46.0150260Z libarchive
+2026-10-22T00:50:46.0185560Z fribidi
+2026-10-22T00:50:46.0269380Z libdatrie
+2026-10-22T00:50:46.0347300Z libthai
+2026-10-22T00:50:46.0365070Z pango
+2026-10-22T00:50:46.0391900Z tesseract
+2026-10-22T00:50:46.0414990Z boost
+2026-10-22T00:50:46.0437340Z libaec
+2026-10-22T00:50:46.0448420Z hdf5
+2026-10-22T00:50:46.0463070Z cgns
+2026-10-22T00:50:46.0488120Z double-conversion
+2026-10-22T00:50:46.0499000Z libharu
+2026-10-22T00:50:46.0521710Z libogg
+2026-10-22T00:50:46.0546210Z netcdf
+2026-10-22T00:50:46.0576950Z proj
+2026-10-22T00:50:46.0590370Z dbus
+2026-10-22T00:50:46.0620570Z md4c
+2026-10-22T00:50:46.0640140Z qtbase
+2026-10-22T00:50:46.0665400Z qtsvg
+2026-10-22T00:50:46.0701280Z qtdeclarative
+2026-10-22T00:50:46.0733690Z libvorbis
+2026-10-22T00:50:46.0760950Z theora
+2026-10-22T00:50:46.0790120Z utf8cpp
+2026-10-22T00:50:46.0899000Z vtk
+2026-10-22T00:50:46.0975430Z glew
+2026-10-22T00:50:46.1040830Z [34m==>[0m [1mWould upgrade 1 dependency for opencv:[0m
+2026-10-22T00:50:46.1090310Z little-cms2
+2026-10-22T00:51:16.0158320Z [32m==>[0m [1mFetching downloads for: [32mopencv[39m[0m
+2026-10-22T00:51:16.0174490Z ✔︎ Bottle opencv (5.0.0_5)
+2026-10-22T00:51:16.0177340Z ✔︎ Bottle Manifest abseil (20260817.0)
+2026-10-22T00:51:16.0180240Z ✔︎ Bottle abseil (20260817.0)
+2026-10-22T00:51:16.0184120Z ✔︎ Bottle Manifest gflags (2.3.1)
+2026-10-22T00:51:16.0189540Z ✔︎ Bottle gflags (2.3.1)
+2026-10-22T00:51:16.0192200Z ✔︎ Bottle Manifest glog (0.7.1)
+2026-10-22T00:51:16.0195830Z ✔︎ Bottle glog (0.7.1)
+2026-10-22T00:51:16.0196870Z ✔︎ Bottle Manifest eigen (5.0.1)
+2026-10-22T00:51:16.0200090Z ✔︎ Bottle eigen (5.0.1)
+2026-10-22T00:51:16.0202760Z ✔︎ Bottle Manifest metis (5.1.0)
+2026-10-22T00:51:16.0205010Z ✔︎ Bottle metis (5.1.0)
+2026-10-22T00:51:16.0206970Z ✔︎ Bottle Manifest gcc (16.2.0)
+2026-10-22T00:51:16.0208920Z ✔︎ Bottle gcc (16.2.0)
+2026-10-22T00:51:16.0209840Z ✔︎ Bottle Manifest libomp (22.1.8)
+2026-10-22T00:51:16.0212380Z ✔︎ Bottle libomp (22.1.8)
+2026-10-22T00:51:16.0214010Z ✔︎ Bottle Manifest openblas (0.3.34)
+2026-10-22T00:51:16.0215240Z ✔︎ Bottle openblas (0.3.34)
+2026-10-22T00:51:16.0216600Z ✔︎ Bottle Manifest suite-sparse (7.14.0)
+2026-10-22T00:51:16.0217950Z ✔︎ Bottle suite-sparse (7.14.0)
+2026-10-22T00:51:16.0219390Z ✔︎ Bottle Manifest hwloc (2.14.0)
+2026-10-22T00:51:16.0220940Z ✔︎ Bottle hwloc (2.14.0)
+2026-10-22T00:51:16.0222330Z ✔︎ Bottle Manifest tbb (2023.1.0)
+2026-10-22T00:51:16.0223640Z ✔︎ Bottle tbb (2023.1.0)
+2026-10-22T00:51:16.0224960Z ✔︎ Bottle Manifest ceres-solver (2.2.0_6)
+2026-10-22T00:51:16.0226440Z ✔︎ Bottle ceres-solver (2.2.0_6)
+2026-10-22T00:51:16.0229640Z ✔︎ Bottle Manifest mpg123 (1.33.7)
+2026-10-22T00:51:16.0230830Z ✔︎ Bottle mpg123 (1.33.7)
+2026-10-22T00:51:16.0231960Z ✔︎ Bottle Manifest lame (4.0)
+2026-10-22T00:51:16.0234950Z ✔︎ Bottle lame (4.0)
+2026-10-22T00:51:16.0236720Z ✔︎ Bottle Manifest libvpx (1.16.0)
+2026-10-22T00:51:16.0239280Z ✔︎ Bottle libvpx (1.16.0)
+2026-10-22T00:51:16.0241490Z ✔︎ Bottle Manifest opus (1.6.1)
+2026-10-22T00:51:16.0243830Z ✔︎ Bottle opus (1.6.1)
+2026-10-22T00:51:16.0244950Z ✔︎ Bottle Manifest sdl3 (3.4.14)
+2026-10-22T00:51:16.0246040Z ✔︎ Bottle sdl3 (3.4.14)
+2026-10-22T00:51:16.0247300Z ✔︎ Bottle Manifest sdl2-compat (2.32.70)
+2026-10-22T00:51:16.0248670Z ✔︎ Bottle sdl2-compat (2.32.70)
+2026-10-22T00:51:16.0249910Z ✔︎ Bottle Manifest svt-av1 (4.2.0)
+2026-10-22T00:51:16.0251150Z ✔︎ Bottle svt-av1 (4.2.0)
+2026-10-22T00:51:16.0252340Z ✔︎ Bottle Manifest x264 (r3222)
+2026-10-22T00:51:16.0253530Z ✔︎ Bottle x264 (r3222)
+2026-10-22T00:51:16.0254690Z ✔︎ Bottle Manifest x265 (4.2)
+2026-10-22T00:51:16.0256160Z ✔︎ Bottle x265 (4.2)
+2026-10-22T00:51:16.0258000Z ✔︎ Bottle Manifest ffmpeg (9.0.1)
+2026-10-22T00:51:16.0259940Z ✔︎ Bottle ffmpeg (9.0.1)
+2026-10-22T00:51:16.0261570Z ✔︎ Bottle Manifest jsoncpp (1.9.8)
+2026-10-22T00:51:16.0262700Z ✔︎ Bottle jsoncpp (1.9.8)
+2026-10-22T00:51:16.0263700Z ✔︎ Bottle Manifest numpy (2.5.2)
+2026-10-22T00:51:16.0264740Z ✔︎ Bottle numpy (2.5.2)
+2026-10-22T00:51:16.0266680Z ✔︎ Bottle Manifest imath (3.2.3)
+2026-10-22T00:51:16.0267960Z ✔︎ Bottle imath (3.2.3)
+2026-10-22T00:51:16.0268950Z ✔︎ Bottle Manifest libdeflate (1.26)
+2026-10-22T00:51:16.0269990Z ✔︎ Bottle libdeflate (1.26)
+2026-10-22T00:51:16.0271150Z ✔︎ Bottle Manifest openjph (0.31.0)
+2026-10-22T00:51:16.0272480Z ✔︎ Bottle openjph (0.31.0)
+2026-10-22T00:51:16.0274550Z ✔︎ Bottle Manifest openexr (3.4.15)
+2026-10-22T00:51:16.0276710Z ✔︎ Bottle openexr (3.4.15)
+2026-10-22T00:51:16.0278090Z ✔︎ Bottle Manifest little-cms2 (2.19.1)
+2026-10-22T00:51:16.0279350Z ✔︎ Bottle little-cms2 (2.19.1)
+2026-10-22T00:51:16.0280740Z ✔︎ Bottle Manifest openjpeg (2.5.4)
+2026-10-22T00:51:16.0282070Z ✔︎ Bottle openjpeg (2.5.4)
+2026-10-22T00:51:16.0283120Z ✔︎ Bottle Manifest nlohmann-json (3.12.0)
+2026-10-22T00:51:16.0284510Z ✔︎ Bottle nlohmann-json (3.12.0)
+2026-10-22T00:51:16.0286860Z ✔︎ Bottle Manifest protobuf (36.0)
+2026-10-22T00:51:16.0288460Z ✔︎ Bottle protobuf (36.0)
+2026-10-22T00:51:16.0289550Z ✔︎ Bottle Manifest onnx (1.22.0_3)
+2026-10-22T00:51:16.0313030Z ✔︎ Bottle onnx (1.22.0_3)
+2026-10-22T00:51:16.0314580Z ✔︎ Bottle Manifest pugixml (1.16)
+2026-10-22T00:51:16.0315440Z ✔︎ Bottle pugixml (1.16)
+2026-10-22T00:51:16.0316470Z ✔︎ Bottle Manifest snappy (1.2.2)
+2026-10-22T00:51:16.0317710Z ✔︎ Bottle snappy (1.2.2)
+2026-10-22T00:51:16.0318620Z ✔︎ Bottle Manifest openvino (2026.3.0_2)
+2026-10-22T00:51:16.0319680Z ✔︎ Bottle openvino (2026.3.0_2)
+2026-10-22T00:51:16.0320910Z ✔︎ Bottle Manifest leptonica (1.87.0)
+2026-10-22T00:51:16.0321870Z ✔︎ Bottle leptonica (1.87.0)
+2026-10-22T00:51:16.0323610Z ✔︎ Bottle Manifest libb2 (0.98.1)
+2026-10-22T00:51:16.0324580Z ✔︎ Bottle libb2 (0.98.1)
+2026-10-22T00:51:16.0325650Z ✔︎ Bottle Manifest libarchive (3.8.9)
+2026-10-22T00:51:16.0326610Z ✔︎ Bottle libarchive (3.8.9)
+2026-10-22T00:51:16.0327910Z ✔︎ Bottle Manifest fribidi (1.0.16)
+2026-10-22T00:51:16.0329600Z ✔︎ Bottle fribidi (1.0.16)
+2026-10-22T00:51:16.0330810Z ✔︎ Bottle Manifest libdatrie (0.2.14)
+2026-10-22T00:51:16.0332850Z ✔︎ Bottle libdatrie (0.2.14)
+2026-10-22T00:51:16.0334840Z ✔︎ Bottle Manifest libthai (0.1.30)
+2026-10-22T00:51:16.0335780Z ✔︎ Bottle libthai (0.1.30)
+2026-10-22T00:51:16.0337340Z ✔︎ Bottle Manifest pango (1.58.2)
+2026-10-22T00:51:16.0338930Z ✔︎ Bottle pango (1.58.2)
+2026-10-22T00:51:16.0340140Z ✔︎ Bottle Manifest tesseract (5.5.3)
+2026-10-22T00:51:16.0341000Z ✔︎ Bottle tesseract (5.5.3)
+2026-10-22T00:51:16.0342070Z ✔︎ Bottle Manifest boost (1.92.0)
+2026-10-22T00:51:16.0343130Z ✔︎ Bottle Manifest libaec (1.1.7)
+2026-10-22T00:51:16.0343980Z ✔︎ Bottle libaec (1.1.7)
+2026-10-22T00:51:16.0344770Z ✔︎ Bottle Manifest hdf5 (2.2.0)
+2026-10-22T00:51:16.0346020Z ✔︎ Bottle hdf5 (2.2.0)
+2026-10-22T00:51:16.0346920Z ✔︎ Bottle Manifest cgns (4.5.2)
+2026-10-22T00:51:16.0347640Z ✔︎ Bottle cgns (4.5.2)
+2026-10-22T00:51:16.0348710Z ✔︎ Bottle Manifest double-conversion (3.4.0)
+2026-10-22T00:51:16.0350140Z ✔︎ Bottle double-conversion (3.4.0)
+2026-10-22T00:51:16.0351120Z ✔︎ Bottle Manifest libharu (2.4.6)
+2026-10-22T00:51:16.0352260Z ✔︎ Bottle libharu (2.4.6)
+2026-10-22T00:51:16.0354560Z ✔︎ Bottle Manifest libogg (1.3.6)
+2026-10-22T00:51:16.0355640Z ✔︎ Bottle libogg (1.3.6)
+2026-10-22T00:51:16.0357450Z ✔︎ Bottle Manifest netcdf (4.10.1)
+2026-10-22T00:51:16.0358760Z ✔︎ Bottle netcdf (4.10.1)
+2026-10-22T00:51:16.0360060Z ✔︎ Bottle Manifest proj (9.8.1)
+2026-10-22T00:51:16.0361220Z ✔︎ Bottle Manifest dbus (1.16.2_1)
+2026-10-22T00:51:16.0362020Z ✔︎ Bottle dbus (1.16.2_1)
+2026-10-22T00:51:16.0362850Z ✔︎ Bottle Manifest md4c (0.5.3)
+2026-10-22T00:51:16.0363730Z ✔︎ Bottle md4c (0.5.3)
+2026-10-22T00:51:16.0364870Z ✔︎ Bottle Manifest qtbase (6.11.1)
+2026-10-22T00:51:16.0366010Z ✔︎ Bottle Manifest qtsvg (6.11.1)
+2026-10-22T00:51:16.0368230Z ✔︎ Bottle qtsvg (6.11.1)
+2026-10-22T00:51:16.0369380Z ✔︎ Bottle Manifest qtdeclarative (6.11.1)
+2026-10-22T00:51:16.0371300Z ✔︎ Bottle Manifest libvorbis (1.3.7)
+2026-10-22T00:51:16.0372340Z ✔︎ Bottle libvorbis (1.3.7)
+2026-10-22T00:51:16.0373280Z ✔︎ Bottle Manifest theora (1.2.0)
+2026-10-22T00:51:16.0374280Z ✔︎ Bottle theora (1.2.0)
+2026-10-22T00:51:16.0375330Z ✔︎ Bottle Manifest utf8cpp (4.2.0)
+2026-10-22T00:51:16.0376570Z ✔︎ Bottle utf8cpp (4.2.0)
+2026-10-22T00:51:16.0379140Z ✔︎ Bottle Manifest vtk (9.7.0)
+2026-10-22T00:51:16.2799630Z ✔︎ Bottle Manifest glew (2.3.1)
+2026-10-22T00:51:16.3801310Z ✔︎ Bottle glew (2.3.1)
+2026-10-22T00:51:17.4084880Z ✔︎ Bottle qtbase (6.11.1)
+2026-10-22T00:51:30.0749190Z ✔︎ Bottle qtdeclarative (6.11.1)
+2026-10-22T00:51:32.3151960Z ✔︎ Bottle vtk (9.7.0)
+2026-10-22T00:51:45.7038640Z ✔︎ Bottle boost (1.92.0)
+2026-10-22T00:51:55.9964600Z ✔︎ Bottle proj (9.8.1)
+2026-10-22T00:51:58.4943360Z [32m==>[0m [1mInstalling dependencies for opencv:[0m [32mabseil[39m, [32mgflags[39m, [32mglog[39m, [32meigen[39m, [32mmetis[39m, [32mgcc[39m, [32mlibomp[39m, [32mopenblas[39m, [32msuite-sparse[39m, [32mhwloc[39m, [32mtbb[39m, [32mceres-solver[39m, [32mmpg123[39m, [32mlame[39m, [32mlibvpx[39m, [32mopus[39m, [32msdl3[39m, [32msdl2-compat[39m, [32msvt-av1[39m, [32mx264[39m, [32mx265[39m, [32mffmpeg[39m, [32mjsoncpp[39m, [32mnumpy[39m, [32mimath[39m, [32mlibdeflate[39m, [32mopenjph[39m, [32mopenexr[39m, [32mopenjpeg[39m, [32mnlohmann-json[39m, [32mprotobuf[39m, [32monnx[39m, [32mpugixml[39m, [32msnappy[39m, [32mopenvino[39m, [32mleptonica[39m, [32mlibb2[39m, [32mlibarchive[39m, [32mfribidi[39m, [32mlibdatrie[39m, [32mlibthai[39m, [32mpango[39m, [32mtesseract[39m, [32mboost[39m, [32mlibaec[39m, [32mhdf5[39m, [32mcgns[39m, [32mdouble-conversion[39m, [32mlibharu[39m, [32mlibogg[39m, [32mnetcdf[39m, [32mproj[39m, [32mdbus[39m, [32mmd4c[39m, [32mqtbase[39m, [32mqtsvg[39m, [32mqtdeclarative[39m, [32mlibvorbis[39m, [32mtheora[39m, [32mutf8cpp[39m, [32mvtk[39m and [32mglew[39m[0m
+2026-10-22T00:51:58.5376130Z [32m==>[0m [1mInstalling opencv dependency: [32mabseil[39m[0m
+2026-10-22T00:51:58.5416830Z [34m==>[0m [1mPouring abseil--20260817.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:07.0111790Z 🍺  /usr/local/Cellar/abseil/20260817.0: 832 files, 9.8MB
+2026-10-22T00:52:07.0113660Z [32m==>[0m [1mInstalling opencv dependency: [32mgflags[39m[0m
+2026-10-22T00:52:07.0201860Z [34m==>[0m [1mPouring gflags--2.3.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:07.2774570Z 🍺  /usr/local/Cellar/gflags/2.3.1: 27 files, 741.0KB
+2026-10-22T00:52:07.2784380Z [32m==>[0m [1mInstalling opencv dependency: [32mglog[39m[0m
+2026-10-22T00:52:07.3095180Z [34m==>[0m [1mPouring glog--0.7.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:07.4172390Z 🍺  /usr/local/Cellar/glog/0.7.1: 25 files, 389.3KB
+2026-10-22T00:52:07.4185990Z [32m==>[0m [1mInstalling opencv dependency: [32meigen[39m[0m
+2026-10-22T00:52:07.4277610Z [34m==>[0m [1mPouring eigen--5.0.1.all.bottle.tar.gz[0m
+2026-10-22T00:52:07.7289250Z 🍺  /usr/local/Cellar/eigen/5.0.1: 615 files, 10.2MB
+2026-10-22T00:52:07.7303010Z [32m==>[0m [1mInstalling opencv dependency: [32mmetis[39m[0m
+2026-10-22T00:52:07.7378190Z [34m==>[0m [1mPouring metis--5.1.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:08.1553130Z 🍺  /usr/local/Cellar/metis/5.1.0: 18 files, 12.6MB
+2026-10-22T00:52:08.1571750Z [32m==>[0m [1mInstalling opencv dependency: [32mgcc[39m[0m
+2026-10-22T00:52:08.4255890Z [34m==>[0m [1mPouring gcc--16.2.0.sequoia.bottle.tar.gz[0m
+2026-10-22T00:52:39.4794080Z 🍺  /usr/local/Cellar/gcc/16.2.0: 1,812 files, 543.9MB
+2026-10-22T00:52:39.4806800Z [32m==>[0m [1mInstalling opencv dependency: [32mlibomp[39m[0m
+2026-10-22T00:52:39.4936550Z [34m==>[0m [1mPouring libomp--22.1.8.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:39.6305250Z 🍺  /usr/local/Cellar/libomp/22.1.8: 11 files, 1.8MB
+2026-10-22T00:52:39.6314600Z [32m==>[0m [1mInstalling opencv dependency: [32mopenblas[39m[0m
+2026-10-22T00:52:39.8883440Z [34m==>[0m [1mPouring openblas--0.3.34.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:45.6133930Z 🍺  /usr/local/Cellar/openblas/0.3.34: 30 files, 136.9MB
+2026-10-22T00:52:45.6404690Z [32m==>[0m [1mInstalling opencv dependency: [32msuite-sparse[39m[0m
+2026-10-22T00:52:46.0107750Z [34m==>[0m [1mPouring suite-sparse--7.14.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:50.7192890Z 🍺  /usr/local/Cellar/suite-sparse/7.14.0: 258 files, 52.6MB
+2026-10-22T00:52:50.7221090Z [32m==>[0m [1mInstalling opencv dependency: [32mhwloc[39m[0m
+2026-10-22T00:52:50.7775920Z [34m==>[0m [1mPouring hwloc--2.14.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:54.5242260Z 🍺  /usr/local/Cellar/hwloc/2.14.0: 996 files, 11.2MB
+2026-10-22T00:52:54.5436230Z [32m==>[0m [1mInstalling opencv dependency: [32mtbb[39m[0m
+2026-10-22T00:52:54.6381430Z [34m==>[0m [1mPouring tbb--2023.1.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:55.0963020Z 🍺  /usr/local/Cellar/tbb/2023.1.0: 185 files, 3MB
+2026-10-22T00:52:55.0972130Z [32m==>[0m [1mInstalling opencv dependency: [32mceres-solver[39m[0m
+2026-10-22T00:52:55.4932410Z [34m==>[0m [1mPouring ceres-solver--2.2.0_6.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:56.3624840Z 🍺  /usr/local/Cellar/ceres-solver/2.2.0_6: 167 files, 14.5MB
+2026-10-22T00:52:56.3689300Z [32m==>[0m [1mInstalling opencv dependency: [32mmpg123[39m[0m
+2026-10-22T00:52:56.3777870Z [34m==>[0m [1mPouring mpg123--1.33.7.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:57.2506420Z 🍺  /usr/local/Cellar/mpg123/1.33.7: 34 files, 1.8MB
+2026-10-22T00:52:57.2515340Z [32m==>[0m [1mInstalling opencv dependency: [32mlame[39m[0m
+2026-10-22T00:52:57.2745630Z [34m==>[0m [1mPouring lame--4.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:57.4207090Z 🍺  /usr/local/Cellar/lame/4.0: 29 files, 1.9MB
+2026-10-22T00:52:57.4214460Z [32m==>[0m [1mInstalling opencv dependency: [32mlibvpx[39m[0m
+2026-10-22T00:52:57.4305120Z [34m==>[0m [1mPouring libvpx--1.16.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:57.5587470Z 🍺  /usr/local/Cellar/libvpx/1.16.0: 22 files, 5.8MB
+2026-10-22T00:52:57.5593570Z [32m==>[0m [1mInstalling opencv dependency: [32mopus[39m[0m
+2026-10-22T00:52:57.5663430Z [34m==>[0m [1mPouring opus--1.6.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:57.6553410Z 🍺  /usr/local/Cellar/opus/1.6.1: 16 files, 1.2MB
+2026-10-22T00:52:57.6559350Z [32m==>[0m [1mInstalling opencv dependency: [32msdl3[39m[0m
+2026-10-22T00:52:57.6676710Z [34m==>[0m [1mPouring sdl3--3.4.14.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:57.8887650Z 🍺  /usr/local/Cellar/sdl3/3.4.14: 103 files, 6.4MB
+2026-10-22T00:52:57.8901830Z [32m==>[0m [1mInstalling opencv dependency: [32msdl2-compat[39m[0m
+2026-10-22T00:52:57.9138420Z [34m==>[0m [1mPouring sdl2-compat--2.32.70.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:58.0518200Z 🍺  /usr/local/Cellar/sdl2-compat/2.32.70: 117 files, 3.2MB
+2026-10-22T00:52:58.0527440Z [32m==>[0m [1mInstalling opencv dependency: [32msvt-av1[39m[0m
+2026-10-22T00:52:58.0630230Z [34m==>[0m [1mPouring svt-av1--4.2.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:58.2919670Z 🍺  /usr/local/Cellar/svt-av1/4.2.0: 23 files, 5.7MB
+2026-10-22T00:52:58.2926720Z [32m==>[0m [1mInstalling opencv dependency: [32mx264[39m[0m
+2026-10-22T00:52:58.3013910Z [34m==>[0m [1mPouring x264--r3222.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:58.4597290Z 🍺  /usr/local/Cellar/x264/r3222: 12 files, 5.9MB
+2026-10-22T00:52:58.4615090Z [32m==>[0m [1mInstalling opencv dependency: [32mx265[39m[0m
+2026-10-22T00:52:58.4727620Z [34m==>[0m [1mPouring x265--4.2.sonoma.bottle.tar.gz[0m
+2026-10-22T00:52:59.0908860Z 🍺  /usr/local/Cellar/x265/4.2: 12 files, 38.5MB
+2026-10-22T00:52:59.0917910Z [32m==>[0m [1mInstalling opencv dependency: [32mffmpeg[39m[0m
+2026-10-22T00:52:59.4042980Z [34m==>[0m [1mPouring ffmpeg--9.0.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:06.8748310Z 🍺  /usr/local/Cellar/ffmpeg/9.0.1: 290 files, 57.3MB
+2026-10-22T00:53:06.8754350Z [32m==>[0m [1mInstalling opencv dependency: [32mjsoncpp[39m[0m
+2026-10-22T00:53:06.8992280Z [34m==>[0m [1mPouring jsoncpp--1.9.8.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:07.0309240Z 🍺  /usr/local/Cellar/jsoncpp/1.9.8: 21 files, 306.5KB
+2026-10-22T00:53:07.0316500Z [32m==>[0m [1mInstalling opencv dependency: [32mnumpy[39m[0m
+2026-10-22T00:53:07.3372720Z [34m==>[0m [1mPouring numpy--2.5.2.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:13.5768910Z 🍺  /usr/local/Cellar/numpy/2.5.2: 1,855 files, 42.3MB
+2026-10-22T00:53:13.6054180Z [32m==>[0m [1mInstalling opencv dependency: [32mimath[39m[0m
+2026-10-22T00:53:13.7842010Z [34m==>[0m [1mPouring imath--3.2.3.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:14.1161710Z 🍺  /usr/local/Cellar/imath/3.2.3: 50 files, 953.8KB
+2026-10-22T00:53:14.1183390Z [32m==>[0m [1mInstalling opencv dependency: [32mlibdeflate[39m[0m
+2026-10-22T00:53:14.1311310Z [34m==>[0m [1mPouring libdeflate--1.26.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:14.3313410Z 🍺  /usr/local/Cellar/libdeflate/1.26: 17 files, 286.6KB
+2026-10-22T00:53:14.3424820Z [32m==>[0m [1mInstalling opencv dependency: [32mopenjph[39m[0m
+2026-10-22T00:53:14.5644730Z [34m==>[0m [1mPouring openjph--0.31.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:14.9922020Z 🍺  /usr/local/Cellar/openjph/0.31.0: 25 files, 741.3KB
+2026-10-22T00:53:14.9940440Z [32m==>[0m [1mInstalling opencv dependency: [32mopenexr[39m[0m
+2026-10-22T00:53:15.2145350Z [34m==>[0m [1mPouring openexr--3.4.15.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:16.4895270Z 🍺  /usr/local/Cellar/openexr/3.4.15: 212 files, 4.1MB
+2026-10-22T00:53:16.5188510Z [32m==>[0m [1mInstalling opencv dependency: [32mopenjpeg[39m[0m
+2026-10-22T00:53:16.6564160Z [34m==>[0m [1mPouring openjpeg--2.5.4.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:17.2764860Z 🍺  /usr/local/Cellar/openjpeg/2.5.4: 512 files, 14.6MB
+2026-10-22T00:53:17.2788360Z [32m==>[0m [1mInstalling opencv dependency: [32mnlohmann-json[39m[0m
+2026-10-22T00:53:17.2894260Z [34m==>[0m [1mPouring nlohmann-json--3.12.0.all.bottle.1.tar.gz[0m
+2026-10-22T00:53:22.5460040Z 🍺  /usr/local/Cellar/nlohmann-json/3.12.0: 56 files, 1.4MB
+2026-10-22T00:53:22.5481240Z [32m==>[0m [1mInstalling opencv dependency: [32mprotobuf[39m[0m
+2026-10-22T00:53:22.5745470Z [34m==>[0m [1mPouring protobuf--36.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:28.8040770Z 🍺  /usr/local/Cellar/protobuf/36.0: 387 files, 17.9MB
+2026-10-22T00:53:28.8052050Z [32m==>[0m [1mInstalling opencv dependency: [32monnx[39m[0m
+2026-10-22T00:53:28.8663290Z [34m==>[0m [1mPouring onnx--1.22.0_3.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:30.1334830Z 🍺  /usr/local/Cellar/onnx/1.22.0_3: 117 files, 6.7MB
+2026-10-22T00:53:30.1578450Z [32m==>[0m [1mInstalling opencv dependency: [32mpugixml[39m[0m
+2026-10-22T00:53:30.1600690Z [34m==>[0m [1mPouring pugixml--1.16.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:30.2989970Z 🍺  /usr/local/Cellar/pugixml/1.16: 16 files, 472.9KB
+2026-10-22T00:53:30.3002380Z [32m==>[0m [1mInstalling opencv dependency: [32msnappy[39m[0m
+2026-10-22T00:53:30.3137790Z [34m==>[0m [1mPouring snappy--1.2.2.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:30.4144730Z 🍺  /usr/local/Cellar/snappy/1.2.2: 19 files, 145.0KB
+2026-10-22T00:53:30.4156070Z [32m==>[0m [1mInstalling opencv dependency: [32mopenvino[39m[0m
+2026-10-22T00:53:30.9474140Z [34m==>[0m [1mPouring openvino--2026.3.0_2.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:45.1818580Z 🍺  /usr/local/Cellar/openvino/2026.3.0_2: 853 files, 143.6MB
+2026-10-22T00:53:45.1834150Z [32m==>[0m [1mInstalling opencv dependency: [32mleptonica[39m[0m
+2026-10-22T00:53:45.5643410Z [34m==>[0m [1mPouring leptonica--1.87.0.sonoma.bottle.1.tar.gz[0m
+2026-10-22T00:53:47.3259710Z 🍺  /usr/local/Cellar/leptonica/1.87.0: 55 files, 6.3MB
+2026-10-22T00:53:47.3365480Z [32m==>[0m [1mInstalling opencv dependency: [32mlibb2[39m[0m
+2026-10-22T00:53:47.3410990Z [34m==>[0m [1mPouring libb2--0.98.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:47.4655540Z 🍺  /usr/local/Cellar/libb2/0.98.1: 8 files, 282.9KB
+2026-10-22T00:53:47.4704250Z [32m==>[0m [1mInstalling opencv dependency: [32mlibarchive[39m[0m
+2026-10-22T00:53:47.5716500Z [34m==>[0m [1mPouring libarchive--3.8.9.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:48.3097260Z 🍺  /usr/local/Cellar/libarchive/3.8.9: 65 files, 4MB
+2026-10-22T00:53:48.3108330Z [32m==>[0m [1mInstalling opencv dependency: [32mfribidi[39m[0m
+2026-10-22T00:53:48.3258110Z [34m==>[0m [1mPouring fribidi--1.0.16.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:48.6326000Z 🍺  /usr/local/Cellar/fribidi/1.0.16: 68 files, 489.6KB
+2026-10-22T00:53:48.6348480Z [32m==>[0m [1mInstalling opencv dependency: [32mlibdatrie[39m[0m
+2026-10-22T00:53:48.6454440Z [34m==>[0m [1mPouring libdatrie--0.2.14.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:48.8280500Z 🍺  /usr/local/Cellar/libdatrie/0.2.14: 20 files, 231.3KB
+2026-10-22T00:53:48.8334380Z [32m==>[0m [1mInstalling opencv dependency: [32mlibthai[39m[0m
+2026-10-22T00:53:48.8568060Z [34m==>[0m [1mPouring libthai--0.1.30.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:48.9634190Z 🍺  /usr/local/Cellar/libthai/0.1.30: 30 files, 923.8KB
+2026-10-22T00:53:48.9667610Z [32m==>[0m [1mInstalling opencv dependency: [32mpango[39m[0m
+2026-10-22T00:53:49.4749130Z [34m==>[0m [1mPouring pango--1.58.2.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:50.0190010Z 🍺  /usr/local/Cellar/pango/1.58.2: 69 files, 3.4MB
+2026-10-22T00:53:50.0199670Z [32m==>[0m [1mInstalling opencv dependency: [32mtesseract[39m[0m
+2026-10-22T00:53:50.8674280Z [34m==>[0m [1mPouring tesseract--5.5.3.sonoma.bottle.tar.gz[0m
+2026-10-22T00:53:53.9074320Z 🍺  /usr/local/Cellar/tesseract/5.5.3: 75 files, 34.7MB
+2026-10-22T00:53:53.9087610Z [32m==>[0m [1mInstalling opencv dependency: [32mboost[39m[0m
+2026-10-22T00:53:53.9641660Z [34m==>[0m [1mPouring boost--1.92.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:12.9877980Z 🍺  /usr/local/Cellar/boost/1.92.0: 16,678 files, 362MB
+2026-10-22T00:54:12.9910020Z [32m==>[0m [1mInstalling opencv dependency: [32mlibaec[39m[0m
+2026-10-22T00:54:13.0047880Z [34m==>[0m [1mPouring libaec--1.1.7.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:13.1703090Z 🍺  /usr/local/Cellar/libaec/1.1.7: 23 files, 176.1KB
+2026-10-22T00:54:13.1723490Z [32m==>[0m [1mInstalling opencv dependency: [32mhdf5[39m[0m
+2026-10-22T00:54:13.4149580Z [34m==>[0m [1mPouring hdf5--2.2.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:16.0297750Z 🍺  /usr/local/Cellar/hdf5/2.2.0: 272 files, 21.0MB
+2026-10-22T00:54:16.0314380Z [32m==>[0m [1mInstalling opencv dependency: [32mcgns[39m[0m
+2026-10-22T00:54:16.2694150Z [34m==>[0m [1mPouring cgns--4.5.2.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:16.7543440Z 🍺  /usr/local/Cellar/cgns/4.5.2: 30 files, 2.2MB
+2026-10-22T00:54:16.7545550Z [32m==>[0m [1mInstalling opencv dependency: [32mdouble-conversion[39m[0m
+2026-10-22T00:54:16.7650790Z [34m==>[0m [1mPouring double-conversion--3.4.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:16.8842760Z 🍺  /usr/local/Cellar/double-conversion/3.4.0: 29 files, 233.7KB
+2026-10-22T00:54:16.8845050Z [32m==>[0m [1mInstalling opencv dependency: [32mlibharu[39m[0m
+2026-10-22T00:54:16.9114170Z [34m==>[0m [1mPouring libharu--2.4.6.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:17.1259120Z 🍺  /usr/local/Cellar/libharu/2.4.6: 143 files, 2.8MB
+2026-10-22T00:54:17.1268550Z [32m==>[0m [1mInstalling opencv dependency: [32mlibogg[39m[0m
+2026-10-22T00:54:17.1359860Z [34m==>[0m [1mPouring libogg--1.3.6.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:17.2747200Z 🍺  /usr/local/Cellar/libogg/1.3.6: 103 files, 509KB
+2026-10-22T00:54:17.2754510Z [32m==>[0m [1mInstalling opencv dependency: [32mnetcdf[39m[0m
+2026-10-22T00:54:17.5220930Z [34m==>[0m [1mPouring netcdf--4.10.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:17.9208960Z 🍺  /usr/local/Cellar/netcdf/4.10.1: 34 files, 4.0MB
+2026-10-22T00:54:17.9219330Z [32m==>[0m [1mInstalling opencv dependency: [32mproj[39m[0m
+2026-10-22T00:54:18.0525070Z [34m==>[0m [1mPouring proj--9.8.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:18.6463390Z 🍺  /usr/local/Cellar/proj/9.8.1: 530 files, 834.3MB
+2026-10-22T00:54:18.6465420Z [32m==>[0m [1mInstalling opencv dependency: [32mdbus[39m[0m
+2026-10-22T00:54:18.7075910Z [34m==>[0m [1mPouring dbus--1.16.2_1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:22.1871750Z 🍺  /usr/local/Cellar/dbus/1.16.2_1: 79 files, 1.7MB
+2026-10-22T00:54:22.1889410Z [32m==>[0m [1mInstalling opencv dependency: [32mmd4c[39m[0m
+2026-10-22T00:54:22.1979630Z [34m==>[0m [1mPouring md4c--0.5.3.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:22.5546890Z 🍺  /usr/local/Cellar/md4c/0.5.3: 20 files, 220.2KB
+2026-10-22T00:54:22.5668970Z [32m==>[0m [1mInstalling opencv dependency: [32mqtbase[39m[0m
+2026-10-22T00:54:23.3777810Z [34m==>[0m [1mPouring qtbase--6.11.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:29.6899410Z 🍺  /usr/local/Cellar/qtbase/6.11.1: 4,120 files, 63.9MB
+2026-10-22T00:54:29.7901250Z [32m==>[0m [1mInstalling opencv dependency: [32mqtsvg[39m[0m
+2026-10-22T00:54:30.6382470Z [34m==>[0m [1mPouring qtsvg--6.11.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:32.1246510Z 🍺  /usr/local/Cellar/qtsvg/6.11.1: 112 files, 1.1MB
+2026-10-22T00:54:32.1259610Z [32m==>[0m [1mInstalling opencv dependency: [32mqtdeclarative[39m[0m
+2026-10-22T00:54:33.1544300Z [34m==>[0m [1mPouring qtdeclarative--6.11.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:51.5189890Z 🍺  /usr/local/Cellar/qtdeclarative/6.11.1: 5,347 files, 144.8MB
+2026-10-22T00:54:51.5782120Z [32m==>[0m [1mInstalling opencv dependency: [32mlibvorbis[39m[0m
+2026-10-22T00:54:51.5797040Z [34m==>[0m [1mPouring libvorbis--1.3.7.sonoma.bottle.1.tar.gz[0m
+2026-10-22T00:54:51.9043790Z 🍺  /usr/local/Cellar/libvorbis/1.3.7: 157 files, 2.5MB
+2026-10-22T00:54:51.9053980Z [32m==>[0m [1mInstalling opencv dependency: [32mtheora[39m[0m
+2026-10-22T00:54:51.9530740Z [34m==>[0m [1mPouring theora--1.2.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:54:52.2797770Z 🍺  /usr/local/Cellar/theora/1.2.0: 126 files, 2.7MB
+2026-10-22T00:54:52.2812700Z [32m==>[0m [1mInstalling opencv dependency: [32mutf8cpp[39m[0m
+2026-10-22T00:54:52.2925920Z [34m==>[0m [1mPouring utf8cpp--4.2.0.all.bottle.tar.gz[0m
+2026-10-22T00:54:52.3454070Z 🍺  /usr/local/Cellar/utf8cpp/4.2.0: 15 files, 81.3KB
+2026-10-22T00:54:52.3466620Z [32m==>[0m [1mInstalling opencv dependency: [32mvtk[39m[0m
+2026-10-22T00:54:54.7000730Z [34m==>[0m [1mPouring vtk--9.7.0.sonoma.bottle.tar.gz[0m
+2026-10-22T00:55:24.7450920Z 🍺  /usr/local/Cellar/vtk/9.7.0: 4,703 files, 302.8MB
+2026-10-22T00:55:24.7455430Z [32m==>[0m [1mInstalling opencv dependency: [32mglew[39m[0m
+2026-10-22T00:55:24.7458910Z [34m==>[0m [1mPouring glew--2.3.1.sonoma.bottle.tar.gz[0m
+2026-10-22T00:55:24.9135300Z 🍺  /usr/local/Cellar/glew/2.3.1: 39 files, 3.2MB
+2026-10-22T00:55:24.9144520Z [32m==>[0m [1mInstalling [32mopencv[39m[0m
+2026-10-22T00:55:24.9150070Z [34m==>[0m [1mPouring opencv--5.0.0_5.sonoma.bottle.tar.gz[0m
+2026-10-22T00:55:40.1344760Z 🍺  /usr/local/Cellar/opencv/5.0.0_5: 987 files, 317.4MB
+2026-10-22T00:55:40.3789400Z ##[group]Run set -eu
+2026-10-22T00:55:40.3790380Z [36;1mset -eu[0m
+2026-10-22T00:55:40.3790950Z [36;1mopencv_prefix="$(brew --prefix opencv)"[0m
+2026-10-22T00:55:40.3792960Z [36;1mbrew_pkgconfig="$(brew --prefix)/lib/pkgconfig"[0m
+2026-10-22T00:55:40.3795670Z [36;1mopencv_pkgconfig="${opencv_prefix}/lib/pkgconfig"[0m
+2026-10-22T00:55:40.3798630Z [36;1mpkg_path=""[0m
+2026-10-22T00:55:40.3799920Z [36;1m[0m
+2026-10-22T00:55:40.3800550Z [36;1mif [ -d "${brew_pkgconfig}" ]; then[0m
+2026-10-22T00:55:40.3801530Z [36;1m  pkg_path="${brew_pkgconfig}"[0m
+2026-10-22T00:55:40.3802690Z [36;1mfi[0m
+2026-10-22T00:55:40.3805940Z [36;1m[0m
+2026-10-22T00:55:40.3808330Z [36;1mif [ -d "${opencv_pkgconfig}" ]; then[0m
+2026-10-22T00:55:40.3809450Z [36;1m  pkg_path="${pkg_path:+${pkg_path}:}${opencv_pkgconfig}"[0m
+2026-10-22T00:55:40.3810430Z [36;1mfi[0m
+2026-10-22T00:55:40.3810950Z [36;1m[0m
+2026-10-22T00:55:40.3812270Z [36;1mif [ -n "${PKG_CONFIG_PATH:-}" ]; then[0m
+2026-10-22T00:55:40.3819960Z [36;1m  pkg_path="${pkg_path:+${pkg_path}:}${PKG_CONFIG_PATH}"[0m
+2026-10-22T00:55:40.3821820Z [36;1mfi[0m
+2026-10-22T00:55:40.3823210Z [36;1m[0m
+2026-10-22T00:55:40.3825330Z [36;1mecho "PKG_CONFIG_PATH=${pkg_path}" >> "$GITHUB_ENV"[0m
+2026-10-22T00:55:40.4113570Z shell: /bin/bash -e {0}
+2026-10-22T00:55:40.4115740Z env:
+2026-10-22T00:55:40.4119470Z   SDKROOT: /Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk
+2026-10-22T00:55:40.4123880Z ##[endgroup]
+2026-10-22T00:55:40.6642490Z ##[group]Run set -eu
+2026-10-22T00:55:40.6644330Z [36;1mset -eu[0m
+2026-10-22T00:55:40.6644980Z [36;1mpackage=opencv4[0m
+2026-10-22T00:55:40.6645780Z [36;1mif pkg-config --exists opencv5; then package=opencv5; fi[0m
+2026-10-22T00:55:40.6646700Z [36;1mpkg-config --modversion "$package"[0m
+2026-10-22T00:55:40.6648050Z [36;1mcat > ipp_selected.cpp <<'EOF'[0m
+2026-10-22T00:55:40.6650330Z [36;1m#include <opencv2/core.hpp>[0m
+2026-10-22T00:55:40.6651350Z [36;1m#include <iostream>[0m
+2026-10-22T00:55:40.6652420Z [36;1mint main() {[0m
+2026-10-22T00:55:40.6653530Z [36;1m    std::cout << "OpenCV " << CV_VERSION << ", IPP "[0m
+2026-10-22T00:55:40.6655250Z [36;1m              << cv::ipp::getIppVersion() << '\n';[0m
+2026-10-22T00:55:40.6657300Z [36;1m    return cv::ipp::useIPP() ? 0 : 1;[0m
+2026-10-22T00:55:40.6659590Z [36;1m}[0m
+2026-10-22T00:55:40.6663410Z [36;1mEOF[0m
+2026-10-22T00:55:40.6665770Z [36;1mxcrun clang++ -std=c++17 -isysroot "$(xcrun --sdk macosx --show-sdk-path)" \[0m
+2026-10-22T00:55:40.6668270Z [36;1m  ipp_selected.cpp $(pkg-config --cflags --libs "$package") \[0m
+2026-10-22T00:55:40.6670380Z [36;1m  -o ipp_selected[0m
+2026-10-22T00:55:40.6671930Z [36;1m./ipp_selected[0m
+2026-10-22T00:55:40.6878490Z shell: /bin/bash -e {0}
+2026-10-22T00:55:40.6879640Z env:
+2026-10-22T00:55:40.6881580Z   SDKROOT: /Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk
+2026-10-22T00:55:40.6883820Z   PKG_CONFIG_PATH: /usr/local/lib/pkgconfig:/usr/local/opt/opencv/lib/pkgconfig
+2026-10-22T00:55:40.6885530Z ##[endgroup]
+2026-10-22T00:55:40.7776870Z 5.0.0
+2026-10-22T00:55:50.8779660Z OpenCV 5.0.0, IPP ippIP SSE4.2 (y8) 2021.9.1 (-) Sep 19 2023
+2026-10-22T00:55:50.8922080Z ##[group]Run set -eu
+2026-10-22T00:55:50.8922930Z [36;1mset -eu[0m
+2026-10-22T00:55:50.8923650Z [36;1mpackage=opencv4[0m
+2026-10-22T00:55:50.8924600Z [36;1mif pkg-config --exists opencv5; then package=opencv5; fi[0m
+2026-10-22T00:55:50.8925860Z [36;1minclude=$(pkg-config --variable=includedir "$package")[0m
+2026-10-22T00:55:50.8926790Z [36;1mif [ -z "$include" ]; then[0m
+2026-10-22T00:55:50.8927710Z [36;1m  include=$(pkg-config --variable=includedir_new "$package")[0m
+2026-10-22T00:55:50.8928540Z [36;1mfi[0m
+2026-10-22T00:55:50.8929460Z [36;1mxcrun clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \[0m
+2026-10-22T00:55:50.8930530Z [36;1m  -isysroot "$(xcrun --sdk macosx --show-sdk-path)" \[0m
+2026-10-22T00:55:50.8931780Z [36;1m  -isystem "$include" tests/subpixel_patch_guard_test.cpp \[0m
+2026-10-22T00:55:50.8932790Z [36;1m  $(pkg-config --libs "$package") \[0m
+2026-10-22T00:55:50.8933740Z [36;1m  -o subpixel_patch_guard_test[0m
+2026-10-22T00:55:50.8934700Z [36;1m./subpixel_patch_guard_test[0m
+2026-10-22T00:55:50.9060970Z shell: /bin/bash -e {0}
+2026-10-22T00:55:50.9061850Z env:
+2026-10-22T00:55:50.9063040Z   SDKROOT: /Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk
+2026-10-22T00:55:50.9064700Z   PKG_CONFIG_PATH: /usr/local/lib/pkgconfig:/usr/local/opt/opencv/lib/pkgconfig
+2026-10-22T00:55:50.9065730Z ##[endgroup]
+2026-10-22T00:55:55.2451060Z guard arithmetic boundary checks passed
+2026-10-22T00:55:55.2587030Z ##[group]Run alr -n build
+2026-10-22T00:55:55.2588080Z [36;1malr -n build[0m
+2026-10-22T00:55:55.2703770Z shell: /bin/bash -e {0}
+2026-10-22T00:55:55.2704730Z env:
+2026-10-22T00:55:55.2706620Z   SDKROOT: /Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk
+2026-10-22T00:55:55.2709450Z   PKG_CONFIG_PATH: /usr/local/lib/pkgconfig:/usr/local/opt/opencv/lib/pkgconfig
+2026-10-22T00:55:55.2718900Z ##[endgroup]
+2026-10-22T00:55:55.7282290Z Note: Synchronizing workspace...
+2026-10-22T00:56:00.7959530Z Dependencies automatically updated as follows:
+2026-10-22T00:56:00.7965780Z 
+2026-10-22T00:56:00.7968350Z    New solution is incomplete (timed out).
+2026-10-22T00:56:00.7982070Z    Missing:
+2026-10-22T00:56:00.7984320Z    +!       opencv      *      (new,missing:skipped)
+2026-10-22T00:56:00.7986800Z    +!       opencv_core ~0.5.0 (new,missing:skipped)
+2026-10-22T00:56:00.7989170Z    +!       pkg_config  *      (new,missing:skipped)
+2026-10-22T00:56:00.8171300Z 
+2026-10-22T00:56:00.8419540Z Warning: Generating possibly incomplete configuration because of missing dependencies
+2026-10-22T00:56:00.9054000Z warn: Generating possibly incomplete environment because of missing dependencies
+2026-10-22T00:56:00.9605180Z Note: Running pre-build actions for opencv_imgproc=0.3.0...
+2026-10-22T00:56:01.0484660Z OpenCV package: opencv5
+2026-10-22T00:56:01.0487230Z OpenCV include: /usr/local/opt/opencv/include/opencv5
+2026-10-22T00:56:01.0488820Z OpenCV library: /usr/local/opt/opencv/lib
+2026-10-22T00:56:01.0492550Z Note: Building opencv_imgproc=0.3.0/opencv_imgproc.gpr...
+2026-10-22T00:56:02.2538400Z opencv_imgproc_shim.gpr:1:06: imported project file "opencv_core.gpr" not found
+2026-10-22T00:56:02.2541770Z opencv_imgproc_shim.gpr:1:06: imported by "/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc/opencv_imgproc_shim.gpr"
+2026-10-22T00:56:02.2545360Z opencv_imgproc_shim.gpr:1:06: imported by "/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc/opencv_imgproc.gpr"
+2026-10-22T00:56:02.2547890Z opencv_imgproc_shim.gpr:38:17: unknown project "Opencv_Core"
+2026-10-22T00:56:02.2549810Z opencv_imgproc_shim.gpr:42:17: unknown project "Opencv_Core"
+2026-10-22T00:56:02.2552490Z gprbuild: "/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc/opencv_imgproc.gpr" processing failed
+2026-10-22T00:56:02.3076000Z ERROR: Command ["gprbuild", "-s", "-j0", "-p", "-P", "/Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc/opencv_imgproc.gpr"] exited with code 5
+2026-10-22T00:56:02.3092100Z ERROR: Compilation failed.
+2026-10-22T00:56:02.3203960Z ##[error]Process completed with exit code 1.
+2026-10-22T00:56:02.4030790Z Post job cleanup.
+2026-10-22T00:56:02.4052200Z ##[start-action display=Setup Node;id=__f92f2814-29e3-4c02-bce7-01c8da5ce6f6.__actions_setup-node]
+2026-10-22T00:56:02.4094080Z ##[end-action id=__f92f2814-29e3-4c02-bce7-01c8da5ce6f6.__actions_setup-node;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:56:02.4310150Z Post job cleanup.
+2026-10-22T00:56:03.0642870Z [command]/usr/local/bin/git version
+2026-10-22T00:56:03.0894080Z git version 2.55.0
+2026-10-22T00:56:03.1013790Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/5429fef7-9b30-4a4b-ad57-ba4f6f4fadfe/.gitconfig'
+2026-10-22T00:56:03.1402540Z Temporarily overriding HOME='/Users/runner/work/_temp/5429fef7-9b30-4a4b-ad57-ba4f6f4fadfe' before making global git config changes
+2026-10-22T00:56:03.1453280Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-22T00:56:03.1457230Z [command]/usr/local/bin/git config --global --add safe.directory /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/core
+2026-10-22T00:56:03.1464970Z [command]/usr/local/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-22T00:56:03.1714190Z [command]/usr/local/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-22T00:56:03.4000240Z [command]/usr/local/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-22T00:56:03.4120520Z http.https://github.com/.extraheader
+2026-10-22T00:56:03.4142960Z [command]/usr/local/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-22T00:56:03.4290890Z [command]/usr/local/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-22T00:56:03.6867600Z [command]/usr/local/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-22T00:56:03.6914760Z [command]/usr/local/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-22T00:56:03.9182210Z Post job cleanup.
+2026-10-22T00:56:04.1152250Z [command]/usr/local/bin/git version
+2026-10-22T00:56:04.1274090Z git version 2.55.0
+2026-10-22T00:56:04.1332590Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/d87872e6-9b37-4fe4-b4cf-d1339183fad7/.gitconfig'
+2026-10-22T00:56:04.1363250Z Temporarily overriding HOME='/Users/runner/work/_temp/d87872e6-9b37-4fe4-b4cf-d1339183fad7' before making global git config changes
+2026-10-22T00:56:04.1368620Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-22T00:56:04.1374920Z [command]/usr/local/bin/git config --global --add safe.directory /Users/runner/work/opencv_imgproc_ada/opencv_imgproc_ada/imgproc
+2026-10-22T00:56:04.1512410Z [command]/usr/local/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-22T00:56:04.1685220Z [command]/usr/local/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-22T00:56:04.6122850Z [command]/usr/local/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-22T00:56:04.6193380Z http.https://github.com/.extraheader
+2026-10-22T00:56:04.6220240Z [command]/usr/local/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-22T00:56:04.6235980Z [command]/usr/local/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-22T00:56:04.9228520Z [command]/usr/local/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-22T00:56:05.0200780Z [command]/usr/local/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-22T00:56:05.3430030Z Cleaning up orphan processes
+2026-10-22T00:56:06.1715320Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

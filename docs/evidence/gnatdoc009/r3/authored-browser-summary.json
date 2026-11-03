@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "base": "http://127.0.0.1:18843/opencv_imgproc_ada/",
+  "viewports": [
+    1280,
+    390
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "javascript": [
+    true,
+    false
+  ],
+  "examples": 6,
+  "sourceQualifiedLinks": 55,
+  "coreSymbols": 8,
+  "reload": true,
+  "codeScrolling": true,
+  "noJavaScript": "Native package/sidebar fallback, not symbol query routing."
+}

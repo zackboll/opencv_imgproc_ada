@@ -1,0 +1,13 @@
+test_api_feature_is_explicitly_not_applicable (test_shared_shadow_applicability.ApplicabilityTests.test_api_feature_is_explicitly_not_applicable) ... ok
+test_authority_configuration_workflow_and_tools_are_in_scope (test_shared_shadow_applicability.ApplicabilityTests.test_authority_configuration_workflow_and_tools_are_in_scope) ... ok
+test_bad_or_wrong_head_fails_closed (test_shared_shadow_applicability.ApplicabilityTests.test_bad_or_wrong_head_fails_closed) ... ok
+test_deletion_or_rename_cannot_hide_integration_change (test_shared_shadow_applicability.ApplicabilityTests.test_deletion_or_rename_cannot_hide_integration_change) ... ok
+test_integration_and_api_changes_require_full_historical_run (test_shared_shadow_applicability.ApplicabilityTests.test_integration_and_api_changes_require_full_historical_run) ... ok
+test_real_frozen_authority_and_source_checks_are_not_rewritten (test_shared_shadow_applicability.ApplicabilityTests.test_real_frozen_authority_and_source_checks_are_not_rewritten) ... ok
+test_symlink_overlay_is_rejected (test_shared_shadow_applicability.ApplicabilityTests.test_symlink_overlay_is_rejected) ... ok
+test_workflow_always_reports_and_requires_generated_evidence (test_shared_shadow_applicability.ApplicabilityTests.test_workflow_always_reports_and_requires_generated_evidence) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.527s
+
+OK

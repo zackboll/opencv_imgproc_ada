@@ -1,0 +1,109 @@
+{
+  "requestInterception": false,
+  "assertions": [
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.angle_unit",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.border_kind",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.core.mat_array",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_point",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float32_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.float64_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.point_array",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.rect",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.scalar",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.size_coordinate",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    },
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.uint8_value",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    }
+  ],
+  "failures": [
+    "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ 'Draw_Ellipse'\n- 'Angle_Unit'\n    at /home/zboll/git/opencv/imgproc-gnatdoc009/scripts/test_core_candidate_browser.cjs:87:18"
+  ],
+  "navigationDifferences": [],
+  "sourcePolicyApproved": false,
+  "status": "fail"
+}

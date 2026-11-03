@@ -64,7 +64,8 @@ class GeneratedNavigationTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.site = Path(self.temporary.name) / "_site"
-        shutil.copytree(ROOT / "_site", self.site)
+        import os
+        shutil.copytree(Path(os.environ.get('DOC_LEGACY_ORACLE', ROOT / '_site')), self.site)
         self.api = self.site / "api"
         self.index = self.api / "index.html"
 

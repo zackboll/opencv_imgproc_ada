@@ -1,0 +1,8 @@
+PASS 1280px light JS=true: five guides, API anchors, cross-links, focus, overflow
+PASS 1280px light JS=false: five guides, API anchors, cross-links, focus, overflow
+PASS 1280px dark JS=true: five guides, API anchors, cross-links, focus, overflow
+PASS 1280px dark JS=false: five guides, API anchors, cross-links, focus, overflow
+PASS 390px light JS=true: five guides, API anchors, cross-links, focus, overflow
+PASS 390px light JS=false: five guides, API anchors, cross-links, focus, overflow
+PASS 390px dark JS=true: five guides, API anchors, cross-links, focus, overflow
+PASS 390px dark JS=false: five guides, API anchors, cross-links, focus, overflow

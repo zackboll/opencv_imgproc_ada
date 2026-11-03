@@ -1,0 +1,11 @@
+test_complete_source_inventory_substitution_and_symlinks (test_core_source_authority.SourceAuthority.test_complete_source_inventory_substitution_and_symlinks) ... ok
+test_copied_lock_or_different_live_dependency_receipt (test_core_source_authority.SourceAuthority.test_copied_lock_or_different_live_dependency_receipt) ... ok
+test_duplicate_selection_rejected (test_core_source_authority.SourceAuthority.test_duplicate_selection_rejected) ... ok
+test_exact_unpinned_release_only (test_core_source_authority.SourceAuthority.test_exact_unpinned_release_only) ... ok
+test_forged_authority_and_release_hashes (test_core_source_authority.SourceAuthority.test_forged_authority_and_release_hashes) ... ok
+test_wrong_origin_or_pin_even_with_right_version (test_core_source_authority.SourceAuthority.test_wrong_origin_or_pin_even_with_right_version) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.017s
+
+OK

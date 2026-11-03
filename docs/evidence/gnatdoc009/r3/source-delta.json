@@ -1,0 +1,1991 @@
+{
+  "after": "aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d",
+  "before": "f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f",
+  "files": {
+    "src/internal/opencv-core-internal-continuous_data.adb": {
+      "after_sha256": "0ca6b617147dbef6b1f77324167ca5c21d605b981ac793c7b916dc41a14b8d1c",
+      "before_sha256": "0ca6b617147dbef6b1f77324167ca5c21d605b981ac793c7b916dc41a14b8d1c",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-continuous_data.ads": {
+      "after_sha256": "6e8add374080f9369bc4d8bcda275a9eacdf6a7e1cdf53a8ed067caf090563e4",
+      "before_sha256": "6e8add374080f9369bc4d8bcda275a9eacdf6a7e1cdf53a8ed067caf090563e4",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-external_view_alignment.adb": {
+      "after_sha256": "7fe7fa22219cfa8533b0e5f7daa64681db570519ab0affef84ae38bf4505dc33",
+      "before_sha256": "7fe7fa22219cfa8533b0e5f7daa64681db570519ab0affef84ae38bf4505dc33",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-external_view_alignment.ads": {
+      "after_sha256": "1597b27ad8063dbd68bbe8fd84043736b9c7c715928efabe1c10e13817eff0f4",
+      "before_sha256": "1597b27ad8063dbd68bbe8fd84043736b9c7c715928efabe1c10e13817eff0f4",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-object_storage.adb": {
+      "after_sha256": "9d0ea56aaa533fc5ac4b6353086996b92bae1f8898eca6209bcfc06495ec1795",
+      "before_sha256": "9d0ea56aaa533fc5ac4b6353086996b92bae1f8898eca6209bcfc06495ec1795",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-object_storage.ads": {
+      "after_sha256": "85cada29485fc591977491e48464a3c99f063edbd4a2e9b371efa755e5332096",
+      "before_sha256": "85cada29485fc591977491e48464a3c99f063edbd4a2e9b371efa755e5332096",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-row_data.adb": {
+      "after_sha256": "39fc788bb597ba04a68c85b8589843f0bd113f240ca62d510bc2d0052ee56760",
+      "before_sha256": "39fc788bb597ba04a68c85b8589843f0bd113f240ca62d510bc2d0052ee56760",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-row_data.ads": {
+      "after_sha256": "6d2147db299e86a3cbdfde1193b8d226297cb2714f9adc1d6da5ed36c98dd9f9",
+      "before_sha256": "6d2147db299e86a3cbdfde1193b8d226297cb2714f9adc1d6da5ed36c98dd9f9",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-typed_access.adb": {
+      "after_sha256": "35dee1d814778cd9cce6eccb55c48c937923e53d109fd4cb5427eab78a822c75",
+      "before_sha256": "35dee1d814778cd9cce6eccb55c48c937923e53d109fd4cb5427eab78a822c75",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-typed_access.ads": {
+      "after_sha256": "fcc25adb90b8350798be9e3071b3c83e5011165f8c99a5cfde8fb4392f54e54a",
+      "before_sha256": "fcc25adb90b8350798be9e3071b3c83e5011165f8c99a5cfde8fb4392f54e54a",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-typed_continuous_borrowing.adb": {
+      "after_sha256": "c59c094760624ab1869a983f6d5f7b18a9b7f6cc52b86f7255690dbb53d9cee8",
+      "before_sha256": "c59c094760624ab1869a983f6d5f7b18a9b7f6cc52b86f7255690dbb53d9cee8",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-typed_continuous_borrowing.ads": {
+      "after_sha256": "e303a3d4e2cfc7acbeb90acab037ba087fd34ef1342b34bd5b1ee39642df1b99",
+      "before_sha256": "e303a3d4e2cfc7acbeb90acab037ba087fd34ef1342b34bd5b1ee39642df1b99",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-typed_external_mat_view.adb": {
+      "after_sha256": "c32b5f141cb3e577effab7c3950f27e0a54c015989bf447bc97208a542f32e3d",
+      "before_sha256": "c32b5f141cb3e577effab7c3950f27e0a54c015989bf447bc97208a542f32e3d",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-typed_external_mat_view.ads": {
+      "after_sha256": "bda76f2becfe1ac161b9936bcd291a0599da7829ee175b3365b063eeae2615ae",
+      "before_sha256": "bda76f2becfe1ac161b9936bcd291a0599da7829ee175b3365b063eeae2615ae",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-typed_row_borrowing.adb": {
+      "after_sha256": "d8a91a5797dc090d1d88a53aae203dd2bcee01f0352e8f62270c70eba29418c0",
+      "before_sha256": "d8a91a5797dc090d1d88a53aae203dd2bcee01f0352e8f62270c70eba29418c0",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal-typed_row_borrowing.ads": {
+      "after_sha256": "5ddb1d65ffdf3316ffbb8d90c31863ff761f44c83fd18c04f5ca38ae7f61bffa",
+      "before_sha256": "5ddb1d65ffdf3316ffbb8d90c31863ff761f44c83fd18c04f5ca38ae7f61bffa",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-internal.ads": {
+      "after_sha256": "1735076090c138cbc934e7821c9ec4e351fbb1e0ef8350497d997bf7a9480b5f",
+      "before_sha256": "1735076090c138cbc934e7821c9ec4e351fbb1e0ef8350497d997bf7a9480b5f",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-sparse-typed_impl.adb": {
+      "after_sha256": "aa3850a0b34ff5c9899814da6b7bb5290c7d23035fd602f15078adf01fe94180",
+      "before_sha256": "aa3850a0b34ff5c9899814da6b7bb5290c7d23035fd602f15078adf01fe94180",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-sparse-typed_impl.ads": {
+      "after_sha256": "08bb8f208161e1d0db955d725a71c2ff491e36b83f1a0ef31c6c3d63a8ba4766",
+      "before_sha256": "08bb8f208161e1d0db955d725a71c2ff491e36b83f1a0ef31c6c3d63a8ba4766",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-sparse-typed_iteration_impl.adb": {
+      "after_sha256": "99efd68daffbd2c3a089fee882ef2900015611d6c8a603f8a83ae4cfe2764845",
+      "before_sha256": "99efd68daffbd2c3a089fee882ef2900015611d6c8a603f8a83ae4cfe2764845",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-sparse-typed_iteration_impl.ads": {
+      "after_sha256": "51eaf6173bd5af1f1008daf02012181bff8cb1cbcac052f431db7668b0793c69",
+      "before_sha256": "51eaf6173bd5af1f1008daf02012181bff8cb1cbcac052f431db7668b0793c69",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-sparse-typed_vector_impl.adb": {
+      "after_sha256": "48cc25dd1ad22e5aaaeb058a3734f71e7747e28a4a3058968ae58434571b2dfc",
+      "before_sha256": "48cc25dd1ad22e5aaaeb058a3734f71e7747e28a4a3058968ae58434571b2dfc",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-sparse-typed_vector_impl.ads": {
+      "after_sha256": "1957167a4a2abd5050f90b2f425a3be4074389a839d8ec34fa439231aa151f7f",
+      "before_sha256": "1957167a4a2abd5050f90b2f425a3be4074389a839d8ec34fa439231aa151f7f",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-sparse-typed_vector_iteration_impl.adb": {
+      "after_sha256": "162a255ad17a773644d20bda9779ca833019f47a913844db2b96ac9c1c7d31a1",
+      "before_sha256": "162a255ad17a773644d20bda9779ca833019f47a913844db2b96ac9c1c7d31a1",
+      "classification": "identical"
+    },
+    "src/internal/opencv-core-sparse-typed_vector_iteration_impl.ads": {
+      "after_sha256": "5ae53d4677a41270f5589f41a1b6e8a31dad5ce00b4d5af89c27cbed7aeb9544",
+      "before_sha256": "5ae53d4677a41270f5589f41a1b6e8a31dad5ce00b4d5af89c27cbed7aeb9544",
+      "classification": "identical"
+    },
+    "src/internal/opencv-internal-c_api.adb": {
+      "after_sha256": "f814ae8c0deba9870a84a41404355f4d15b1effdad3f4f7f2b30fdf28ac20cca",
+      "before_sha256": "f814ae8c0deba9870a84a41404355f4d15b1effdad3f4f7f2b30fdf28ac20cca",
+      "classification": "identical"
+    },
+    "src/internal/opencv-internal-c_api.ads": {
+      "after_sha256": "86361265aa68e2428029aa85aab18e4bbe594660e3a5974ab5f2314f40037775",
+      "before_sha256": "563c955e6c41a324361301ea42e5e2f14d64dc5cb39186119fa134c43b66264c",
+      "classification": "changed",
+      "unified_diff": "--- f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f/src/internal/opencv-internal-c_api.ads\n+++ aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d/src/internal/opencv-internal-c_api.ads\n@@ -1311,6 +1311,54 @@\n    Normalize_Inf     : constant C_Int32 := 3;\n    Normalize_Min_Max : constant C_Int32 := 4;\n \n+   function Mat_Storage_Relation\n+     (Source, Destination : Mat_Handle; Relation : access C_Int32)\n+      return Status\n+   with\n+     Import,\n+     Convention    => C,\n+     External_Name => \"opencv_core_mat_storage_relation\";\n+\n+   function Mat_Scalar_Arithmetic\n+     (Source    : Mat_Handle;\n+      Value     : access constant Scalar;\n+      Operation : C_Int32;\n+      Result    : access Mat_Handle) return Status\n+   with\n+     Import,\n+     Convention    => C,\n+     External_Name => \"opencv_core_mat_scalar_arithmetic\";\n+\n+   function Mat_Scalar_Arithmetic_Into\n+     (Source      : Mat_Handle;\n+      Value       : access constant Scalar;\n+      Operation   : C_Int32;\n+      Destination : Mat_Handle) return Status\n+   with\n+     Import,\n+     Convention    => C,\n+     External_Name => \"opencv_core_mat_scalar_arithmetic_into\";\n+\n+   function Mat_Compare_Scalar\n+     (Source : Mat_Handle;\n+      Value  : C_Double;\n+      Kind   : C_Int32;\n+      Result : access Mat_Handle) return Status\n+   with\n+     Import,\n+     Convention    => C,\n+     External_Name => \"opencv_core_mat_compare_scalar\";\n+\n+   function Mat_Compare_Scalar_Into\n+     (Source      : Mat_Handle;\n+      Value       : C_Double;\n+      Kind        : C_Int32;\n+      Destination : Mat_Handle) return Status\n+   with\n+     Import,\n+     Convention    => C,\n+     External_Name => \"opencv_core_mat_compare_scalar_into\";\n+\n    Compare_Equal            : constant C_Int32 := 0;\n    Compare_Not_Equal        : constant C_Int32 := 1;\n    Compare_Less_Than        : constant C_Int32 := 2;\n"
+    },
+    "src/internal/opencv-internal-safe_arithmetic.adb": {
+      "after_sha256": "fe28173049601bbed2cb0bb75c22deb7eed62cedf50cffc3a79bd50275346157",
+      "before_sha256": "fe28173049601bbed2cb0bb75c22deb7eed62cedf50cffc3a79bd50275346157",
+      "classification": "identical"
+    },
+    "src/internal/opencv-internal-safe_arithmetic.ads": {
+      "after_sha256": "f23a2a25f45659445ae8a82319bd08570c97a8fe179858b98747e30efbe7bb42",
+      "before_sha256": "f23a2a25f45659445ae8a82319bd08570c97a8fe179858b98747e30efbe7bb42",
+      "classification": "identical"
+    },
+    "src/internal/opencv-internal.ads": {
+      "after_sha256": "d8c77125d6d7712e4fdc00e8c3b7c70782736861b9638b602371b1ab75d91c5c",
+      "before_sha256": "d8c77125d6d7712e4fdc00e8c3b7c70782736861b9638b602371b1ab75d91c5c",
+      "classification": "identical"
+    },
+    "src/opencv-core-fixed_matrices.ads": {
+      "after_sha256": "126004d33926e9fe9ce25b939185c8266759f1f70e7f2a1ed3cbd0010ade929c",
+      "before_sha256": "126004d33926e9fe9ce25b939185c8266759f1f70e7f2a1ed3cbd0010ade929c",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_access.adb": {
+      "after_sha256": "6c3b312b03192be74ea899ab37a138429d5b6d5afa0f7414a8cdcc6efa5cd610",
+      "before_sha256": "6c3b312b03192be74ea899ab37a138429d5b6d5afa0f7414a8cdcc6efa5cd610",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_access.ads": {
+      "after_sha256": "b937356d13e60f2b3cd2f07c1c7c6627c5e33dae851cfcefd72bd6dbe5cc78fd",
+      "before_sha256": "b937356d13e60f2b3cd2f07c1c7c6627c5e33dae851cfcefd72bd6dbe5cc78fd",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_buffer_access.adb": {
+      "after_sha256": "7387d5943253fbe4da96e74cd9fa54760a698e6ab5008f0c873dbe6002ad0193",
+      "before_sha256": "7387d5943253fbe4da96e74cd9fa54760a698e6ab5008f0c873dbe6002ad0193",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_buffer_access.ads": {
+      "after_sha256": "1ba04d84edb7d172bc3eee43191187b725f04cda6e6de4165db6feaa500b88e6",
+      "before_sha256": "1ba04d84edb7d172bc3eee43191187b725f04cda6e6de4165db6feaa500b88e6",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_mat_view.adb": {
+      "after_sha256": "c33d4289a5db4c3010a5b103f1d24e58aa0ff7627d79947955480bb313102cc2",
+      "before_sha256": "c33d4289a5db4c3010a5b103f1d24e58aa0ff7627d79947955480bb313102cc2",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_mat_view.ads": {
+      "after_sha256": "36fc02f2f7826185c2139f072470bf373f840741e53fad94688fca700290fd4a",
+      "before_sha256": "36fc02f2f7826185c2139f072470bf373f840741e53fad94688fca700290fd4a",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_row_access.adb": {
+      "after_sha256": "fbcafb1bf42385b07e5ba94d9978476eec6e57f38a65b5ab136031482d9447be",
+      "before_sha256": "fbcafb1bf42385b07e5ba94d9978476eec6e57f38a65b5ab136031482d9447be",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_row_access.ads": {
+      "after_sha256": "9694afa275e18877d3bedd435b493ce575d6f0862a524829999aacd1241f1b99",
+      "before_sha256": "9694afa275e18877d3bedd435b493ce575d6f0862a524829999aacd1241f1b99",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2.ads": {
+      "after_sha256": "baecbd80d2fca6ef4938361942072ec175d2dc327672b3a0be96d847c683a783",
+      "before_sha256": "baecbd80d2fca6ef4938361942072ec175d2dc327672b3a0be96d847c683a783",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2_access.adb": {
+      "after_sha256": "f6270d8bddee9a739a3c342013783e08c294b6255d882f3fb0aef71b70282d56",
+      "before_sha256": "f6270d8bddee9a739a3c342013783e08c294b6255d882f3fb0aef71b70282d56",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2_access.ads": {
+      "after_sha256": "aaee21a4b32e1964bc7570f1d740961a1b24c97391055fd19588d54961e3a648",
+      "before_sha256": "aaee21a4b32e1964bc7570f1d740961a1b24c97391055fd19588d54961e3a648",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2_buffer_access.adb": {
+      "after_sha256": "a94edec410effbbcad2e44712e1dba29a35e85fb6aa4f365a445737c10ea5a4f",
+      "before_sha256": "a94edec410effbbcad2e44712e1dba29a35e85fb6aa4f365a445737c10ea5a4f",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2_buffer_access.ads": {
+      "after_sha256": "6478d63852340daa137e0e8dffed80e3b83d588756c6ab70dd7979cc1d8e6bda",
+      "before_sha256": "6478d63852340daa137e0e8dffed80e3b83d588756c6ab70dd7979cc1d8e6bda",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2_mat_view.adb": {
+      "after_sha256": "1ccfbd29a3723e88982ee5b1001acf6bea0dab940b7e666f4f36036181df3a1a",
+      "before_sha256": "1ccfbd29a3723e88982ee5b1001acf6bea0dab940b7e666f4f36036181df3a1a",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2_mat_view.ads": {
+      "after_sha256": "757edc1e66f114de9b2def53a895a43ddce5693a7a983e0a89a321f587dd3773",
+      "before_sha256": "757edc1e66f114de9b2def53a895a43ddce5693a7a983e0a89a321f587dd3773",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2_row_access.adb": {
+      "after_sha256": "6f3aeabfbd89c31589f8e495f0a2820a545c9c9b248d29212b64d23ba86aa269",
+      "before_sha256": "6f3aeabfbd89c31589f8e495f0a2820a545c9c9b248d29212b64d23ba86aa269",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec2_row_access.ads": {
+      "after_sha256": "30666bc770cdb434216192846b507349e8a534aed22f945835eac2bc06c4a0ab",
+      "before_sha256": "30666bc770cdb434216192846b507349e8a534aed22f945835eac2bc06c4a0ab",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3.ads": {
+      "after_sha256": "0f33910a5d31790b62d3d5c5a54b92229fd2852dda3ba9074c3366869e6ae273",
+      "before_sha256": "0f33910a5d31790b62d3d5c5a54b92229fd2852dda3ba9074c3366869e6ae273",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3_access.adb": {
+      "after_sha256": "8a15989280a43d5c5ca76663638ddff18b1f97b902e329c48b63bb6720db5b95",
+      "before_sha256": "8a15989280a43d5c5ca76663638ddff18b1f97b902e329c48b63bb6720db5b95",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3_access.ads": {
+      "after_sha256": "5925c6f11fae31c4d24c866abd6a13bba76c7a0ea332db87185e2dc2330f0996",
+      "before_sha256": "5925c6f11fae31c4d24c866abd6a13bba76c7a0ea332db87185e2dc2330f0996",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3_buffer_access.adb": {
+      "after_sha256": "8359fa6982e71ef515bba44d8a13ac251e6c619e96785dff26114d00b5727d6e",
+      "before_sha256": "8359fa6982e71ef515bba44d8a13ac251e6c619e96785dff26114d00b5727d6e",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3_buffer_access.ads": {
+      "after_sha256": "996f440f4142294857465ccc5e842d25bd6264ee495105199f7808c186f8eb5f",
+      "before_sha256": "996f440f4142294857465ccc5e842d25bd6264ee495105199f7808c186f8eb5f",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3_mat_view.adb": {
+      "after_sha256": "d7d04f80f659bca38226b977cf8753e184fa582e40f4f52de35e0f85659f793f",
+      "before_sha256": "d7d04f80f659bca38226b977cf8753e184fa582e40f4f52de35e0f85659f793f",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3_mat_view.ads": {
+      "after_sha256": "a4c9a2ecfc561037e15578757af9ec345135ab307ea1123b68a745d0275ba413",
+      "before_sha256": "a4c9a2ecfc561037e15578757af9ec345135ab307ea1123b68a745d0275ba413",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3_row_access.adb": {
+      "after_sha256": "b7f866e1843de027238e6563470ad1a365a9dfb5261749caae8967ac288b0386",
+      "before_sha256": "b7f866e1843de027238e6563470ad1a365a9dfb5261749caae8967ac288b0386",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec3_row_access.ads": {
+      "after_sha256": "3ea6c20cfddbf86446b4b406ef0d184b62632d5e4ccfdaecf4516c88d727b3d9",
+      "before_sha256": "3ea6c20cfddbf86446b4b406ef0d184b62632d5e4ccfdaecf4516c88d727b3d9",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4.ads": {
+      "after_sha256": "f01beb80029235c8f97ccb6fc3e79a191223143f931815d909a636e409ed5cf7",
+      "before_sha256": "f01beb80029235c8f97ccb6fc3e79a191223143f931815d909a636e409ed5cf7",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4_access.adb": {
+      "after_sha256": "e368b88d15056fd72c0ab431feac593eafa703569ff249874748582778c41ca6",
+      "before_sha256": "e368b88d15056fd72c0ab431feac593eafa703569ff249874748582778c41ca6",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4_access.ads": {
+      "after_sha256": "7541e5a61500d27e1e4fc279af985654ed40e7de2a5085f498147e44228215d3",
+      "before_sha256": "7541e5a61500d27e1e4fc279af985654ed40e7de2a5085f498147e44228215d3",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4_buffer_access.adb": {
+      "after_sha256": "ebd1db10a454bd5be6e5c6019ff292fabab6d723eaecd46e6b44f3ca7df028d8",
+      "before_sha256": "ebd1db10a454bd5be6e5c6019ff292fabab6d723eaecd46e6b44f3ca7df028d8",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4_buffer_access.ads": {
+      "after_sha256": "15772c3e0556ecec1c5acfca851804848c154ca2d639a5502a9f90c356c7a1f2",
+      "before_sha256": "15772c3e0556ecec1c5acfca851804848c154ca2d639a5502a9f90c356c7a1f2",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4_mat_view.adb": {
+      "after_sha256": "f28ad5baa20e74c3d4c8f3121933a8a4fcc481917efe0ec9ad978aca4c3aa0f1",
+      "before_sha256": "f28ad5baa20e74c3d4c8f3121933a8a4fcc481917efe0ec9ad978aca4c3aa0f1",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4_mat_view.ads": {
+      "after_sha256": "25f3d56363f772e08a921f9e3ded3598e23f3aac287cd7ee114e22b2bd8d2b3a",
+      "before_sha256": "25f3d56363f772e08a921f9e3ded3598e23f3aac287cd7ee114e22b2bd8d2b3a",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4_row_access.adb": {
+      "after_sha256": "0d53dafdb66b3be51664952ed119f95e137e8fc9422e5c5b549aa3f27f8f469b",
+      "before_sha256": "0d53dafdb66b3be51664952ed119f95e137e8fc9422e5c5b549aa3f27f8f469b",
+      "classification": "identical"
+    },
+    "src/opencv-core-float16_vec4_row_access.ads": {
+      "after_sha256": "aa646a58c81720f22d7f10082d1249df3ff71568e551c22f2e07e29de94a0487",
+      "before_sha256": "aa646a58c81720f22d7f10082d1249df3ff71568e551c22f2e07e29de94a0487",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_access.adb": {
+      "after_sha256": "5149d188464e1b8a18fdcd9e6b8db8a2824aa47d8803eb77cd13a8fc05f0301e",
+      "before_sha256": "5149d188464e1b8a18fdcd9e6b8db8a2824aa47d8803eb77cd13a8fc05f0301e",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_access.ads": {
+      "after_sha256": "37e75551beaeae5a88d4affa3ea46577dbe73b83754abcb23b880b4ca41ae1f8",
+      "before_sha256": "37e75551beaeae5a88d4affa3ea46577dbe73b83754abcb23b880b4ca41ae1f8",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_buffer_access.adb": {
+      "after_sha256": "21977e5f0604bb32577e6bfaf95791663992a77ed6c5cdd9ad05b78c5e584c11",
+      "before_sha256": "21977e5f0604bb32577e6bfaf95791663992a77ed6c5cdd9ad05b78c5e584c11",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_buffer_access.ads": {
+      "after_sha256": "2ca6641b4e101e057b4197adb4f64aad858ab273a2b9e3aa3eed0578cd4f4edd",
+      "before_sha256": "2ca6641b4e101e057b4197adb4f64aad858ab273a2b9e3aa3eed0578cd4f4edd",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_mat_view.adb": {
+      "after_sha256": "2f5dd0bc1290828eeceb3d30b5c6d67430bbaed4644d2b0d255080e01393f224",
+      "before_sha256": "2f5dd0bc1290828eeceb3d30b5c6d67430bbaed4644d2b0d255080e01393f224",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_mat_view.ads": {
+      "after_sha256": "1f11d98e3b98a26b0bceef03da9597e28dd5d9c6d7a139b11b3ba865e867173f",
+      "before_sha256": "1f11d98e3b98a26b0bceef03da9597e28dd5d9c6d7a139b11b3ba865e867173f",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_matx3x3.ads": {
+      "after_sha256": "842a3a34cec90a773746714aad1475f73fb31ca956e0cbc45b696ece551190f5",
+      "before_sha256": "842a3a34cec90a773746714aad1475f73fb31ca956e0cbc45b696ece551190f5",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_matx3x3_conversions.adb": {
+      "after_sha256": "e06bb8e885864570ab8734591633d60bd6b9da44944623a84b4cab2a8ac238c8",
+      "before_sha256": "e06bb8e885864570ab8734591633d60bd6b9da44944623a84b4cab2a8ac238c8",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_matx3x3_conversions.ads": {
+      "after_sha256": "3af51495f99d3de01e88a7e494e8b71b44af08f51a922c0ead52c9da2fcff906",
+      "before_sha256": "3af51495f99d3de01e88a7e494e8b71b44af08f51a922c0ead52c9da2fcff906",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_row_access.adb": {
+      "after_sha256": "eeda58fe2640d92595d6255a13cc26c6166670621d031f7b9f2c134ddfcb094a",
+      "before_sha256": "eeda58fe2640d92595d6255a13cc26c6166670621d031f7b9f2c134ddfcb094a",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_row_access.ads": {
+      "after_sha256": "b867b7dcd217d630a3513661fccfdde10cc556483545580a74be77c01c191437",
+      "before_sha256": "b867b7dcd217d630a3513661fccfdde10cc556483545580a74be77c01c191437",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2.ads": {
+      "after_sha256": "7acae484eb2c15dda9909f7093b068aadea4a8a9c4127e8aae365db48030b81c",
+      "before_sha256": "7acae484eb2c15dda9909f7093b068aadea4a8a9c4127e8aae365db48030b81c",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2_access.adb": {
+      "after_sha256": "29864123fb8053847526e4a4d0d63770d800ec132995c8d174d32011fb4138fc",
+      "before_sha256": "29864123fb8053847526e4a4d0d63770d800ec132995c8d174d32011fb4138fc",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2_access.ads": {
+      "after_sha256": "37a38fd5d9ed46d69db9475703b2c8f1b0b8187cd8f806e816bacb6a806f4b98",
+      "before_sha256": "37a38fd5d9ed46d69db9475703b2c8f1b0b8187cd8f806e816bacb6a806f4b98",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2_buffer_access.adb": {
+      "after_sha256": "74add01930124d3eced84f699670844d038099a20917bb7d8b837e872d20da9b",
+      "before_sha256": "74add01930124d3eced84f699670844d038099a20917bb7d8b837e872d20da9b",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2_buffer_access.ads": {
+      "after_sha256": "c19849251ed7dd66201dd71d57aed0e0272ed5f4abcd3f4136532bad70404df8",
+      "before_sha256": "c19849251ed7dd66201dd71d57aed0e0272ed5f4abcd3f4136532bad70404df8",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2_mat_view.adb": {
+      "after_sha256": "295ea7f6e69a0d969718bf4c1f2edd8935ab18d223f4fc2322e3ad1de5480986",
+      "before_sha256": "295ea7f6e69a0d969718bf4c1f2edd8935ab18d223f4fc2322e3ad1de5480986",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2_mat_view.ads": {
+      "after_sha256": "690b48e1b3bcdc6a271faa42b45a99a7b103a7efaf60ba1222bc27d9c7410cd1",
+      "before_sha256": "690b48e1b3bcdc6a271faa42b45a99a7b103a7efaf60ba1222bc27d9c7410cd1",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2_row_access.adb": {
+      "after_sha256": "c1d235aa7b47f05b6fc9ed258d11724f6e2c8b2cf7198f2fdae88e6d34d18dc7",
+      "before_sha256": "c1d235aa7b47f05b6fc9ed258d11724f6e2c8b2cf7198f2fdae88e6d34d18dc7",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec2_row_access.ads": {
+      "after_sha256": "12505015c1989810eceabbdc21e200387a193bc4db0c1325a815a65f9e8a0e0a",
+      "before_sha256": "12505015c1989810eceabbdc21e200387a193bc4db0c1325a815a65f9e8a0e0a",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3.ads": {
+      "after_sha256": "7fcf89bd265f8e3f1d6e8213e029c127659bea38f3950385d81c6f671f7d5f93",
+      "before_sha256": "7fcf89bd265f8e3f1d6e8213e029c127659bea38f3950385d81c6f671f7d5f93",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3_access.adb": {
+      "after_sha256": "75e57f2959bd8f202bd8b980f5f54de440b2754ba367d380277401eb36c69b63",
+      "before_sha256": "75e57f2959bd8f202bd8b980f5f54de440b2754ba367d380277401eb36c69b63",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3_access.ads": {
+      "after_sha256": "898604d827b06d74f0d86184117c2809d54e0e24a8dfadadc01835ca4a55e97d",
+      "before_sha256": "898604d827b06d74f0d86184117c2809d54e0e24a8dfadadc01835ca4a55e97d",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3_buffer_access.adb": {
+      "after_sha256": "217ab305a4808cbd0ba234c2b9c7af740b16cf02e7acb74352b6c33cc1b4f733",
+      "before_sha256": "217ab305a4808cbd0ba234c2b9c7af740b16cf02e7acb74352b6c33cc1b4f733",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3_buffer_access.ads": {
+      "after_sha256": "c762db4d33877be707a1aa014019bcc51bfe2bbfa90982addfda7f36a6fe9a64",
+      "before_sha256": "c762db4d33877be707a1aa014019bcc51bfe2bbfa90982addfda7f36a6fe9a64",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3_mat_view.adb": {
+      "after_sha256": "00554e6de4bcb30c259f6b5cb98b3e7936715743004d5143dc22727793736b16",
+      "before_sha256": "00554e6de4bcb30c259f6b5cb98b3e7936715743004d5143dc22727793736b16",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3_mat_view.ads": {
+      "after_sha256": "3b5d5bd4888c16f9d5ceded3755a4c6df6885bbdf472897808a2f93646af7e3d",
+      "before_sha256": "3b5d5bd4888c16f9d5ceded3755a4c6df6885bbdf472897808a2f93646af7e3d",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3_row_access.adb": {
+      "after_sha256": "084f2de62f37ec4988b5e2006b452a3ebe0117db59a3c404bb26eb0bac0c5a84",
+      "before_sha256": "084f2de62f37ec4988b5e2006b452a3ebe0117db59a3c404bb26eb0bac0c5a84",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec3_row_access.ads": {
+      "after_sha256": "2a8e994d6223fcf2a5d1c5830506c3b5720d1c34eb1826b808f1a56826eafe27",
+      "before_sha256": "2a8e994d6223fcf2a5d1c5830506c3b5720d1c34eb1826b808f1a56826eafe27",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4.ads": {
+      "after_sha256": "ff3fb2a98a347f3ba60783cc6deaca326648d57c4a9b6f3effe79097d3c7257e",
+      "before_sha256": "ff3fb2a98a347f3ba60783cc6deaca326648d57c4a9b6f3effe79097d3c7257e",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4_access.adb": {
+      "after_sha256": "40dec640de690ad021dc4c6d711aea41c175073e16ac063dacdfc4503f7cab2f",
+      "before_sha256": "40dec640de690ad021dc4c6d711aea41c175073e16ac063dacdfc4503f7cab2f",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4_access.ads": {
+      "after_sha256": "f0758ab28c613ebfde0bb859a168fc48b5c2f947a291ac9842dc54a712108d64",
+      "before_sha256": "f0758ab28c613ebfde0bb859a168fc48b5c2f947a291ac9842dc54a712108d64",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4_buffer_access.adb": {
+      "after_sha256": "3b0ebbf0d6e3378a43a896a85ee9296b69a8f7000669b7cefbb8d278c9500270",
+      "before_sha256": "3b0ebbf0d6e3378a43a896a85ee9296b69a8f7000669b7cefbb8d278c9500270",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4_buffer_access.ads": {
+      "after_sha256": "15ff0e4ca9d38672bc1b547e2cf25c38fe9713e5eee173c83e51e758c2c8a86d",
+      "before_sha256": "15ff0e4ca9d38672bc1b547e2cf25c38fe9713e5eee173c83e51e758c2c8a86d",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4_mat_view.adb": {
+      "after_sha256": "7b8b250e334f8948c74c3992143825e71f7d99b75a327655735e5563e211294c",
+      "before_sha256": "7b8b250e334f8948c74c3992143825e71f7d99b75a327655735e5563e211294c",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4_mat_view.ads": {
+      "after_sha256": "9e79f3990e25418182b2a3d769ea71aee389d818b6edbac8579e524ea66c4f3a",
+      "before_sha256": "9e79f3990e25418182b2a3d769ea71aee389d818b6edbac8579e524ea66c4f3a",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4_row_access.adb": {
+      "after_sha256": "54b3751c28961e188dcaee90ccc48e507e20761a9bd2c2a8ffde74bfde6931b2",
+      "before_sha256": "54b3751c28961e188dcaee90ccc48e507e20761a9bd2c2a8ffde74bfde6931b2",
+      "classification": "identical"
+    },
+    "src/opencv-core-float32_vec4_row_access.ads": {
+      "after_sha256": "a290412a7fcdaaf0947a207f815860f5b9778dd684a5ffa2bc889ef8a2b6942c",
+      "before_sha256": "a290412a7fcdaaf0947a207f815860f5b9778dd684a5ffa2bc889ef8a2b6942c",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_access.adb": {
+      "after_sha256": "5d8833d0b64590a76a9380fec2b16737d6957e9a3ba5bbfd0951f97211bd1bbd",
+      "before_sha256": "5d8833d0b64590a76a9380fec2b16737d6957e9a3ba5bbfd0951f97211bd1bbd",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_access.ads": {
+      "after_sha256": "b73c594ebe6beebac6cf33d4aa0b321aa1dfeb50a07b12925116ae6f8f9908bc",
+      "before_sha256": "b73c594ebe6beebac6cf33d4aa0b321aa1dfeb50a07b12925116ae6f8f9908bc",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_buffer_access.adb": {
+      "after_sha256": "24c79d6d4ede8dd1545a1f87afda945505fd19ea00d6857f148aa4be24a4e4a2",
+      "before_sha256": "24c79d6d4ede8dd1545a1f87afda945505fd19ea00d6857f148aa4be24a4e4a2",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_buffer_access.ads": {
+      "after_sha256": "bc8727f669f29045d33ec439a78970ff814b34ac558d2e969b314beea7906522",
+      "before_sha256": "bc8727f669f29045d33ec439a78970ff814b34ac558d2e969b314beea7906522",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_mat_view.adb": {
+      "after_sha256": "022e609682385798c0ca6f725bd24dd877ea503d7d555d93380e403f3558b216",
+      "before_sha256": "022e609682385798c0ca6f725bd24dd877ea503d7d555d93380e403f3558b216",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_mat_view.ads": {
+      "after_sha256": "9aa6066837b2ad5a68c1231f2bd6c9d563f5557dab991f56726377446e502b9d",
+      "before_sha256": "9aa6066837b2ad5a68c1231f2bd6c9d563f5557dab991f56726377446e502b9d",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_row_access.adb": {
+      "after_sha256": "7b8c8b4e7fafc8629c6793de1124d701750babefa2b4a72f2b0ee8abfb7db529",
+      "before_sha256": "7b8c8b4e7fafc8629c6793de1124d701750babefa2b4a72f2b0ee8abfb7db529",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_row_access.ads": {
+      "after_sha256": "9d4bc594b0f1c6e89925e033249ca97234a9c5ea66a250703a9f3b6e99d31618",
+      "before_sha256": "9d4bc594b0f1c6e89925e033249ca97234a9c5ea66a250703a9f3b6e99d31618",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2.ads": {
+      "after_sha256": "ec000d249320b44d6904033de653a34a16046dad682638e653711bc82bd69641",
+      "before_sha256": "ec000d249320b44d6904033de653a34a16046dad682638e653711bc82bd69641",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2_access.adb": {
+      "after_sha256": "84a456b0f3d42c16ff5a37eceb6f2a3d2b28d5ec8895efd8c43e43d59d198f24",
+      "before_sha256": "84a456b0f3d42c16ff5a37eceb6f2a3d2b28d5ec8895efd8c43e43d59d198f24",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2_access.ads": {
+      "after_sha256": "ffe41c1a2aa702401c7e3aa6c3ccb1ad1ad8eac0abfc97c7cf2231059f8967c2",
+      "before_sha256": "ffe41c1a2aa702401c7e3aa6c3ccb1ad1ad8eac0abfc97c7cf2231059f8967c2",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2_buffer_access.adb": {
+      "after_sha256": "d942519544183fee52819051b3ea07c8ce5d5adcf9fe65cd919c9188e4bedb61",
+      "before_sha256": "d942519544183fee52819051b3ea07c8ce5d5adcf9fe65cd919c9188e4bedb61",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2_buffer_access.ads": {
+      "after_sha256": "7062eb886a43a1b4466a16f79dfa29016fcfd6a4c4a2e4f60faba7e9a596e355",
+      "before_sha256": "7062eb886a43a1b4466a16f79dfa29016fcfd6a4c4a2e4f60faba7e9a596e355",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2_mat_view.adb": {
+      "after_sha256": "a96662bb414ba39bb99777849558bd10a3f420909746b219051dcb81705595da",
+      "before_sha256": "a96662bb414ba39bb99777849558bd10a3f420909746b219051dcb81705595da",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2_mat_view.ads": {
+      "after_sha256": "db43e4a0c552a1a6ed7f1a8f8ed9a21490cd8e479c6828ae9d3944281b18922d",
+      "before_sha256": "db43e4a0c552a1a6ed7f1a8f8ed9a21490cd8e479c6828ae9d3944281b18922d",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2_row_access.adb": {
+      "after_sha256": "bb732f076ad4b830d58fbbbf091c9c4f60f3256b7fa08d306b6387cc9037f467",
+      "before_sha256": "bb732f076ad4b830d58fbbbf091c9c4f60f3256b7fa08d306b6387cc9037f467",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec2_row_access.ads": {
+      "after_sha256": "b73c71e3e7997652c8c5b1f362b20a47b0857aa7c302604df63a27e499efd4a1",
+      "before_sha256": "b73c71e3e7997652c8c5b1f362b20a47b0857aa7c302604df63a27e499efd4a1",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3.ads": {
+      "after_sha256": "2f527f0a3a7d659cac57b2c7ae4dafc368d28ba2209aa553a2448e68a0b69f85",
+      "before_sha256": "2f527f0a3a7d659cac57b2c7ae4dafc368d28ba2209aa553a2448e68a0b69f85",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3_access.adb": {
+      "after_sha256": "c5dacc87a008e38f0a504d44b18ba2dfb2afa2c25fae4fcbcbe6754a9a7f5c08",
+      "before_sha256": "c5dacc87a008e38f0a504d44b18ba2dfb2afa2c25fae4fcbcbe6754a9a7f5c08",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3_access.ads": {
+      "after_sha256": "e74542bdf74d4b2ce299613626174353d239707f4c47af3efce9df4285070ecf",
+      "before_sha256": "e74542bdf74d4b2ce299613626174353d239707f4c47af3efce9df4285070ecf",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3_buffer_access.adb": {
+      "after_sha256": "09857ac0e860feb1b64adb68bab867f4a135e11bdafe3288388699bbd6d5ada0",
+      "before_sha256": "09857ac0e860feb1b64adb68bab867f4a135e11bdafe3288388699bbd6d5ada0",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3_buffer_access.ads": {
+      "after_sha256": "e7e54be3fb34f4e57f587e0b9815e108b0e04dc4bc17bdb0a2f90a8fa1512997",
+      "before_sha256": "e7e54be3fb34f4e57f587e0b9815e108b0e04dc4bc17bdb0a2f90a8fa1512997",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3_mat_view.adb": {
+      "after_sha256": "48ef444d348f1b6cdce5b25acd0c55457195cc8e09fa1921e377aa5f8b952e47",
+      "before_sha256": "48ef444d348f1b6cdce5b25acd0c55457195cc8e09fa1921e377aa5f8b952e47",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3_mat_view.ads": {
+      "after_sha256": "705adef98f32ca39aa3efc599b9048b6fc45a0265deacecb9ee01d98919942ca",
+      "before_sha256": "705adef98f32ca39aa3efc599b9048b6fc45a0265deacecb9ee01d98919942ca",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3_row_access.adb": {
+      "after_sha256": "0739bfc78b06de755b364571c14feaab70293995765ee95283de2c795d51abe1",
+      "before_sha256": "0739bfc78b06de755b364571c14feaab70293995765ee95283de2c795d51abe1",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec3_row_access.ads": {
+      "after_sha256": "cac575325d1ebe95e4e05bbd66e3035330f94cc064b45b9b5d39e3f0fc99d9bd",
+      "before_sha256": "cac575325d1ebe95e4e05bbd66e3035330f94cc064b45b9b5d39e3f0fc99d9bd",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4.ads": {
+      "after_sha256": "7a06dbd14764854ebe0f05250e26972d34b96f906d2d3c526535b3f0beee08d6",
+      "before_sha256": "7a06dbd14764854ebe0f05250e26972d34b96f906d2d3c526535b3f0beee08d6",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4_access.adb": {
+      "after_sha256": "ee53610f43e8056a3c3cb8ed6f5382fe9907df562eeff0a1aaa0e0660197d637",
+      "before_sha256": "ee53610f43e8056a3c3cb8ed6f5382fe9907df562eeff0a1aaa0e0660197d637",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4_access.ads": {
+      "after_sha256": "59521d78bdc96f4838fd14a446236fea1da6b64f188a0c7e7a15b9690283d8a1",
+      "before_sha256": "59521d78bdc96f4838fd14a446236fea1da6b64f188a0c7e7a15b9690283d8a1",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4_buffer_access.adb": {
+      "after_sha256": "6fc7d6aef8246600ffab1fe1f2dbd31ba58c7e2bc08df02012e557bf629a962a",
+      "before_sha256": "6fc7d6aef8246600ffab1fe1f2dbd31ba58c7e2bc08df02012e557bf629a962a",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4_buffer_access.ads": {
+      "after_sha256": "55b8d2729952aacf666cc64b8275b838add0d5df414147bdb3722e938a1d7bec",
+      "before_sha256": "55b8d2729952aacf666cc64b8275b838add0d5df414147bdb3722e938a1d7bec",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4_mat_view.adb": {
+      "after_sha256": "c26ab71d8fb6e13724b95df95ef8b8873ee979c00d8760429e6a87d37d9b4f08",
+      "before_sha256": "c26ab71d8fb6e13724b95df95ef8b8873ee979c00d8760429e6a87d37d9b4f08",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4_mat_view.ads": {
+      "after_sha256": "5a00e06510d5a95a86f50e6e74fbbe527785a890446ffd705997c6b39cc5bf47",
+      "before_sha256": "5a00e06510d5a95a86f50e6e74fbbe527785a890446ffd705997c6b39cc5bf47",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4_row_access.adb": {
+      "after_sha256": "dbaa4a5c593171f0301e24b45d6fdc4ab6a29244864304227daec0cd175018f3",
+      "before_sha256": "dbaa4a5c593171f0301e24b45d6fdc4ab6a29244864304227daec0cd175018f3",
+      "classification": "identical"
+    },
+    "src/opencv-core-float64_vec4_row_access.ads": {
+      "after_sha256": "315a77dd18fb04f1ae09d617adeb665b680ac7efa33946657fc34f30a8a0f4e2",
+      "before_sha256": "315a77dd18fb04f1ae09d617adeb665b680ac7efa33946657fc34f30a8a0f4e2",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_access.adb": {
+      "after_sha256": "fc756e16365fba436c27427e5759181ec20c6fa2b42a80ef83343e5299259ebd",
+      "before_sha256": "fc756e16365fba436c27427e5759181ec20c6fa2b42a80ef83343e5299259ebd",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_access.ads": {
+      "after_sha256": "d37fd47376cbdd11326f50944191cd8abc71559c751744d9ceedc0def3962cd5",
+      "before_sha256": "d37fd47376cbdd11326f50944191cd8abc71559c751744d9ceedc0def3962cd5",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_buffer_access.adb": {
+      "after_sha256": "ca106c565a81f05101a1b23b51002b22dab2ebc9d8746ea0153b1c8e448c835e",
+      "before_sha256": "ca106c565a81f05101a1b23b51002b22dab2ebc9d8746ea0153b1c8e448c835e",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_buffer_access.ads": {
+      "after_sha256": "9bac6c90d827a287cbbc6c3f6ef5e412f0257198a650182e668c251233a3181f",
+      "before_sha256": "9bac6c90d827a287cbbc6c3f6ef5e412f0257198a650182e668c251233a3181f",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_mat_view.adb": {
+      "after_sha256": "b275f101bbe693d747336171b84592b3ac76725efb8f3c6925b5be0b62b313eb",
+      "before_sha256": "b275f101bbe693d747336171b84592b3ac76725efb8f3c6925b5be0b62b313eb",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_mat_view.ads": {
+      "after_sha256": "901d5a024318d0a7ee925fe0e53514b82f9f29eefaf60cbfe7448ef6a5523eef",
+      "before_sha256": "901d5a024318d0a7ee925fe0e53514b82f9f29eefaf60cbfe7448ef6a5523eef",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_row_access.adb": {
+      "after_sha256": "7986ac85b833379367e52940d01c5b7b200c511ae44690e4a334223968084289",
+      "before_sha256": "7986ac85b833379367e52940d01c5b7b200c511ae44690e4a334223968084289",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_row_access.ads": {
+      "after_sha256": "833d2a1c7595d926ec646f050756eb19497e6b57a803b99cf68748cc1eab6f7f",
+      "before_sha256": "833d2a1c7595d926ec646f050756eb19497e6b57a803b99cf68748cc1eab6f7f",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2.ads": {
+      "after_sha256": "b461be18a09bd4448e63a70c03fb3f6a0a275886d6fb42e80d8a84347dcb2b08",
+      "before_sha256": "b461be18a09bd4448e63a70c03fb3f6a0a275886d6fb42e80d8a84347dcb2b08",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2_access.adb": {
+      "after_sha256": "2987c110ed5345ec4d5ae2560ea4f6831a8eb60dcbb8add356646223039d4262",
+      "before_sha256": "2987c110ed5345ec4d5ae2560ea4f6831a8eb60dcbb8add356646223039d4262",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2_access.ads": {
+      "after_sha256": "ad88169f4e32ae24f6d60224fee840b879b0337ea400a6f1df7f3e780b687da9",
+      "before_sha256": "ad88169f4e32ae24f6d60224fee840b879b0337ea400a6f1df7f3e780b687da9",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2_buffer_access.adb": {
+      "after_sha256": "891fba4e1e9d92db95b317bfd096a81ddb108c23d5faad5a223979b03dbd9c37",
+      "before_sha256": "891fba4e1e9d92db95b317bfd096a81ddb108c23d5faad5a223979b03dbd9c37",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2_buffer_access.ads": {
+      "after_sha256": "73dd4367bf12e062ba413bea35578401819349e48f413069d4bc0283392bc9eb",
+      "before_sha256": "73dd4367bf12e062ba413bea35578401819349e48f413069d4bc0283392bc9eb",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2_mat_view.adb": {
+      "after_sha256": "cd209512bdf694b80106c106f945e010493a1e05b00a56aa5f360d588555371e",
+      "before_sha256": "cd209512bdf694b80106c106f945e010493a1e05b00a56aa5f360d588555371e",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2_mat_view.ads": {
+      "after_sha256": "36e7bfb9205e068610e56a4b2c4ffdf3c5f034c55df91a979d4fa2eb46ff4de1",
+      "before_sha256": "36e7bfb9205e068610e56a4b2c4ffdf3c5f034c55df91a979d4fa2eb46ff4de1",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2_row_access.adb": {
+      "after_sha256": "889cd090a30574ef4d34bcc1a752cfacc5853abf6c2e138ccc9e19e78764560c",
+      "before_sha256": "889cd090a30574ef4d34bcc1a752cfacc5853abf6c2e138ccc9e19e78764560c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec2_row_access.ads": {
+      "after_sha256": "e7a9960cc26a7140f7eba609defd6c8e386b5851f22699e907a3950a876af951",
+      "before_sha256": "e7a9960cc26a7140f7eba609defd6c8e386b5851f22699e907a3950a876af951",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3.ads": {
+      "after_sha256": "ec6a6668bce397d3a4f355ad7c5ab1bd6ec298560e92e942dea27e0bcce9f778",
+      "before_sha256": "ec6a6668bce397d3a4f355ad7c5ab1bd6ec298560e92e942dea27e0bcce9f778",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3_access.adb": {
+      "after_sha256": "b019b4f26acf1759d165647b4194140d568d988667ebaff62cc1fc4ed236ebcd",
+      "before_sha256": "b019b4f26acf1759d165647b4194140d568d988667ebaff62cc1fc4ed236ebcd",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3_access.ads": {
+      "after_sha256": "e6dc715cd338b48be1b72cdf24dccd6fdb3900bc99473a81290d89942886e600",
+      "before_sha256": "e6dc715cd338b48be1b72cdf24dccd6fdb3900bc99473a81290d89942886e600",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3_buffer_access.adb": {
+      "after_sha256": "868fa5b7a266467f1af10d32bb1687b58f50ca8c36622f105dabc1eedf58ddaa",
+      "before_sha256": "868fa5b7a266467f1af10d32bb1687b58f50ca8c36622f105dabc1eedf58ddaa",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3_buffer_access.ads": {
+      "after_sha256": "8671713a3ac612fa6af78195fe219e7be74bb8bb557d2cf21116bbb3bdcf7282",
+      "before_sha256": "8671713a3ac612fa6af78195fe219e7be74bb8bb557d2cf21116bbb3bdcf7282",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3_mat_view.adb": {
+      "after_sha256": "deb9747860c55219d9a5e23d1c5181a318ebd53c9a698a42df581ccc8d96ca54",
+      "before_sha256": "deb9747860c55219d9a5e23d1c5181a318ebd53c9a698a42df581ccc8d96ca54",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3_mat_view.ads": {
+      "after_sha256": "0a783bb335c3a7a92d37f37370ef56a022828a20c7b86e58e95567c3921ac0d4",
+      "before_sha256": "0a783bb335c3a7a92d37f37370ef56a022828a20c7b86e58e95567c3921ac0d4",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3_row_access.adb": {
+      "after_sha256": "304c0ac2443db6fe64a2c0dfd3310d5ae33e7d5416244ed21b778c14248f39ee",
+      "before_sha256": "304c0ac2443db6fe64a2c0dfd3310d5ae33e7d5416244ed21b778c14248f39ee",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec3_row_access.ads": {
+      "after_sha256": "eee8c8eb679b078a15c153716f640d8ce6251c666b7fd68167e9680d12a0229a",
+      "before_sha256": "eee8c8eb679b078a15c153716f640d8ce6251c666b7fd68167e9680d12a0229a",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4.ads": {
+      "after_sha256": "f41b1fbf2d5a7c2242dd8cfa56ed049a45a79cf026ccb4e854995ae76678498c",
+      "before_sha256": "f41b1fbf2d5a7c2242dd8cfa56ed049a45a79cf026ccb4e854995ae76678498c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4_access.adb": {
+      "after_sha256": "310c51abe36b2e331be3d3d8f027ad9ce32861c870ca1682e8365850e645bf8a",
+      "before_sha256": "310c51abe36b2e331be3d3d8f027ad9ce32861c870ca1682e8365850e645bf8a",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4_access.ads": {
+      "after_sha256": "61cb285ad03bb6a4ca18736371797acac0377bfcb5ddb9fca2e77c8370697b2f",
+      "before_sha256": "61cb285ad03bb6a4ca18736371797acac0377bfcb5ddb9fca2e77c8370697b2f",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4_buffer_access.adb": {
+      "after_sha256": "a403975bc6b3cbc27f1188d4e9d1d7fe402db74ea98f6a1844bd187365a6bb83",
+      "before_sha256": "a403975bc6b3cbc27f1188d4e9d1d7fe402db74ea98f6a1844bd187365a6bb83",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4_buffer_access.ads": {
+      "after_sha256": "8e43d36af38f37c201a913600ff40fc709f91b2d3540a80c8c82dbb56fce552b",
+      "before_sha256": "8e43d36af38f37c201a913600ff40fc709f91b2d3540a80c8c82dbb56fce552b",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4_mat_view.adb": {
+      "after_sha256": "cfe8c88b86971a9f8301cda344dc44b09dd083ce1adf1241fb5fd29d50b1220c",
+      "before_sha256": "cfe8c88b86971a9f8301cda344dc44b09dd083ce1adf1241fb5fd29d50b1220c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4_mat_view.ads": {
+      "after_sha256": "3e9e4ce20d8566537cff4e6058e62727ac4e0470b3ffd34c4a02bbe591376cc4",
+      "before_sha256": "3e9e4ce20d8566537cff4e6058e62727ac4e0470b3ffd34c4a02bbe591376cc4",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4_row_access.adb": {
+      "after_sha256": "9def702026cf819b4d772f8b497fe298a625c861ae6eebd00bc4f7627ad05010",
+      "before_sha256": "9def702026cf819b4d772f8b497fe298a625c861ae6eebd00bc4f7627ad05010",
+      "classification": "identical"
+    },
+    "src/opencv-core-int16_vec4_row_access.ads": {
+      "after_sha256": "eca9ea73c868c48cb7b41746a1d98352a4cbfa245a7dfb82f459d45d57be80b4",
+      "before_sha256": "eca9ea73c868c48cb7b41746a1d98352a4cbfa245a7dfb82f459d45d57be80b4",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_access.adb": {
+      "after_sha256": "e6e981ef9209024906f1dad005d5698c548f6250f40473f3ee214a483a83d873",
+      "before_sha256": "e6e981ef9209024906f1dad005d5698c548f6250f40473f3ee214a483a83d873",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_access.ads": {
+      "after_sha256": "3de05036347149a18fd565c01f4b5aced5fccecd15aeec0c9b371a872c1f57bc",
+      "before_sha256": "3de05036347149a18fd565c01f4b5aced5fccecd15aeec0c9b371a872c1f57bc",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_buffer_access.adb": {
+      "after_sha256": "aa68e8437f3ae2c52cd0e1f85a2108f8f16accc2efa92db82ee8153bbdcea748",
+      "before_sha256": "aa68e8437f3ae2c52cd0e1f85a2108f8f16accc2efa92db82ee8153bbdcea748",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_buffer_access.ads": {
+      "after_sha256": "052529b4cc28ca338b409e62f5821402c446536ec3a24cc03362e06bbca6c981",
+      "before_sha256": "052529b4cc28ca338b409e62f5821402c446536ec3a24cc03362e06bbca6c981",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_mat_view.adb": {
+      "after_sha256": "a5a5d6d243aa200f609b881f46176145174a3a629c17f858b560d9231f2ba509",
+      "before_sha256": "a5a5d6d243aa200f609b881f46176145174a3a629c17f858b560d9231f2ba509",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_mat_view.ads": {
+      "after_sha256": "f184159746b6713597ee6f0b19a33fa68dc353313c6d03471a6ee45a11ef6e5d",
+      "before_sha256": "f184159746b6713597ee6f0b19a33fa68dc353313c6d03471a6ee45a11ef6e5d",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_row_access.adb": {
+      "after_sha256": "44cb2f7056eddba47243fabe42f713d46081082786c3f61348e95dacef8be2a1",
+      "before_sha256": "44cb2f7056eddba47243fabe42f713d46081082786c3f61348e95dacef8be2a1",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_row_access.ads": {
+      "after_sha256": "86227ab4026f92f7dab7cc533a5c138aff5c9373ec001d899bdf5d7a72d3fb4b",
+      "before_sha256": "86227ab4026f92f7dab7cc533a5c138aff5c9373ec001d899bdf5d7a72d3fb4b",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2.ads": {
+      "after_sha256": "b0bc0390d55b29a870495a2ae61ab07e66e9777b8afb8315f89b3dd345e0c74e",
+      "before_sha256": "b0bc0390d55b29a870495a2ae61ab07e66e9777b8afb8315f89b3dd345e0c74e",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2_access.adb": {
+      "after_sha256": "cd41c51cbf7d67f27dd01c50aacc77b7c29b2cf97813b4fbbb5afe52e3272a15",
+      "before_sha256": "cd41c51cbf7d67f27dd01c50aacc77b7c29b2cf97813b4fbbb5afe52e3272a15",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2_access.ads": {
+      "after_sha256": "376fed9b30f99072cc5c692470af7a7061b63830e9abfd6492220dfc80bdeab3",
+      "before_sha256": "376fed9b30f99072cc5c692470af7a7061b63830e9abfd6492220dfc80bdeab3",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2_buffer_access.adb": {
+      "after_sha256": "ec7608211d9410780f120fe5b47f3c8e40ea4973ddbc5b18535d0209d1eae12e",
+      "before_sha256": "ec7608211d9410780f120fe5b47f3c8e40ea4973ddbc5b18535d0209d1eae12e",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2_buffer_access.ads": {
+      "after_sha256": "2a7a1b0f9078ab621916715d2cbbc2bbf2f8c53261fb200ac10899643f227e55",
+      "before_sha256": "2a7a1b0f9078ab621916715d2cbbc2bbf2f8c53261fb200ac10899643f227e55",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2_mat_view.adb": {
+      "after_sha256": "89932b152a26648315394580235ab3fabf055ca26e4c477c505343b24822a2af",
+      "before_sha256": "89932b152a26648315394580235ab3fabf055ca26e4c477c505343b24822a2af",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2_mat_view.ads": {
+      "after_sha256": "3e3b989a728380114c136d9c4372c5f70a8ff7cdce778b905d9bd24e30375b1c",
+      "before_sha256": "3e3b989a728380114c136d9c4372c5f70a8ff7cdce778b905d9bd24e30375b1c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2_row_access.adb": {
+      "after_sha256": "8652c9045676de35611b5c6cf11aac8714694e36cf514417f461b9e62e5cbd29",
+      "before_sha256": "8652c9045676de35611b5c6cf11aac8714694e36cf514417f461b9e62e5cbd29",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec2_row_access.ads": {
+      "after_sha256": "4680dd477a33ea361bde359469f7afa7bfadaf2dfbb642bd8c290366ab0aa6c5",
+      "before_sha256": "4680dd477a33ea361bde359469f7afa7bfadaf2dfbb642bd8c290366ab0aa6c5",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3.ads": {
+      "after_sha256": "d0c89cfb2d2ee67f41e19702eabb31d0eff735c1cab0853a0ee94a623c13a4c0",
+      "before_sha256": "d0c89cfb2d2ee67f41e19702eabb31d0eff735c1cab0853a0ee94a623c13a4c0",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3_access.adb": {
+      "after_sha256": "a289bc1171215cb1915b171b6a5174531925541b7d48411786d70a1a120207ac",
+      "before_sha256": "a289bc1171215cb1915b171b6a5174531925541b7d48411786d70a1a120207ac",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3_access.ads": {
+      "after_sha256": "1d6b8da9b626b7c7a90906c1677aa40d508387235299b70a532e88b20ea42546",
+      "before_sha256": "1d6b8da9b626b7c7a90906c1677aa40d508387235299b70a532e88b20ea42546",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3_buffer_access.adb": {
+      "after_sha256": "d4aa4205f80f2cdb4673daa85530d4658a0f50139fcdbce5ec1552553beae5aa",
+      "before_sha256": "d4aa4205f80f2cdb4673daa85530d4658a0f50139fcdbce5ec1552553beae5aa",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3_buffer_access.ads": {
+      "after_sha256": "1384d4f1cb99ac4d660e0bd9ab3280e5d5b8be7614a56c758b1acad91500379e",
+      "before_sha256": "1384d4f1cb99ac4d660e0bd9ab3280e5d5b8be7614a56c758b1acad91500379e",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3_mat_view.adb": {
+      "after_sha256": "e5861cd1e0bd24cad7acf90f726f9b3258a73440b362aafe957fa4c8726ca4c1",
+      "before_sha256": "e5861cd1e0bd24cad7acf90f726f9b3258a73440b362aafe957fa4c8726ca4c1",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3_mat_view.ads": {
+      "after_sha256": "67abf0bfcf8ec8579d5c9eb8de6c2dd80a2bfb04b0d687c525db9c59de60e289",
+      "before_sha256": "67abf0bfcf8ec8579d5c9eb8de6c2dd80a2bfb04b0d687c525db9c59de60e289",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3_row_access.adb": {
+      "after_sha256": "09447d4f903035c6f2e175970d594127a697f965e9dbe8a50029f3b96be402dc",
+      "before_sha256": "09447d4f903035c6f2e175970d594127a697f965e9dbe8a50029f3b96be402dc",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec3_row_access.ads": {
+      "after_sha256": "b8ef1e479ca65ad400d819e9982262f66f968fda68f46cbc418e96f0029f44e7",
+      "before_sha256": "b8ef1e479ca65ad400d819e9982262f66f968fda68f46cbc418e96f0029f44e7",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4.ads": {
+      "after_sha256": "3911196dde0b4df318fbd5a5a3ff643d7c58160f995f2d502140db4f17c7b047",
+      "before_sha256": "3911196dde0b4df318fbd5a5a3ff643d7c58160f995f2d502140db4f17c7b047",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4_access.adb": {
+      "after_sha256": "0f62487d5c2699973aa8dfd448e1dcebe4d080454fed8669a39341ffd2235e8f",
+      "before_sha256": "0f62487d5c2699973aa8dfd448e1dcebe4d080454fed8669a39341ffd2235e8f",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4_access.ads": {
+      "after_sha256": "2c25d7cf8e3a136681458a2e4bce914a7f7e23db4b0daa28222cf8eda7d1cc43",
+      "before_sha256": "2c25d7cf8e3a136681458a2e4bce914a7f7e23db4b0daa28222cf8eda7d1cc43",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4_buffer_access.adb": {
+      "after_sha256": "d61f09acf239fc778b98f6e53d2fcb2dfbdbc48625fd12aa9a442bb0be623592",
+      "before_sha256": "d61f09acf239fc778b98f6e53d2fcb2dfbdbc48625fd12aa9a442bb0be623592",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4_buffer_access.ads": {
+      "after_sha256": "fa654fda30c58101d268f002a1f9655e6f421234084c32c9f0409bcb1a478673",
+      "before_sha256": "fa654fda30c58101d268f002a1f9655e6f421234084c32c9f0409bcb1a478673",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4_mat_view.adb": {
+      "after_sha256": "bca783a957f94604dbbb091454d1feb0364ee80c6f8e72a1c6f11488e84861c9",
+      "before_sha256": "bca783a957f94604dbbb091454d1feb0364ee80c6f8e72a1c6f11488e84861c9",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4_mat_view.ads": {
+      "after_sha256": "1b14eab4ce28f43ee988381e26edb685072a18b81367971696477010a3070293",
+      "before_sha256": "1b14eab4ce28f43ee988381e26edb685072a18b81367971696477010a3070293",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4_row_access.adb": {
+      "after_sha256": "af32498cc9b07b24f96ddb2c417fcd22cab108100125eb9a87603d99d5f4bddd",
+      "before_sha256": "af32498cc9b07b24f96ddb2c417fcd22cab108100125eb9a87603d99d5f4bddd",
+      "classification": "identical"
+    },
+    "src/opencv-core-int32_vec4_row_access.ads": {
+      "after_sha256": "596b900d70e82d56b54670471bad3df82843a573f4f06b341db614774f8a6f68",
+      "before_sha256": "596b900d70e82d56b54670471bad3df82843a573f4f06b341db614774f8a6f68",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_access.adb": {
+      "after_sha256": "1772156dac92509aa4bf5f8a76e7147ba4b676d9a65ca670488fda872c6de6a0",
+      "before_sha256": "1772156dac92509aa4bf5f8a76e7147ba4b676d9a65ca670488fda872c6de6a0",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_access.ads": {
+      "after_sha256": "e4b89bb2c3bda9912e0512513de5e3f6edbb70c450329c6bc5b85200fbc22645",
+      "before_sha256": "e4b89bb2c3bda9912e0512513de5e3f6edbb70c450329c6bc5b85200fbc22645",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_buffer_access.adb": {
+      "after_sha256": "21d201946644f018ccb0899549e11defc2dc9f367e8dc8cfe495ed388341bc10",
+      "before_sha256": "21d201946644f018ccb0899549e11defc2dc9f367e8dc8cfe495ed388341bc10",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_buffer_access.ads": {
+      "after_sha256": "87fb604a021631d98a9748992f8c5f28645c11de3d70c8875b69613f751b3835",
+      "before_sha256": "87fb604a021631d98a9748992f8c5f28645c11de3d70c8875b69613f751b3835",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_mat_view.adb": {
+      "after_sha256": "a87490c547e39c977dece313c2d11d6a709ca94b54c5bd11da799365141d4efd",
+      "before_sha256": "a87490c547e39c977dece313c2d11d6a709ca94b54c5bd11da799365141d4efd",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_mat_view.ads": {
+      "after_sha256": "7b24c5c9726b04d3f4ad4198072dc39093a93bf3f9aa93aaa0bc082feeab9f27",
+      "before_sha256": "7b24c5c9726b04d3f4ad4198072dc39093a93bf3f9aa93aaa0bc082feeab9f27",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_row_access.adb": {
+      "after_sha256": "82e6981765ba20c16e744227ce3304aabe7c4010262db6ab165d506eb14c2c10",
+      "before_sha256": "82e6981765ba20c16e744227ce3304aabe7c4010262db6ab165d506eb14c2c10",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_row_access.ads": {
+      "after_sha256": "1c99d247dc65c4b85736dbb276f36eda6b060758facac08041ccd7ec4d4cd296",
+      "before_sha256": "1c99d247dc65c4b85736dbb276f36eda6b060758facac08041ccd7ec4d4cd296",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2.ads": {
+      "after_sha256": "11255f9ddfcf6a48f6b4d64eb90efd09f86a5859a1e89e3e59d22eee11f241e6",
+      "before_sha256": "11255f9ddfcf6a48f6b4d64eb90efd09f86a5859a1e89e3e59d22eee11f241e6",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2_access.adb": {
+      "after_sha256": "c501d132fc44fa258d0717fa78a81d5fdf941ed1b9a93fd6cfdc83a4fd4fbbdf",
+      "before_sha256": "c501d132fc44fa258d0717fa78a81d5fdf941ed1b9a93fd6cfdc83a4fd4fbbdf",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2_access.ads": {
+      "after_sha256": "adc581cdde9a327f5d9d1a4db4fd48c5e4a1fa020f203eaf93ab74e81c214389",
+      "before_sha256": "adc581cdde9a327f5d9d1a4db4fd48c5e4a1fa020f203eaf93ab74e81c214389",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2_buffer_access.adb": {
+      "after_sha256": "293f3bcb85516469bf8167dd1a61731807a70c54538607defc11b90d177978ea",
+      "before_sha256": "293f3bcb85516469bf8167dd1a61731807a70c54538607defc11b90d177978ea",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2_buffer_access.ads": {
+      "after_sha256": "8d1c9f7c7982af452b1152285671e51355c84feddb27b2c79ac87186c2688274",
+      "before_sha256": "8d1c9f7c7982af452b1152285671e51355c84feddb27b2c79ac87186c2688274",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2_mat_view.adb": {
+      "after_sha256": "728ad79297cab6c8c7f7c35cf2d7c84e379e444eda3e024a1f2a15a44f036e3e",
+      "before_sha256": "728ad79297cab6c8c7f7c35cf2d7c84e379e444eda3e024a1f2a15a44f036e3e",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2_mat_view.ads": {
+      "after_sha256": "84d5ad4668fb8087083dde0f20209857a5da7f8a431dde8ba92ebcb98bcd808e",
+      "before_sha256": "84d5ad4668fb8087083dde0f20209857a5da7f8a431dde8ba92ebcb98bcd808e",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2_row_access.adb": {
+      "after_sha256": "122887513a00b33007e4f536b071637c0342c323c478231575bf7586dbbc937c",
+      "before_sha256": "122887513a00b33007e4f536b071637c0342c323c478231575bf7586dbbc937c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec2_row_access.ads": {
+      "after_sha256": "2e635af4557de64fa811ac38292795cfee6fb59576f6e7b7d29c7341559d356c",
+      "before_sha256": "2e635af4557de64fa811ac38292795cfee6fb59576f6e7b7d29c7341559d356c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3.ads": {
+      "after_sha256": "7c26d6bd4420f0c452c2dac57eab884d38e128d8e06e0020d5faaf66bb23f5d4",
+      "before_sha256": "7c26d6bd4420f0c452c2dac57eab884d38e128d8e06e0020d5faaf66bb23f5d4",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3_access.adb": {
+      "after_sha256": "c816bb8ed479318e6044364168c0641ff5047f9fa60de5f9997823ad719846f0",
+      "before_sha256": "c816bb8ed479318e6044364168c0641ff5047f9fa60de5f9997823ad719846f0",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3_access.ads": {
+      "after_sha256": "e2e67078bba25bb2f5044f83bdaf1490bf190046f1a5e1810bfa37b152b07e8c",
+      "before_sha256": "e2e67078bba25bb2f5044f83bdaf1490bf190046f1a5e1810bfa37b152b07e8c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3_buffer_access.adb": {
+      "after_sha256": "4af64dd9fdce59843c7c06e6b6db34245fd3792a66deafdcc1d72ed92233f338",
+      "before_sha256": "4af64dd9fdce59843c7c06e6b6db34245fd3792a66deafdcc1d72ed92233f338",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3_buffer_access.ads": {
+      "after_sha256": "fd06e3e44502458be5a081ca68f05b8bc440b249603de0299c16efa258eff900",
+      "before_sha256": "fd06e3e44502458be5a081ca68f05b8bc440b249603de0299c16efa258eff900",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3_mat_view.adb": {
+      "after_sha256": "1c0076ff3a6ea11a9f83a42989ab0c8a687e7fa9234c6ed99415c98dccc77d2e",
+      "before_sha256": "1c0076ff3a6ea11a9f83a42989ab0c8a687e7fa9234c6ed99415c98dccc77d2e",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3_mat_view.ads": {
+      "after_sha256": "6b7382d58bce9cf6a26fb6a17f426e8b06324845eb5f48ab394a5d367ed55f8d",
+      "before_sha256": "6b7382d58bce9cf6a26fb6a17f426e8b06324845eb5f48ab394a5d367ed55f8d",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3_row_access.adb": {
+      "after_sha256": "e747f89c75e83597d34ec15ffdd36dba2f4c7f6fcd65b7c48e4cc09ba5dd2738",
+      "before_sha256": "e747f89c75e83597d34ec15ffdd36dba2f4c7f6fcd65b7c48e4cc09ba5dd2738",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec3_row_access.ads": {
+      "after_sha256": "bd720b656fa6b2f4f1e01c3dd28d1ca991d8de6c81cb826ae59cc5541f919a4f",
+      "before_sha256": "bd720b656fa6b2f4f1e01c3dd28d1ca991d8de6c81cb826ae59cc5541f919a4f",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4.ads": {
+      "after_sha256": "55d98e454f7f6c3f981237d02683fb6d0492250603a95c053411df559881de6a",
+      "before_sha256": "55d98e454f7f6c3f981237d02683fb6d0492250603a95c053411df559881de6a",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4_access.adb": {
+      "after_sha256": "851ac0483449e300415ac788ca6171888c9d3d05bc1830056f70a2021e363795",
+      "before_sha256": "851ac0483449e300415ac788ca6171888c9d3d05bc1830056f70a2021e363795",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4_access.ads": {
+      "after_sha256": "5974c7395b32ea6f9d229d842ad410ead441fe0d16b4ffd936d1888fa389e2ab",
+      "before_sha256": "5974c7395b32ea6f9d229d842ad410ead441fe0d16b4ffd936d1888fa389e2ab",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4_buffer_access.adb": {
+      "after_sha256": "76b627386a4ae15fa7b4f4c52b3250415c9b25c65c8b803cbde75ae9d8d4934c",
+      "before_sha256": "76b627386a4ae15fa7b4f4c52b3250415c9b25c65c8b803cbde75ae9d8d4934c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4_buffer_access.ads": {
+      "after_sha256": "6b863d58f0efe567bf0c20eb42bad721977367b02037a323654e76e901dc77f3",
+      "before_sha256": "6b863d58f0efe567bf0c20eb42bad721977367b02037a323654e76e901dc77f3",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4_mat_view.adb": {
+      "after_sha256": "444b058467cfd5a4e469a8bb4f720da26d6bf554309ee2ef51d35bacc3123ff7",
+      "before_sha256": "444b058467cfd5a4e469a8bb4f720da26d6bf554309ee2ef51d35bacc3123ff7",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4_mat_view.ads": {
+      "after_sha256": "bc1adc23ac15772f80a3c353dc03a95d2cd79bfdafdacef17a5d90151569e612",
+      "before_sha256": "bc1adc23ac15772f80a3c353dc03a95d2cd79bfdafdacef17a5d90151569e612",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4_row_access.adb": {
+      "after_sha256": "21078c1e644660c52ddb152d8b6d155783671d1cd40adef32fc9bdb5e57b620c",
+      "before_sha256": "21078c1e644660c52ddb152d8b6d155783671d1cd40adef32fc9bdb5e57b620c",
+      "classification": "identical"
+    },
+    "src/opencv-core-int8_vec4_row_access.ads": {
+      "after_sha256": "f6eb60e9c58013494656287c7be7d19a49d09f2f0cb27e1574d8bf7ad28d8565",
+      "before_sha256": "f6eb60e9c58013494656287c7be7d19a49d09f2f0cb27e1574d8bf7ad28d8565",
+      "classification": "identical"
+    },
+    "src/opencv-core-module_interop.adb": {
+      "after_sha256": "51ad1e173dbc9332d0f748c8917eafc62c7118a2cf0659f8d01913ecd2e1358f",
+      "before_sha256": "51ad1e173dbc9332d0f748c8917eafc62c7118a2cf0659f8d01913ecd2e1358f",
+      "classification": "identical"
+    },
+    "src/opencv-core-module_interop.ads": {
+      "after_sha256": "36a070ff2dad18cf5dfedc3061ba4e651885092fdcba01eb8b0d7680dfb6e518",
+      "before_sha256": "36a070ff2dad18cf5dfedc3061ba4e651885092fdcba01eb8b0d7680dfb6e518",
+      "classification": "identical"
+    },
+    "src/opencv-core-persistence.adb": {
+      "after_sha256": "f4dbfe563be4e811b743a7de8cb3b4c02b22f8a7681ed3ac76b21ae05f33c6fa",
+      "before_sha256": "f4dbfe563be4e811b743a7de8cb3b4c02b22f8a7681ed3ac76b21ae05f33c6fa",
+      "classification": "identical"
+    },
+    "src/opencv-core-persistence.ads": {
+      "after_sha256": "52ba0d8c9f44158070b0cb5f39183e77e76abad0218276c8a130a97a03820388",
+      "before_sha256": "52ba0d8c9f44158070b0cb5f39183e77e76abad0218276c8a130a97a03820388",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float16_access.adb": {
+      "after_sha256": "a626aca55e95627c1132af85c34ed11e0f326e1732455a1c784b2aa7d73c42c1",
+      "before_sha256": "a626aca55e95627c1132af85c34ed11e0f326e1732455a1c784b2aa7d73c42c1",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float16_access.ads": {
+      "after_sha256": "2f6a3c4b806cfa4aa782c01e1dedc445092f43ff69167e4b601a8f5554e0c73e",
+      "before_sha256": "2f6a3c4b806cfa4aa782c01e1dedc445092f43ff69167e4b601a8f5554e0c73e",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float16_vec2_access.adb": {
+      "after_sha256": "7617a0c46f89eb45261036b883f6af26ca58417bc4c6e9b8d00e73fb26e960a6",
+      "before_sha256": "7617a0c46f89eb45261036b883f6af26ca58417bc4c6e9b8d00e73fb26e960a6",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float16_vec2_access.ads": {
+      "after_sha256": "039f05237227474b76e6bfc524498b64a31f90862941444f8a963f67343a3930",
+      "before_sha256": "039f05237227474b76e6bfc524498b64a31f90862941444f8a963f67343a3930",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float16_vec3_access.adb": {
+      "after_sha256": "0cefc415533abacfd0b50d5344f857eb91ddc90de47db6752007144369be4523",
+      "before_sha256": "0cefc415533abacfd0b50d5344f857eb91ddc90de47db6752007144369be4523",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float16_vec3_access.ads": {
+      "after_sha256": "e73c96a61dc9f7a0f42f6645e23ce66df9622abc34b7e1805532c27a643dd625",
+      "before_sha256": "e73c96a61dc9f7a0f42f6645e23ce66df9622abc34b7e1805532c27a643dd625",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float16_vec4_access.adb": {
+      "after_sha256": "4f2e10cc6c546beec6a57b7d09a973f58a38323a06d603cd6231801cd022809a",
+      "before_sha256": "4f2e10cc6c546beec6a57b7d09a973f58a38323a06d603cd6231801cd022809a",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float16_vec4_access.ads": {
+      "after_sha256": "de7e471a12e81d380962c5bd3fe5e3d8b7bc5045274c919b444ce86bf85835a2",
+      "before_sha256": "de7e471a12e81d380962c5bd3fe5e3d8b7bc5045274c919b444ce86bf85835a2",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float32_access.adb": {
+      "after_sha256": "37bdc9921695fa5c7dc2604f279eb415cc7871ddab8f543c779258afdf9bcefd",
+      "before_sha256": "37bdc9921695fa5c7dc2604f279eb415cc7871ddab8f543c779258afdf9bcefd",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float32_access.ads": {
+      "after_sha256": "264de539c6f10d9d3fc1aa190256a698634bd14ce9bdf6297af88b17e0baacdc",
+      "before_sha256": "264de539c6f10d9d3fc1aa190256a698634bd14ce9bdf6297af88b17e0baacdc",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float32_vec2_access.adb": {
+      "after_sha256": "53f8cad99f7e9f87f45c1d9c2bb29f23daa539a1d9df205b5f4c543e161e1226",
+      "before_sha256": "53f8cad99f7e9f87f45c1d9c2bb29f23daa539a1d9df205b5f4c543e161e1226",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float32_vec2_access.ads": {
+      "after_sha256": "7a2663916cfd939bf5792d3e526cedd09d942e8dec4ad9f6b3b4cc7bac01268b",
+      "before_sha256": "7a2663916cfd939bf5792d3e526cedd09d942e8dec4ad9f6b3b4cc7bac01268b",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float32_vec3_access.adb": {
+      "after_sha256": "53ce3433e45e36c83f42cd5571619abceb3576e818583209f6617d8fb75d0409",
+      "before_sha256": "53ce3433e45e36c83f42cd5571619abceb3576e818583209f6617d8fb75d0409",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float32_vec3_access.ads": {
+      "after_sha256": "15fc6a22118ddfde797ef9f8596d89dc78233937ca538923580ead741a72e1d0",
+      "before_sha256": "15fc6a22118ddfde797ef9f8596d89dc78233937ca538923580ead741a72e1d0",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float32_vec4_access.adb": {
+      "after_sha256": "3fd568778659e2ecdff1d30d626598b98708c36cbaefac5550f3d6b3138e7820",
+      "before_sha256": "3fd568778659e2ecdff1d30d626598b98708c36cbaefac5550f3d6b3138e7820",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float32_vec4_access.ads": {
+      "after_sha256": "8d4f61c20eb26dd2f5952621b5c5170477035cc33c052d81f7f22aecff3b014a",
+      "before_sha256": "8d4f61c20eb26dd2f5952621b5c5170477035cc33c052d81f7f22aecff3b014a",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float64_access.adb": {
+      "after_sha256": "ddcd1d0c3860f679945b1cee861530d9e6572071863b6d956572c1c6462b8c46",
+      "before_sha256": "ddcd1d0c3860f679945b1cee861530d9e6572071863b6d956572c1c6462b8c46",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float64_access.ads": {
+      "after_sha256": "137b486be3252710b35eb8b99296c9099bee2e6175fac410b0c9152455786939",
+      "before_sha256": "137b486be3252710b35eb8b99296c9099bee2e6175fac410b0c9152455786939",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float64_vec2_access.adb": {
+      "after_sha256": "2e8bbbf2b04e37bbe29b0da8a42c372ce6451be0d70a75e48a19bce78909a935",
+      "before_sha256": "2e8bbbf2b04e37bbe29b0da8a42c372ce6451be0d70a75e48a19bce78909a935",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float64_vec2_access.ads": {
+      "after_sha256": "a9fd5ba0af3b8590e5f2b06fd717761ecb47c862f362c9e15f58cc03d559353c",
+      "before_sha256": "a9fd5ba0af3b8590e5f2b06fd717761ecb47c862f362c9e15f58cc03d559353c",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float64_vec3_access.adb": {
+      "after_sha256": "021951b5b2a576fc538df4bcec444875cc7ab8f58da53db6e42ac10079f1fabe",
+      "before_sha256": "021951b5b2a576fc538df4bcec444875cc7ab8f58da53db6e42ac10079f1fabe",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float64_vec3_access.ads": {
+      "after_sha256": "c5dc846b0d19e2f61f03bbd25f90aea3fd54b8de4cb90f371e1eeee74e92362a",
+      "before_sha256": "c5dc846b0d19e2f61f03bbd25f90aea3fd54b8de4cb90f371e1eeee74e92362a",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float64_vec4_access.adb": {
+      "after_sha256": "4d8fe4615433a291eff8c875d7895c44085953aecff6db7baa00ddfcc6081671",
+      "before_sha256": "4d8fe4615433a291eff8c875d7895c44085953aecff6db7baa00ddfcc6081671",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-float64_vec4_access.ads": {
+      "after_sha256": "fbbfb21a5c47b7c312258e7f41c8cc7a2b924ae7eb81ff213fbe62f8a563bc00",
+      "before_sha256": "fbbfb21a5c47b7c312258e7f41c8cc7a2b924ae7eb81ff213fbe62f8a563bc00",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int16_access.adb": {
+      "after_sha256": "aeaadbc6a192a68aebe4935d586dce3cfc41ad6583c73a7edeeef38d63488f05",
+      "before_sha256": "aeaadbc6a192a68aebe4935d586dce3cfc41ad6583c73a7edeeef38d63488f05",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int16_access.ads": {
+      "after_sha256": "9049c96deabee36583f7ad30d7e54c6c5cb6e881b07257692ab40af0186ec6bf",
+      "before_sha256": "9049c96deabee36583f7ad30d7e54c6c5cb6e881b07257692ab40af0186ec6bf",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int16_vec2_access.adb": {
+      "after_sha256": "1e5483f61b86bb8d9923506dc6907d15ec1652f0808209749a52fece7b1baa8b",
+      "before_sha256": "1e5483f61b86bb8d9923506dc6907d15ec1652f0808209749a52fece7b1baa8b",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int16_vec2_access.ads": {
+      "after_sha256": "fca1146c2c8045fd660a8e4af2b3e8a81e38a34ccb0ea040aa6fb35ffee1477d",
+      "before_sha256": "fca1146c2c8045fd660a8e4af2b3e8a81e38a34ccb0ea040aa6fb35ffee1477d",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int16_vec3_access.adb": {
+      "after_sha256": "10c3f93cdbc43f15b3d3b54c5f8aa0fbf33f88cf257004741f087d5a860fd518",
+      "before_sha256": "10c3f93cdbc43f15b3d3b54c5f8aa0fbf33f88cf257004741f087d5a860fd518",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int16_vec3_access.ads": {
+      "after_sha256": "a66308ff10f8883218127b5263c00b971510f0ffa0c56350d0eae448dc21ac4d",
+      "before_sha256": "a66308ff10f8883218127b5263c00b971510f0ffa0c56350d0eae448dc21ac4d",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int16_vec4_access.adb": {
+      "after_sha256": "26137b784efce9d8d7423c5e2fc4cd6061a885fa6841978d2e22d4f662be73f0",
+      "before_sha256": "26137b784efce9d8d7423c5e2fc4cd6061a885fa6841978d2e22d4f662be73f0",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int16_vec4_access.ads": {
+      "after_sha256": "1a003f5eb0a951dbcce158784accd53359c8c3eeb05aee10bc8bacd9e82882c9",
+      "before_sha256": "1a003f5eb0a951dbcce158784accd53359c8c3eeb05aee10bc8bacd9e82882c9",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int32_access.adb": {
+      "after_sha256": "35b05399b68a4b359c208c38f8cc0b9ee58d947a1d74b96abf9b6ab27b2603fb",
+      "before_sha256": "35b05399b68a4b359c208c38f8cc0b9ee58d947a1d74b96abf9b6ab27b2603fb",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int32_access.ads": {
+      "after_sha256": "22cf53ca07dd1d0abbc5df12193832fc2693ff2130c8962069ee9d71d5bd6d61",
+      "before_sha256": "22cf53ca07dd1d0abbc5df12193832fc2693ff2130c8962069ee9d71d5bd6d61",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int32_vec2_access.adb": {
+      "after_sha256": "71d3c9a6c731ef725a2a10973b5ff72861771bad176543943bf962392d361d17",
+      "before_sha256": "71d3c9a6c731ef725a2a10973b5ff72861771bad176543943bf962392d361d17",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int32_vec2_access.ads": {
+      "after_sha256": "c8da23f8c4b10ecb6efb5238fd7f00fa819044dbe810bfb05528438437298b00",
+      "before_sha256": "c8da23f8c4b10ecb6efb5238fd7f00fa819044dbe810bfb05528438437298b00",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int32_vec3_access.adb": {
+      "after_sha256": "b4f02f0f7e5964a03dfad116250a7f061dd06c858eb57a7b313207a98494fe10",
+      "before_sha256": "b4f02f0f7e5964a03dfad116250a7f061dd06c858eb57a7b313207a98494fe10",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int32_vec3_access.ads": {
+      "after_sha256": "c4c025ff3684cccc6878b025460a00c68328618356adc10aef9f0ca1bfe5a782",
+      "before_sha256": "c4c025ff3684cccc6878b025460a00c68328618356adc10aef9f0ca1bfe5a782",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int32_vec4_access.adb": {
+      "after_sha256": "ea6417c783123443da7f69f05ab608582b638e603dba6c42def947b00d402341",
+      "before_sha256": "ea6417c783123443da7f69f05ab608582b638e603dba6c42def947b00d402341",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int32_vec4_access.ads": {
+      "after_sha256": "8e71337559ab1fa8ed3004bf0465d4365bc7329b52b826425e90e52511649106",
+      "before_sha256": "8e71337559ab1fa8ed3004bf0465d4365bc7329b52b826425e90e52511649106",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int8_access.adb": {
+      "after_sha256": "ebe3636a5d14d7887cebf78fe931d0c4a59beb512ca77b5186b0c3a05044b2ce",
+      "before_sha256": "ebe3636a5d14d7887cebf78fe931d0c4a59beb512ca77b5186b0c3a05044b2ce",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int8_access.ads": {
+      "after_sha256": "2577168c78e328157769a2d4bc0f4f0843e266463ef5dac0164bcd03e09010b6",
+      "before_sha256": "2577168c78e328157769a2d4bc0f4f0843e266463ef5dac0164bcd03e09010b6",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int8_vec2_access.adb": {
+      "after_sha256": "1d000e427af84a21bda0c92a1ab5cb30c20207006e22086f4c3d92517b93278c",
+      "before_sha256": "1d000e427af84a21bda0c92a1ab5cb30c20207006e22086f4c3d92517b93278c",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int8_vec2_access.ads": {
+      "after_sha256": "7b79a8ade59cd734f18b9d7cf3788c8b8201487bfd329cd10acb741b10bcbe02",
+      "before_sha256": "7b79a8ade59cd734f18b9d7cf3788c8b8201487bfd329cd10acb741b10bcbe02",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int8_vec3_access.adb": {
+      "after_sha256": "166a37bb619d60f92eb71225ce2f56e08eb4c746e872aa2c7e6944b8d5fd2937",
+      "before_sha256": "166a37bb619d60f92eb71225ce2f56e08eb4c746e872aa2c7e6944b8d5fd2937",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int8_vec3_access.ads": {
+      "after_sha256": "bdf1bdd475f4aa8cca6163e9190408a9883287270bda4b4b2e487b3f79d45787",
+      "before_sha256": "bdf1bdd475f4aa8cca6163e9190408a9883287270bda4b4b2e487b3f79d45787",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int8_vec4_access.adb": {
+      "after_sha256": "0027043eea1a8c13fa5519794b973f16c097b38721c7ce165c3f29b812d16162",
+      "before_sha256": "0027043eea1a8c13fa5519794b973f16c097b38721c7ce165c3f29b812d16162",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-int8_vec4_access.ads": {
+      "after_sha256": "2276dbede588eff445ff78a6876c4744de42490f31d332e7031386b894f7749b",
+      "before_sha256": "2276dbede588eff445ff78a6876c4744de42490f31d332e7031386b894f7749b",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-module_interop.adb": {
+      "after_sha256": "e7247b36ffea5d40152667a56f5eb6059793fdfaecc12391c686453340471913",
+      "before_sha256": "e7247b36ffea5d40152667a56f5eb6059793fdfaecc12391c686453340471913",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-module_interop.ads": {
+      "after_sha256": "73d0dc9b8980bf2f038e97521ff1fbc37ae0a88a62464600ed306d6bfbe40e83",
+      "before_sha256": "73d0dc9b8980bf2f038e97521ff1fbc37ae0a88a62464600ed306d6bfbe40e83",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint16_access.adb": {
+      "after_sha256": "7256611257705dfe0fed0555850829f1ee5de966a20bd6f7f2c9e56faff26531",
+      "before_sha256": "7256611257705dfe0fed0555850829f1ee5de966a20bd6f7f2c9e56faff26531",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint16_access.ads": {
+      "after_sha256": "99e4b3511c83f16cd0d50d43280b6d5712fbea67914d66dd627f544b167ab4dc",
+      "before_sha256": "99e4b3511c83f16cd0d50d43280b6d5712fbea67914d66dd627f544b167ab4dc",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint16_vec2_access.adb": {
+      "after_sha256": "3836ccdb4365ffe850a09888cb04e21d6edc7ba56a1a7fe19fba7daafd3d70bf",
+      "before_sha256": "3836ccdb4365ffe850a09888cb04e21d6edc7ba56a1a7fe19fba7daafd3d70bf",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint16_vec2_access.ads": {
+      "after_sha256": "74f3512020615b8b61e9dcb44ef863e4ab2a13cdf265ad5f7b4050b57e787d23",
+      "before_sha256": "74f3512020615b8b61e9dcb44ef863e4ab2a13cdf265ad5f7b4050b57e787d23",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint16_vec3_access.adb": {
+      "after_sha256": "846a492e835f14cfd2ad18318195ddaae238228178fc1d6ccb3611ed04250ec8",
+      "before_sha256": "846a492e835f14cfd2ad18318195ddaae238228178fc1d6ccb3611ed04250ec8",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint16_vec3_access.ads": {
+      "after_sha256": "48d39fdee03dd4f4b539be916165660b0a46611dfb8ed04673b5b45f0f815185",
+      "before_sha256": "48d39fdee03dd4f4b539be916165660b0a46611dfb8ed04673b5b45f0f815185",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint16_vec4_access.adb": {
+      "after_sha256": "865dfecbe4984135187cbc8e920407eee074354c4f2a108754e60e29f94d81ce",
+      "before_sha256": "865dfecbe4984135187cbc8e920407eee074354c4f2a108754e60e29f94d81ce",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint16_vec4_access.ads": {
+      "after_sha256": "d384a96dcd3f2fd959f40cf28186a44267f5938311b143bbc6427bfd57fd1a1b",
+      "before_sha256": "d384a96dcd3f2fd959f40cf28186a44267f5938311b143bbc6427bfd57fd1a1b",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint8_access.adb": {
+      "after_sha256": "4f51bc4b34308d830eb5e1ecd813edeb237961feeace01d2715bfadee67f4a32",
+      "before_sha256": "4f51bc4b34308d830eb5e1ecd813edeb237961feeace01d2715bfadee67f4a32",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint8_access.ads": {
+      "after_sha256": "0ed826f975dafb872ff7c973ea3b98cb7f55c697726ecdca5efd0a3bbaf01a0d",
+      "before_sha256": "0ed826f975dafb872ff7c973ea3b98cb7f55c697726ecdca5efd0a3bbaf01a0d",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint8_vec2_access.adb": {
+      "after_sha256": "f2aa68fc662e226635bb375a8e8e4ec9632d6e245eb80f3b5bb08a218c478a04",
+      "before_sha256": "f2aa68fc662e226635bb375a8e8e4ec9632d6e245eb80f3b5bb08a218c478a04",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint8_vec2_access.ads": {
+      "after_sha256": "1b289c12601d985fc397c41e4be49349d0739c8063d01bbbbbeaf598f856f784",
+      "before_sha256": "1b289c12601d985fc397c41e4be49349d0739c8063d01bbbbbeaf598f856f784",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint8_vec3_access.adb": {
+      "after_sha256": "9b56e77eddee4ac4315ea534a9f7081337a7115dfe3fa15ca5cb68f5968e9f92",
+      "before_sha256": "9b56e77eddee4ac4315ea534a9f7081337a7115dfe3fa15ca5cb68f5968e9f92",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint8_vec3_access.ads": {
+      "after_sha256": "750bccb069325d648bc4fd2ff29619f057a4730b908302bc8bb8e33017bb945e",
+      "before_sha256": "750bccb069325d648bc4fd2ff29619f057a4730b908302bc8bb8e33017bb945e",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint8_vec4_access.adb": {
+      "after_sha256": "0f6aafe8e93580af196290f98ecd7a9afe8300020461ec20318e42ec05874cb5",
+      "before_sha256": "0f6aafe8e93580af196290f98ecd7a9afe8300020461ec20318e42ec05874cb5",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse-uint8_vec4_access.ads": {
+      "after_sha256": "6652d8aae30fd87ed5897312a93deda3c8d06a60319e56a419bdb58cb699bd2a",
+      "before_sha256": "6652d8aae30fd87ed5897312a93deda3c8d06a60319e56a419bdb58cb699bd2a",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse.adb": {
+      "after_sha256": "e5c6cb86b259b86624d7024771efa6ab5520755e81fdf6c344de87295a1f48c3",
+      "before_sha256": "e5c6cb86b259b86624d7024771efa6ab5520755e81fdf6c344de87295a1f48c3",
+      "classification": "identical"
+    },
+    "src/opencv-core-sparse.ads": {
+      "after_sha256": "b03caeca9b6c86fcd7805eb0d7500187dc388a43898b216d5b786992c332f28d",
+      "before_sha256": "b03caeca9b6c86fcd7805eb0d7500187dc388a43898b216d5b786992c332f28d",
+      "classification": "identical"
+    },
+    "src/opencv-core-transfers.adb": {
+      "after_sha256": "d2c88430518d6c4a42f38b1beb3729b5e888db83d297c55c0a0c650de4c7991e",
+      "before_sha256": "d2c88430518d6c4a42f38b1beb3729b5e888db83d297c55c0a0c650de4c7991e",
+      "classification": "identical"
+    },
+    "src/opencv-core-transfers.ads": {
+      "after_sha256": "cebd072eb328c4216d1cbb06ebef9cf52a56d28bdd32a0ea1d28eeaadcd03213",
+      "before_sha256": "cebd072eb328c4216d1cbb06ebef9cf52a56d28bdd32a0ea1d28eeaadcd03213",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_access.adb": {
+      "after_sha256": "f4beb567b39db5593b3fee751a7f311a9de4712b7a7c718f4e632364487f8a56",
+      "before_sha256": "f4beb567b39db5593b3fee751a7f311a9de4712b7a7c718f4e632364487f8a56",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_access.ads": {
+      "after_sha256": "1254f224faa18166aeefb9e0ee1b0fa8bbf1bbadafe3e40ac51e73e0ec274e58",
+      "before_sha256": "1254f224faa18166aeefb9e0ee1b0fa8bbf1bbadafe3e40ac51e73e0ec274e58",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_buffer_access.adb": {
+      "after_sha256": "4290f3b2018bd2a65caf94bd255c0b9b66a027c2989987f85b50082acca378f1",
+      "before_sha256": "4290f3b2018bd2a65caf94bd255c0b9b66a027c2989987f85b50082acca378f1",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_buffer_access.ads": {
+      "after_sha256": "610a342827a462f5862fae0030141ab6e1290f5491399c9e7c0daf40deddec3b",
+      "before_sha256": "610a342827a462f5862fae0030141ab6e1290f5491399c9e7c0daf40deddec3b",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_mat_view.adb": {
+      "after_sha256": "620d0e956019274ecf1c61a0fae38c9cbd321f48252efccb153d547843afa824",
+      "before_sha256": "620d0e956019274ecf1c61a0fae38c9cbd321f48252efccb153d547843afa824",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_mat_view.ads": {
+      "after_sha256": "8170b9591ed33e249fb9263939cb4346bb7cb8b4be6cccd7ce2c40e677833fd3",
+      "before_sha256": "8170b9591ed33e249fb9263939cb4346bb7cb8b4be6cccd7ce2c40e677833fd3",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_row_access.adb": {
+      "after_sha256": "8960c7248e6f7482a306fb5de89d1d76fde46fde4a256efcf31e87bbee34b92b",
+      "before_sha256": "8960c7248e6f7482a306fb5de89d1d76fde46fde4a256efcf31e87bbee34b92b",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_row_access.ads": {
+      "after_sha256": "f68ddc179ff47984a576ddb82b1fbbaa121bb533fb00e2633e26b571ee24f2ab",
+      "before_sha256": "f68ddc179ff47984a576ddb82b1fbbaa121bb533fb00e2633e26b571ee24f2ab",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2.ads": {
+      "after_sha256": "12f9171070651824d2f0617627f862e52d551181769ce616a6baa3c5c0611167",
+      "before_sha256": "12f9171070651824d2f0617627f862e52d551181769ce616a6baa3c5c0611167",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2_access.adb": {
+      "after_sha256": "22601e2eb41ada2053a08d2acc625e04583f844936469529831ae8f2004ec845",
+      "before_sha256": "22601e2eb41ada2053a08d2acc625e04583f844936469529831ae8f2004ec845",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2_access.ads": {
+      "after_sha256": "2dd77a8a6b6eb4b5dcc24b3432dd7602b89013402fda3f330a5424fd88ed1796",
+      "before_sha256": "2dd77a8a6b6eb4b5dcc24b3432dd7602b89013402fda3f330a5424fd88ed1796",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2_buffer_access.adb": {
+      "after_sha256": "ac5ac9c7f884c4fe9fce5044bf6b45e566b238ce57711434e16465fd702c20fa",
+      "before_sha256": "ac5ac9c7f884c4fe9fce5044bf6b45e566b238ce57711434e16465fd702c20fa",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2_buffer_access.ads": {
+      "after_sha256": "e3b3fb827ee93680d89319debeff639c7cbe9fd4404823cb23cefcdce88afe48",
+      "before_sha256": "e3b3fb827ee93680d89319debeff639c7cbe9fd4404823cb23cefcdce88afe48",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2_mat_view.adb": {
+      "after_sha256": "cd044be90e6390f6aecef23c0808306325aedd0272a3716f9c690708088b0151",
+      "before_sha256": "cd044be90e6390f6aecef23c0808306325aedd0272a3716f9c690708088b0151",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2_mat_view.ads": {
+      "after_sha256": "63bd5aed7ae91ac84806e36dcc6495d15641d835eccaa6024f8b42f763bda75a",
+      "before_sha256": "63bd5aed7ae91ac84806e36dcc6495d15641d835eccaa6024f8b42f763bda75a",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2_row_access.adb": {
+      "after_sha256": "1b659b90fb81298df4b58331fd40b6a7ffdcc0a44efc9c4b4ffdc34c2f02d801",
+      "before_sha256": "1b659b90fb81298df4b58331fd40b6a7ffdcc0a44efc9c4b4ffdc34c2f02d801",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec2_row_access.ads": {
+      "after_sha256": "ad235326af68b168357a788574ba71387e37cfe3e9a8b28699aae1fca1582bcf",
+      "before_sha256": "ad235326af68b168357a788574ba71387e37cfe3e9a8b28699aae1fca1582bcf",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3.ads": {
+      "after_sha256": "301fc7c528ce6faf9ef3c4b1cdd04a5e6df9842b18ada36e3ca64f1e43837bbf",
+      "before_sha256": "301fc7c528ce6faf9ef3c4b1cdd04a5e6df9842b18ada36e3ca64f1e43837bbf",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3_access.adb": {
+      "after_sha256": "853b398e499cba98eada8f7a2c0bd3da52d119aac2315e7bc76f6cdc83c4456a",
+      "before_sha256": "853b398e499cba98eada8f7a2c0bd3da52d119aac2315e7bc76f6cdc83c4456a",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3_access.ads": {
+      "after_sha256": "11c6c0ace13d8fc9fe19a4786adeef3e9c0044b0792cff0a6f6abd36e8fae443",
+      "before_sha256": "11c6c0ace13d8fc9fe19a4786adeef3e9c0044b0792cff0a6f6abd36e8fae443",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3_buffer_access.adb": {
+      "after_sha256": "25a20417935861b060dca921352450ab1ce4aa414f4b2f53c9ef59f7b58ec35f",
+      "before_sha256": "25a20417935861b060dca921352450ab1ce4aa414f4b2f53c9ef59f7b58ec35f",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3_buffer_access.ads": {
+      "after_sha256": "cdeb11168b359295c05248a120a0f497e8b48276b1e08c5ef87271c349daf24f",
+      "before_sha256": "cdeb11168b359295c05248a120a0f497e8b48276b1e08c5ef87271c349daf24f",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3_mat_view.adb": {
+      "after_sha256": "1ec8c4b321819aa9212774b402e9dd404a59814b8d4b613f2938eda8ec9eba65",
+      "before_sha256": "1ec8c4b321819aa9212774b402e9dd404a59814b8d4b613f2938eda8ec9eba65",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3_mat_view.ads": {
+      "after_sha256": "2c19d93c0bff8be849683613c8406fb49728874af8574b358ccc8f7261a8bd01",
+      "before_sha256": "2c19d93c0bff8be849683613c8406fb49728874af8574b358ccc8f7261a8bd01",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3_row_access.adb": {
+      "after_sha256": "db7a3cb974fadf38bbe20d7aa61c421789e92a6e8db9c326e5ecdafe4d9e2c38",
+      "before_sha256": "db7a3cb974fadf38bbe20d7aa61c421789e92a6e8db9c326e5ecdafe4d9e2c38",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec3_row_access.ads": {
+      "after_sha256": "52e682165640bda62bc94ee34d747f379e6f3d891fc86117e8d25241d18103e4",
+      "before_sha256": "52e682165640bda62bc94ee34d747f379e6f3d891fc86117e8d25241d18103e4",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4.ads": {
+      "after_sha256": "0562f7efd1ee3b1a18379390aabe6a83f2f4ffb0e1df2e0cb6c5d1e04c6644b3",
+      "before_sha256": "0562f7efd1ee3b1a18379390aabe6a83f2f4ffb0e1df2e0cb6c5d1e04c6644b3",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4_access.adb": {
+      "after_sha256": "dbedbe3f31d8d5720725e9c9ec7bfc802602c69ecb20c0e4e59e9dec7f4a5c40",
+      "before_sha256": "dbedbe3f31d8d5720725e9c9ec7bfc802602c69ecb20c0e4e59e9dec7f4a5c40",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4_access.ads": {
+      "after_sha256": "2be5527a725006eeeca3fc9ba0f32742eb41b4dd93d257228bef008d11951e6d",
+      "before_sha256": "2be5527a725006eeeca3fc9ba0f32742eb41b4dd93d257228bef008d11951e6d",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4_buffer_access.adb": {
+      "after_sha256": "b7fdfe33e606acc44a7fc08e597f45e33736cb221455e1ebf8c177b930f873df",
+      "before_sha256": "b7fdfe33e606acc44a7fc08e597f45e33736cb221455e1ebf8c177b930f873df",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4_buffer_access.ads": {
+      "after_sha256": "ea07ab6670fe7e5f2d2e1bb55420644b08b3a422f5ed672d12090cd739cad251",
+      "before_sha256": "ea07ab6670fe7e5f2d2e1bb55420644b08b3a422f5ed672d12090cd739cad251",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4_mat_view.adb": {
+      "after_sha256": "cc1fe35117c9d383b549666709975ccbdbc88970b04de02b7d9c1672a3830676",
+      "before_sha256": "cc1fe35117c9d383b549666709975ccbdbc88970b04de02b7d9c1672a3830676",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4_mat_view.ads": {
+      "after_sha256": "7d280a3c489d68abdb52bf10df5441647eb6ff1f9bea918ee18dc7d76ce1acd4",
+      "before_sha256": "7d280a3c489d68abdb52bf10df5441647eb6ff1f9bea918ee18dc7d76ce1acd4",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4_row_access.adb": {
+      "after_sha256": "f2eca2263bfbf553507cb830ec16c41dc58ee79b3e33b3ed74f2ad892f732af4",
+      "before_sha256": "f2eca2263bfbf553507cb830ec16c41dc58ee79b3e33b3ed74f2ad892f732af4",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint16_vec4_row_access.ads": {
+      "after_sha256": "169cfcd231a62daefb23682b7a45a312fa6e905a528eefc79a34c33cbce3b3df",
+      "before_sha256": "169cfcd231a62daefb23682b7a45a312fa6e905a528eefc79a34c33cbce3b3df",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_access.adb": {
+      "after_sha256": "9d1df7ce436cdf8c5006e526353d623bec2a3d90c28e60b263ebaa2f6b60b9e1",
+      "before_sha256": "9d1df7ce436cdf8c5006e526353d623bec2a3d90c28e60b263ebaa2f6b60b9e1",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_access.ads": {
+      "after_sha256": "72ccce8e564f4679848bd91e0ea060073875ccc5cf3228469d33549c24c78e18",
+      "before_sha256": "72ccce8e564f4679848bd91e0ea060073875ccc5cf3228469d33549c24c78e18",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_buffer_access.adb": {
+      "after_sha256": "a898dde9a38965810016a8a634588bccb634395c55706531ae5a3cf88f0a36c0",
+      "before_sha256": "a898dde9a38965810016a8a634588bccb634395c55706531ae5a3cf88f0a36c0",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_buffer_access.ads": {
+      "after_sha256": "cd82306173966ab5eb0f383e32a210655cc8a34d16c0a23ca4b874dcc8fa7f6e",
+      "before_sha256": "cd82306173966ab5eb0f383e32a210655cc8a34d16c0a23ca4b874dcc8fa7f6e",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_mat_view.adb": {
+      "after_sha256": "a826341d57847dbf0b7ac779abcfe37123f9167838614ff91cca9982e6649d3a",
+      "before_sha256": "a826341d57847dbf0b7ac779abcfe37123f9167838614ff91cca9982e6649d3a",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_mat_view.ads": {
+      "after_sha256": "42e040f93256716b37372913ae11c5400cde695960d7a82d9bbd1376e5b631e3",
+      "before_sha256": "42e040f93256716b37372913ae11c5400cde695960d7a82d9bbd1376e5b631e3",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_row_access.adb": {
+      "after_sha256": "a29aaffbb7d4ff7ed010d9a856556eaf7e2d2546be552cfa2e1675fec059ddb7",
+      "before_sha256": "a29aaffbb7d4ff7ed010d9a856556eaf7e2d2546be552cfa2e1675fec059ddb7",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_row_access.ads": {
+      "after_sha256": "2ced9b4395dc5c773b6dc3ed50ab4ab11f00549850d95c900d18af037802e953",
+      "before_sha256": "2ced9b4395dc5c773b6dc3ed50ab4ab11f00549850d95c900d18af037802e953",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2.ads": {
+      "after_sha256": "413e33aaf2664485aca68c84509e7fde15b5cee54a59265581491e4eff485778",
+      "before_sha256": "413e33aaf2664485aca68c84509e7fde15b5cee54a59265581491e4eff485778",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2_access.adb": {
+      "after_sha256": "2f2da0f0753fb1c701cd7c2bfac32ccbb4db50d1d8823d649d8fa7f87333b509",
+      "before_sha256": "2f2da0f0753fb1c701cd7c2bfac32ccbb4db50d1d8823d649d8fa7f87333b509",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2_access.ads": {
+      "after_sha256": "9b9957979f86b5821dbfcd2e98d2e3370059050f9a7f4d5dea13919a6b065a50",
+      "before_sha256": "9b9957979f86b5821dbfcd2e98d2e3370059050f9a7f4d5dea13919a6b065a50",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2_buffer_access.adb": {
+      "after_sha256": "b6baf83912c0cccbdb12abd8960bc4f9ae937dc339cc94ab78de9cfb9166d60b",
+      "before_sha256": "b6baf83912c0cccbdb12abd8960bc4f9ae937dc339cc94ab78de9cfb9166d60b",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2_buffer_access.ads": {
+      "after_sha256": "8f97dfec65804e19ac40c523b88c5d007c6e5c0ffd8cf342883e95747e4ca991",
+      "before_sha256": "8f97dfec65804e19ac40c523b88c5d007c6e5c0ffd8cf342883e95747e4ca991",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2_mat_view.adb": {
+      "after_sha256": "2e6552c34af8d829a5ec46ea2e58d87193ed4b7d58baca3eab832239c6719f5e",
+      "before_sha256": "2e6552c34af8d829a5ec46ea2e58d87193ed4b7d58baca3eab832239c6719f5e",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2_mat_view.ads": {
+      "after_sha256": "cca5379b77c6d6ad3b3ef28822599727ea9fd33f9d6c113bc3752cf4c8d1b490",
+      "before_sha256": "cca5379b77c6d6ad3b3ef28822599727ea9fd33f9d6c113bc3752cf4c8d1b490",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2_row_access.adb": {
+      "after_sha256": "d764e1ec82729ecabce67822e621f479b5b1d90ed49972f4137c233d9b3833de",
+      "before_sha256": "d764e1ec82729ecabce67822e621f479b5b1d90ed49972f4137c233d9b3833de",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec2_row_access.ads": {
+      "after_sha256": "84669671fb5d7f10c2dba9cc145b364fa45cbb1298cc91ec19252d4bd89d2e48",
+      "before_sha256": "84669671fb5d7f10c2dba9cc145b364fa45cbb1298cc91ec19252d4bd89d2e48",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3.ads": {
+      "after_sha256": "b809d9b6597a94ba43608d3629db918157af8a342f2d9685a6a1bf25b241c58c",
+      "before_sha256": "b809d9b6597a94ba43608d3629db918157af8a342f2d9685a6a1bf25b241c58c",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3_access.adb": {
+      "after_sha256": "b0cc970f38e4442b4acd5439f764c7e22a34a9aabd16de99a13d631668533fd5",
+      "before_sha256": "b0cc970f38e4442b4acd5439f764c7e22a34a9aabd16de99a13d631668533fd5",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3_access.ads": {
+      "after_sha256": "8f95ffc294df8da1826071b882bbd72357eed5390f48194a5607005f739342ff",
+      "before_sha256": "8f95ffc294df8da1826071b882bbd72357eed5390f48194a5607005f739342ff",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3_buffer_access.adb": {
+      "after_sha256": "08014835cac8168013855c6b1628de7f57f7980ac0bcd96d50cb8ab08e60419a",
+      "before_sha256": "08014835cac8168013855c6b1628de7f57f7980ac0bcd96d50cb8ab08e60419a",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3_buffer_access.ads": {
+      "after_sha256": "f4fc3c543a38c5333d491588132c331946a2ad2ac79a53fb68c036dbd656e956",
+      "before_sha256": "f4fc3c543a38c5333d491588132c331946a2ad2ac79a53fb68c036dbd656e956",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3_mat_view.adb": {
+      "after_sha256": "5805ba763796d1d02a7281e10df302f37e21139a22e814b0a724d47a07d579ef",
+      "before_sha256": "5805ba763796d1d02a7281e10df302f37e21139a22e814b0a724d47a07d579ef",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3_mat_view.ads": {
+      "after_sha256": "24d91542d498aeb7f468d4de072491b5ee833fe078c0dd69e3bff07319814b9d",
+      "before_sha256": "24d91542d498aeb7f468d4de072491b5ee833fe078c0dd69e3bff07319814b9d",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3_row_access.adb": {
+      "after_sha256": "e3c9f5d0830097bac759a8ae0882b11a09e5f1d0b826ef40d37e74b143b55f99",
+      "before_sha256": "e3c9f5d0830097bac759a8ae0882b11a09e5f1d0b826ef40d37e74b143b55f99",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec3_row_access.ads": {
+      "after_sha256": "0d70ebf424f9f13644ed0e577fd0340d53c7c2a46b2912cf4ee753d9a7e15308",
+      "before_sha256": "0d70ebf424f9f13644ed0e577fd0340d53c7c2a46b2912cf4ee753d9a7e15308",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4.ads": {
+      "after_sha256": "06ef0df4e6159a67179f746728e07b628cc8d05651e4d42740e6ccde52e64553",
+      "before_sha256": "06ef0df4e6159a67179f746728e07b628cc8d05651e4d42740e6ccde52e64553",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4_access.adb": {
+      "after_sha256": "4a0f8bbea30df4771eed3134754b994ab70e0c1e777efceff98cfd337eb1dd8e",
+      "before_sha256": "4a0f8bbea30df4771eed3134754b994ab70e0c1e777efceff98cfd337eb1dd8e",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4_access.ads": {
+      "after_sha256": "f3338e9ea5b5e9a5b7b719de4c479c519ec27633bd1a0dca244e19eaf2e6bd1d",
+      "before_sha256": "f3338e9ea5b5e9a5b7b719de4c479c519ec27633bd1a0dca244e19eaf2e6bd1d",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4_buffer_access.adb": {
+      "after_sha256": "36d56de438419cdc820b34081716fba23d30e35863a8eae4dc973692af7225a4",
+      "before_sha256": "36d56de438419cdc820b34081716fba23d30e35863a8eae4dc973692af7225a4",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4_buffer_access.ads": {
+      "after_sha256": "ea94420e5e8e77a7a4c3df77ba727eec390bcc248d95a1b1324ceee99f1ddc89",
+      "before_sha256": "ea94420e5e8e77a7a4c3df77ba727eec390bcc248d95a1b1324ceee99f1ddc89",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4_mat_view.adb": {
+      "after_sha256": "97f3203986a47c75f2834493c0d409db6377021866c56e2b22d3d2a223010640",
+      "before_sha256": "97f3203986a47c75f2834493c0d409db6377021866c56e2b22d3d2a223010640",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4_mat_view.ads": {
+      "after_sha256": "e217044c7011b148894d9367dc0e19907c6fd3b37141781c678186bfd8b95659",
+      "before_sha256": "e217044c7011b148894d9367dc0e19907c6fd3b37141781c678186bfd8b95659",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4_row_access.adb": {
+      "after_sha256": "ab6ee555f80fc794cb6597514dbf3ee9af9ed027fdbd1888dd75f211a10be8ee",
+      "before_sha256": "ab6ee555f80fc794cb6597514dbf3ee9af9ed027fdbd1888dd75f211a10be8ee",
+      "classification": "identical"
+    },
+    "src/opencv-core-uint8_vec4_row_access.ads": {
+      "after_sha256": "3f4342e51a5e70a63b50e7abe2454f3a5e8afedc8d28031ae5222b46e2da0673",
+      "before_sha256": "3f4342e51a5e70a63b50e7abe2454f3a5e8afedc8d28031ae5222b46e2da0673",
+      "classification": "identical"
+    },
+    "src/opencv-core-vectors.ads": {
+      "after_sha256": "e073bc727bcafe9d20de4f5e84b67bb137f75ecebe577828324cf8f817858c75",
+      "before_sha256": "e073bc727bcafe9d20de4f5e84b67bb137f75ecebe577828324cf8f817858c75",
+      "classification": "identical"
+    },
+    "src/opencv-core.adb": {
+      "after_sha256": "c0ab8f368f3b7d827483f392a4ce8bd34708c6d6952e795e5ffdbe2e983172cc",
+      "before_sha256": "e2e53158032ffeb554db7bf212c8a6f4957eec730f4e962ed86517ac527ffa88",
+      "classification": "changed",
+      "unified_diff": "--- f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f/src/opencv-core.adb\n+++ aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d/src/opencv-core.adb\n@@ -746,6 +746,252 @@\n             \"Mat compare requires operands with identical depths\");\n       end if;\n    end Validate_Compare_Compatibility;\n+\n+   procedure Validate_Scalar_Source (Self : Mat; Comparison : Boolean) is\n+   begin\n+      if Self.Is_Empty or else Self.Dimension_Count /= 2 then\n+         raise OpenCV_Error with \"scalar modes require nonempty 2-D Mat\";\n+      end if;\n+      if Self.Depth = Float16\n+        or else Self.Channels > (if Comparison then 1 else 4)\n+      then\n+         raise OpenCV_Error with \"unsupported scalar depth or channel count\";\n+      end if;\n+   end Validate_Scalar_Source;\n+\n+   procedure Validate_Scalar_Value\n+     (Self : Mat; Value : Scalar; Operation : Integer)\n+   is\n+      pragma Suppress (Validity_Check);\n+      Components : constant array (Natural range 0 .. 3) of Long_Float :=\n+        (Value.Component_0,\n+         Value.Component_1,\n+         Value.Component_2,\n+         Value.Component_3);\n+   begin\n+      for Channel in 0 .. Natural (Self.Channels) - 1 loop\n+         if Self.Depth not in Float32 | Float64 then\n+            if Operation = 3 and then Components (Channel) = 0.0 then\n+               raise OpenCV_Error\n+                 with \"integer scalar division requires nonzero denominators\";\n+            elsif Operation = 5 then\n+               declare\n+                  Plane : constant Mat := Self.Extract_Channel (Channel);\n+                  Zeros : constant Mat := Compare (Plane, 0.0, Equal);\n+               begin\n+                  --  Norm avoids a potentially overflowing element count and\n+                  --  visits logical pixels, including every strided ROI row.\n+                  if Zeros.Norm (Infinity) /= 0.0 then\n+                     raise OpenCV_Error\n+                       with\n+                         \"integer reverse scalar division requires nonzero Mat\"\n+                         & \" denominator components\";\n+                  end if;\n+               end;\n+            end if;\n+         end if;\n+         if (Operation = 0\n+             or else Operation = 1\n+             or else Operation = 4\n+             or else Self.Depth not in Float32 | Float64)\n+           and then (Components (Channel) /= Components (Channel)\n+                     or else abs Components (Channel) > Long_Float'Last)\n+         then\n+            raise OpenCV_Error with \"scalar coefficients must be finite\";\n+         end if;\n+         --  Legacy actualScalarDepth invokes cvRound before type selection.\n+         --  Integer results also enter native signed-32 conversion paths.\n+         if (Operation = 0\n+             or else Operation = 1\n+             or else Operation = 4\n+             or else Self.Depth not in Float32 | Float64)\n+           and then abs Components (Channel) > 2_147_483_647.0\n+         then\n+            raise OpenCV_Error with \"scalar exceeds safe native conversion\";\n+         end if;\n+      end loop;\n+   end Validate_Scalar_Value;\n+\n+   procedure Validate_Scalar_Destination\n+     (Self : Mat; Destination : Mat; Comparison : Boolean)\n+   is\n+      Relation : aliased OpenCV.Internal.C_API.C_Int32 := 0;\n+   begin\n+      if Destination.Temporary_View then\n+         raise OpenCV_Error with \"temporary Mat cannot be a destination\";\n+      end if;\n+      Raise_On_Error\n+        (OpenCV.Internal.C_API.Mat_Storage_Relation\n+           (Self.Handle, Destination.Handle, Relation'Access),\n+         \"scalar storage relation\");\n+      if Relation = 2\n+        or else (Relation = 1 and then Comparison and then Self.Depth /= UInt8)\n+      then\n+         raise OpenCV_Error with \"unsupported scalar source/output overlap\";\n+      end if;\n+   end Validate_Scalar_Destination;\n+\n+   function Scalar_Arithmetic\n+     (Self : Mat; Value : Scalar; Operation : Integer) return Mat\n+   is\n+      pragma Suppress (Validity_Check);\n+      Result : Mat;\n+      Native : aliased OpenCV.Internal.C_API.Scalar;\n+      Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=\n+        OpenCV.Internal.C_API.Null_Mat_Handle;\n+   begin\n+      Validate_Scalar_Source (Self, False);\n+      Validate_Scalar_Value (Self, Value, Operation);\n+      Native :=\n+        (Component_0 => Interfaces.C.double (Value.Component_0),\n+         Component_1 => Interfaces.C.double (Value.Component_1),\n+         Component_2 => Interfaces.C.double (Value.Component_2),\n+         Component_3 => Interfaces.C.double (Value.Component_3));\n+      Raise_On_Error\n+        (OpenCV.Internal.C_API.Mat_Scalar_Arithmetic\n+           (Self.Handle,\n+            Native'Access,\n+            OpenCV.Internal.C_API.C_Int32 (Operation),\n+            Handle'Access),\n+         \"Mat scalar arithmetic\");\n+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);\n+      Result.Handle := Handle;\n+      return Result;\n+   end Scalar_Arithmetic;\n+\n+   procedure Scalar_Arithmetic\n+     (Self        : Mat;\n+      Value       : Scalar;\n+      Operation   : Integer;\n+      Destination : in out Mat)\n+   is\n+      pragma Suppress (Validity_Check);\n+      Native : aliased OpenCV.Internal.C_API.Scalar;\n+   begin\n+      Validate_Scalar_Source (Self, False);\n+      Validate_Scalar_Value (Self, Value, Operation);\n+      Validate_Scalar_Destination (Self, Destination, False);\n+      Native :=\n+        (Component_0 => Interfaces.C.double (Value.Component_0),\n+         Component_1 => Interfaces.C.double (Value.Component_1),\n+         Component_2 => Interfaces.C.double (Value.Component_2),\n+         Component_3 => Interfaces.C.double (Value.Component_3));\n+      Raise_On_Error\n+        (OpenCV.Internal.C_API.Mat_Scalar_Arithmetic_Into\n+           (Self.Handle,\n+            Native'Access,\n+            OpenCV.Internal.C_API.C_Int32 (Operation),\n+            Destination.Handle),\n+         \"Mat destination scalar arithmetic\");\n+   end Scalar_Arithmetic;\n+\n+   function Add (Self : Mat; Value : Scalar) return Mat is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      return Scalar_Arithmetic (Self, Value, 0);\n+   end Add;\n+\n+   procedure Add (Self : Mat; Value : Scalar; Destination : in out Mat) is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      Scalar_Arithmetic (Self, Value, 0, Destination);\n+   end Add;\n+\n+   function Subtract (Self : Mat; Value : Scalar) return Mat is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      return Scalar_Arithmetic (Self, Value, 1);\n+   end Subtract;\n+\n+   procedure Subtract (Self : Mat; Value : Scalar; Destination : in out Mat) is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      Scalar_Arithmetic (Self, Value, 1, Destination);\n+   end Subtract;\n+\n+   function Multiply (Self : Mat; Value : Scalar) return Mat is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      return Scalar_Arithmetic (Self, Value, 2);\n+   end Multiply;\n+\n+   procedure Multiply (Self : Mat; Value : Scalar; Destination : in out Mat) is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      Scalar_Arithmetic (Self, Value, 2, Destination);\n+   end Multiply;\n+\n+   function Divide (Self : Mat; Value : Scalar) return Mat is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      return Scalar_Arithmetic (Self, Value, 3);\n+   end Divide;\n+\n+   procedure Divide (Self : Mat; Value : Scalar; Destination : in out Mat) is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      Scalar_Arithmetic (Self, Value, 3, Destination);\n+   end Divide;\n+\n+   function Subtract_From (Value : Scalar; Self : Mat) return Mat is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      return Scalar_Arithmetic (Self, Value, 4);\n+   end Subtract_From;\n+\n+   procedure Subtract_From\n+     (Value : Scalar; Self : Mat; Destination : in out Mat)\n+   is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      Scalar_Arithmetic (Self, Value, 4, Destination);\n+   end Subtract_From;\n+\n+   function Divide_Into (Value : Scalar; Self : Mat) return Mat is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      return Scalar_Arithmetic (Self, Value, 5);\n+   end Divide_Into;\n+\n+   procedure Divide_Into (Value : Scalar; Self : Mat; Destination : in out Mat)\n+   is\n+      pragma Suppress (Validity_Check);\n+   begin\n+      Scalar_Arithmetic (Self, Value, 5, Destination);\n+   end Divide_Into;\n+\n+   function Compare\n+     (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind) return Mat\n+   is\n+      pragma Suppress (Validity_Check);\n+      Result : Mat;\n+   begin\n+      Compare (Self, Value, Kind, Result);\n+      return Result;\n+   end Compare;\n+\n+   procedure Compare\n+     (Self        : Mat;\n+      Value       : Float64_Value;\n+      Kind        : Comparison_Kind;\n+      Destination : in out Mat)\n+   is\n+      pragma Suppress (Validity_Check);\n+      use type Float64_Value;\n+   begin\n+      Validate_Scalar_Source (Self, True);\n+      if Value /= Value or else abs Value > Float64_Value'Last then\n+         raise OpenCV_Error with \"comparison scalar must be finite\";\n+      end if;\n+      Validate_Scalar_Destination (Self, Destination, True);\n+      Raise_On_Error\n+        (OpenCV.Internal.C_API.Mat_Compare_Scalar_Into\n+           (Self.Handle,\n+            Interfaces.C.double (Value),\n+            To_C_Comparison_Kind (Kind),\n+            Destination.Handle),\n+         \"Mat scalar comparison\");\n+   end Compare;\n \n    function Add (Left, Right : Mat) return Mat is\n       Result     : Mat;\n"
+    },
+    "src/opencv-core.ads": {
+      "after_sha256": "b24f17c516ab1f05770d587f15b99477e2d1b0117b9ce9d0f70bb1f10c896fc1",
+      "before_sha256": "36db8dc5d1d4e70e7139dd03cda2703547b80ce56c8b0ff18500fb66ee58fa4d",
+      "classification": "changed",
+      "unified_diff": "--- f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f/src/opencv-core.ads\n+++ aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d/src/opencv-core.ads\n@@ -2306,6 +2306,147 @@\n       Alpha       : Long_Float := 1.0;\n       Beta        : Long_Float := 0.0);\n \n+   --  Adds channel-ordered Value to Self using native scalar arithmetic.\n+   --  Requires nonempty exactly 2-D C1..C4 storage, UInt8, Int8, UInt16,\n+   --  Int16, Int32, Float32 or Float64. Float16 is rejected. Scalar components\n+   --  are not repeated: Make_Scalar (5.0) leaves channels 1..3 zero.\n+   --  Native work-depth conversion, rounding and saturation apply;\n+   --  Int32 overflow is not portable mathematical arithmetic. Coefficients\n+   --  must be finite; see the operations guide for conversion limits.\n+   --  @param Self Source Mat, including a valid strided Region or scoped view.\n+   --  @param Value Component 0 applies to channel 0, and so on.\n+   --  @return Independently owned Mat with Self's shape and element type.\n+   --  @exception OpenCV_Error Raised for unsupported input or native failure.\n+   function Add (Self : Mat; Value : Scalar) return Mat;\n+\n+   --  Writes Self + Value into the actual caller-owned Destination. Compatible\n+   --  Region storage is reused; mismatches detach, retaining old aliases.\n+   --  Exact and same-layout shallow aliases are supported. Other possibly\n+   --  overlapping byte spans are rejected conservatively before mutation.\n+   --  Temporary external/selected outputs are rejected; scoped inputs\n+   --  are allowed. Preflight failures preserve Destination, but arbitrary\n+   --  native failures do not promise rollback. Input rules match scalar Add.\n+   --  @param Self Source Mat.\n+   --  @param Value Channel-ordered scalar, not implicitly repeated.\n+   --  @param Destination Caller-owned Mat receiving Self + Value.\n+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.\n+   procedure Add (Self : Mat; Value : Scalar; Destination : in out Mat);\n+\n+   --  Returns Self - Value with the input and numerical rules of scalar Add.\n+   --  @param Self Source Mat.\n+   --  @param Value Channel-ordered subtrahend.\n+   --  @return Independent Mat preserving Self's shape and type.\n+   --  @exception OpenCV_Error Raised for unsupported input or native failure.\n+   function Subtract (Self : Mat; Value : Scalar) return Mat;\n+\n+   --  Writes Self - Value under scalar Add's destination/alias rules.\n+   --  @param Self Source Mat.\n+   --  @param Value Channel-ordered subtrahend.\n+   --  @param Destination Caller-owned Mat receiving Self - Value.\n+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.\n+   procedure Subtract (Self : Mat; Value : Scalar; Destination : in out Mat);\n+\n+   --  Returns Self * Value; input/ownership rules match scalar Add.\n+   --  Native multiplication uses its own working-depth conversion, not scalar\n+   --  pre-rounding to Self's type. Floating multiply/divide permit nonfinite\n+   --  coefficients; integer coefficients must be finite and within Int32 max.\n+   --  @param Self Source Mat.\n+   --  @param Value Channel-ordered factors.\n+   --  @return Independent Mat preserving Self's shape and type.\n+   --  @exception OpenCV_Error Raised for unsupported input or native failure.\n+   function Multiply (Self : Mat; Value : Scalar) return Mat;\n+\n+   --  Writes Self * Value under scalar Add's destination/alias rules.\n+   --  @param Self Source Mat.\n+   --  @param Value Channel-ordered factors.\n+   --  @param Destination Caller-owned Mat receiving the products.\n+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.\n+   procedure Multiply (Self : Mat; Value : Scalar; Destination : in out Mat);\n+\n+   --  Returns Self / Value, channel by channel. Input rules match scalar Add.\n+   --  For all five integer depths, every active scalar denominator must be\n+   --  nonzero; otherwise OpenCV_Error is raised before native execution,\n+   --  preserving source and destination storage. Floating zeros and\n+   --  nonfinite source values retain native version/backend behavior; no NaN\n+   --  payload, signed-zero or cross-version bit guarantee is made.\n+   --  @param Self Source numerator Mat.\n+   --  @param Value Channel-ordered denominators; nonzero for integer results.\n+   --  @return Independent Mat preserving Self's shape and type.\n+   --  @exception OpenCV_Error Raised for unsupported input or native failure.\n+   function Divide (Self : Mat; Value : Scalar) return Mat;\n+\n+   --  Writes Self / Value under scalar Add's destination/alias rules.\n+   --  Integer zero denominators are rejected before any destination mutation.\n+   --  @param Self Source numerator Mat.\n+   --  @param Value Channel-ordered denominators.\n+   --  @param Destination Caller-owned Mat receiving the quotients.\n+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.\n+   procedure Divide (Self : Mat; Value : Scalar; Destination : in out Mat);\n+\n+   --  Reverse subtraction: returns Value - Self, not Self - Value.\n+   --  Input, numeric and ownership rules match scalar Add.\n+   --  @param Value Channel-ordered minuend.\n+   --  @param Self Source subtrahend Mat.\n+   --  @return Independent Mat preserving Self's shape and type.\n+   --  @exception OpenCV_Error Raised for unsupported input or native failure.\n+   function Subtract_From (Value : Scalar; Self : Mat) return Mat;\n+\n+   --  Writes Value - Self under scalar Add's destination/alias rules.\n+   --  @param Value Channel-ordered minuend.\n+   --  @param Self Source subtrahend Mat.\n+   --  @param Destination Caller-owned Mat receiving Value - Self.\n+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.\n+   procedure Subtract_From\n+     (Value : Scalar; Self : Mat; Destination : in out Mat);\n+\n+   --  Reverse division: returns Value / Self, not Self / Value.\n+   --  Input/ownership rules match scalar Add. For all five integer depths,\n+   --  any zero denominator component anywhere in Self raises OpenCV_Error\n+   --  before native execution. Every channel and logical Region row is\n+   --  inspected; rejection preserves source and destination storage.\n+   --  Floating zero/nonfinite behavior follows native Divide.\n+   --  @param Value Channel-ordered numerators.\n+   --  @param Self Source denominator Mat.\n+   --  @return Independent Mat preserving Self's shape and type.\n+   --  @exception OpenCV_Error Raised for unsupported input or native failure.\n+   function Divide_Into (Value : Scalar; Self : Mat) return Mat;\n+\n+   --  Writes Value / Self under scalar Add's destination/alias rules.\n+   --  Integer zero Mat components are rejected before destination mutation.\n+   --  @param Value Channel-ordered numerators.\n+   --  @param Self Source denominator Mat.\n+   --  @param Destination Caller-owned Mat receiving Value / Self.\n+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.\n+   procedure Divide_Into\n+     (Value : Scalar; Self : Mat; Destination : in out Mat);\n+\n+   --  Compares Self relation Value without narrowing Value to Self's depth.\n+   --  Requires nonempty exactly 2-D C1, one of the seven scalar Add depths.\n+   --  Fractional and out-of-integer-range finite values retain native compare\n+   --  behavior. Value must be finite. Nonfinite source pixels remain native.\n+   --  @param Self Single-channel source Mat.\n+   --  @param Value Finite Float64 comparison value.\n+   --  @param Kind Relation read as Self relation Value.\n+   --  @return Independent UInt8 C1 Mat containing only zero or 255.\n+   --  @exception OpenCV_Error Raised for unsupported input or native failure.\n+   function Compare\n+     (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind) return Mat;\n+\n+   --  Writes the scalar comparison mask into the actual Destination.\n+   --  Reuse/detachment/temporary rules match scalar Add. Overlapping inputs\n+   --  are allowed only for identical-layout UInt8 C1 source/destination;\n+   --  other overlap, including depth-changing exact alias, is rejected.\n+   --  @param Self Single-channel source Mat.\n+   --  @param Value Finite Float64 comparison value, not prematurely narrowed.\n+   --  @param Kind Relation read as Self relation Value.\n+   --  @param Destination Caller-owned Mat receiving the UInt8 C1 mask.\n+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.\n+   procedure Compare\n+     (Self        : Mat;\n+      Value       : Float64_Value;\n+      Kind        : Comparison_Kind;\n+      Destination : in out Mat);\n+\n    --  Adds corresponding elements of two Mats. Both operands must have\n    --  identical 2-D shape and element type. The result owns independent\n    --  storage and preserves that element type; saturation and overflow\n"
+    },
+    "src/opencv.ads": {
+      "after_sha256": "2ebf97ba3b08e88cef529f77e78cf896cab17fa24b7a6f3363db33016b58d076",
+      "before_sha256": "2ebf97ba3b08e88cef529f77e78cf896cab17fa24b7a6f3363db33016b58d076",
+      "classification": "identical"
+    }
+  },
+  "public_declaration_changes": {
+    "src/opencv-core.ads": {
+      "added_complete_signatures": [
+        "function Add (Self : Mat; Value : Scalar) return Mat;",
+        "procedure Add (Self : Mat; Value : Scalar; Destination : in out Mat);",
+        "function Subtract (Self : Mat; Value : Scalar) return Mat;",
+        "procedure Subtract (Self : Mat; Value : Scalar; Destination : in out Mat);",
+        "function Multiply (Self : Mat; Value : Scalar) return Mat;",
+        "procedure Multiply (Self : Mat; Value : Scalar; Destination : in out Mat);",
+        "function Divide (Self : Mat; Value : Scalar) return Mat;",
+        "procedure Divide (Self : Mat; Value : Scalar; Destination : in out Mat);",
+        "function Subtract_From (Value : Scalar; Self : Mat) return Mat;",
+        "procedure Subtract_From (Value : Scalar; Self : Mat; Destination : in out Mat);",
+        "function Divide_Into (Value : Scalar; Self : Mat) return Mat;",
+        "procedure Divide_Into (Value : Scalar; Self : Mat; Destination : in out Mat);",
+        "function Compare (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind) return Mat;",
+        "procedure Compare (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind; Destination : in out Mat);"
+      ],
+      "existing_public_profiles_preserved": true,
+      "removed_signatures": []
+    }
+  }
+}

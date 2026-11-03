@@ -1,0 +1,8 @@
+PASS API 1280px light JS=true
+PASS API 1280px light JS=false
+PASS API 1280px dark JS=true
+PASS API 1280px dark JS=false
+PASS API 390px light JS=true
+PASS API 390px light JS=false
+PASS API 390px dark JS=true
+PASS API 390px dark JS=false

@@ -1,0 +1,725 @@
+﻿2026-10-22T00:51:36.0889693Z Current runner version: '2.338.0'
+2026-10-22T00:51:36.0916807Z ##[group]Runner Image Provisioner
+2026-10-22T00:51:36.0917706Z Hosted Compute Agent
+2026-10-22T00:51:36.0918261Z Version: 20261015.610
+2026-10-22T00:51:36.0918878Z Commit: 267fdb4e8bbec4ab5ea31367f3a00d5c480c7656
+2026-10-22T00:51:36.0919687Z Build Date: 2026-10-14T17:06:54Z
+2026-10-22T00:51:36.0920371Z Worker ID: {e7b07068-090d-4a89-932a-e73fad6f9d24}
+2026-10-22T00:51:36.0921561Z Region: westus
+2026-10-22T00:51:36.0922093Z Cloud: Azure
+2026-10-22T00:51:36.0922595Z ##[endgroup]
+2026-10-22T00:51:36.0924061Z ##[group]Operating System
+2026-10-22T00:51:36.0924721Z Microsoft Windows Server 2025
+2026-10-22T00:51:36.0925367Z 10.0.26100
+2026-10-22T00:51:36.0925890Z Datacenter
+2026-10-22T00:51:36.0926376Z ##[endgroup]
+2026-10-22T00:51:36.0926912Z ##[group]Runner Image
+2026-10-22T00:51:36.0927500Z Image: windows-2025-vs2026
+2026-10-22T00:51:36.0928082Z Version: 20261018.275.1
+2026-10-22T00:51:36.0929747Z Included Software: https://github.com/actions/runner-images/blob/win25-vs2026/20261018.275/images/windows/Windows2025-VS2026-Readme.md
+2026-10-22T00:51:36.0931389Z Image Release: https://github.com/actions/runner-images/releases/tag/win25-vs2026%2F20261018.275
+2026-10-22T00:51:36.0932355Z ##[endgroup]
+2026-10-22T00:51:36.0933543Z ##[group]GITHUB_TOKEN Permissions
+2026-10-22T00:51:36.0935457Z Contents: read
+2026-10-22T00:51:36.0936284Z Metadata: read
+2026-10-22T00:51:36.0936877Z Packages: read
+2026-10-22T00:51:36.0937392Z ##[endgroup]
+2026-10-22T00:51:36.0939600Z Secret source: Actions
+2026-10-22T00:51:36.0940531Z Cache mode: write
+2026-10-22T00:51:36.0941851Z Prepare workflow directory
+2026-10-22T00:51:36.1427824Z Prepare all required actions
+2026-10-22T00:51:36.1477777Z Getting action download info
+2026-10-22T00:51:36.4831097Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-22T00:51:36.6199232Z Download action repository 'alire-project/setup-alire@latest' (SHA:1ff7d9224297858cc9ecce29b08bc6109f93e49a)
+2026-10-22T00:51:38.5442992Z Getting action download info
+2026-10-22T00:51:38.6927936Z Download action repository 'actions/cache@v5' (SHA:caa296126883cff596d87d8935842f9db880ef25)
+2026-10-22T00:51:38.8433544Z Download action repository 'actions/setup-node@v6' (SHA:249970729cb0ef3589644e2896645e5dc5ba9c38)
+2026-10-22T00:51:39.0135689Z Download action repository 'mosteo-actions/alr-arch-checker@v1' (SHA:12024fa5eb43b47602bbb56eadb333b09b062459)
+2026-10-22T00:51:39.2826690Z Complete job name: Windows x86_64 (MSYS2)
+2026-10-22T00:51:39.4348606Z ##[group]Run actions/checkout@v4
+2026-10-22T00:51:39.4349520Z with:
+2026-10-22T00:51:39.4349874Z   ref: 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:51:39.4350265Z   path: imgproc
+2026-10-22T00:51:39.4350575Z   repository: zackboll/opencv_imgproc_ada
+2026-10-22T00:51:39.4353707Z   token: ***
+2026-10-22T00:51:39.4353999Z   ssh-strict: true
+2026-10-22T00:51:39.4354283Z   ssh-user: git
+2026-10-22T00:51:39.4354577Z   persist-credentials: true
+2026-10-22T00:51:39.4354949Z   clean: true
+2026-10-22T00:51:39.4355260Z   sparse-checkout-cone-mode: true
+2026-10-22T00:51:39.4355596Z   fetch-depth: 1
+2026-10-22T00:51:39.4355873Z   fetch-tags: false
+2026-10-22T00:51:39.4356159Z   show-progress: true
+2026-10-22T00:51:39.4356447Z   lfs: false
+2026-10-22T00:51:39.4356715Z   submodules: false
+2026-10-22T00:51:39.4357012Z   set-safe-directory: true
+2026-10-22T00:51:39.4357347Z   allow-unsafe-pr-checkout: false
+2026-10-22T00:51:39.4358373Z ##[endgroup]
+2026-10-22T00:51:39.5901579Z Syncing repository: zackboll/opencv_imgproc_ada
+2026-10-22T00:51:39.5903420Z ##[group]Getting Git version info
+2026-10-22T00:51:39.5904016Z Working directory is 'D:\a\opencv_imgproc_ada\opencv_imgproc_ada\imgproc'
+2026-10-22T00:51:39.7003705Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-22T00:51:40.0457032Z git version 2.56.0.windows.2
+2026-10-22T00:51:40.0513224Z ##[endgroup]
+2026-10-22T00:51:40.0536199Z Temporarily overriding HOME='D:\a\_temp\e22270bc-bdfc-43ba-b16b-cb7ccaa42e91' before making global git config changes
+2026-10-22T00:51:40.0541279Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-22T00:51:40.0550653Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\opencv_imgproc_ada\opencv_imgproc_ada\imgproc
+2026-10-22T00:51:40.1298426Z ##[group]Initializing the repository
+2026-10-22T00:51:40.1309195Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\opencv_imgproc_ada\opencv_imgproc_ada\imgproc
+2026-10-22T00:51:40.2380527Z Initialized empty Git repository in D:/a/opencv_imgproc_ada/opencv_imgproc_ada/imgproc/.git/
+2026-10-22T00:51:40.2432034Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/zackboll/opencv_imgproc_ada
+2026-10-22T00:51:40.3129985Z ##[endgroup]
+2026-10-22T00:51:40.3130595Z ##[group]Disabling automatic garbage collection
+2026-10-22T00:51:40.3139647Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-10-22T00:51:40.3544192Z ##[endgroup]
+2026-10-22T00:51:40.3544757Z ##[group]Setting up auth
+2026-10-22T00:51:40.3557339Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-22T00:51:40.3951168Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-22T00:51:41.8462877Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-22T00:51:41.8860814Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-22T00:51:42.4644061Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-22T00:51:42.5035746Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-22T00:51:43.0915439Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-10-22T00:51:43.1318522Z ##[endgroup]
+2026-10-22T00:51:43.1331183Z ##[group]Fetching the repository
+2026-10-22T00:51:43.1335043Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:51:44.5284374Z From https://github.com/zackboll/opencv_imgproc_ada
+2026-10-22T00:51:44.5284931Z  * branch            40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a -> FETCH_HEAD
+2026-10-22T00:51:44.5330335Z ##[endgroup]
+2026-10-22T00:51:44.5330950Z ##[group]Determining the checkout info
+2026-10-22T00:51:44.5334170Z ##[endgroup]
+2026-10-22T00:51:44.5344161Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-10-22T00:51:44.5906852Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-10-22T00:51:44.6304025Z ##[group]Checking out the ref
+2026-10-22T00:51:44.6313943Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:51:44.8291436Z Note: switching to '40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a'.
+2026-10-22T00:51:44.8291981Z 
+2026-10-22T00:51:44.8292370Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-22T00:51:44.8293210Z changes and commit them, and you can discard any commits you make in this
+2026-10-22T00:51:44.8294346Z state without impacting any branches by switching back to a branch.
+2026-10-22T00:51:44.8294812Z 
+2026-10-22T00:51:44.8295161Z If you want to create a new branch to retain commits you create, you may
+2026-10-22T00:51:44.8295916Z do so (now or later) by using -c with the switch command. Example:
+2026-10-22T00:51:44.8297660Z 
+2026-10-22T00:51:44.8297873Z   git switch -c <new-branch-name>
+2026-10-22T00:51:44.8298229Z 
+2026-10-22T00:51:44.8298397Z Or undo this operation with:
+2026-10-22T00:51:44.8298711Z 
+2026-10-22T00:51:44.8298879Z   git switch -
+2026-10-22T00:51:44.8299086Z 
+2026-10-22T00:51:44.8299479Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-22T00:51:44.8300094Z 
+2026-10-22T00:51:44.8300733Z HEAD is now at 40ab718 Merge pull request #82 from zackboll/docs/live-example-publication-verification
+2026-10-22T00:51:44.8418462Z ##[endgroup]
+2026-10-22T00:51:44.8977308Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-10-22T00:51:44.9355048Z 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:51:44.9866732Z ##[group]Run actions/checkout@v4
+2026-10-22T00:51:44.9867060Z with:
+2026-10-22T00:51:44.9867267Z   repository: zackboll/opencv_core_ada
+2026-10-22T00:51:44.9867596Z   ref: f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:51:44.9867870Z   path: core
+2026-10-22T00:51:44.9870887Z   token: ***
+2026-10-22T00:51:44.9871084Z   ssh-strict: true
+2026-10-22T00:51:44.9871270Z   ssh-user: git
+2026-10-22T00:51:44.9871661Z   persist-credentials: true
+2026-10-22T00:51:44.9871876Z   clean: true
+2026-10-22T00:51:44.9872067Z   sparse-checkout-cone-mode: true
+2026-10-22T00:51:44.9872310Z   fetch-depth: 1
+2026-10-22T00:51:44.9872485Z   fetch-tags: false
+2026-10-22T00:51:44.9872668Z   show-progress: true
+2026-10-22T00:51:44.9872856Z   lfs: false
+2026-10-22T00:51:44.9873026Z   submodules: false
+2026-10-22T00:51:44.9873211Z   set-safe-directory: true
+2026-10-22T00:51:44.9873435Z   allow-unsafe-pr-checkout: false
+2026-10-22T00:51:44.9873664Z ##[endgroup]
+2026-10-22T00:51:45.1103526Z Syncing repository: zackboll/opencv_core_ada
+2026-10-22T00:51:45.1111456Z ##[group]Getting Git version info
+2026-10-22T00:51:45.1112440Z Working directory is 'D:\a\opencv_imgproc_ada\opencv_imgproc_ada\core'
+2026-10-22T00:51:45.2197103Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-22T00:51:45.2679724Z git version 2.56.0.windows.2
+2026-10-22T00:51:45.2724292Z ##[endgroup]
+2026-10-22T00:51:45.2746075Z Temporarily overriding HOME='D:\a\_temp\b842c2c6-f62a-4b7a-90fb-109630af80a2' before making global git config changes
+2026-10-22T00:51:45.2748011Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-22T00:51:45.2760292Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\opencv_imgproc_ada\opencv_imgproc_ada\core
+2026-10-22T00:51:45.3320856Z ##[group]Initializing the repository
+2026-10-22T00:51:45.3335343Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\opencv_imgproc_ada\opencv_imgproc_ada\core
+2026-10-22T00:51:45.3920791Z Initialized empty Git repository in D:/a/opencv_imgproc_ada/opencv_imgproc_ada/core/.git/
+2026-10-22T00:51:45.3980417Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/zackboll/opencv_core_ada
+2026-10-22T00:51:45.4535979Z ##[endgroup]
+2026-10-22T00:51:45.4536775Z ##[group]Disabling automatic garbage collection
+2026-10-22T00:51:45.4552717Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-10-22T00:51:45.5018669Z ##[endgroup]
+2026-10-22T00:51:45.5019254Z ##[group]Setting up auth
+2026-10-22T00:51:45.5032171Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-22T00:51:45.5484464Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-22T00:51:46.2143991Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-22T00:51:46.2589551Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-22T00:51:46.8701598Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-22T00:51:46.9109565Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-22T00:51:47.5778973Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-10-22T00:51:47.6388075Z ##[endgroup]
+2026-10-22T00:51:47.6388926Z ##[group]Fetching the repository
+2026-10-22T00:51:47.6415425Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:51:48.4374029Z From https://github.com/zackboll/opencv_core_ada
+2026-10-22T00:51:48.4374810Z  * branch            f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f -> FETCH_HEAD
+2026-10-22T00:51:48.4417451Z ##[endgroup]
+2026-10-22T00:51:48.4418027Z ##[group]Determining the checkout info
+2026-10-22T00:51:48.4421048Z ##[endgroup]
+2026-10-22T00:51:48.4433491Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-10-22T00:51:48.4854612Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-10-22T00:51:48.5232568Z ##[group]Checking out the ref
+2026-10-22T00:51:48.5242116Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:51:48.7970297Z Note: switching to 'f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f'.
+2026-10-22T00:51:48.7970850Z 
+2026-10-22T00:51:48.7971525Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-22T00:51:48.7972444Z changes and commit them, and you can discard any commits you make in this
+2026-10-22T00:51:48.7973286Z state without impacting any branches by switching back to a branch.
+2026-10-22T00:51:48.7973786Z 
+2026-10-22T00:51:48.7974108Z If you want to create a new branch to retain commits you create, you may
+2026-10-22T00:51:48.7974877Z do so (now or later) by using -c with the switch command. Example:
+2026-10-22T00:51:48.7975327Z 
+2026-10-22T00:51:48.7975492Z   git switch -c <new-branch-name>
+2026-10-22T00:51:48.7976160Z 
+2026-10-22T00:51:48.7976310Z Or undo this operation with:
+2026-10-22T00:51:48.7976583Z 
+2026-10-22T00:51:48.7976714Z   git switch -
+2026-10-22T00:51:48.7976910Z 
+2026-10-22T00:51:48.7977246Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-22T00:51:48.7977776Z 
+2026-10-22T00:51:48.7978117Z HEAD is now at f8aef00 Merge pull request #82 from zackboll/release/0.5.0
+2026-10-22T00:51:48.8040828Z ##[endgroup]
+2026-10-22T00:51:48.8459514Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-10-22T00:51:48.8815591Z f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:51:48.9169089Z ##[group]Run set -eu
+2026-10-22T00:51:48.9169430Z [36;1mset -eu[0m
+2026-10-22T00:51:48.9169717Z [36;1mtest -f ../core/cpp/opencv_core_module_bridge.hpp[0m
+2026-10-22T00:51:48.9170071Z [36;1mecho "Imgproc: $(git rev-parse HEAD)"[0m
+2026-10-22T00:51:48.9170399Z [36;1mecho "Core:    $(git -C ../core rev-parse HEAD)"[0m
+2026-10-22T00:51:48.9170685Z [36;1muname -a[0m
+2026-10-22T00:51:48.9191897Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:51:48.9192295Z ##[endgroup]
+2026-10-22T00:51:49.1502172Z Imgproc: 40ab7180fb2dc96dd5dad5fe42f7ad07b5248d8a
+2026-10-22T00:51:49.1978703Z Core:    f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f
+2026-10-22T00:51:49.2269936Z MINGW64_NT-10.0-26100 runnervmuzpk7 3.6.10-5a1665c8.x86_64 2026-09-28 10:40 UTC x86_64 Msys
+2026-10-22T00:51:49.2614934Z ##[group]Run alire-project/setup-alire@latest
+2026-10-22T00:51:49.2615298Z with:
+2026-10-22T00:51:49.2615469Z   version: 2.1.1
+2026-10-22T00:51:49.2615857Z   toolchain: gnat_native gprbuild
+2026-10-22T00:51:49.2616092Z   msys2: true
+2026-10-22T00:51:49.2616259Z   cache: true
+2026-10-22T00:51:49.2616419Z ##[endgroup]
+2026-10-22T00:51:49.2684123Z ##[start-action display=Identify hash from which alr was built;id=__alire-project_setup-alire.find-hash]
+2026-10-22T00:51:49.2852430Z ##[group]Run if [[ "" != "" ]]; then
+2026-10-22T00:51:49.2852689Z [36;1m[0m
+2026-10-22T00:51:49.2852859Z [36;1mif [[ "" != "" ]]; then[0m
+2026-10-22T00:51:49.2853360Z [36;1m  echo "hash=$(git ls-remote --heads https://github.com/alire-project/alire  | cut -f1)" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.2853881Z [36;1m  echo "version=" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.2854176Z [36;1melif [[ "2.1.1" != "nightly" ]]; then[0m
+2026-10-22T00:51:49.2854763Z [36;1m  echo "hash=$(git ls-remote --tags https://github.com/alire-project/alire v2.1.1 | cut -f1)" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.2855302Z [36;1m  echo "version=2.1.1" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.2855574Z [36;1melse[0m
+2026-10-22T00:51:49.2855993Z [36;1m  echo "hash=$(git ls-remote --tags https://github.com/alire-project/alire 2.1.1 | cut -f1)" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.2856504Z [36;1m  echo "version=2.1.1" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.2856754Z [36;1mfi[0m
+2026-10-22T00:51:49.2872920Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:51:49.2873309Z ##[endgroup]
+2026-10-22T00:51:49.7305626Z ##[end-action id=__alire-project_setup-alire.find-hash;outcome=success;conclusion=success;duration_ms=462]
+2026-10-22T00:51:49.7310613Z ##[start-action display=Override msys2 for non-Windows platforms;id=__alire-project_setup-alire.override]
+2026-10-22T00:51:49.7449467Z ##[group]Run if [[ "Windows" == "Windows" ]]; then
+2026-10-22T00:51:49.7449827Z [36;1mif [[ "Windows" == "Windows" ]]; then[0m
+2026-10-22T00:51:49.7450113Z [36;1m  echo "msys2=true" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.7450370Z [36;1melse[0m
+2026-10-22T00:51:49.7450568Z [36;1m  echo "msys2=false" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.7450825Z [36;1mfi[0m
+2026-10-22T00:51:49.7466940Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:51:49.7467339Z ##[endgroup]
+2026-10-22T00:51:49.7885554Z ##[end-action id=__alire-project_setup-alire.override;outcome=success;conclusion=success;duration_ms=57]
+2026-10-22T00:51:49.7888184Z ##[start-action display=Generate cache key;id=__alire-project_setup-alire.cache-key]
+2026-10-22T00:51:49.8050148Z ##[group]Run echo "key=alr[1][2.1.1][gnat_native gprbuild][msys2=true][Windows][X64][e990c48d06fac433b22fb437958f83fbb5e62875]" >> $GITHUB_OUTPUT
+2026-10-22T00:51:49.8051088Z [36;1mecho "key=alr[1][2.1.1][gnat_native gprbuild][msys2=true][Windows][X64][e990c48d06fac433b22fb437958f83fbb5e62875]" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:51:49.8066597Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:51:49.8067013Z ##[endgroup]
+2026-10-22T00:51:49.8484830Z ##[end-action id=__alire-project_setup-alire.cache-key;outcome=success;conclusion=success;duration_ms=59]
+2026-10-22T00:51:49.8487955Z ##[start-action display=Reuse cached installation;id=__alire-project_setup-alire.cache-alr]
+2026-10-22T00:51:49.8656042Z ##[group]Run actions/cache/restore@v5
+2026-10-22T00:51:49.8656297Z with:
+2026-10-22T00:51:49.8656683Z   path: ~/.cache/alire
+~/.config/alire
+~/.local/share/alire
+./alire_install
+~/AppData/Local/alire
+
+2026-10-22T00:51:49.8657331Z   key: alr[1][2.1.1][gnat_native gprbuild][msys2=true][Windows][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:51:49.8657800Z   enableCrossOsArchive: false
+2026-10-22T00:51:49.8658029Z   fail-on-cache-miss: false
+2026-10-22T00:51:49.8658239Z   lookup-only: false
+2026-10-22T00:51:49.8660160Z ##[endgroup]
+2026-10-22T00:51:50.4582823Z Cache hit for: alr[1][2.1.1][gnat_native gprbuild][msys2=true][Windows][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:51:51.7669022Z Received 37748736 of 618192602 (6.1%), 35.9 MBs/sec
+2026-10-22T00:51:52.7633266Z Received 134217728 of 618192602 (21.7%), 63.8 MBs/sec
+2026-10-22T00:51:53.7755256Z Received 268435456 of 618192602 (43.4%), 84.8 MBs/sec
+2026-10-22T00:51:54.7963286Z Received 398458880 of 618192602 (64.5%), 94.2 MBs/sec
+2026-10-22T00:51:55.7968701Z Received 524288000 of 618192602 (84.8%), 99.2 MBs/sec
+2026-10-22T00:51:56.7408538Z Received 618192602 of 618192602 (100.0%), 98.6 MBs/sec
+2026-10-22T00:51:56.7409197Z Cache Size: ~590 MB (618192602 B)
+2026-10-22T00:51:56.7452695Z [command]"C:\Program Files\Git\usr\bin\tar.exe" -xf D:/a/_temp/6a6a0721-4ea4-4139-b8d2-c6d3a5ea70c3/cache.tzst -P -C D:/a/opencv_imgproc_ada/opencv_imgproc_ada --force-local --use-compress-program "zstd -d"
+2026-10-22T00:52:37.9045053Z Cache restored successfully
+2026-10-22T00:52:37.9493707Z Cache restored from key: alr[1][2.1.1][gnat_native gprbuild][msys2=true][Windows][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:52:37.9623721Z ##[end-action id=__alire-project_setup-alire.cache-alr;outcome=success;conclusion=success;duration_ms=48113]
+2026-10-22T00:52:37.9626459Z ##[start-action display=Check cache output;id=__alire-project_setup-alire.__run]
+2026-10-22T00:52:37.9781561Z ##[group]Run echo Cache hit result: [true] cache-key: alr[1][2.1.1][gnat_native gprbuild][msys2=true][Windows][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:52:37.9782567Z [36;1mecho Cache hit result: [true] cache-key: alr[1][2.1.1][gnat_native gprbuild][msys2=true][Windows][X64][e990c48d06fac433b22fb437958f83fbb5e62875][0m
+2026-10-22T00:52:37.9799547Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:52:37.9799953Z ##[endgroup]
+2026-10-22T00:52:38.0191665Z Cache hit result: [true] cache-key: alr[1][2.1.1][gnat_native gprbuild][msys2=true][Windows][X64][e990c48d06fac433b22fb437958f83fbb5e62875]
+2026-10-22T00:52:38.0244853Z ##[end-action id=__alire-project_setup-alire.__run;outcome=success;conclusion=success;duration_ms=61]
+2026-10-22T00:52:38.0247819Z ##[start-action display=Set cache_hit to false if needed;id=__alire-project_setup-alire.cache-output]
+2026-10-22T00:52:38.0406862Z ##[group]Run if [[ "true" == "true" && "true" == "true" ]]; then
+2026-10-22T00:52:38.0409910Z [36;1mif [[ "true" == "true" && "true" == "true" ]]; then[0m
+2026-10-22T00:52:38.0410316Z [36;1m  echo "cache_hit=true" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:52:38.0410624Z [36;1melse[0m
+2026-10-22T00:52:38.0410859Z [36;1m  echo "cache_hit=false" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:52:38.0411146Z [36;1mfi[0m
+2026-10-22T00:52:38.0445852Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:52:38.0446277Z ##[endgroup]
+2026-10-22T00:52:38.4235584Z ##[end-action id=__alire-project_setup-alire.cache-output;outcome=success;conclusion=success;duration_ms=398]
+2026-10-22T00:52:38.4238028Z ##[start-action display=Find GNAT;id=__alire-project_setup-alire.find-gnat]
+2026-10-22T00:52:38.4406014Z ##[group]Run gnat --version && echo "available=true" >> $GITHUB_OUTPUT || echo "available=false" >> $GITHUB_OUTPUT
+2026-10-22T00:52:38.4406957Z [36;1mgnat --version && echo "available=true" >> $GITHUB_OUTPUT || echo "available=false" >> $GITHUB_OUTPUT[0m
+2026-10-22T00:52:38.4422585Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:52:38.4423000Z ##[endgroup]
+2026-10-22T00:52:38.4978692Z D:\a\_temp\29bcd38e-39e7-4e17-89f1-2251e8ad4c02.sh: line 1: gnat: command not found
+2026-10-22T00:52:38.5036355Z ##[end-action id=__alire-project_setup-alire.find-gnat;outcome=success;conclusion=success;duration_ms=79]
+2026-10-22T00:52:38.5039057Z ##[start-action display=Identify need for GNAT;id=__alire-project_setup-alire.need-GNAT]
+2026-10-22T00:52:38.5050800Z ##[end-action id=__alire-project_setup-alire.need-GNAT;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:52:38.5052808Z ##[start-action display=Install GNAT (I);id=__alire-project_setup-alire.__run_2]
+2026-10-22T00:52:38.5067251Z ##[end-action id=__alire-project_setup-alire.__run_2;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:52:38.5069188Z ##[start-action display=Install GNAT (II);id=__alire-project_setup-alire.__run_3]
+2026-10-22T00:52:38.5073055Z ##[end-action id=__alire-project_setup-alire.__run_3;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:52:38.5074891Z ##[start-action display=Install GNAT (III) - Add to path;id=__alire-project_setup-alire.__run_4]
+2026-10-22T00:52:38.5078668Z ##[end-action id=__alire-project_setup-alire.__run_4;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:52:38.5080614Z ##[start-action display=Setup Node;id=__alire-project_setup-alire.__actions_setup-node]
+2026-10-22T00:52:38.5313885Z ##[group]Run actions/setup-node@v6
+2026-10-22T00:52:38.5314149Z with:
+2026-10-22T00:52:38.5314326Z   node-version: 24
+2026-10-22T00:52:38.5314530Z   check-latest: false
+2026-10-22T00:52:38.5317231Z   token: ***
+2026-10-22T00:52:38.5317426Z   package-manager-cache: true
+2026-10-22T00:52:38.5317962Z ##[endgroup]
+2026-10-22T00:52:38.7176145Z Found in cache @ C:\hostedtoolcache\windows\node\24.22.0\x64
+2026-10-22T00:52:38.7185393Z ##[group]Environment details
+2026-10-22T00:52:43.4474523Z node: v24.22.0
+2026-10-22T00:52:43.4474867Z npm: 11.19.1
+2026-10-22T00:52:43.4475064Z yarn: 1.22.22
+2026-10-22T00:52:43.4475511Z ##[endgroup]
+2026-10-22T00:52:43.4611132Z ##[end-action id=__alire-project_setup-alire.__actions_setup-node;outcome=success;conclusion=success;duration_ms=4952]
+2026-10-22T00:52:43.4647414Z ##[start-action display=Run node $(echo "D:\a\_actions\alire-project\setup-alire\latest/lib/main.js" | sed 's/\\/\//g') '{;id=__alire-project_setup-alire.__run_5]
+2026-10-22T00:52:43.4793179Z ##[group]Run node $(echo "D:\a\_actions\alire-project\setup-alire\latest/lib/main.js" | sed 's/\\/\//g') '{
+2026-10-22T00:52:43.4793937Z [36;1mnode $(echo "D:\a\_actions\alire-project\setup-alire\latest/lib/main.js" | sed 's/\\/\//g') '{[0m
+2026-10-22T00:52:43.4794462Z [36;1m  "version": "2.1.1",[0m
+2026-10-22T00:52:43.4794750Z [36;1m  "toolchain": "gnat_native gprbuild",[0m
+2026-10-22T00:52:43.4795055Z [36;1m  "msys2": "true",[0m
+2026-10-22T00:52:43.4795292Z [36;1m  "branch": "",[0m
+2026-10-22T00:52:43.4795512Z [36;1m  "cache": "true"[0m
+2026-10-22T00:52:43.4795732Z [36;1m}'[0m
+2026-10-22T00:52:43.4815300Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:52:43.4815716Z env:
+2026-10-22T00:52:43.4815899Z   SETUP_ALIRE_CACHE_HIT: true
+2026-10-22T00:52:43.4816132Z ##[endgroup]
+2026-10-22T00:52:44.1153894Z Inputs: {
+2026-10-22T00:52:44.1154435Z   "version": "2.1.1",
+2026-10-22T00:52:44.1154979Z   "toolchain": "gnat_native gprbuild",
+2026-10-22T00:52:44.1155564Z   "msys2": "true",
+2026-10-22T00:52:44.1156062Z   "branch": "",
+2026-10-22T00:52:44.1156501Z   "cache": "true"
+2026-10-22T00:52:44.1156922Z }
+2026-10-22T00:52:44.1157586Z Reusing alr installation restored from the GHA cache
+2026-10-22T00:52:44.2099010Z [command]D:\a\opencv_imgproc_ada\opencv_imgproc_ada\alire_install\bin\alr.exe -n settings --global --set index.auto_update_asked true
+2026-10-22T00:52:44.2965377Z Enabled index auto-refresh without further asking.
+2026-10-22T00:52:44.3757997Z [command]D:\a\opencv_imgproc_ada\opencv_imgproc_ada\alire_install\bin\alr.exe -n settings --global --set msys2.do_not_install false
+2026-10-22T00:52:44.4089920Z MSYS2 installation NOT disabled (msys2=true)
+2026-10-22T00:52:44.4090362Z Installed alr version and GNAT toolchain:
+2026-10-22T00:52:44.4981838Z [command]D:\a\opencv_imgproc_ada\opencv_imgproc_ada\alire_install\bin\alr.exe -n version
+2026-10-22T00:52:44.5425872Z APPLICATION
+2026-10-22T00:52:44.5426476Z alr version:               2.1.1
+2026-10-22T00:52:44.5431804Z libalire version:          2.1.1
+2026-10-22T00:52:44.5433212Z source commit:             fa9a1a9971d159f8cb2b8007dbb73e9e029fc109
+2026-10-22T00:52:44.5434058Z source changes:            clean
+2026-10-22T00:52:44.5435067Z compilation date:          2026-05-25 12:40:21
+2026-10-22T00:52:44.5435637Z compiled with version:     15.2.0
+2026-10-22T00:52:44.5435823Z 
+2026-10-22T00:52:44.5435995Z CONFIGURATION
+2026-10-22T00:52:44.5436453Z home folder:               C:\Users\runneradmin
+2026-10-22T00:52:44.5437274Z settings folder:           C:\Users\runneradmin\AppData\Local\alire\settings
+2026-10-22T00:52:44.5438415Z cache folder:              C:\Users\runneradmin\AppData\Local\alire\cache
+2026-10-22T00:52:44.5439063Z vault folder:              C:\Users\runneradmin\AppData\Local\alire\cache\releases
+2026-10-22T00:52:44.5440094Z build folder:              C:\Users\runneradmin\AppData\Local\alire\cache\builds
+2026-10-22T00:52:44.5441321Z temp folder:               C:\Users\RUNNER~1\AppData\Local\Temp
+2026-10-22T00:52:44.5442204Z force flag:                FALSE
+2026-10-22T00:52:44.5442510Z non-interactive flag:      TRUE
+2026-10-22T00:52:44.5442963Z community index branch:    stable-1.4.0
+2026-10-22T00:52:44.5443429Z compatible index versions: ^1.1 & <=1.4.0
+2026-10-22T00:52:44.5444110Z indexes folder:            C:\Users\runneradmin\AppData\Local\alire\settings\indexes
+2026-10-22T00:52:44.5444609Z indexes metadata:          OK
+2026-10-22T00:52:44.5445215Z index #1:                  (community) git+https://github.com/alire-project/alire-index#stable-1.4.0
+2026-10-22T00:52:44.5446187Z toolchain folder:          C:\Users\runneradmin\AppData\Local\alire\cache\toolchains
+2026-10-22T00:52:44.5447543Z toolchain assistant:       disabled
+2026-10-22T00:52:44.5448319Z tool #1 gnat:              gnat_native=16.1.0
+2026-10-22T00:52:44.5449780Z tool #2 gprbuild:          gprbuild=26.0.1
+2026-10-22T00:52:44.5452839Z system package manager:    C:\Users\runneradmin\AppData\Local\alire\cache\msys64\usr\bin\pacman.exe
+2026-10-22T00:52:44.5453696Z distro detection disabled: FALSE
+2026-10-22T00:52:44.5453995Z 
+2026-10-22T00:52:44.5454142Z WORKSPACE
+2026-10-22T00:52:44.5454542Z root status:               OUTSIDE
+2026-10-22T00:52:44.5455243Z root release:              N/A
+2026-10-22T00:52:44.5456337Z root load error:           N/A
+2026-10-22T00:52:44.5456891Z root folder:               N/A
+2026-10-22T00:52:44.5457960Z current folder:            D:\a\opencv_imgproc_ada\opencv_imgproc_ada
+2026-10-22T00:52:44.5458474Z 
+2026-10-22T00:52:44.5458680Z SYSTEM
+2026-10-22T00:52:44.5459093Z distribution:              MSYS2
+2026-10-22T00:52:44.5459612Z host-arch:                 X86_64
+2026-10-22T00:52:44.5460555Z os:                        WINDOWS
+2026-10-22T00:52:44.5461200Z target:                    NATIVE
+2026-10-22T00:52:44.5462338Z toolchain:                 USER
+2026-10-22T00:52:44.5463146Z word-size:                 BITS_64
+2026-10-22T00:52:44.6237991Z [command]D:\a\opencv_imgproc_ada\opencv_imgproc_ada\alire_install\bin\alr.exe -n toolchain
+2026-10-22T00:52:46.2422186Z CRATE       VERSION STATUS  NOTES
+2026-10-22T00:52:46.2423317Z gprbuild    26.0.1  Default
+2026-10-22T00:52:46.2423950Z gnat_native 16.1.0  Default
+2026-10-22T00:52:46.2497928Z SUCCESS
+2026-10-22T00:52:46.2671304Z ##[end-action id=__alire-project_setup-alire.__run_5;outcome=success;conclusion=success;duration_ms=2802]
+2026-10-22T00:52:46.2673714Z ##[start-action display=Run mosteo-actions/alr-arch-checker@v1;id=__alire-project_setup-alire.__mosteo-actions_alr-arch-checker]
+2026-10-22T00:52:46.2825742Z ##[group]Run mosteo-actions/alr-arch-checker@v1
+2026-10-22T00:52:46.2826032Z ##[endgroup]
+2026-10-22T00:52:46.2829257Z ##[start-action display=Display configuration and verify matching arch;id=__alire-project_setup-alire.__mosteo-actions_alr-arch-checker.__run]
+2026-10-22T00:52:46.2964417Z ##[group]Run echo "Runner architecture: X64"
+2026-10-22T00:52:46.2964809Z [36;1mecho "Runner architecture: X64"[0m
+2026-10-22T00:52:46.2965065Z [36;1mcase X64 in[0m
+2026-10-22T00:52:46.2965442Z [36;1m  X64)   target_arch=X86_64;;[0m
+2026-10-22T00:52:46.2965702Z [36;1m  ARM64) target_arch=AARCH64;;[0m
+2026-10-22T00:52:46.2966106Z [36;1m  *)     echo "Unknown arch" && exit 1;;[0m
+2026-10-22T00:52:46.2966364Z [36;1mesac[0m
+2026-10-22T00:52:46.2966583Z [36;1mecho "alr target architecture: $target_arch"[0m
+2026-10-22T00:52:46.2966863Z [36;1malr version[0m
+2026-10-22T00:52:46.2967219Z [36;1malr version | grep 'host-arch:' | awk '{print $2}' | grep -q $target_arch || exit 1[0m
+2026-10-22T00:52:46.2983940Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:52:46.2984341Z ##[endgroup]
+2026-10-22T00:52:46.3356183Z Runner architecture: X64
+2026-10-22T00:52:46.3357161Z alr target architecture: X86_64
+2026-10-22T00:52:46.3832054Z APPLICATION
+2026-10-22T00:52:46.3832622Z alr version:               2.1.1
+2026-10-22T00:52:46.3833232Z libalire version:          2.1.1
+2026-10-22T00:52:46.3835298Z source commit:             fa9a1a9971d159f8cb2b8007dbb73e9e029fc109
+2026-10-22T00:52:46.3835872Z source changes:            clean
+2026-10-22T00:52:46.3836475Z compilation date:          2026-05-25 12:40:21
+2026-10-22T00:52:46.3837073Z compiled with version:     15.2.0
+2026-10-22T00:52:46.3837354Z 
+2026-10-22T00:52:46.3837499Z CONFIGURATION
+2026-10-22T00:52:46.3839227Z home folder:               C:\Users\runneradmin
+2026-10-22T00:52:46.3840812Z settings folder:           C:\Users\runneradmin\AppData\Local\alire\settings
+2026-10-22T00:52:46.3842756Z cache folder:              C:\Users\runneradmin\AppData\Local\alire\cache
+2026-10-22T00:52:46.3843932Z vault folder:              C:\Users\runneradmin\AppData\Local\alire\cache\releases
+2026-10-22T00:52:46.3845047Z build folder:              C:\Users\runneradmin\AppData\Local\alire\cache\builds
+2026-10-22T00:52:46.3846174Z temp folder:               C:\Users\RUNNER~1\AppData\Local\Temp
+2026-10-22T00:52:46.3847512Z force flag:                FALSE
+2026-10-22T00:52:46.3848354Z non-interactive flag:      FALSE
+2026-10-22T00:52:46.3848930Z community index branch:    stable-1.4.0
+2026-10-22T00:52:46.3849541Z compatible index versions: ^1.1 & <=1.4.0
+2026-10-22T00:52:46.3851896Z indexes folder:            C:\Users\runneradmin\AppData\Local\alire\settings\indexes
+2026-10-22T00:52:46.3852529Z indexes metadata:          OK
+2026-10-22T00:52:46.3853652Z index #1:                  (community) git+https://github.com/alire-project/alire-index#stable-1.4.0
+2026-10-22T00:52:46.3854925Z toolchain folder:          C:\Users\runneradmin\AppData\Local\alire\cache\toolchains
+2026-10-22T00:52:46.3855560Z toolchain assistant:       disabled
+2026-10-22T00:52:46.3856154Z tool #1 gnat:              gnat_native=16.1.0
+2026-10-22T00:52:46.3856632Z tool #2 gprbuild:          gprbuild=26.0.1
+2026-10-22T00:52:46.3859134Z system package manager:    C:\Users\runneradmin\AppData\Local\alire\cache\msys64\usr\bin\pacman.exe
+2026-10-22T00:52:46.3859787Z distro detection disabled: FALSE
+2026-10-22T00:52:46.3860094Z 
+2026-10-22T00:52:46.3860227Z WORKSPACE
+2026-10-22T00:52:46.3860618Z root status:               OUTSIDE
+2026-10-22T00:52:46.3861054Z root release:              N/A
+2026-10-22T00:52:46.3861978Z root load error:           N/A
+2026-10-22T00:52:46.3862428Z root folder:               N/A
+2026-10-22T00:52:46.3865349Z current folder:            D:\a\opencv_imgproc_ada\opencv_imgproc_ada
+2026-10-22T00:52:46.3865808Z 
+2026-10-22T00:52:46.3865936Z SYSTEM
+2026-10-22T00:52:46.3866569Z distribution:              MSYS2
+2026-10-22T00:52:46.3867235Z host-arch:                 X86_64
+2026-10-22T00:52:46.3868635Z os:                        WINDOWS
+2026-10-22T00:52:46.3869154Z target:                    NATIVE
+2026-10-22T00:52:46.3869655Z toolchain:                 USER
+2026-10-22T00:52:46.3871040Z word-size:                 BITS_64
+2026-10-22T00:52:46.6923147Z ##[end-action id=__alire-project_setup-alire.__mosteo-actions_alr-arch-checker.__run;outcome=success;conclusion=success;duration_ms=409]
+2026-10-22T00:52:46.6938227Z ##[end-action id=__alire-project_setup-alire.__mosteo-actions_alr-arch-checker;outcome=success;conclusion=success;duration_ms=426]
+2026-10-22T00:52:46.6941025Z ##[start-action display=Remove GNAT (IV);id=__alire-project_setup-alire.__run_6]
+2026-10-22T00:52:46.6946033Z ##[end-action id=__alire-project_setup-alire.__run_6;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:52:46.6948135Z ##[start-action display=Run which alr;id=__alire-project_setup-alire.__run_7]
+2026-10-22T00:52:46.7085219Z ##[group]Run which alr
+2026-10-22T00:52:46.7085441Z [36;1mwhich alr[0m
+2026-10-22T00:52:46.7085631Z [36;1malr --version[0m
+2026-10-22T00:52:46.7086062Z [36;1m{ alr index --update-all >/dev/null && echo "Index refreshed"; } || echo "Index refresh failed"[0m
+2026-10-22T00:52:46.7103493Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:52:46.7103887Z ##[endgroup]
+2026-10-22T00:52:46.7786942Z /d/a/opencv_imgproc_ada/opencv_imgproc_ada/alire_install/bin/alr
+2026-10-22T00:52:46.8194136Z alr 2.1.1
+2026-10-22T00:52:47.6822192Z From https://github.com/alire-project/alire-index
+2026-10-22T00:52:47.6822783Z    0069e288..4635347c  stable-1.4.0 -> origin/stable-1.4.0
+2026-10-22T00:52:48.4874266Z Index refreshed
+2026-10-22T00:52:48.4922449Z ##[end-action id=__alire-project_setup-alire.__run_7;outcome=success;conclusion=success;duration_ms=1797]
+2026-10-22T00:52:48.4926972Z ##[start-action display=Run alr -n -q init --bin find_gnat >/dev/null && cd find_gnat;id=__alire-project_setup-alire.__run_8]
+2026-10-22T00:52:48.5137850Z ##[group]Run alr -n -q init --bin find_gnat >/dev/null && cd find_gnat
+2026-10-22T00:52:48.5138343Z [36;1malr -n -q init --bin find_gnat >/dev/null && cd find_gnat[0m
+2026-10-22T00:52:48.5138744Z [36;1mecho "Using gnat: $(alr exec -- which gnat)" || true[0m
+2026-10-22T00:52:48.5139092Z [36;1mecho "$(alr exec -- gnat --version)" || true[0m
+2026-10-22T00:52:48.5139428Z [36;1mcd ../find_gnat/.. && rm -rf find_gnat[0m
+2026-10-22T00:52:48.5157591Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:52:48.5158009Z ##[endgroup]
+2026-10-22T00:52:57.7751612Z Using gnat: /c/Users/runneradmin/AppData/Local/alire/cache/toolchains/gnat_native_16.1.0_bbd69633/bin/gnat
+2026-10-22T00:52:58.3615933Z GNAT 16.1.0
+2026-10-22T00:52:58.3616637Z Copyright (C) 1996-2025, Free Software Foundation, Inc.
+2026-10-22T00:52:58.3617290Z This is free software; see the source for copying conditions.  There is NO
+2026-10-22T00:52:58.3617998Z warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+2026-10-22T00:52:58.3979263Z ##[end-action id=__alire-project_setup-alire.__run_8;outcome=success;conclusion=success;duration_ms=9905]
+2026-10-22T00:52:58.3981497Z ##[start-action display=Cache install;id=__alire-project_setup-alire.__actions_cache]
+2026-10-22T00:52:58.3987329Z ##[end-action id=__alire-project_setup-alire.__actions_cache;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:52:58.3989200Z ##[start-action display=Cache verify;id=__alire-project_setup-alire.__actions_cache_2]
+2026-10-22T00:52:58.3993855Z ##[end-action id=__alire-project_setup-alire.__actions_cache_2;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:52:58.4161415Z ##[group]Run set -eu
+2026-10-22T00:52:58.4161724Z [36;1mset -eu[0m
+2026-10-22T00:52:58.4161969Z [36;1malr -n --force toolchain --select \[0m
+2026-10-22T00:52:58.4162255Z [36;1m  gnat_native=16.1.0 \[0m
+2026-10-22T00:52:58.4162490Z [36;1m  gprbuild=26.0.1[0m
+2026-10-22T00:52:58.4162702Z [36;1malr toolchain[0m
+2026-10-22T00:52:58.4179783Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:52:58.4180193Z ##[endgroup]
+2026-10-22T00:53:00.1358494Z Note: gnat_native=16.1.0 set as default in global configuration.
+2026-10-22T00:53:00.1468117Z Note: gprbuild=26.0.1 set as default in global configuration.
+2026-10-22T00:53:01.7404647Z CRATE       VERSION STATUS  NOTES
+2026-10-22T00:53:01.7405249Z gprbuild    26.0.1  Default
+2026-10-22T00:53:01.7405895Z gnat_native 16.1.0  Default
+2026-10-22T00:53:01.7677658Z ##[group]Run set -eu
+2026-10-22T00:53:01.7678148Z [36;1mset -eu[0m
+2026-10-22T00:53:01.7678335Z [36;1m[0m
+2026-10-22T00:53:01.7678648Z [36;1m# Core's Alire dependencies deploy these packages before exec runs.[0m
+2026-10-22T00:53:01.7679158Z [36;1m# Do not refresh repositories or partially upgrade that package set.[0m
+2026-10-22T00:53:01.7679597Z [36;1mecho "=== Installed MSYS2 dependency versions ==="[0m
+2026-10-22T00:53:01.7679921Z [36;1malr exec -- pacman -Q \[0m
+2026-10-22T00:53:01.7680176Z [36;1m  mingw-w64-x86_64-gcc \[0m
+2026-10-22T00:53:01.7680420Z [36;1m  mingw-w64-x86_64-gcc-libs \[0m
+2026-10-22T00:53:01.7680664Z [36;1m  mingw-w64-x86_64-cc-libs \[0m
+2026-10-22T00:53:01.7680918Z [36;1m  mingw-w64-x86_64-libgfortran \[0m
+2026-10-22T00:53:01.7681184Z [36;1m  mingw-w64-x86_64-libquadmath \[0m
+2026-10-22T00:53:01.7681433Z [36;1m  mingw-w64-x86_64-opencv \[0m
+2026-10-22T00:53:01.7681677Z [36;1m  mingw-w64-x86_64-pkgconf[0m
+2026-10-22T00:53:01.7681926Z [36;1m[0m
+2026-10-22T00:53:01.7682239Z [36;1m# -Dk checks installed dependencies/conflicts without changing packages[0m
+2026-10-22T00:53:01.7682716Z [36;1m# or consulting newer sync-repository versions (unlike -Dkk).[0m
+2026-10-22T00:53:01.7683147Z [36;1mecho "=== Installed MSYS2 package database consistency ==="[0m
+2026-10-22T00:53:01.7683486Z [36;1malr exec -- pacman -Dk[0m
+2026-10-22T00:53:01.7699992Z shell: C:\Program Files\Git\bin\bash.EXE --noprofile --norc -e -o pipefail {0}
+2026-10-22T00:53:01.7700398Z ##[endgroup]
+2026-10-22T00:53:01.8077818Z === Installed MSYS2 dependency versions ===
+2026-10-22T00:53:01.8577153Z Note: Synchronizing workspace...
+2026-10-22T00:53:04.3720890Z Can't find C:\Strawberry\perl\bin\pkg-config on PATH, '.' not in PATH.
+2026-10-22T00:53:05.4578512Z Dependencies automatically updated as follows:
+2026-10-22T00:53:05.4578947Z 
+2026-10-22T00:53:05.4587874Z    +b mingw_w64_gcc 16.2.0 (new,system package)
+2026-10-22T00:53:05.4588772Z    +b opencv        5.0.0  (new,system package)
+2026-10-22T00:53:05.4589390Z    +  opencv_core   0.5.0  (new)
+2026-10-22T00:53:05.4590860Z    +b pkg_config    1.0.0  (new,system package)
+2026-10-22T00:53:06.1173691Z Note: Deploying mingw_w64_gcc=16.2.0...
+2026-10-22T00:53:06.7680591Z The system package 'mingw-w64-x86_64-gcc' is about to be installed.
+2026-10-22T00:53:06.7681403Z This action might require admin privileges and impact your system installation.
+2026-10-22T00:53:06.7682030Z Do you want Alire to install this system package?
+2026-10-22T00:53:06.7682399Z Using default: Yes
+2026-10-22T00:53:07.4794694Z resolving dependencies...
+2026-10-22T00:53:07.4951120Z looking for conflicting packages...
+2026-10-22T00:53:07.5015606Z 
+2026-10-22T00:53:07.5021593Z Packages (21) mingw-w64-x86_64-binutils-2.47-3  mingw-w64-x86_64-cc-libs-16.2.0-4  mingw-w64-x86_64-crt-14.0.0.r426.g4564ee4b5-1  mingw-w64-x86_64-gettext-runtime-1.0-1  mingw-w64-x86_64-gmp-6.3.0-2  mingw-w64-x86_64-headers-14.0.0.r426.g4564ee4b5-1  mingw-w64-x86_64-isl-0.28-1  mingw-w64-x86_64-libatomic-16.2.0-4  mingw-w64-x86_64-libgcc-16.2.0-4  mingw-w64-x86_64-libiconv-1.19-1  mingw-w64-x86_64-libquadmath-16.2.0-4  mingw-w64-x86_64-libstdc++-16.2.0-4  mingw-w64-x86_64-libwinpthread-14.0.0.r426.g4564ee4b5-1  mingw-w64-x86_64-mpc-1.4.1-1  mingw-w64-x86_64-mpfr-4.2.2-3  mingw-w64-x86_64-tzdata-2026d-1  mingw-w64-x86_64-windows-default-manifest-20260815-1  mingw-w64-x86_64-winpthreads-14.0.0.r426.g4564ee4b5-1  mingw-w64-x86_64-zlib-1.3.2-2  mingw-w64-x86_64-zstd-1.5.7-2  mingw-w64-x86_64-gcc-16.2.0-4
+2026-10-22T00:53:07.5026387Z 
+2026-10-22T00:53:07.5026585Z Total Download Size:    68.88 MiB
+2026-10-22T00:53:07.5027006Z Total Installed Size:  471.40 MiB
+2026-10-22T00:53:07.5027249Z 
+2026-10-22T00:53:07.5027483Z :: Proceed with installation? [Y/n] 
+2026-10-22T00:53:07.5027877Z :: Retrieving packages...
+2026-10-22T00:53:09.7652127Z  mingw-w64-x86_64-gcc-16.2.0-4-any downloading...
+2026-10-22T00:53:09.7655680Z  mingw-w64-x86_64-headers-14.0.0.r426.g4564ee4b5-1-any downloading...
+2026-10-22T00:53:09.7656595Z  mingw-w64-x86_64-binutils-2.47-3-any downloading...
+2026-10-22T00:53:09.7657162Z  mingw-w64-x86_64-crt-14.0.0.r426.g4564ee4b5-1-any downloading...
+2026-10-22T00:53:09.7657710Z  mingw-w64-x86_64-isl-0.28-1-any downloading...
+2026-10-22T00:53:09.7658178Z  mingw-w64-x86_64-libstdc++-16.2.0-4-any downloading...
+2026-10-22T00:53:09.7658658Z  mingw-w64-x86_64-libiconv-1.19-1-any downloading...
+2026-10-22T00:53:09.7659101Z  mingw-w64-x86_64-zstd-1.5.7-2-any downloading...
+2026-10-22T00:53:09.7659676Z  mingw-w64-x86_64-gmp-6.3.0-2-any downloading...
+2026-10-22T00:53:09.7660367Z  mingw-w64-x86_64-mpfr-4.2.2-3-any downloading...
+2026-10-22T00:53:09.7660861Z  mingw-w64-x86_64-gettext-runtime-1.0-1-any downloading...
+2026-10-22T00:53:09.7661350Z  mingw-w64-x86_64-tzdata-2026d-1-any downloading...
+2026-10-22T00:53:09.7662076Z  mingw-w64-x86_64-libquadmath-16.2.0-4-any downloading...
+2026-10-22T00:53:09.7662571Z  mingw-w64-x86_64-mpc-1.4.1-1-any downloading...
+2026-10-22T00:53:09.7662982Z  mingw-w64-x86_64-zlib-1.3.2-2-any downloading...
+2026-10-22T00:53:09.7663412Z  mingw-w64-x86_64-libgcc-16.2.0-4-any downloading...
+2026-10-22T00:53:09.7664110Z  mingw-w64-x86_64-winpthreads-14.0.0.r426.g4564ee4b5-1-any downloading...
+2026-10-22T00:53:09.7664756Z  mingw-w64-x86_64-libwinpthread-14.0.0.r426.g4564ee4b5-1-any downloading...
+2026-10-22T00:53:09.7665313Z  mingw-w64-x86_64-libatomic-16.2.0-4-any downloading...
+2026-10-22T00:53:09.7665853Z  mingw-w64-x86_64-windows-default-manifest-20260815-1-any downloading...
+2026-10-22T00:53:09.7666391Z  mingw-w64-x86_64-cc-libs-16.2.0-4-any downloading...
+2026-10-22T00:53:09.7666759Z checking keyring...
+2026-10-22T00:53:09.8197231Z checking package integrity...
+2026-10-22T00:53:13.8474047Z loading package files...
+2026-10-22T00:53:13.9079214Z checking for file conflicts...
+2026-10-22T00:53:14.3271633Z checking available disk space...
+2026-10-22T00:53:14.3325663Z :: Processing package changes...
+2026-10-22T00:53:14.3326256Z installing mingw-w64-x86_64-libwinpthread...
+2026-10-22T00:53:14.3410279Z installing mingw-w64-x86_64-libatomic...
+2026-10-22T00:53:14.3494932Z installing mingw-w64-x86_64-libgcc...
+2026-10-22T00:53:14.3581756Z installing mingw-w64-x86_64-tzdata...
+2026-10-22T00:53:17.9026931Z installing mingw-w64-x86_64-libstdc++...
+2026-10-22T00:53:17.9200806Z installing mingw-w64-x86_64-libquadmath...
+2026-10-22T00:53:17.9281236Z installing mingw-w64-x86_64-cc-libs...
+2026-10-22T00:53:17.9316188Z installing mingw-w64-x86_64-libiconv...
+2026-10-22T00:53:17.9830560Z installing mingw-w64-x86_64-gettext-runtime...
+2026-10-22T00:53:18.2302482Z installing mingw-w64-x86_64-zlib...
+2026-10-22T00:53:18.2440896Z installing mingw-w64-x86_64-zstd...
+2026-10-22T00:53:18.2757222Z installing mingw-w64-x86_64-binutils...
+2026-10-22T00:53:18.8048815Z installing mingw-w64-x86_64-headers...
+2026-10-22T00:53:21.5245919Z installing mingw-w64-x86_64-crt...
+2026-10-22T00:53:22.9815293Z installing mingw-w64-x86_64-gmp...
+2026-10-22T00:53:23.0388355Z installing mingw-w64-x86_64-isl...
+2026-10-22T00:53:23.8686441Z installing mingw-w64-x86_64-mpfr...
+2026-10-22T00:53:23.9062627Z installing mingw-w64-x86_64-mpc...
+2026-10-22T00:53:23.9172449Z installing mingw-w64-x86_64-windows-default-manifest...
+2026-10-22T00:53:23.9219702Z installing mingw-w64-x86_64-winpthreads...
+2026-10-22T00:53:23.9396708Z installing mingw-w64-x86_64-gcc...
+2026-10-22T00:53:26.5547267Z Optional dependencies for mingw-w64-x86_64-gcc
+2026-10-22T00:53:26.5547754Z     mingw-w64-x86_64-libatomic [installed]
+2026-10-22T00:53:26.5548128Z     mingw-w64-x86_64-libgomp: OpenMP
+2026-10-22T00:53:26.5548530Z     mingw-w64-x86_64-libquadmath: Quad Math [installed]
+2026-10-22T00:53:27.2339243Z Note: Deploying opencv=5.0.0...
+2026-10-22T00:53:27.8753544Z The system package 'mingw-w64-x86_64-opencv' is about to be installed.
+2026-10-22T00:53:27.8754873Z This action might require admin privileges and impact your system installation.
+2026-10-22T00:53:27.8756870Z Do you want Alire to install this system package?
+2026-10-22T00:53:27.8757792Z Using default: Yes
+2026-10-22T00:53:28.5796463Z resolving dependencies...
+2026-10-22T00:53:28.7043080Z looking for conflicting packages...
+2026-10-22T00:53:28.7420175Z warning: dependency cycle detected:
+2026-10-22T00:53:28.7420866Z warning: mingw-w64-x86_64-harfbuzz will be installed before its mingw-w64-x86_64-freetype dependency
+2026-10-22T00:53:28.7421400Z warning: dependency cycle detected:
+2026-10-22T00:53:28.7421942Z warning: mingw-w64-x86_64-libwebp will be installed before its mingw-w64-x86_64-libtiff dependency
+2026-10-22T00:53:28.7427606Z 
+2026-10-22T00:53:28.7452094Z Packages (159) mingw-w64-x86_64-SDL2-2.32.10-1  mingw-w64-x86_64-abseil-cpp-20260526.0-1  mingw-w64-x86_64-aom-3.15.1-1  mingw-w64-x86_64-aws-c-auth-1.0.0-1  mingw-w64-x86_64-aws-c-cal-1.0.0-1  mingw-w64-x86_64-aws-c-common-1.0.0-1  mingw-w64-x86_64-aws-c-compression-1.0.0-1  mingw-w64-x86_64-aws-c-http-1.0.0-1  mingw-w64-x86_64-aws-c-io-1.0.0-1  mingw-w64-x86_64-aws-c-s3-1.1.1-1  mingw-w64-x86_64-aws-c-sdkutils-1.0.0-1  mingw-w64-x86_64-aws-checksums-1.0.0-1  mingw-w64-x86_64-brotli-1.2.0-1  mingw-w64-x86_64-bullet-3.25-11  mingw-w64-x86_64-bzip2-1.0.8-4  mingw-w64-x86_64-c-ares-1.34.8-1  mingw-w64-x86_64-ca-certificates-20260816-1  mingw-w64-x86_64-cairo-1.18.6-2  mingw-w64-x86_64-ceres-solver-2.2.0-11  mingw-w64-x86_64-curl-8.22.0-1  mingw-w64-x86_64-dav1d-1.5.4-1  mingw-w64-x86_64-expat-2.8.5-1  mingw-w64-x86_64-ffmpeg-9.0.2-1  mingw-w64-x86_64-fontconfig-2.18.3-1  mingw-w64-x86_64-freeglut-3.8.0-1  mingw-w64-x86_64-freetype-2.14.3-1  mingw-w64-x86_64-frei0r-plugins-3.5.0-1  mingw-w64-x86_64-fribidi-1.0.17-1  mingw-w64-x86_64-gcc-libs-16.2.0-4  mingw-w64-x86_64-gdk-pixbuf2-2.44.7-1  mingw-w64-x86_64-gflags-2.3.0-1  mingw-w64-x86_64-ggml-0.25.3-1  mingw-w64-x86_64-giflib-6.1.3-1  mingw-w64-x86_64-glib2-2.90.0-1  mingw-w64-x86_64-glog-0.7.1-10  mingw-w64-x86_64-glsl-optimizer-1~r66913.d78c3d2f24-1  mingw-w64-x86_64-glslang-16.3.0-1  mingw-w64-x86_64-gnutls-3.8.13-3  mingw-w64-x86_64-graphene-1.10.8-3  mingw-w64-x86_64-graphite2-1.3.15-1  mingw-w64-x86_64-gsm-1.0.24-1  mingw-w64-x86_64-gst-plugins-base-1.28.7-1  mingw-w64-x86_64-gstreamer-1.28.7-1  mingw-w64-x86_64-harfbuzz-14.5.0-1  mingw-w64-x86_64-hdf5-2.2.0-2  mingw-w64-x86_64-highway-1.4.0-3  mingw-w64-x86_64-hlsl2glsl-1~r848.14dd189-1  mingw-w64-x86_64-hwloc-2.15.0-1  mingw-w64-x86_64-icu-78.3-4  mingw-w64-x86_64-imath-3.2.3-3  mingw-w64-x86_64-iso-codes-4.20.1-1  mingw-w64-x86_64-jasper-4.2.9-3  mingw-w64-x86_64-jbigkit-2.1-6  mingw-w64-x86_64-lame-3.100-3  mingw-w64-x86_64-lcms2-2.19.1-1  mingw-w64-x86_64-leptonica-1.87.0-1  mingw-w64-x86_64-lerc-4.1.1-1  mingw-w64-x86_64-libaec-1.1.7-2  mingw-w64-x86_64-libarchive-3.8.9-6  mingw-w64-x86_64-libass-0.17.5-1  mingw-w64-x86_64-libavif-1.4.2-1  mingw-w64-x86_64-libb2-0.98.1-3  mingw-w64-x86_64-libbluray-1.5.0-1  mingw-w64-x86_64-libcaca-0.99.beta20-8  mingw-w64-x86_64-libdatrie-0.2.14-1  mingw-w64-x86_64-libdeflate-1.26-1  mingw-w64-x86_64-libdovi-3.4.0-1  mingw-w64-x86_64-libexif-0.6.26-1  mingw-w64-x86_64-libffi-3.8.0-1  mingw-w64-x86_64-libgfortran-16.2.0-4  mingw-w64-x86_64-libgme-0.6.5-2  mingw-w64-x86_64-libgomp-16.2.0-4  mingw-w64-x86_64-libidn2-2.3.8-4  mingw-w64-x86_64-libjpeg-turbo-3.2.0-1  mingw-w64-x86_64-libjxl-0.12.0-1  mingw-w64-x86_64-liblc3-1.1.3-1  mingw-w64-x86_64-libltdl-2.6.2-1  mingw-w64-x86_64-libmodplug-0.8.9.0-5  mingw-w64-x86_64-libmysofa-1.3.5-1  mingw-w64-x86_64-libogg-1.3.6-1  mingw-w64-x86_64-libplacebo-7.360.1-2  mingw-w64-x86_64-libpng-1.6.58-1  mingw-w64-x86_64-libpsl-0.21.5-3  mingw-w64-x86_64-librsvg-2.63.2-1  mingw-w64-x86_64-libsoxr-0.1.3-5  mingw-w64-x86_64-libssh-0.12.2-1  mingw-w64-x86_64-libssh2-1.11.1-2  mingw-w64-x86_64-libsystre-1.0.2-3  mingw-w64-x86_64-libtasn1-4.21.0-1  mingw-w64-x86_64-libthai-0.1.30-1  mingw-w64-x86_64-libtheora-1.2.0-1  mingw-w64-x86_64-libtiff-4.7.2-1  mingw-w64-x86_64-libtre-0.9.0-2  mingw-w64-x86_64-libunibreak-7.0-1  mingw-w64-x86_64-libunistring-1.4.2-1  mingw-w64-x86_64-libunwind-22.1.8-1  mingw-w64-x86_64-libva-2.24.1-1  mingw-w64-x86_64-libvorbis-1.3.7-3  mingw-w64-x86_64-libvpl-2.17.0-1  mingw-w64-x86_64-libvpx-1.17.0-1  mingw-w64-x86_64-libwebp-1.6.0-1  mingw-w64-x86_64-libx264-0.165.r3222.b35605a-3  mingw-w64-x86_64-libxml2-2.15.4-1  mingw-w64-x86_64-libyuv-1924.r2921.644251f25-2  mingw-w64-x86_64-llama.cpp-1~0.5.0-1  mingw-w64-x86_64-lz4-1.10.0-1  mingw-w64-x86_64-lzo2-2.10-3  mingw-w64-x86_64-mpdecimal-4.0.1-3  mingw-w64-x86_64-ncurses-6.6-4  mingw-w64-x86_64-nettle-4.0-1  mingw-w64-x86_64-nghttp2-1.70.0-1  mingw-w64-x86_64-nghttp3-1.18.0-1  mingw-w64-x86_64-ngtcp2-1.25.0-1  mingw-w64-x86_64-ogre3d-14.6.0-1  mingw-w64-x86_64-openal-1.25.2-1  mingw-w64-x86_64-openblas-0.3.34-1  mingw-w64-x86_64-opencl-icd-2026.05.29-1  mingw-w64-x86_64-opencore-amr-0.1.6-1  mingw-w64-x86_64-openexr-3.4.15-2  mingw-w64-x86_64-openjpeg2-2.5.4-2  mingw-w64-x86_64-openjph-0.32.0-1  mingw-w64-x86_64-openssl-3.6.4-1  mingw-w64-x86_64-openvr-2.15.6-1  mingw-w64-x86_64-opus-1.6.1-1  mingw-w64-x86_64-orc-0.4.44-1  mingw-w64-x86_64-p11-kit-0.26.5-1  mingw-w64-x86_64-pango-1.58.2-1  mingw-w64-x86_64-pcre2-10.48-3  mingw-w64-x86_64-pixman-0.46.4-3  mingw-w64-x86_64-protobuf-35.1-2  mingw-w64-x86_64-python-3.14.7-1  mingw-w64-x86_64-python-packaging-26.3-1  mingw-w64-x86_64-rav1e-0.8.1-1  mingw-w64-x86_64-rtmpdump-2.6-2  mingw-w64-x86_64-shaderc-2026.3-1  mingw-w64-x86_64-speex-1.2.1-1  mingw-w64-x86_64-speexdsp-1.2.1-1  mingw-w64-x86_64-spirv-cross-1~1.4.357.0-1  mingw-w64-x86_64-spirv-tools-3~1.4.357.0-1  mingw-w64-x86_64-sqlite3-3.53.4-1  mingw-w64-x86_64-srt-1.5.7-1  mingw-w64-x86_64-suitesparse-7.14.1-1  mingw-w64-x86_64-svt-av1-4.2.0-1  mingw-w64-x86_64-tbb-2023.1.0-1  mingw-w64-x86_64-tcl-8.6.18-1  mingw-w64-x86_64-tesseract-ocr-5.5.3-1  mingw-w64-x86_64-tinyxml-2.6.2-6  mingw-w64-x86_64-tk-8.6.18-1  mingw-w64-x86_64-vid.stab-1.1.2-1  mingw-w64-x86_64-vulkan-loader-1~1.4.357.0-1  mingw-w64-x86_64-whisper.cpp-1~1.9.4.r181.gd09f61a70-1  mingw-w64-x86_64-wineditline-2.208-1  mingw-w64-x86_64-x265-4.3-1  mingw-w64-x86_64-xvidcore-1.3.7-5  mingw-w64-x86_64-xz-5.8.4-1  mingw-w64-x86_64-zimg-3.0.6-3  mingw-w64-x86_64-zlib-ng-2.3.3-2  mingw-w64-x86_64-zvbi-0.2.45-1  mingw-w64-x86_64-opencv-5.0.0-5
+2026-10-22T00:53:28.7473562Z 
+2026-10-22T00:53:28.7473830Z Total Download Size:    410.88 MiB
+2026-10-22T00:53:28.7474352Z Total Installed Size:  2306.65 MiB
+2026-10-22T00:53:28.7474663Z 
+2026-10-22T00:53:28.7474927Z :: Proceed with installation? [Y/n] 
+2026-10-22T00:53:28.7475403Z :: Retrieving packages...
+2026-10-22T00:53:51.1055139Z error: failed retrieving file 'mingw-w64-x86_64-imath-3.2.3-3-any.pkg.tar.zst.sig' from ftp2.osuosl.org : Operation too slow. Less than 1 bytes/sec transferred the last 10 seconds
+2026-10-22T00:53:51.1057159Z  mingw-w64-x86_64-ogre3d-14.6.0-1-any downloading...
+2026-10-22T00:53:51.1057723Z warning: failed to retrieve some files
+2026-10-22T00:53:51.1058232Z error: failed to commit transaction (unexpected error)
+2026-10-22T00:53:51.1058641Z  mingw-w64-x86_64-bullet-3.25-11-any downloading...
+2026-10-22T00:53:51.1059008Z  mingw-w64-x86_64-python-3.14.7-1-any downloading...
+2026-10-22T00:53:51.1059647Z  mingw-w64-x86_64-opencv-5.0.0-5-any downloading...
+2026-10-22T00:53:51.1060105Z  mingw-w64-x86_64-ffmpeg-9.0.2-1-any downloading...
+2026-10-22T00:53:51.1060579Z  mingw-w64-x86_64-icu-78.3-4-any downloading...
+2026-10-22T00:53:51.1060937Z  mingw-w64-x86_64-librsvg-2.63.2-1-any downloading...
+2026-10-22T00:53:51.1061304Z  mingw-w64-x86_64-openblas-0.3.34-1-any downloading...
+2026-10-22T00:53:51.1061650Z  mingw-w64-x86_64-ggml-0.25.3-1-any downloading...
+2026-10-22T00:53:51.1061998Z  mingw-w64-x86_64-openssl-3.6.4-1-any downloading...
+2026-10-22T00:53:51.1062361Z  mingw-w64-x86_64-llama.cpp-1~0.5.0-1-any downloading...
+2026-10-22T00:53:51.1062751Z  mingw-w64-x86_64-tesseract-ocr-5.5.3-1-any downloading...
+2026-10-22T00:53:51.1063152Z  mingw-w64-x86_64-suitesparse-7.14.1-1-any downloading...
+2026-10-22T00:53:51.1063521Z  mingw-w64-x86_64-protobuf-35.1-2-any downloading...
+2026-10-22T00:53:51.1064129Z  mingw-w64-x86_64-hdf5-2.2.0-2-any downloading...
+2026-10-22T00:53:51.1064625Z  mingw-w64-x86_64-glib2-2.90.0-1-any downloading...
+2026-10-22T00:53:51.1064972Z  mingw-w64-x86_64-imath-3.2.3-3-any downloading...
+2026-10-22T00:53:51.1065307Z  mingw-w64-x86_64-aom-3.15.1-1-any downloading...
+2026-10-22T00:53:51.1065665Z  mingw-w64-x86_64-iso-codes-4.20.1-1-any downloading...
+2026-10-22T00:53:51.1066025Z  mingw-w64-x86_64-shaderc-2026.3-1-any downloading...
+2026-10-22T00:53:51.1066360Z  mingw-w64-x86_64-x265-4.3-1-any downloading...
+2026-10-22T00:53:51.1066741Z  mingw-w64-x86_64-spirv-tools-3~1.4.357.0-1-any downloading...
+2026-10-22T00:53:51.1067123Z  mingw-w64-x86_64-svt-av1-4.2.0-1-any downloading...
+2026-10-22T00:53:51.1067455Z  mingw-w64-x86_64-tcl-8.6.18-1-any downloading...
+2026-10-22T00:53:51.1067838Z  mingw-w64-x86_64-gst-plugins-base-1.28.7-1-any downloading...
+2026-10-22T00:53:51.1068224Z  mingw-w64-x86_64-libjxl-0.12.0-1-any downloading...
+2026-10-22T00:53:51.1068565Z  mingw-w64-x86_64-sqlite3-3.53.4-1-any downloading...
+2026-10-22T00:53:51.1068909Z  mingw-w64-x86_64-rav1e-0.8.1-1-any downloading...
+2026-10-22T00:53:51.1069259Z  mingw-w64-x86_64-gstreamer-1.28.7-1-any downloading...
+2026-10-22T00:53:51.1069598Z  mingw-w64-x86_64-gnutls-3.8.13-3-any downloading...
+2026-10-22T00:53:51.1069945Z  mingw-w64-x86_64-harfbuzz-14.5.0-1-any downloading...
+2026-10-22T00:53:51.1070478Z  mingw-w64-x86_64-glslang-16.3.0-1-any downloading...
+2026-10-22T00:53:51.1071100Z  mingw-w64-x86_64-spirv-cross-1~1.4.357.0-1-any downloading...
+2026-10-22T00:53:51.1071497Z  mingw-w64-x86_64-libarchive-3.8.9-6-any downloading...
+2026-10-22T00:53:51.1071841Z  mingw-w64-x86_64-tk-8.6.18-1-any downloading...
+2026-10-22T00:53:51.1072176Z  mingw-w64-x86_64-libdovi-3.4.0-1-any downloading...
+2026-10-22T00:53:51.1072521Z  mingw-w64-x86_64-openal-1.25.2-1-any downloading...
+2026-10-22T00:53:51.1072852Z  mingw-w64-x86_64-curl-8.22.0-1-any downloading...
+2026-10-22T00:53:51.1073226Z  mingw-w64-x86_64-abseil-cpp-20260526.0-1-any downloading...
+2026-10-22T00:53:51.1073603Z  mingw-w64-x86_64-libvpx-1.17.0-1-any downloading...
+2026-10-22T00:53:51.1073936Z  mingw-w64-x86_64-ncurses-6.6-4-any downloading...
+2026-10-22T00:53:51.1074269Z  mingw-w64-x86_64-highway-1.4.0-3-any downloading...
+2026-10-22T00:53:51.1074620Z  mingw-w64-x86_64-SDL2-2.32.10-1-any downloading...
+2026-10-22T00:53:51.1074961Z  mingw-w64-x86_64-pcre2-10.48-3-any downloading...
+2026-10-22T00:53:51.1075328Z  mingw-w64-x86_64-ceres-solver-2.2.0-11-any downloading...
+2026-10-22T00:53:51.1075712Z  mingw-w64-x86_64-leptonica-1.87.0-1-any downloading...
+2026-10-22T00:53:51.1076089Z  mingw-w64-x86_64-libgfortran-16.2.0-4-any downloading...
+2026-10-22T00:53:51.1076459Z  mingw-w64-x86_64-libmysofa-1.3.5-1-any downloading...
+2026-10-22T00:53:51.1076897Z  mingw-w64-x86_64-whisper.cpp-1~1.9.4.r181.gd09f61a70-1-any downloading...
+2026-10-22T00:53:51.1077348Z  mingw-w64-x86_64-openexr-3.4.15-2-any downloading...
+2026-10-22T00:53:51.1077707Z  mingw-w64-x86_64-libxml2-2.15.4-1-any downloading...
+2026-10-22T00:53:51.1078049Z  mingw-w64-x86_64-dav1d-1.5.4-1-any downloading...
+2026-10-22T00:53:51.1078382Z  mingw-w64-x86_64-cairo-1.18.6-2-any downloading...
+2026-10-22T00:53:51.1078741Z  mingw-w64-x86_64-libunistring-1.4.2-1-any downloading...
+2026-10-22T00:53:51.1079128Z  mingw-w64-x86_64-gdk-pixbuf2-2.44.7-1-any downloading...
+2026-10-22T00:53:51.1079535Z  mingw-w64-x86_64-libx264-0.165.r3222.b35605a-3-any downloading...
+2026-10-22T00:53:51.1079921Z  mingw-w64-x86_64-srt-1.5.7-1-any downloading...
+2026-10-22T00:53:51.1080294Z  mingw-w64-x86_64-frei0r-plugins-3.5.0-1-any downloading...
+2026-10-22T00:53:51.1080692Z  mingw-w64-x86_64-libjpeg-turbo-3.2.0-1-any downloading...
+2026-10-22T00:53:51.1081139Z  mingw-w64-x86_64-glsl-optimizer-1~r66913.d78c3d2f24-1-any downloading...
+2026-10-22T00:53:51.1081589Z  mingw-w64-x86_64-libplacebo-7.360.1-2-any downloading...
+2026-10-22T00:53:51.1081945Z  mingw-w64-x86_64-libtiff-4.7.2-1-any downloading...
+2026-10-22T00:53:51.1083178Z  mingw-w64-x86_64-pango-1.58.2-1-any downloading...
+2026-10-22T00:53:51.1083713Z  mingw-w64-x86_64-p11-kit-0.26.5-1-any downloading...
+2026-10-22T00:53:51.1084081Z  mingw-w64-x86_64-hwloc-2.15.0-1-any downloading...
+2026-10-22T00:53:51.1084960Z  mingw-w64-x86_64-freetype-2.14.3-1-any downloading...
+2026-10-22T00:53:51.1085544Z  mingw-w64-x86_64-libwebp-1.6.0-1-any downloading...
+2026-10-22T00:53:51.1086134Z  mingw-w64-x86_64-libexif-0.6.26-1-any downloading...
+2026-10-22T00:53:51.1086731Z  mingw-w64-x86_64-nettle-4.0-1-any downloading...
+2026-10-22T00:53:51.1087403Z  mingw-w64-x86_64-libyuv-1924.r2921.644251f25-2-any downloading...
+2026-10-22T00:53:51.1507082Z Errors occurred, no packages were upgraded.
+2026-10-22T00:53:51.3786957Z ERROR: Deployment of system package from platform software manager: mingw-w64-x86_64-opencv from system packages failed
+2026-10-22T00:53:51.3882951Z ##[error]Process completed with exit code 1.
+2026-10-22T00:53:51.4290297Z Post job cleanup.
+2026-10-22T00:53:51.4293625Z ##[start-action display=Setup Node;id=__ea54c034-5e38-41af-86d8-1aca8ed0421d.__actions_setup-node]
+2026-10-22T00:53:51.4296382Z ##[end-action id=__ea54c034-5e38-41af-86d8-1aca8ed0421d.__actions_setup-node;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-22T00:53:51.4508030Z Post job cleanup.
+2026-10-22T00:53:51.7006409Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-22T00:53:51.7414730Z git version 2.56.0.windows.2
+2026-10-22T00:53:51.7495026Z Temporarily overriding HOME='D:\a\_temp\88236d0c-a730-4fb1-b24d-bdf1fdd4b021' before making global git config changes
+2026-10-22T00:53:51.7496671Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-22T00:53:51.7506352Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\opencv_imgproc_ada\opencv_imgproc_ada\core
+2026-10-22T00:53:51.7951087Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-22T00:53:51.8449202Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-22T00:53:52.6180987Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-22T00:53:52.6686775Z http.https://github.com/.extraheader
+2026-10-22T00:53:52.6752714Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+2026-10-22T00:53:52.7319101Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-22T00:53:53.6828427Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-22T00:53:53.7431683Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-22T00:53:54.4846009Z Post job cleanup.
+2026-10-22T00:53:54.6938734Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-22T00:53:54.7311840Z git version 2.56.0.windows.2
+2026-10-22T00:53:54.7387619Z Temporarily overriding HOME='D:\a\_temp\0150af3a-6724-4eba-ac43-10f3aecd803e' before making global git config changes
+2026-10-22T00:53:54.7388697Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-22T00:53:54.7400124Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\opencv_imgproc_ada\opencv_imgproc_ada\imgproc
+2026-10-22T00:53:54.7800080Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-22T00:53:54.8249468Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-22T00:53:55.4523833Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-22T00:53:55.4983844Z http.https://github.com/.extraheader
+2026-10-22T00:53:55.5035877Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+2026-10-22T00:53:55.5461400Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-22T00:53:56.1821769Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-22T00:53:56.2220997Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-22T00:53:56.8248090Z Cleaning up orphan processes
+2026-10-22T00:53:56.8751913Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

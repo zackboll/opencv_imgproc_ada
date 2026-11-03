@@ -1,0 +1,91 @@
+{
+  "authored_core_links": 47,
+  "authored_example_links": 55,
+  "authored_examples": 6,
+  "authored_local_links": 8,
+  "core_distinct_types": 14,
+  "core_occurrences": 586,
+  "documented_elements": 1596,
+  "exact_identity_offset_label_url_parity": true,
+  "external_target_attributes": {
+    "_top": 586
+  },
+  "filename_fragment_equivalence": "All 348 old local destinations resolve to the same native page and anchor",
+  "full_site_sha256": {
+    "api/ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html": "3721f88ae70e6ec774af729155ba22c9f7860a48c5b2dd242a9079a5c21bf13a",
+    "api/gnatdoc-navigation.js": "b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd",
+    "api/gnatdoc-theme.css": "cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc",
+    "api/gnatdoc.css": "e86c483e8a66f80bd653129c7ceeec99e63848ecfc308e98ea9de1693fd32e0e",
+    "api/index.html": "6ccce736335a87da898e8258aad4c341775a65b0690522a010783302e834dc04",
+    "api/presentation.json": "b030ea24c1231d8001ebc46434d0d6be3b10f583ad75ae06b7e91e4b05ed9381",
+    "guides/color-and-image-representation.html": "a5fe3d81ae15e43aadb9ded19cd886b5ef6464b8b8776a0d4bb922ee76ef5101",
+    "guides/features-and-structural-analysis.html": "75072f76ba81ab36d410963a930039badf3f080f77b773dc7712f762f991a40a",
+    "guides/filtering-and-transforms.html": "7d4bc819d5d9614c56efe8ef7648ac89cc6a70ddb3d444a3f5ef501711764fa4",
+    "guides/gnatdoc-authored.css": "38d27fcf1a27be7c525257645d447cc1dec65c004dced006f535577a0b85548a",
+    "guides/gnatdoc-guides.css": "31c4ae37d107364fba4deb598892b245a0f1034ac83d79e44928fc1d883e1dba",
+    "guides/segmentation-contours-and-morphology.html": "f7d107ed5bcbad40e9a11fe865bffdb838dac0281c7ebdf5698a8f93aff21f49",
+    "guides/template-matching-and-registration.html": "91050632720eea49e894f74d9d67575928cd36232a1154f606229c32453631b2",
+    "index.html": "cc441964a24d936fa956dbb56ce237f4c344c17c90d78ad603e34bc34df5006e"
+  },
+  "legacy_external_target": "_top",
+  "local_additions": [
+    {
+      "classification": "source-proven public constant type-mark improvement; proposal for review",
+      "end": 43,
+      "href": "ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#6455cdd6cf3116fe5cae2e9a6e41d67c6016255c8d18812c6794e34d0e51c93c",
+      "identity": "opencv.image_processing.component_label",
+      "label": "Component_Label",
+      "native_anchor": "49f23914348d447f67af72bc705fe3581cf9f23bd374f364a20c9ab2fd37b9ff",
+      "source_declaration": {
+        "column": 4,
+        "end": 1939,
+        "name": "Background_Label",
+        "scope": "OpenCV.Image_Processing.Background_Label",
+        "signature": "Background_Label : constant Component_Label : = 0;",
+        "start": 1939
+      },
+      "start": 28,
+      "target": null,
+      "target_declaration": {
+        "column": 9,
+        "end": 1935,
+        "name": "Component_Label",
+        "scope": "OpenCV.Image_Processing.Component_Label",
+        "signature": "type Component_Label is new Natural;",
+        "start": 1935
+      }
+    },
+    {
+      "classification": "source-proven public constant type-mark improvement; proposal for review",
+      "end": 60,
+      "href": "ad8b3be9bb56aa3f11561f0f1cb2bee4bf63f69bb56f01ea00bdc4a8c048172f.html#854771b32f4af02768965b6caa3af9d552b30c1c4228a4a2ef49282602f4cb3c",
+      "identity": "opencv.image_processing.morphology_border_value",
+      "label": "Morphology_Border_Value",
+      "native_anchor": "b3fd498fe9359dd5a048c2f250c2af67d35c7f4ac2a5ebe8fec86eaff798e12e",
+      "source_declaration": {
+        "column": 4,
+        "end": 2038,
+        "name": "Default_Morphology_Border",
+        "scope": "OpenCV.Image_Processing.Default_Morphology_Border",
+        "signature": "Default_Morphology_Border : constant Morphology_Border_Value;",
+        "start": 2038
+      },
+      "start": 37,
+      "target": null,
+      "target_declaration": {
+        "column": 9,
+        "end": 2033,
+        "name": "Morphology_Border_Value",
+        "scope": "OpenCV.Image_Processing.Morphology_Border_Value",
+        "signature": "type Morphology_Border_Value is private;",
+        "start": 2033
+      }
+    }
+  ],
+  "local_occurrences": 350,
+  "native_css_preserved": true,
+  "native_visible_text_preserved": true,
+  "operations": 329,
+  "preserved_local_occurrences": 348,
+  "public_packages": 1
+}

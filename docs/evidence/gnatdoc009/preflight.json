@@ -1,0 +1,34 @@
+{
+  "byte_idempotent": true,
+  "candidate_scope": "local API presentation only; Core links absent, never publish",
+  "core_manifest_mode": "release external_types.resolve permits offline-test .invalid only",
+  "disposition": "CORRECTIVE_WORK_REQUIRED",
+  "external_bookmark_rejection": {
+    "command": [
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/release-venv/bin/gnatdoc-enhancer",
+      "inventory",
+      "--source-root",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/final-preflight/current-source",
+      "--config",
+      "qualification.toml",
+      "--site",
+      "/home/zboll/git/opencv/imgproc-gnatdoc009-evidence/final-preflight/native-first"
+    ],
+    "returncode": 2,
+    "stderr": "gnatdoc-enhancer: external type OpenCV.Core.Mat requires explicit HTTPS page and anchor\n",
+    "stdout": ""
+  },
+  "fresh_enhancements_equal": true,
+  "not_qualified": [
+    "production Core link replacement",
+    "production browser/security matrix",
+    "Pages artifact",
+    "production migration"
+  ],
+  "ordered_navigation_pass": true,
+  "production_changed": false,
+  "remaining_decision": "Independently qualify explicit symbol destinations or a stable package fallback; query rejection alone does not prove a release defect or Core hosting failure",
+  "source_declarations": 329,
+  "source_packages": 1,
+  "upstream_defect_confirmed": false
+}

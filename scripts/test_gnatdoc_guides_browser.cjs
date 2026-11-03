@@ -57,7 +57,9 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
             actual: getComputedStyle(e).color,
             variable: getComputedStyle(e).getPropertyValue('--keyword').trim()
           }));
-          assert.equal(palette.variable, colorScheme === 'dark' ? '#d4a8ff' : '#7040a0');
+          const shared = process.env.DOC_PRESENTATION === 'shared-0.1.1';
+          assert.equal(palette.variable, colorScheme === 'dark'
+            ? (shared ? '#cfa8ff' : '#d4a8ff') : (shared ? '#7442a7' : '#7040a0'));
           assert.notEqual(palette.actual, await block.evaluate(e => getComputedStyle(e).color));
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
           const links = await block.locator('a.type-reference').evaluateAll(es =>
@@ -130,6 +132,7 @@ const names = ['filtering-and-transforms', 'color-and-image-representation',
           }
           await page.goto(url);
           await block.focus();
+          assert.equal(await block.evaluate(e => getComputedStyle(e).outlineStyle), 'solid');
           assert.equal(await block.evaluate(e => getComputedStyle(e).overflowX), 'auto');
           assert.equal(await block.evaluate(e => document.activeElement === e), true);
           const scrollable = await block.evaluate(e => e.scrollWidth > e.clientWidth);

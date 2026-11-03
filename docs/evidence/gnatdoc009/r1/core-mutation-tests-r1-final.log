@@ -1,0 +1,12 @@
+test_decoded_snippet_offsets_survive_highlighting (test_production_core_links.CoreSecurity.test_decoded_snippet_offsets_survive_highlighting) ... ok
+test_nested_type_link_rejected (test_production_core_links.CoreSecurity.test_nested_type_link_rejected) ... ok
+test_redirect_rejected (test_production_core_links.CoreSecurity.test_redirect_rejected) ... ok
+test_unsafe_fetch_path_never_reaches_network (test_production_core_links.CoreSecurity.test_unsafe_fetch_path_never_reaches_network) ... ok
+test_changed_candidate_anchor_source_and_link_identity_rejected (test_production_core_links.FullCensusMutations.test_changed_candidate_anchor_source_and_link_identity_rejected) ... ok
+test_complete_identity_offset_url_census (test_production_core_links.FullCensusMutations.test_complete_identity_offset_url_census) ... ok
+test_count_cannot_authorize_wrong_url_owner_offset_or_duplicate (test_production_core_links.FullCensusMutations.test_count_cannot_authorize_wrong_url_owner_offset_or_duplicate) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.455s
+
+OK

@@ -491,6 +491,31 @@ def main():
         os.environ['DOC_CORE_SOURCE'] = command(
             ['alr', 'exec', '--', 'printenv', 'OPENCV_CORE_ALIRE_PREFIX'], root).decode().strip()
         with tempfile.TemporaryDirectory(prefix='imgproc-live-') as temporary:
+            # The 14 API direct-fragment destinations are qualified by the same
+            # R4 policy as pre-publication: the indexed 0.5.2 authority against
+            # the authenticated CURRENT Core deployment (discovered and fetched
+            # by the qualifier itself), unlike the separately retained authored
+            # ?symbol= source-resolution contract. Never approve whatever live serves.
+            from qualify_current_core import CORE as INDEXED_CORE, qualify as qualify_core
+            from types import SimpleNamespace
+            witness = Path(temporary) / 'core-witness'
+            subprocess.run(['git', 'init', '--quiet', str(witness)], check=True, timeout=30)
+            subprocess.run(['git', '-C', str(witness), '-c', 'http.followRedirects=false',
+                            'fetch', '--quiet', '--no-tags',
+                            'https://github.com/zackboll/opencv_core_ada.git', INDEXED_CORE],
+                           check=True, timeout=120)
+            subprocess.run(['git', '-C', str(witness), 'checkout', '--quiet', '--detach', INDEXED_CORE],
+                           check=True, timeout=30)
+            core_native = Path(temporary) / 'core-native'
+            (core_native / 'api').mkdir(parents=True)
+            subprocess.run(['alr', 'exec', '--', str(root / '.doc-tools/gnatdoc-26.0.0/bin/gnatdoc'),
+                            '-P', str(Path(os.environ['DOC_CORE_SOURCE']) / 'docs_api.gpr'),
+                            '--backend', 'html', '--generate', 'public', '--style', 'leading',
+                            '--warnings', '-O', str(core_native / 'api')], cwd=root,
+                           check=True, timeout=180)
+            core_evidence = Path(temporary) / 'core-qualified'
+            qualify_core(SimpleNamespace(core=witness, native=core_native, output=core_evidence, expect=None))
+            result['api_core_policy_proposal'] = json.loads((core_evidence / 'policy-proposal.json').read_text())
             artifact = Path(temporary) / 'artifact'
             artifact.mkdir()
             archive = command(['gh', 'api', f'repos/{REPO}/actions/artifacts/'

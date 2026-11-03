@@ -1,0 +1,18 @@
+{
+  "requestInterception": false,
+  "assertions": [
+    {
+      "campaign": "1280-light-jstrue",
+      "identity": "opencv.angle_unit",
+      "direct": true,
+      "artifactBytesEqual": true,
+      "declarationVisible": true
+    }
+  ],
+  "failures": [
+    "TypeError: Cannot read properties of null (reading 'status')\n    at /home/zboll/git/opencv/imgproc-gnatdoc009/scripts/test_core_candidate_browser.cjs:50:33\n    at runNextTicks (node:internal/process/task_queues:60:5)\n    at process.processImmediate (node:internal/timers:454:9)\n    at process.callbackTrampoline (node:internal/async_hooks:130:17)"
+  ],
+  "navigationDifferences": [],
+  "sourcePolicyApproved": false,
+  "status": "fail"
+}

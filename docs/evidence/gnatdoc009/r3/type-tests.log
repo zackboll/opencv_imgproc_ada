@@ -1,0 +1,28 @@
+test_cli_uses_resolved_core_environment (test_link_gnatdoc_types.Fixture.test_cli_uses_resolved_core_environment) ... ok
+test_keywords_respect_identifier_boundaries (test_link_gnatdoc_types.HighlightTest.test_keywords_respect_identifier_boundaries) ... ok
+test_links_with_top_target_stay_atomic (test_link_gnatdoc_types.HighlightTest.test_links_with_top_target_stay_atomic) ... ok
+test_literals_attributes_and_operators (test_link_gnatdoc_types.HighlightTest.test_literals_attributes_and_operators) ... ok
+test_cli_uses_resolved_core_environment (test_link_gnatdoc_types.ThemeTest.test_cli_uses_resolved_core_environment) ... ok
+test_theme_installs_metadata_once_and_verifies (test_link_gnatdoc_types.ThemeTest.test_theme_installs_metadata_once_and_verifies) ... ok
+test_theme_rejects_changed_native_stylesheet (test_link_gnatdoc_types.ThemeTest.test_theme_rejects_changed_native_stylesheet) ... ok
+test_theme_rejects_native_and_asset_changes (test_link_gnatdoc_types.ThemeTest.test_theme_rejects_native_and_asset_changes) ... ok
+test_theme_rejects_non_snippet_change (test_link_gnatdoc_types.ThemeTest.test_theme_rejects_non_snippet_change) ... ok
+test_check_passes_and_repeated_steps_are_byte_identical (test_link_gnatdoc_types.TypeLinkTest.test_check_passes_and_repeated_steps_are_byte_identical) ... ok
+test_cli_uses_resolved_core_environment (test_link_gnatdoc_types.TypeLinkTest.test_cli_uses_resolved_core_environment) ... ok
+test_fabricated_core_fragment_is_rejected (test_link_gnatdoc_types.TypeLinkTest.test_fabricated_core_fragment_is_rejected) ... ok
+test_highlight_requires_qualified_links (test_link_gnatdoc_types.TypeLinkTest.test_highlight_requires_qualified_links) ... ok
+test_linking_without_manifest_after_linking_is_rejected (test_link_gnatdoc_types.TypeLinkTest.test_linking_without_manifest_after_linking_is_rejected) ... ok
+test_links_local_and_core_types_only (test_link_gnatdoc_types.TypeLinkTest.test_links_local_and_core_types_only) ... ok
+test_missing_or_corrupted_manifest_is_rejected (test_link_gnatdoc_types.TypeLinkTest.test_missing_or_corrupted_manifest_is_rejected) ... ok
+test_modified_declaration_text_is_rejected (test_link_gnatdoc_types.TypeLinkTest.test_modified_declaration_text_is_rejected) ... ok
+test_modified_html_outside_snippets_is_rejected (test_link_gnatdoc_types.TypeLinkTest.test_modified_html_outside_snippets_is_rejected) ... ok
+test_removed_core_type_is_rejected (test_link_gnatdoc_types.TypeLinkTest.test_removed_core_type_is_rejected) ... ok
+test_standard_unknown_and_shadowed_names_stay_unlinked (test_link_gnatdoc_types.TypeLinkTest.test_standard_unknown_and_shadowed_names_stay_unlinked) ... ok
+test_text_is_preserved_and_elided_enumeration_matches (test_link_gnatdoc_types.TypeLinkTest.test_text_is_preserved_and_elided_enumeration_matches) ... ok
+test_unknown_markup_in_snippet_is_rejected (test_link_gnatdoc_types.TypeLinkTest.test_unknown_markup_in_snippet_is_rejected) ... ok
+test_wrong_but_existing_destination_is_rejected (test_link_gnatdoc_types.TypeLinkTest.test_wrong_but_existing_destination_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.189s
+
+OK

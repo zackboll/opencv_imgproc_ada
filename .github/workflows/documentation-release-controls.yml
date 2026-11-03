@@ -1,0 +1,43 @@
+name: Released GNATdoc acquisition controls (non-deployable)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  acquisition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Negative acquisition and operation-oracle controls
+        run: python3 -m unittest discover -s scripts -p test_released_gnatdoc.py -v
+      - name: R1 Core path, redirect and source-token oracle controls
+        run: python3 -m unittest discover -s scripts -p test_production_core_links.py -v
+      - name: Install official archive and independently recheck installed distribution
+        run: |
+          python3 scripts/verify_official_release_archives.py > "$RUNNER_TEMP/release-archives.json"
+          python3 scripts/install_released_gnatdoc.py --venv "$RUNNER_TEMP/release-tools" --with-guides > "$RUNNER_TEMP/release-install.json"
+          python3 scripts/install_released_gnatdoc.py --venv "$RUNNER_TEMP/release-tools" --verify > "$RUNNER_TEMP/release-recheck.json"
+          diff "$RUNNER_TEMP/release-install.json" "$RUNNER_TEMP/release-recheck.json"
+      - name: Installed asset, metadata, module, launcher and receipt mutation rejection
+        env:
+          RELEASE_TEST_VENV: ${{ runner.temp }}/release-tools
+        run: python3 -m unittest discover -s scripts -p test_released_gnatdoc.py -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: released-acquisition-NON-DEPLOYABLE-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/release-install.json
+            ${{ runner.temp }}/release-recheck.json
+            ${{ runner.temp }}/release-archives.json
+            docs/evidence/gnatdoc009/r1
+            docs/evidence/gnatdoc009/r2
+            docs/evidence/gnatdoc009/r3
+          if-no-files-found: error

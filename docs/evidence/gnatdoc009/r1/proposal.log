@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/home/zboll/git/opencv/imgproc-gnatdoc009/scripts/qualify_production_core_links.py", line 293, in <module>
+    main()
+    ~~~~^^
+  File "/home/zboll/git/opencv/imgproc-gnatdoc009/scripts/qualify_production_core_links.py", line 289, in main
+    propose(parser.parse_args())
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zboll/git/opencv/imgproc-gnatdoc009/scripts/qualify_production_core_links.py", line 210, in propose
+    observed = fetch(name)
+  File "/home/zboll/git/opencv/imgproc-gnatdoc009/scripts/qualify_production_core_links.py", line 44, in fetch
+    require(re.fullmatch(r"(?:api/)?[A-Za-z0-9_.-]+", relative) is not None,
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            "unexpected hosted artifact path")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zboll/git/opencv/imgproc-gnatdoc009/scripts/install_released_gnatdoc.py", line 54, in require
+    raise ValueError(message)
+ValueError: unexpected hosted artifact path

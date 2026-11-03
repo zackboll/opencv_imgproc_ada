@@ -1,0 +1,21 @@
+test_changed_core_identity_and_unsafe_urls_are_rejected (test_gnatdoc_examples.ExampleMutations.test_changed_core_identity_and_unsafe_urls_are_rejected) ... ok
+test_dropped_duplicated_tokens_nested_and_unsafe_markup_are_rejected (test_gnatdoc_examples.ExampleMutations.test_dropped_duplicated_tokens_nested_and_unsafe_markup_are_rejected) ... ok
+test_every_example_missing_modified_or_duplicated_is_rejected (test_gnatdoc_examples.ExampleMutations.test_every_example_missing_modified_or_duplicated_is_rejected) ... ok
+test_links_inside_comments_and_strings_are_rejected (test_gnatdoc_examples.ExampleMutations.test_links_inside_comments_and_strings_are_rejected) ... ok
+test_wrong_existing_type_and_unrelated_operation_anchors_are_rejected (test_gnatdoc_examples.ExampleMutations.test_wrong_existing_type_and_unrelated_operation_anchors_are_rejected) ... ok
+test_all_highlighting_categories_entities_and_whitespace (test_gnatdoc_examples.Examples.test_all_highlighting_categories_entities_and_whitespace) ... ok
+test_all_six_examples_round_trip_and_have_links (test_gnatdoc_examples.Examples.test_all_six_examples_round_trip_and_have_links) ... ok
+test_comments_strings_characters_variables_calls_and_selectors_are_plain (test_gnatdoc_examples.Examples.test_comments_strings_characters_variables_calls_and_selectors_are_plain) ... ok
+test_homographs_and_non_type_declarations_are_not_types (test_gnatdoc_examples.Examples.test_homographs_and_non_type_declarations_are_not_types) ... ok
+test_local_shadowing_is_conservative_even_outside_nested_scope (test_gnatdoc_examples.Examples.test_local_shadowing_is_conservative_even_outside_nested_scope) ... ok
+test_malformed_tokens_disable_links_but_not_safe_coloring (test_gnatdoc_examples.Examples.test_malformed_tokens_disable_links_but_not_safe_coloring) ... ok
+test_missing_use_unknown_use_and_alias_context_remain_plain (test_gnatdoc_examples.Examples.test_missing_use_unknown_use_and_alias_context_remain_plain) ... ok
+test_non_ada_fences_are_byte_unchanged (test_gnatdoc_examples.Examples.test_non_ada_fences_are_byte_unchanged) ... ok
+test_stale_imgproc_and_core_source_identities_are_rejected (test_gnatdoc_examples.Examples.test_stale_imgproc_and_core_source_identities_are_rejected) ... ok
+test_type_contexts_case_and_qualified_size (test_gnatdoc_examples.Examples.test_type_contexts_case_and_qualified_size) ... ok
+test_verified_core_package_fallback_and_private_names (test_gnatdoc_examples.Examples.test_verified_core_package_fallback_and_private_names) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 153.501s
+
+OK

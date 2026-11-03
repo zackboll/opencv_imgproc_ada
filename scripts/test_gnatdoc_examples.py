@@ -13,7 +13,7 @@ from render_gnatdoc_examples import BLOCK, ExampleRenderer, lex
 from validate_docs import DocumentationError, ROOT, validate
 
 
-@unittest.skipUnless((ROOT / '_site/api/type-crossrefs.json').is_file(),
+@unittest.skipUnless((ROOT / '_site/api/presentation.json').is_file(),
                      'requires generated site')
 class Examples(unittest.TestCase):
     @classmethod

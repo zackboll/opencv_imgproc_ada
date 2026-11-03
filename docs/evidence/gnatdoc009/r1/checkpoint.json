@@ -1,0 +1,27 @@
+{
+  "browser_assertion_records": 233,
+  "browser_navigation_difference_records": 112,
+  "checkpoint_head": "dc2cdb81754ca097fc586a85f2f75c4223704a00",
+  "checkpoint_tree": "c6723f998960431c1c4f0a9e631a528d56e825fa",
+  "disposition": "CORE_POLICY_REVIEW_REQUIRED",
+  "downloaded_starting_acquisition_artifact": {
+    "id": 12321453034,
+    "scope": "Starting-head release installation receipts only, not a production candidate",
+    "sha256": "b7c8460f0af6a2eb93cf335d5e137c0bbab7467dd4d2a21bb66a6b2e2c9bf8c3"
+  },
+  "final_head_record": "PR checkpoint comment records final immutable head/tree and exact-head hosted status",
+  "not_performed": [
+    "independent approval of material external-navigation policy changes",
+    "complete authored/shared production site qualification and promotion",
+    "complete shared production browser/security matrix",
+    "qualified Imgproc Pages artifact equality",
+    "post-merge publication and live acceptance"
+  ],
+  "observed_main": "3b44846687354f344d078104fe6101bfb7997534",
+  "observed_main_tree": "d30dc701e2fd7811e3a85a957872f9194f4e4c76",
+  "prior_evidence_preserved": true,
+  "production_changed": false,
+  "ready": false,
+  "starting_head": "dc2cdb81754ca097fc586a85f2f75c4223704a00",
+  "starting_tree": "c6723f998960431c1c4f0a9e631a528d56e825fa"
+}

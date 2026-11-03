@@ -269,7 +269,7 @@ class Provenance(unittest.TestCase):
                 self.assertEqual(live.pages_inventory(buffer.getvalue()), {'index.html': b'qualified'})
 
 
-@unittest.skipUnless((live.ROOT / '_site/api/type-crossrefs.json').is_file(), 'requires generated site')
+@unittest.skipUnless((live.ROOT / '_site/api/presentation.json').is_file(), 'requires generated site')
 class Publication(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -297,7 +297,7 @@ class Publication(unittest.TestCase):
                      ('index.html', lambda t: BLOCK.sub('', t)),
                      ('index.html', lambda t: BLOCK.sub(lambda m: m[0] * 2, t)),
                      ('index.html', lambda t: t + '<a href="api/index.html#missing">bad</a>'),
-                     ('api/type-crossrefs.json', lambda t: '{}'),
+                     ('api/presentation.json', lambda t: '{}'),
                      ('api/gnatdoc-theme.css', lambda t: t + '/* altered */'),
                      ('api/gnatdoc-navigation.js', lambda t: t + 'alert(1);')]
         guide = 'guides/segmentation-contours-and-morphology.html'
@@ -323,7 +323,7 @@ class Publication(unittest.TestCase):
     def test_manifest_cannot_authorize_content(self):
         # Even matching artifact/reconstruction copies cannot authorize a
         # forged manifest: source/native qualification is independently required.
-        (self.site / 'api/type-crossrefs.json').write_text('{}')
+        (self.site / 'api/presentation.json').write_text('{}')
         with self.assertRaises(ValueError):
             live.qualify(self.site, self.site)
 

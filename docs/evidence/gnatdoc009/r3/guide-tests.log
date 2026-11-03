@@ -1,0 +1,19 @@
+test_ada_code_that_is_not_a_compiled_example_is_rejected (test_gnatdoc_guides.Guides.test_ada_code_that_is_not_a_compiled_example_is_rejected) ... ok
+test_code_and_text_mutations_are_rejected (test_gnatdoc_guides.Guides.test_code_and_text_mutations_are_rejected) ... ok
+test_example_missing_from_guides_is_rejected (test_gnatdoc_guides.Guides.test_example_missing_from_guides_is_rejected) ... ok
+test_generated_guides_validate (test_gnatdoc_guides.Guides.test_generated_guides_validate) ... ok
+test_missing_and_extra_pages_are_rejected (test_gnatdoc_guides.Guides.test_missing_and_extra_pages_are_rejected) ... ok
+test_missing_guide_heading_is_rejected (test_gnatdoc_guides.Guides.test_missing_guide_heading_is_rejected) ... ok
+test_raw_html_is_rejected (test_gnatdoc_guides.Guides.test_raw_html_is_rejected) ... ok
+test_script_and_handler_are_rejected (test_gnatdoc_guides.Guides.test_script_and_handler_are_rejected) ... ok
+test_tampered_stylesheet_is_rejected (test_gnatdoc_guides.Guides.test_tampered_stylesheet_is_rejected) ... ok
+test_unapproved_link_targets_are_rejected (test_gnatdoc_guides.Guides.test_unapproved_link_targets_are_rejected) ... ok
+test_unknown_api_declaration_is_rejected (test_gnatdoc_guides.Guides.test_unknown_api_declaration_is_rejected) ... ok
+test_unknown_overload_is_rejected (test_gnatdoc_guides.Guides.test_unknown_overload_is_rejected) ... ok
+test_wrong_but_existing_api_anchor_is_rejected (test_gnatdoc_guides.Guides.test_wrong_but_existing_api_anchor_is_rejected) ... ok
+test_wrong_but_existing_guide_link_is_rejected (test_gnatdoc_guides.Guides.test_wrong_but_existing_guide_link_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 78.242s
+
+OK

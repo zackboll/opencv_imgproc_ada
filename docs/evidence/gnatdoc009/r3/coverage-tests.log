@@ -1,0 +1,31 @@
+test_all_previous_declaration_identities_are_retained (test_check_doc_coverage.GeneratedCoverageTest.test_all_previous_declaration_identities_are_retained) ... ok
+test_derivative_parameter_documentation_cannot_attach_to_image_canny (test_check_doc_coverage.GeneratedCoverageTest.test_derivative_parameter_documentation_cannot_attach_to_image_canny) ... ok
+test_generated_site_inventory_matches_source (test_check_doc_coverage.GeneratedCoverageTest.test_generated_site_inventory_matches_source) ... ok
+test_new_overloads_have_their_own_documented_parameters (test_check_doc_coverage.GeneratedCoverageTest.test_new_overloads_have_their_own_documented_parameters) ... ok
+test_removing_a_rendered_description_is_detected (test_check_doc_coverage.GeneratedCoverageTest.test_removing_a_rendered_description_is_detected) ... ok
+test_swapped_box_overload_parameter_text_is_rejected (test_check_doc_coverage.GeneratedCoverageTest.test_swapped_box_overload_parameter_text_is_rejected) ... ok
+test_attachment_errors_cannot_be_baselined (test_check_doc_coverage.SyntheticCoverageTest.test_attachment_errors_cannot_be_baselined) ... ok
+test_code_block_line_starting_with_operator_is_verbatim (test_check_doc_coverage.SyntheticCoverageTest.test_code_block_line_starting_with_operator_is_verbatim) ... ok
+test_code_span_formula_is_accepted (test_check_doc_coverage.SyntheticCoverageTest.test_code_span_formula_is_accepted) ... ok
+test_comment_rendered_in_another_section_is_rejected (test_check_doc_coverage.SyntheticCoverageTest.test_comment_rendered_in_another_section_is_rejected) ... ok
+test_complete_fixture_is_fully_documented (test_check_doc_coverage.SyntheticCoverageTest.test_complete_fixture_is_fully_documented) ... ok
+test_detached_comment_is_rejected (test_check_doc_coverage.SyntheticCoverageTest.test_detached_comment_is_rejected) ... ok
+test_emphasis_mangled_formula_is_rejected (test_check_doc_coverage.SyntheticCoverageTest.test_emphasis_mangled_formula_is_rejected) ... ok
+test_empty_parameter_is_undocumented_on_its_own_overload (test_check_doc_coverage.SyntheticCoverageTest.test_empty_parameter_is_undocumented_on_its_own_overload) ... ok
+test_missing_discriminant_entry_is_rejected (test_check_doc_coverage.SyntheticCoverageTest.test_missing_discriminant_entry_is_rejected) ... ok
+test_missing_overload_description_is_undocumented (test_check_doc_coverage.SyntheticCoverageTest.test_missing_overload_description_is_undocumented) ... ok
+test_missing_package_description_is_undocumented (test_check_doc_coverage.SyntheticCoverageTest.test_missing_package_description_is_undocumented) ... ok
+test_missing_section_is_rejected (test_check_doc_coverage.SyntheticCoverageTest.test_missing_section_is_rejected) ... ok
+test_one_word_and_name_only_text_do_not_count (test_check_doc_coverage.SyntheticCoverageTest.test_one_word_and_name_only_text_do_not_count) ... ok
+test_package_description_inside_package_is_accepted (test_check_doc_coverage.SyntheticCoverageTest.test_package_description_inside_package_is_accepted) ... ok
+test_parameter_names_follow_profile_order (test_check_doc_coverage.SyntheticCoverageTest.test_parameter_names_follow_profile_order) ... ok
+test_private_part_comments_are_not_required_to_render (test_check_doc_coverage.SyntheticCoverageTest.test_private_part_comments_are_not_required_to_render) ... ok
+test_ratchet_rejects_new_and_stale_gaps (test_check_doc_coverage.SyntheticCoverageTest.test_ratchet_rejects_new_and_stale_gaps) ... ok
+test_rendered_member_list_must_match_source (test_check_doc_coverage.SyntheticCoverageTest.test_rendered_member_list_must_match_source) ... ok
+test_second_block_inside_package_is_detached (test_check_doc_coverage.SyntheticCoverageTest.test_second_block_inside_package_is_detached) ... ok
+test_trailing_comment_is_rejected (test_check_doc_coverage.SyntheticCoverageTest.test_trailing_comment_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 1.278s
+
+OK

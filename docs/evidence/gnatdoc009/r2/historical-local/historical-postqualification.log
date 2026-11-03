@@ -1,0 +1,17 @@
+test_changed_bytes_are_rejected (test_shared_gnatdoc_shadow.ShadowBoundaries.test_changed_bytes_are_rejected) ... ok
+test_checked_in_authority_matches (test_shared_gnatdoc_shadow.ShadowBoundaries.test_checked_in_authority_matches) ... ok
+test_duplicate_authority_key_is_rejected (test_shared_gnatdoc_shadow.ShadowBoundaries.test_duplicate_authority_key_is_rejected) ... ok
+test_historical_reports_cannot_qualify_new_pin (test_shared_gnatdoc_shadow.ShadowBoundaries.test_historical_reports_cannot_qualify_new_pin) ... ok
+test_navigation_audit_preserves_real_target_and_visible_label (test_shared_gnatdoc_shadow.ShadowBoundaries.test_navigation_audit_preserves_real_target_and_visible_label) ... ok
+test_origin_and_version_must_both_match (test_shared_gnatdoc_shadow.ShadowBoundaries.test_origin_and_version_must_both_match) ... ok
+test_readiness_fails_closed_without_current_run (test_shared_gnatdoc_shadow.ShadowBoundaries.test_readiness_fails_closed_without_current_run) ... ok
+test_readiness_requires_all_current_run_bindings (test_shared_gnatdoc_shadow.ShadowBoundaries.test_readiness_requires_all_current_run_bindings) ... ok
+test_symlink_directory_is_rejected (test_shared_gnatdoc_shadow.ShadowBoundaries.test_symlink_directory_is_rejected) ... ok
+test_transition_cannot_approve_changed_historical_bytes (test_shared_gnatdoc_shadow.ShadowBoundaries.test_transition_cannot_approve_changed_historical_bytes) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.061s
+
+OK
+Rejected 36 observed consumer mutations
+{'disposition': 'HOSTED_CI_PENDING', 'full_shadow_qualification': True, 'missing_evidence': [], 'current_run_complete': True, 'enhancer': '53a321915da2c5a02a54581040673b61f8595b25', 'consumer_tested': '4e3d1b9f4da2c800619e78fefddd11a14892f450', 'non_deployable': True, 'production_migration_complete': False, 'production_https_verified': False, 'reports': {'qualification': '72966fb2655f931cbc647e8aa7fae5982c7fe9c0bf4bf665a7e6bd6455f3c146', 'negative': '4d0827d0aebc5ccbb41057317967f438d57c412e21409e1c30831ccfeb6a7f04', 'browser': 'a65cbfcfb6afeb03f8bb828c515cc6fc0db03c0b8481c992076c97f59d19cc34', 'navigation-comparison': 'a697c6a162656c6465cc4c62a5cde575efe6d08d08fe3c6036cf837216b4fd5a'}, 'hosted_exact_head': 'consult immutable Actions run; not inferred from local execution'}

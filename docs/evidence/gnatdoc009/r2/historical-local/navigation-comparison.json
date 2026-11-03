@@ -1,0 +1,7 @@
+{
+  "failures": [],
+  "operations": 314,
+  "oracle": "unchanged source-backed consumer entries()",
+  "status": "pass",
+  "upstream_cause": "navigation.operation_entries uses len(resolved)+1 across a category, not per-name source-order overload numbering"
+}
