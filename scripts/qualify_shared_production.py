@@ -25,11 +25,20 @@ from render_gnatdoc_guides import expected as authored_guides
 from validate_docs import Page, LEAKS
 
 ROOT = Path(__file__).resolve().parents[1]
+ENHANCER_VERSION = '0.1.5'
+# Exact tagged v0.1.5 asset bytes. The navigation runtime differs from v0.1.1
+# (b3fb428b...) only by upstream 0eeeadbb default-router declaration
+# restoration; the theme is byte-identical across both releases.
 ASSETS = {
-    'api/gnatdoc-navigation.js': 'b3fb428b507844d6be76fb40156058d39a5b5f57004bde04e33b0411f68504cd',
+    'api/gnatdoc-navigation.js': 'e32e0a9fcbccffbe94268ff933905e5616a52d4d89969c52e7d539acdb102522',
     'api/gnatdoc-theme.css': 'cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc',
 }
-INDEX_SHA = '6ccce736335a87da898e8258aad4c341775a65b0690522a010783302e834dc04'
+INDEX_SHA = '74f9aa31e93a4a75ef25a3a808f5969b97ee6a0bdd5d2bb59a1176993f87fa50'
+# The independently qualified v0.1.1 index differs only by the upstream
+# 27341756 navigation-filter label; restoring that label must restore it.
+V011_INDEX_SHA = '6ccce736335a87da898e8258aad4c341775a65b0690522a010783302e834dc04'
+FILTER_LABEL = ('<label for="package-search">Filter navigation links</label>',
+                '<label for="package-search">Search documentation</label>')
 
 
 class SnippetMarkup(HTMLParser):
@@ -116,7 +125,9 @@ def api_semantics(native, candidate, root=ROOT):
     expected, inventory = expected_operations(native / 'api')
     require(Operations((candidate / 'api/index.html').read_text()).links == expected,
             'source-order overload/category/operation destination changed')
-    require(digest((candidate / 'api/index.html').read_bytes()) == INDEX_SHA,
+    index = (candidate / 'api/index.html').read_bytes()
+    require(digest(index) == INDEX_SHA and index.decode().count(FILTER_LABEL[0]) == 1 and
+            digest(index.decode().replace(*FILTER_LABEL).encode()) == V011_INDEX_SHA,
             'unqualified navigation markup or controls')
     source = Source(root / 'src')
     original = package_page(native / 'api', source)
@@ -155,7 +166,7 @@ def api_semantics(native, candidate, root=ROOT):
     require(native_files['api/gnatdoc.css'] == digest((candidate / 'api/gnatdoc.css').read_bytes()),
             'native GNATdoc stylesheet changed')
     manifest = json.loads((candidate / 'api/presentation.json').read_text())
-    require(manifest['enhancer_version'] == '0.1.1' and manifest['gnatdoc_version'] == '26.0.0',
+    require(manifest['enhancer_version'] == ENHANCER_VERSION and manifest['gnatdoc_version'] == '26.0.0',
             'wrong presentation version')
     require(manifest['original_api_html'] == {
         p.relative_to(native).as_posix(): p.read_text() for p in (native / 'api').glob('*.html')},

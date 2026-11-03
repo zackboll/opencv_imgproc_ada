@@ -40,4 +40,5 @@ jobs:
             docs/evidence/gnatdoc009/r1
             docs/evidence/gnatdoc009/r2
             docs/evidence/gnatdoc009/r3
+            docs/evidence/gnatdoc012
           if-no-files-found: error

@@ -104,7 +104,49 @@ const report = {passed: false, requestInterception: false, campaigns: [], failur
           await page.reload();
           assert.equal(await page.locator('h4:target').textContent(), item.label.replace(/ \([0-9]+\)$/, ''));
         }
+        // Official v0.1.5 behavior (upstream 27341756): the navigation filter is
+        // labelled exactly and remains hidden until the router script runs.
+        await page.goto(base + 'api/index.html');
+        assert.equal(await page.locator('label[for="package-search"]').textContent(), 'Filter navigation links');
+        assert.equal(await page.locator('#package-navigation').isVisible(), javaScriptEnabled);
         if (javaScriptEnabled) {
+          // Official v0.1.5 default-router restoration (upstream 0eeeadbb): history
+          // traversal and reload must SHOW the selected declaration, not only set
+          // :target. First and last operations are far apart in the same page.
+          const revealed = anchor => page.frame({name: 'document-content'}).waitForFunction(id => {
+            const e = document.getElementById(id);
+            if (!e || !e.matches(':target')) return false;
+            const r = e.getBoundingClientRect();
+            return r.top >= -1 && r.top < innerHeight;
+          }, anchor, {timeout: 10000});
+          const first = expected[0].href.split('#')[1];
+          const last = expected[expected.length - 1].href.split('#')[1];
+          assert.notEqual(first, last);
+          await links.nth(expected.length - 1).click();
+          await revealed(last);
+          await links.nth(0).click();
+          await revealed(first);
+          await page.goBack();
+          assert.equal(new URL(page.url()).searchParams.get('declaration'), last);
+          await revealed(last);
+          await page.goForward();
+          assert.equal(new URL(page.url()).searchParams.get('declaration'), first);
+          await revealed(first);
+          await page.goBack();
+          await page.reload();
+          await revealed(last);
+          // Discriminating case (negative-first: official v0.1.1 leaves it
+          // off-screen): re-selecting the ALREADY-LOADED declaration after the
+          // reader scrolls the document away must show it again.
+          const middle = Math.floor(expected.length / 2);
+          const mid = expected[middle].href.split('#')[1];
+          await links.nth(middle).click();
+          await revealed(mid);
+          await page.frame({name: 'document-content'}).evaluate(() => window.scrollTo(0, 0));
+          await page.frame({name: 'document-content'}).waitForFunction(
+            id => document.getElementById(id).getBoundingClientRect().top >= innerHeight, mid);
+          await links.nth(middle).click();
+          await revealed(mid);
           await page.goto(base + 'api/index.html');
           const input = page.locator('#package-search');
           await input.fill('Match_Template');
@@ -121,6 +163,7 @@ const report = {passed: false, requestInterception: false, campaigns: [], failur
         report.campaigns.push({width, colorScheme, javaScriptEnabled, operations: 329,
           externalOccurrences: 586, localOccurrences: 350, topLevelCoreDestinations: 14,
           directReloads: 329, keyboardAndMouse: true, coreBackForward: true,
+          filterLabel: 'Filter navigation links', historyRestorationRevealed: javaScriptEnabled,
           sourceOccurrenceReconciliation: qualification.exact_identity_offset_label_url_parity});
         console.log(`PASS API ${width}px ${colorScheme} JS=${javaScriptEnabled}`);
         await context.close();
