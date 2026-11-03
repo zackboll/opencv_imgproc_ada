@@ -583,8 +583,9 @@ jobs:
           echo "=== Installed MSYS2 dependency versions ==="
           alr exec -- pacman -Q \
             mingw-w64-x86_64-gcc \
-            mingw-w64-x86_64-gcc-libs \
             mingw-w64-x86_64-cc-libs \
+            mingw-w64-x86_64-libgcc \
+            mingw-w64-x86_64-libstdc++ \
             mingw-w64-x86_64-libgfortran \
             mingw-w64-x86_64-libquadmath \
             mingw-w64-x86_64-opencv \
